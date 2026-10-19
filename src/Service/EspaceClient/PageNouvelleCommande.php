@@ -155,9 +155,11 @@ final class PageNouvelleCommande
      * (NouvelleCommande::assembler), non enregistrée. Sans $montants, les
      * lignes ne portent que des quantités et des délais.
      *
+     * @param list<CommandesDetails> $autres produits déjà mis dans la même commande
+     *
      * @return array<string, mixed>
      */
-    public static function recapitulatif(Commandes $commande, CommandesDetails $ligne, ProduitConfiguration $config, bool $montants, int $heures, ?int $pourcentageAcompte = null): array
+    public static function recapitulatif(Commandes $commande, CommandesDetails $ligne, ProduitConfiguration $config, bool $montants, int $heures, ?int $pourcentageAcompte = null, array $autres = []): array
     {
         $taille = null !== $ligne->getLargeur() && null !== $ligne->getLongueur();
         $quantite = $ligne->getQuantite();
@@ -198,9 +200,14 @@ final class PageNouvelleCommande
             $palier = $ligne->getRemise() === \App\Service\Catalogue\PaliersPrix::remiseParUnite($ligne->getPrixUnitaire(), $volume['taux'], 0.0) ? \App\Service\Catalogue\PaliersPrix::libelle($volume) : null;
             $lignes[] = ['libelle' => $palier ?? 'Votre remise', 'valeur' => '−'.self::f($remise).' F'];
         }
+        // Les autres produits de la même commande : leur somme, détaillée à part (« Déjà dans la commande »).
+        if ([] !== $autres) {
+            $somme = array_sum(array_map(static fn (CommandesDetails $l): int => $l->getTotalTtc(), $autres));
+            $lignes[] = ['libelle' => \count($autres) > 1 ? \sprintf('%d autres produits', \count($autres)) : '1 autre produit', 'valeur' => $montants ? '+'.self::f($somme).' F' : 'déjà choisi'.(\count($autres) > 1 ? 's' : '')];
+        }
         $express = null;
         foreach ($commande->getCommandesDetails() as $l) {
-            if ($l !== $ligne) {
+            if ($l !== $ligne && !\in_array($l, $autres, true)) {
                 $express = $l;
             }
         }

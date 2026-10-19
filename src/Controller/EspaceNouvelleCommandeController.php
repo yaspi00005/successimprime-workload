@@ -55,6 +55,16 @@ final class EspaceNouvelleCommandeController extends AbstractController
 {
     private const UUID = '[0-9a-f-]{36}';
 
+    /**
+     * Plusieurs produits dans une commande (badges, kakémono, bâche…) : les
+     * produits déjà choisis attendent dans la session du compte, chacun avec
+     * ses saisies des étapes 2 et 3 ; le dernier se finit à l'étape 4.
+     */
+    private const PANIER = 'espace_commande_produits';
+    /** Dernier produit rouvert pour finir la commande (« Terminer la commande »). */
+    private const REPRISE = 'espace_commande_reprise';
+    private const SAISIES_PRODUIT = ['produit', 'quantite', 'unite_quantite', 'quantite_m2', 'largeur', 'hauteur', 'unite_taille', 'finitions', 'fichier_mode', 'fichiers', 'creation', 'note', 'refaire', 'delai', 'reception'];
+
     public function __construct(
         private readonly CompteClientRepository $comptes,
         private readonly CompteEntreprise $compteEntreprise,
@@ -99,10 +109,22 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
         $configs = $this->service->produits();
 
-        if ($request->isMethod('POST')) {
+        if ($request->isMethod('POST') && $request->request->has('ajouter_produit')) {
+            // « Ajouter un autre produit » : celui-ci attend dans la commande, on choisit le suivant.
+            $this->jeton($request);
+            try {
+                $nom = $this->ajouterAuPanier($request, $compte, $fichiers, $imagesIa, $em);
+                $this->addFlash('succes', \sprintf('« %s » est dans votre commande. Choisissez le produit suivant, ou terminez la commande.', $nom));
+
+                return $this->redirectToRoute('app_espace_nouvelle_commande');
+            } catch (\DomainException $e) {
+                $this->addFlash('error', $e->getMessage());
+            }
+        } elseif ($request->isMethod('POST')) {
             $this->jeton($request);
             try {
                 $commande = $this->commander($request, $compte, $fichiers, $essaisCode, $imagesIa, $em);
+                $this->viderPanier($request);
                 $paiement = $request->request->getString('paiement');
                 if ($commande->attendValidationEntreprise()) {
                     $this->compteEntreprise->prevenirValideurs($commande, $compte);
@@ -121,8 +143,12 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
 
         // Depuis le calculateur du site : produit et finitions en jetons ; les liens de l'espace gardent leurs identifiants.
-        $choix = self::saisies($request->request->all() + $this->jetons->decoderParametres($request->query->all(), JetonsSite::PARAMETRES_PRODUIT, true));
+        $repris = $request->isMethod('POST') ? null : $this->reprise($request, $compte);
+        $choix = self::saisies($request->request->all() + ($repris ?? $this->jetons->decoderParametres($request->query->all(), JetonsSite::PARAMETRES_PRODUIT, true)));
         $config = $this->service->produit((int) ($choix['produit'] ?? 0));
+        $panier = $this->panier($request, $compte);
+        $commun['panier'] = $this->panierAffiche($compte, $panier);
+        $commun['produitsMax'] = NouvelleCommande::PRODUITS_MAX;
 
         if (null === $config) {
             // Étape 1 (maquette CO01) : le catalogue et « Commander à nouveau ».
@@ -146,7 +172,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             static fn (ImageIa $i): bool => null !== $imagesIa->chemin($i),
         ));
         $reglages = $this->delais->reglages();
-        $estimation = $this->estimation($compte, $config, [
+        $estimation = $this->estimation($compte, $config, $this->lignesPanier($compte, $panier), [
             'quantite' => $choix['quantite'] ?? null,
             'largeur' => $choix['largeur'] ?? null,
             'hauteur' => $choix['hauteur'] ?? null,
@@ -157,7 +183,11 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'delai' => $choix['delai'] ?? null,
             'reception' => $choix['reception'] ?? null,
         ]);
-        $mesFichiers = array_values(array_filter($fichiers->liste($client), static fn (CommandeDetailFichier $f): bool => null === $f->getCommandeDetail()));
+        // Un fichier déjà pris par un produit du panier n'est pas reproposé ; ceux du produit rouvert d'abord.
+        $reserves = array_map('intval', array_merge(...array_map(static fn (array $p): array => (array) ($p['fichiers'] ?? []), $panier)));
+        $choisisIci = array_map('intval', (array) ($choix['fichiers'] ?? []));
+        $mesFichiers = array_values(array_filter($fichiers->liste($client), static fn (CommandeDetailFichier $f): bool => null === $f->getCommandeDetail() && !\in_array($f->getId(), $reserves, true)));
+        usort($mesFichiers, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => (int) \in_array($b->getId(), $choisisIci, true) <=> (int) \in_array($a->getId(), $choisisIci, true));
 
         return $this->render('espace/app/nouvelle_commande.html.twig', $commun + [
             'etape' => max(2, min(4, (int) ($choix['etape'] ?? 2))),
@@ -204,7 +234,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
         if (null === $config) {
             return $this->json(['erreur' => 'Choisissez un produit.'], 422);
         }
-        $estimation = $this->estimation($compte, $config, $donnees);
+        $estimation = $this->estimation($compte, $config, $this->lignesPanier($compte, $this->panier($request, $compte)), $donnees);
 
         return $this->json($estimation, isset($estimation['erreur']) ? 422 : 200);
     }
@@ -341,61 +371,21 @@ final class EspaceNouvelleCommandeController extends AbstractController
     {
         $client = $compte->getClient();
         $r = $request->request;
-        $config = $this->service->produit(Entree::entier($r, 'produit'));
-        if (null === $config) {
-            throw new \DomainException('Choisissez un produit.');
-        }
         // Les étapes ne se montrent qu'avec le navigateur : sans case cochée, rien ne part (recette, ancien formulaire).
         if ($r->has('etapes') && !$r->getBoolean('conditions')) {
             throw new \DomainException('Cochez « J\'accepte les conditions de vente » pour envoyer la commande.');
         }
         // Commande en ligne coupée, trop de commandes en attente : refusé avant de copier un fichier.
         $this->service->verifierEnAttente($client);
-        [$largeur, $hauteur] = self::taille($r->get('largeur'), $r->get('hauteur'), $r->getString('unite_taille', 'cm'));
-        // Quantité lue comme l'estimation (vide : le minimum que « Votre commande » montrait), jamais
-        // une page d'erreur ; en m² (pièces au m²), elle vient de la surface. Contrôlée avant de copier un fichier.
-        $quantite = max(1, (int) $r->getString('quantite') ?: max(1, $config->getQuantiteMinimale()));
-        $espacement = $this->piecesM2->espacement();
-        $saisie = NouvelleCommande::quantiteSaisie($config, $quantite, $r->getString('unite_quantite'), $r->getString('quantite_m2'), $largeur, $hauteur, $espacement);
-        if (null !== $saisie['erreur']) {
-            throw new \DomainException($saisie['erreur']);
-        }
-        $m2 = $saisie['m2'];
-        $b2b = $client->isB2B();
-        $ajuster = !$saisie['piecesM2'] ? null : static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
-            NouvelleCommande::enPiecesAuM2($ligne, $m2, $espacement, $b2b);
-        };
-        $mode = $r->getString('fichier_mode', 'fichier');
-
-        $choisis = [];
-        $notes = [];
-        if ('fichier' === $mode) {
-            foreach ($r->all('fichiers') as $fid) {
-                $f = $fichiers->trouver($client, (int) $fid);
-                if (null !== $f && null === $f->getCommandeDetail() && !$f->isLogo() && $f->estUploadTermine()) {
-                    $choisis[] = $f;
-                }
+        // Les produits déjà mis dans la commande, puis celui de la page : tous contrôlés avant de copier un fichier.
+        $saisies = [...$this->panier($request, $compte), self::saisies($r->all())];
+        $bases = [];
+        foreach ($saisies as $i => $s) {
+            try {
+                $bases[] = $this->produitSaisi($s, $compte);
+            } catch (\DomainException $e) {
+                throw \count($saisies) > 1 ? new \DomainException(\sprintf('Produit %d de la commande : %s', $i + 1, $e->getMessage())) : $e;
             }
-        } elseif ('creation' === $mode) {
-            $image = $imagesIa->trouver($client, Entree::entier($r, 'creation'));
-            if (null === $image) {
-                throw new \DomainException('Choisissez une de vos créations, ou envoyez votre fichier.');
-            }
-            $choisis[] = $imagesIa->enFichierClient($image, $image->getDemande());
-            $notes[] = \sprintf('Fichier : création %s n° %d.', $image->getDemande()->getNumero(), $image->getNumero());
-        } elseif ('aucun' === $mode) {
-            $notes[] = 'Pas de fichier : visuel à concevoir par l\'atelier (le client attend votre appel).';
-        }
-        // « Refaire » : même fichier que la ligne d'une ancienne commande.
-        $refaire = $this->ligneARefaire($client, $r->getString('refaire'), $em);
-        if (null !== $refaire && 'fichier' === $mode && [] === $choisis) {
-            foreach ($refaire->getFichiers() as $ancien) {
-                $copie = $fichiers->reprendre($ancien, $client);
-                if (null !== $copie) {
-                    $choisis[] = $copie;
-                }
-            }
-            $notes[] = \sprintf('Refaite à l\'identique de la commande %s : même fichier%s.', $refaire->getCommande()?->getNumero(), [] === $choisis ? ' (à reprendre de cette commande)' : '');
         }
 
         $options = $this->options($compte, $r->getString('delai'), 'livraison' === $r->getString('reception'), Entree::entier($r, 'adresse'), $r->getString('adresse_texte'), $r->getString('contact'), $r->getString('creneau'), true);
@@ -405,16 +395,24 @@ final class EspaceNouvelleCommandeController extends AbstractController
         if ('' !== $codePromo && $essaisCode->bloque((int) $client->getId(), (string) $request->getClientIp())) {
             throw new \DomainException('Trop de codes promo refusés : réessayez plus tard, ou passez la commande sans code.');
         }
-        $note = trim(implode("\n", array_filter([trim($r->getString('note')), ...$notes])));
+        $utilises = [];
+        $articles = [];
+        foreach ($saisies as $i => $s) {
+            $fichiersProduit = $this->fichiersSaisis($s, $compte, $fichiers, $imagesIa, $em, true, $utilises);
+            $note = trim(implode("\n", array_filter([trim((string) ($s['note'] ?? '')), ...$fichiersProduit['notes']])));
+            $articles[] = $bases[$i] + ['fichiers' => $fichiersProduit['fichiers'], 'note' => '' === $note ? null : mb_substr($note, 0, 1500)];
+        }
         try {
-            $commande = $this->service->commander($client, $config, $saisie['quantite'], $largeur, $hauteur, array_map('intval', $r->all('finitions')), $choisis, '' === $note ? null : mb_substr($note, 0, 1500), new \DateTimeImmutable(), $ajuster, $codePromo, $options, $this->delais->reglages()['delaiExpress']);
+            $commande = $this->service->commanderPlusieurs($client, $articles, new \DateTimeImmutable(), $codePromo, $options, $this->delais->reglages()['delaiExpress']);
         } catch (CodePromoRefuse $e) {
             $essaisCode->noterRefus((int) $client->getId(), (string) $request->getClientIp());
             throw $e;
         }
-        // Le fichier se contrôle à la taille commandée.
-        foreach ($choisis as $f) {
-            $fichiers->recontroler($f, $largeur, $hauteur);
+        // Chaque fichier se contrôle à la taille commandée de son produit.
+        foreach ($articles as $a) {
+            foreach ($a['fichiers'] as $f) {
+                $fichiers->recontroler($f, $a['largeur'], $a['hauteur']);
+            }
         }
         // Adresse déjà mise par les options : seulement le bon de commande et la validation interne.
         $this->compteEntreprise->preparerCommande($compte, $commande, $r->getString('bon_commande'), null);
@@ -424,15 +422,294 @@ final class EspaceNouvelleCommandeController extends AbstractController
     }
 
     /**
+     * Un produit de la commande lu de ses saisies (formulaire ou panier) :
+     * produit, quantité (en m² pour les pièces au m²), taille et finitions,
+     * contrôlés sans rien enregistrer.
+     *
+     * @param array<string, string|list<string>> $s
+     *
+     * @return array{config: ProduitConfiguration, quantite: int, largeur: ?float, hauteur: ?float, finitions: list<int>, ajuster: ?\Closure}
+     *
+     * @throws \DomainException
+     */
+    private function produitSaisi(array $s, CompteClient $compte): array
+    {
+        $config = $this->service->produit((int) ($s['produit'] ?? 0));
+        if (null === $config) {
+            throw new \DomainException('Choisissez un produit.');
+        }
+        [$largeur, $hauteur] = self::taille($s['largeur'] ?? null, $s['hauteur'] ?? null, (string) ($s['unite_taille'] ?? 'cm'));
+        // Quantité lue comme l'estimation (vide : le minimum que « Votre commande » montrait), jamais
+        // une page d'erreur ; en m² (pièces au m²), elle vient de la surface.
+        $quantite = max(1, (int) ($s['quantite'] ?? 0) ?: max(1, $config->getQuantiteMinimale()));
+        $espacement = $this->piecesM2->espacement();
+        $saisie = NouvelleCommande::quantiteSaisie($config, $quantite, (string) ($s['unite_quantite'] ?? ''), (string) ($s['quantite_m2'] ?? ''), $largeur, $hauteur, $espacement);
+        if (null !== $saisie['erreur']) {
+            throw new \DomainException($saisie['erreur']);
+        }
+        $m2 = $saisie['m2'];
+        $b2b = $compte->getClient()->isB2B();
+
+        return [
+            'config' => $config,
+            'quantite' => $saisie['quantite'],
+            'largeur' => $largeur,
+            'hauteur' => $hauteur,
+            'finitions' => array_map('intval', (array) ($s['finitions'] ?? [])),
+            'ajuster' => !$saisie['piecesM2'] ? null : static function (CommandesDetails $ligne) use ($m2, $espacement, $b2b): void {
+                NouvelleCommande::enPiecesAuM2($ligne, $m2, $espacement, $b2b);
+            },
+        ];
+    }
+
+    /**
+     * Fichiers d'un produit et notes pour l'atelier. $reel : la création
+     * choisie ou le fichier d'une ancienne commande est copié ; sinon tout
+     * est seulement contrôlé (ajout au panier). Un fichier déjà pris par un
+     * autre produit de la même commande (même logo sur les badges et le
+     * kakémono) est copié pour celui-ci.
+     *
+     * @param array<string, string|list<string>> $s
+     * @param array<int, true>                   $utilises
+     *
+     * @return array{fichiers: list<CommandeDetailFichier>, notes: list<string>}
+     *
+     * @throws \DomainException
+     */
+    private function fichiersSaisis(array $s, CompteClient $compte, FichiersClient $fichiers, ImagesIa $imagesIa, EntityManagerInterface $em, bool $reel, array &$utilises): array
+    {
+        $client = $compte->getClient();
+        $mode = (string) ($s['fichier_mode'] ?? 'fichier');
+        $choisis = [];
+        $notes = [];
+        if ('fichier' === $mode) {
+            foreach ((array) ($s['fichiers'] ?? []) as $fid) {
+                $f = $fichiers->trouver($client, (int) $fid);
+                if (null === $f || null !== $f->getCommandeDetail() || $f->isLogo() || !$f->estUploadTermine()) {
+                    continue;
+                }
+                if (isset($utilises[$f->getId()])) {
+                    $f = $reel ? $fichiers->reprendre($f, $client) : $f;
+                } else {
+                    $utilises[(int) $f->getId()] = true;
+                }
+                if (null !== $f) {
+                    $choisis[] = $f;
+                }
+            }
+        } elseif ('creation' === $mode) {
+            $image = $imagesIa->trouver($client, (int) ($s['creation'] ?? 0));
+            if (null === $image) {
+                throw new \DomainException('Choisissez une de vos créations, ou envoyez votre fichier.');
+            }
+            if ($reel) {
+                $choisis[] = $imagesIa->enFichierClient($image, $image->getDemande());
+            }
+            $notes[] = \sprintf('Fichier : création %s n° %d.', $image->getDemande()->getNumero(), $image->getNumero());
+        } elseif ('aucun' === $mode) {
+            $notes[] = 'Pas de fichier : visuel à concevoir par l\'atelier (le client attend votre appel).';
+        }
+        // « Refaire » : même fichier que la ligne d'une ancienne commande.
+        $refaire = $this->ligneARefaire($client, (string) ($s['refaire'] ?? ''), $em);
+        if (null !== $refaire && 'fichier' === $mode && [] === $choisis) {
+            if ($reel) {
+                foreach ($refaire->getFichiers() as $ancien) {
+                    $copie = $fichiers->reprendre($ancien, $client);
+                    if (null !== $copie) {
+                        $choisis[] = $copie;
+                    }
+                }
+            }
+            $notes[] = \sprintf('Refaite à l\'identique de la commande %s : même fichier%s.', $refaire->getCommande()?->getNumero(), $reel && [] === $choisis ? ' (à reprendre de cette commande)' : '');
+        }
+
+        return ['fichiers' => $choisis, 'notes' => $notes];
+    }
+
+    /**
+     * Met le produit de la page dans la commande en cours et rend son nom.
+     *
+     * @throws \DomainException
+     */
+    private function ajouterAuPanier(Request $request, CompteClient $compte, FichiersClient $fichiers, ImagesIa $imagesIa, EntityManagerInterface $em): string
+    {
+        $this->service->verifierEnAttente($compte->getClient());
+        $panier = $this->panier($request, $compte);
+        if (\count($panier) >= NouvelleCommande::PRODUITS_MAX - 1) {
+            throw new \DomainException(\sprintf('Une commande en ligne compte au plus %d produits : terminez celle-ci avec ce produit, puis commencez-en une autre.', NouvelleCommande::PRODUITS_MAX));
+        }
+        $s = array_intersect_key(self::saisies($request->request->all()), array_flip(self::SAISIES_PRODUIT));
+        $base = $this->produitSaisi($s, $compte);
+        $utilises = [];
+        foreach ($panier as $p) {
+            foreach ((array) ($p['fichiers'] ?? []) as $fid) {
+                $utilises[(int) $fid] = true;
+            }
+        }
+        $this->fichiersSaisis($s, $compte, $fichiers, $imagesIa, $em, false, $utilises);
+        $panier[] = $s;
+        $this->garderPanier($request, $compte, $panier);
+        $request->getSession()->remove(self::REPRISE);
+
+        return \App\Service\Site\CatalogueSite::nomAffiche((string) $base['config']->getProduit()?->getNom());
+    }
+
+    /** « Terminer la commande » : le dernier produit choisi se rouvre à l'étape 4 (livraison et paiement). */
+    #[Route('/nouvelle/terminer', name: 'nouvelle_commande_terminer', methods: ['POST'])]
+    public function terminer(Request $request): Response
+    {
+        $this->jeton($request);
+        $compte = $this->compte();
+        $panier = $this->panier($request, $compte);
+        if ([] === $panier) {
+            return $this->redirectToRoute('app_espace_nouvelle_commande');
+        }
+        $dernier = array_pop($panier);
+        $this->garderPanier($request, $compte, $panier);
+        $request->getSession()->set(self::REPRISE, ['compte' => $compte->getId(), 'saisies' => $dernier]);
+
+        return $this->redirectToRoute('app_espace_nouvelle_commande', ['reprise' => 1, 'etape' => 4]);
+    }
+
+    #[Route('/nouvelle/retirer/{n}', name: 'nouvelle_commande_retirer', requirements: ['n' => '\d+'], methods: ['POST'])]
+    public function retirer(int $n, Request $request): Response
+    {
+        $this->jeton($request);
+        $compte = $this->compte();
+        $panier = $this->panier($request, $compte);
+        if (isset($panier[$n])) {
+            unset($panier[$n]);
+            $this->garderPanier($request, $compte, $panier);
+            $this->addFlash('succes', [] === $panier ? 'Produit retiré : la commande est vide.' : 'Produit retiré de la commande.');
+        }
+
+        return $this->redirectToRoute('app_espace_nouvelle_commande');
+    }
+
+    /**
+     * Produits déjà mis dans la commande en cours, pour ce compte seulement.
+     *
+     * @return list<array<string, string|list<string>>>
+     */
+    private function panier(Request $request, CompteClient $compte): array
+    {
+        $p = $request->getSession()->get(self::PANIER);
+
+        return \is_array($p) && ($p['compte'] ?? null) === $compte->getId() && \is_array($p['produits'] ?? null) ? array_values($p['produits']) : [];
+    }
+
+    /** @param list<array<string, string|list<string>>> $produits */
+    private function garderPanier(Request $request, CompteClient $compte, array $produits): void
+    {
+        $request->getSession()->set(self::PANIER, ['compte' => $compte->getId(), 'produits' => array_values($produits)]);
+    }
+
+    private function viderPanier(Request $request): void
+    {
+        $request->getSession()->remove(self::PANIER);
+        $request->getSession()->remove(self::REPRISE);
+    }
+
+    /**
+     * Saisies du produit rouvert par « Terminer la commande » (lien
+     * ?reprise=1). Quitté pour un autre produit, il retourne dans le panier.
+     *
+     * @return array<string, string|list<string>>|null
+     */
+    private function reprise(Request $request, CompteClient $compte): ?array
+    {
+        $r = $request->getSession()->get(self::REPRISE);
+        if (!\is_array($r) || ($r['compte'] ?? null) !== $compte->getId() || !\is_array($r['saisies'] ?? null)) {
+            return null;
+        }
+        if ($request->query->has('reprise')) {
+            return ['etape' => (string) $request->query->getInt('etape', 4)] + $r['saisies'];
+        }
+        $this->garderPanier($request, $compte, [...$this->panier($request, $compte), $r['saisies']]);
+        $request->getSession()->remove(self::REPRISE);
+
+        return null;
+    }
+
+    /**
+     * Lignes des produits du panier, au prix de ce client (estimation,
+     * total). Un produit devenu impossible (retiré du catalogue) est
+     * signalé à l'envoi, pas ici.
+     *
+     * @param list<array<string, string|list<string>>> $panier
+     *
+     * @return list<CommandesDetails>
+     */
+    private function lignesPanier(CompteClient $compte, array $panier): array
+    {
+        $lignes = [];
+        $maintenant = new \DateTimeImmutable();
+        foreach ($panier as $s) {
+            try {
+                $base = $this->produitSaisi($s, $compte);
+                $ligne = NouvelleCommande::construireLigne($base['config'], $base['quantite'], $base['largeur'], $base['hauteur'], $base['finitions'], $compte->getClient()->isB2B());
+                if (null !== $base['ajuster']) {
+                    ($base['ajuster'])($ligne);
+                }
+                $this->service->appliquerPrixSpecial($ligne, $compte->getClient(), $maintenant);
+                $lignes[] = $ligne;
+            } catch (\DomainException) {
+                continue;
+            }
+        }
+
+        return $lignes;
+    }
+
+    /**
+     * Le panier pour la page : nom, quantité, taille et total (pour qui voit
+     * les montants) de chaque produit, avec sa place pour « Retirer ».
+     *
+     * @param list<array<string, string|list<string>>> $panier
+     *
+     * @return list<array{n: int, nom: string, detail: string, total: ?int, erreur: ?string}>
+     */
+    private function panierAffiche(CompteClient $compte, array $panier): array
+    {
+        $affiche = [];
+        foreach ($panier as $n => $s) {
+            $ligne = $this->lignesPanier($compte, [$s])[0] ?? null;
+            $config = $this->service->produit((int) ($s['produit'] ?? 0));
+            $detail = [];
+            if (null !== $ligne) {
+                // La taille est déjà dans la désignation.
+                $detail[] = '× '.number_format($ligne->getQuantite(), 0, ',', ' ');
+            }
+            $mode = (string) ($s['fichier_mode'] ?? 'fichier');
+            $detail[] = match (true) {
+                'aucun' === $mode => 'sans fichier',
+                'creation' === $mode => 'une de mes créations',
+                [] !== (array) ($s['fichiers'] ?? []) || '' !== (string) ($s['refaire'] ?? '') => 'fichier joint',
+                default => 'fichier à envoyer',
+            };
+            $affiche[] = [
+                'n' => $n,
+                'nom' => null !== $ligne ? (string) $ligne->getDesignation() : (null !== $config ? \App\Service\Site\CatalogueSite::nomAffiche((string) $config->getProduit()?->getNom()) : 'Produit retiré du catalogue'),
+                'detail' => implode(' · ', $detail),
+                'total' => $compte->montantsVisibles() && null !== $ligne ? $ligne->getTotalTtc() : null,
+                'erreur' => null === $ligne ? 'à revoir : retirez-le ou refaites-le' : null,
+            ];
+        }
+
+        return $affiche;
+    }
+
+    /**
      * Prix, délais et créneaux pour la page. Les montants (total, détail,
      * acompte, frais Orange Money) seulement pour qui les voit ; l'acompte
      * et les frais Orange Money seulement pour le payeur.
      *
-     * @param array<string, mixed> $donnees
+     * @param list<CommandesDetails> $autres produits déjà dans la commande (lignesPanier)
+     * @param array<string, mixed>   $donnees
      *
      * @return array<string, mixed>
      */
-    private function estimation(CompteClient $compte, ProduitConfiguration $config, array $donnees): array
+    private function estimation(CompteClient $compte, ProduitConfiguration $config, array $autres, array $donnees): array
     {
         $client = $compte->getClient();
         $montants = $compte->montantsVisibles();
@@ -476,9 +753,9 @@ final class EspaceNouvelleCommandeController extends AbstractController
         } catch (\DomainException $e) {
             return $sortie + ['erreur' => $e->getMessage()];
         }
-        $commande = NouvelleCommande::assembler($ligne, $options, $reglages['delaiExpress']);
+        $commande = NouvelleCommande::assembler($ligne, $options, $reglages['delaiExpress'], $autres);
         $payeur = $compte->peut(CompteClient::DROIT_PAYEUR);
-        $sortie['recap'] = PageNouvelleCommande::recapitulatif($commande, $ligne, $config, $montants, $heures, $payeur ? $this->delais->pourcentageAcompte($client) : null);
+        $sortie['recap'] = PageNouvelleCommande::recapitulatif($commande, $ligne, $config, $montants, $heures, $payeur ? $this->delais->pourcentageAcompte($client) : null, $autres);
         if ($payeur && $montants && $this->orangeMoney->estOuvert()) {
             // Frais Orange Money en plus de chaque somme payée (fonds de soutien, retrait) : annoncés avant de payer.
             $acompte = $sortie['recap']['acompte']['maintenant'] ?? null;

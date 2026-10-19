@@ -33,6 +33,9 @@ final class NouvelleCommande
     /** Commandes en attente de confirmation au plus, par client. */
     public const EN_ATTENTE_MAX = 10;
 
+    /** Produits au plus dans une commande en ligne (badges, kakémono, bâche… ensemble). */
+    public const PRODUITS_MAX = 10;
+
     /** Taille saisie par le client, en cm. */
     public const COTE_MAX_CM = 5000;
 
@@ -312,18 +315,25 @@ final class NouvelleCommande
      * Commande en ligne non enregistrée : la ligne du produit, la ligne
      * express si demandée, la réception et les totaux (frais de livraison
      * compris). Sert à l'estimation comme à l'enregistrement.
+     *
+     * @param list<CommandesDetails> $autres produits déjà mis dans la même commande (plusieurs produits)
      */
-    public static function assembler(CommandesDetails $ligne, ?OptionsCommande $options = null, int $heuresExpress = 24): Commandes
+    public static function assembler(CommandesDetails $ligne, ?OptionsCommande $options = null, int $heuresExpress = 24, array $autres = []): Commandes
     {
         $commande = (new Commandes())
             ->setCanal(Commandes::CANAL_EN_LIGNE)
             ->setStatut(false) // à confirmer par l'atelier
             ->setEtat(true);
-        $commande->addCommandesDetail($ligne);
+        // Les produits déjà mis dans la commande (panier), puis celui en cours.
+        $produits = 0;
+        foreach ([...$autres, $ligne] as $l) {
+            $commande->addCommandesDetail($l);
+            $produits += $l->getTotalTtc();
+        }
         if (null !== $options) {
             $commande->setDelaiProduction($options->delai);
             if ($options->estExpress() && $options->majorationExpress > 0) {
-                $commande->addCommandesDetail(self::ligneExpress($ligne->getTotalTtc(), $options->majorationExpress, $heuresExpress));
+                $commande->addCommandesDetail(self::ligneExpress($produits, $options->majorationExpress, $heuresExpress));
             }
             $commande->setModeLivraison($options->livraison ? Commandes::LIVRAISON_DOMICILE : Commandes::LIVRAISON_RETRAIT)
                 ->setFraisLivraison($options->livraison ? $options->fraisLivraison : 0)
@@ -402,29 +412,58 @@ final class NouvelleCommande
      */
     public function commander(Clients $client, ProduitConfiguration $config, int $quantite, ?float $largeurCm, ?float $hauteurCm, array $finitions, array $fichiers, ?string $note, \DateTimeImmutable $maintenant, ?\Closure $ajuster = null, ?string $codePromo = null, ?OptionsCommande $options = null, int $heuresExpress = 24): Commandes
     {
+        return $this->commanderPlusieurs($client, [[
+            'config' => $config, 'quantite' => $quantite, 'largeur' => $largeurCm, 'hauteur' => $hauteurCm,
+            'finitions' => $finitions, 'fichiers' => $fichiers, 'note' => $note, 'ajuster' => $ajuster,
+        ]], $maintenant, $codePromo, $options, $heuresExpress);
+    }
+
+    /**
+     * Une commande de plusieurs produits (badges, kakémono, bâche…), une
+     * ligne et ses fichiers par produit ; délai, réception et code promo
+     * valent pour toute la commande.
+     *
+     * @param non-empty-list<array{config: ProduitConfiguration, quantite: int, largeur: ?float, hauteur: ?float, finitions: list<int>, fichiers: list<CommandeDetailFichier>, note: ?string, ajuster: ?\Closure}> $articles
+     *
+     * @throws \DomainException
+     * @throws \App\Service\Promotions\CodePromoRefuse
+     */
+    public function commanderPlusieurs(Clients $client, array $articles, \DateTimeImmutable $maintenant, ?string $codePromo = null, ?OptionsCommande $options = null, int $heuresExpress = 24): Commandes
+    {
         $this->verifierEnAttente($client);
-
-        $ligne = self::construireLigne($config, $quantite, $largeurCm, $hauteurCm, $finitions, $client->isB2B());
-        $ligne->setDemandeClient($note);
-        if (null !== $ajuster) {
-            $ajuster($ligne);
+        if ([] === $articles || \count($articles) > self::PRODUITS_MAX) {
+            throw new \DomainException(\sprintf('Une commande en ligne compte de 1 à %d produits.', self::PRODUITS_MAX));
         }
-        $this->appliquerPrixSpecial($ligne, $client, $maintenant);
 
-        $commande = self::assembler($ligne, $options, $heuresExpress)
+        $lignes = [];
+        foreach ($articles as $a) {
+            $ligne = self::construireLigne($a['config'], $a['quantite'], $a['largeur'], $a['hauteur'], $a['finitions'], $client->isB2B());
+            $ligne->setDemandeClient($a['note']);
+            if (null !== $a['ajuster']) {
+                ($a['ajuster'])($ligne);
+            }
+            $this->appliquerPrixSpecial($ligne, $client, $maintenant);
+            $lignes[] = $ligne;
+        }
+        $derniere = array_pop($lignes);
+
+        $commande = self::assembler($derniere, $options, $heuresExpress, $lignes)
             ->setClients($client)
             ->setDateCommande($maintenant);
         if (null !== $this->promotionsSaisie && null !== $codePromo && '' !== trim($codePromo)) {
             $this->promotionsSaisie->appliquerCodeEnLigne($commande, $codePromo, $maintenant);
         }
+        $lignes[] = $derniere;
 
-        $this->em->wrapInTransaction(function () use ($commande, $ligne, $fichiers, $maintenant): void {
+        $this->em->wrapInTransaction(function () use ($commande, $lignes, $articles, $maintenant): void {
             $this->em->persist($commande);
             $this->em->flush();
             // Même numéro qu'au comptoir ; le site y ajoute W-.
             $commande->setNumero(\sprintf('CMD-%06d-%s', $commande->getId(), $maintenant->format('m-Y')));
-            foreach ($fichiers as $f) {
-                $f->setCommandeDetail($ligne);
+            foreach ($articles as $i => $a) {
+                foreach ($a['fichiers'] as $f) {
+                    $f->setCommandeDetail($lignes[$i]);
+                }
             }
             $this->em->flush();
         });

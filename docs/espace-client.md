@@ -140,6 +140,14 @@ Code : `src/Service/EspaceClient/CoqueEspace.php` (menu, pastilles, onglets, clo
 
 **Captures** : `/mnt/project-files/captures/commande-en-ligne/`.
 
+## Plusieurs produits dans une commande (construit le 19/10/2026)
+
+Une commande en ligne peut réunir jusqu'à 10 produits (badges, kakémono, bâche…), au lieu d'une commande par produit.
+- À l'étape 3 (ou 4), « + Ajouter un autre produit » met le produit en cours dans la commande (contrôlé comme à l'envoi : taille, quantité, création choisie) et ramène au catalogue. Ces produits attendent dans la session du compte (`EspaceNouvelleCommandeController::PANIER`), pas en base.
+- L'étape « Produit » montre « Votre commande · N produits » (nom, quantité, fichier, prix pour qui voit les montants, × pour retirer) et « Terminer la commande » : le dernier produit se rouvre à l'étape 4. Quitté pour un autre produit, il retourne dans la liste.
+- Aux étapes 2 à 4 : « Déjà dans la commande » à droite et une ligne « N autres produits » dans « Votre commande » ; total, acompte, express (+ % sur tous les produits) et frais Orange Money portent sur toute la commande. Délai, réception, paiement et code promo valent pour toute la commande.
+- À l'envoi (`NouvelleCommande::commanderPlusieurs`) : une ligne par produit avec ses fichiers et sa note pour le graphiste. Un même fichier choisi pour deux produits est copié pour le second. Une seule commande « à confirmer », synchronisée au local comme les autres.
+
 ## Mes produits et panier (MP01 à MP07, construit le 18/10/2026)
 
 Voir docs/mes-produits.md. Le client ajoute ses produits (image, nom, type, dimensions), l'atelier lie le fichier d'impression, puis il commande par un panier (`/espace/panier`, gardé dans la session). Droits :

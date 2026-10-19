@@ -121,6 +121,29 @@ final class NouvelleCommandeTest extends TestCase
         self::assertSame(['Impression', 'Œillets', 'Express 24 h (+30 %)', 'Livraison'], array_column($estimation['detail'], 'libelle'));
     }
 
+    public function testPlusieursProduitsDansUneCommande(): void
+    {
+        [$bache, $oeillets] = $this->bache();
+        $cartes = (new ProduitConfiguration())->setProduit((new Produits())->setNom('Cartes de visite'))
+            ->setModeDimension('aucune')->setModeCalcul('unite')->setPrixBase(50);
+        $options = new OptionsCommande(Commandes::DELAI_EXPRESS, 30, true, 2000, 'Hamdallaye ACI 2000', 'matin', new \DateTimeImmutable('2026-10-20'));
+
+        // Cartes 500 × 50 F = 25 000 F déjà dans la commande, puis la bâche 27 000 F en cours.
+        $deja = NouvelleCommande::construireLigne($cartes, 500, null, null, [], false);
+        $ligne = NouvelleCommande::construireLigne($bache, 1, 300, 100, [$oeillets->getId()], false);
+        $commande = NouvelleCommande::assembler($ligne, $options, 24, [$deja]);
+
+        self::assertCount(3, $commande->getCommandesDetails(), 'deux produits et l\'express');
+        // L'express (+30 %) porte sur les deux produits ; une seule livraison.
+        self::assertSame(25000 + 27000 + 15600 + 2000, $commande->getTotalTtc());
+
+        $recap = \App\Service\EspaceClient\PageNouvelleCommande::recapitulatif($commande, $ligne, $bache, true, 24, null, [$deja]);
+        $lignes = array_column($recap['lignes'], 'valeur', 'libelle');
+        self::assertSame('+25 000 F', $lignes['1 autre produit']);
+        self::assertSame('express 24 h · +15 600 F', $lignes['Délai']);
+        self::assertSame('69 600 F', $recap['totalTexte']);
+    }
+
     public function testRetraitSansFraisNiAdresse(): void
     {
         [$bache] = $this->bache();

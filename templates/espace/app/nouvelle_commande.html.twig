@@ -47,7 +47,7 @@
 	{% set etape4 = peutPayer and montants and not demandeValidation ? 'Livraison et paiement' : 'Livraison' %}
 	{% set libellesEtapes = {1: 'Produit', 2: 'Options', 3: 'Fichier', 4: etape4} %}
 	<div class="co-tete">
-		<h1>Nouvelle commande{% if etape > 1 %} · {{ nomProduit }}{% endif %}</h1>
+		<h1>Nouvelle commande{% if etape > 1 %} · {{ nomProduit }}{% endif %}{% if panier|default([]) is not empty %} <small class="co-numero-produit">produit {{ panier|length + 1 }} de la commande</small>{% endif %}</h1>
 		<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_commandes') }}">Mes commandes</a>
 	</div>
 
@@ -82,6 +82,34 @@
 		{% set choisie = catalogue.categories|filter(c => categorie in c.ids)|first %}
 		<div class="co-grille">
 			<div class="co-principal">
+				{% if panier is not empty %}
+					{# Plusieurs produits dans une commande : ceux déjà choisis attendent ici (EspaceNouvelleCommandeController::ajouterAuPanier). #}
+					<section class="ec-carte co-panier" aria-labelledby="co-panier-titre">
+						<div class="co-panier-tete">
+							<h2 id="co-panier-titre">Votre commande · {{ panier|length }} produit{{ panier|length > 1 ? 's' }}</h2>
+							{% if montants %}<b>{{ panier|reduce((t, p) => t + (p.total ?? 0), 0)|number_format(0, ',', ' ') }} F</b>{% endif %}
+						</div>
+						<ul class="co-panier-liste">
+							{% for p in panier %}
+								<li>
+									<div><b>{{ p.nom }}</b><small>{{ p.detail }}{% if p.erreur %} · <span class="co-erreur">{{ p.erreur }}</span>{% endif %}</small></div>
+									{% if p.total is not null %}<span class="co-panier-prix">{{ p.total|number_format(0, ',', ' ') }} F</span>{% endif %}
+									<form method="post" action="{{ path('app_espace_nouvelle_commande_retirer', {n: p.n}) }}" data-confirmer="Retirer « {{ p.nom }} » de la commande ?" data-confirmer-detail="Vos fichiers restent dans Mes fichiers." data-confirmer-bouton="Retirer">
+										<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+										<button type="submit" class="co-panier-retirer" aria-label="Retirer {{ p.nom }}" title="Retirer">×</button>
+									</form>
+								</li>
+							{% endfor %}
+						</ul>
+						<div class="co-panier-bas">
+							<p class="ec-petit">Choisissez le produit suivant ci-dessous{{ panier|length + 1 < produitsMax ? '' : ' (dernier possible)' }}, ou terminez : le dernier produit s'ouvre pour la livraison{{ peutPayer and montants and not demandeValidation ? ' et le paiement' }}.</p>
+							<form method="post" action="{{ path('app_espace_nouvelle_commande_terminer') }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<button type="submit" class="co-continuer">Terminer la commande ›</button>
+							</form>
+						</div>
+					</section>
+				{% endif %}
 				<div class="co-filtres" data-co-filtres>
 					<a href="{{ path('app_espace_nouvelle_commande') }}" class="co-filtre{{ not choisie ? ' actif' }}" data-co-filtre=""{{ not choisie ? ' aria-current="true"' }}>Tout</a>
 					{% for c in catalogue.categories %}
@@ -358,6 +386,7 @@
 						</div>
 						<div class="co-boutons">
 							<button type="button" class="ec-bouton-blanc" data-co-aller="2">‹ Retour</button>
+							{% if panier|length + 1 < produitsMax %}<button type="submit" class="ec-bouton-blanc co-ajouter" name="ajouter_produit" value="1" formnovalidate>+ Ajouter un autre produit</button>{% endif %}
 							<button type="button" class="co-continuer" data-co-aller="4">Continuer ›</button>
 						</div>
 					</div>
@@ -460,6 +489,7 @@
 						<label class="co-conditions"><input type="checkbox" name="conditions" value="1" required{{ choix.conditions is defined ? ' checked' }}> <span>J'accepte les conditions de vente : production lancée après validation du BAT, acompte non remboursable une fois l'impression faite.</span></label>
 						<div class="co-boutons">
 							<button type="button" class="ec-bouton-blanc" data-co-aller="3">‹ Retour</button>
+							{% if panier|length + 1 < produitsMax %}<button type="submit" class="ec-bouton-blanc co-ajouter" name="ajouter_produit" value="1" formnovalidate>+ Autre produit</button>{% endif %}
 							{% if peutPayer and montants and omActif and not demandeValidation %}
 								<button type="submit" class="co-envoyer orange" data-co-envoyer data-co-libelle-payer>Payer et commander</button>
 							{% else %}
@@ -471,6 +501,17 @@
 			</div>
 
 			<aside class="co-cote">
+				{% if panier is not empty %}
+					<section class="ec-carte co-panier co-panier-cote" aria-labelledby="co-deja-titre">
+						<h2 id="co-deja-titre">Déjà dans la commande</h2>
+						<ul class="co-panier-liste">
+							{% for p in panier %}
+								<li><div><b>{{ p.nom }}</b><small>{{ p.detail }}</small></div>{% if p.total is not null %}<span class="co-panier-prix">{{ p.total|number_format(0, ',', ' ') }} F</span>{% endif %}</li>
+							{% endfor %}
+						</ul>
+						<p class="ec-petit">Pour en retirer un, revenez à l'étape « Produit ».</p>
+					</section>
+				{% endif %}
 				<section class="ec-carte co-resume" aria-labelledby="co-resume-titre">
 					<h2 id="co-resume-titre">Votre commande</h2>
 					<div class="co-resume-tete">

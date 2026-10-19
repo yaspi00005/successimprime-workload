@@ -532,6 +532,14 @@
 	}
 
 	form.addEventListener('submit', function (e) {
+		// « Ajouter un autre produit » : ce produit doit être juste ; livraison et conditions viennent à la fin.
+		if (e.submitter && e.submitter.name === 'ajouter_produit') {
+			if (derniere && derniere.erreur) { e.preventDefault(); montrer(2, true); texte('erreur', derniere.erreur.replace(' en cm', '')); return; }
+			if (!valide(3)) { e.preventDefault(); montrer(3, true); return; }
+			// Désactivés après l'envoi : un bouton désactivé tout de suite ne serait pas envoyé avec le formulaire.
+			setTimeout(function () { $$('[data-co-envoyer], [data-co-suivant], .co-ajouter').forEach(function (b) { b.disabled = true; }); }, 0);
+			return;
+		}
 		const message = function (t, champ) {
 			e.preventDefault();
 			montrer(4, false);

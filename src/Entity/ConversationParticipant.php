@@ -26,6 +26,14 @@ class ConversationParticipant
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $dateDerniereLecture = null;
 
+    /** Responsable du groupe : écrit dans un groupe d'annonces, ajoute et retire des membres. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $admin = false;
+
+    /** Dernier message lu (non-lus par fil : les messages des autres après celui-ci). */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $dernierLuId = 0;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -60,9 +68,29 @@ class ConversationParticipant
         return $this->dateDerniereLecture;
     }
 
-    public function marquerLue(): static
+    public function marquerLue(?int $jusquA = null): static
     {
         $this->dateDerniereLecture = new \DateTimeImmutable();
+        if (null !== $jusquA && $jusquA > $this->dernierLuId) {
+            $this->dernierLuId = $jusquA;
+        }
+
+        return $this;
+    }
+
+    public function getDernierLuId(): int
+    {
+        return $this->dernierLuId;
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->admin;
+    }
+
+    public function setAdmin(bool $admin): static
+    {
+        $this->admin = $admin;
 
         return $this;
     }

@@ -1,0 +1,55 @@
+{#
+	Colonne des fils (MI01, MI05) : groupes, groupes lus par la Direction,
+	messages privés. Variables : fils, active, moi, peutCreerGroupe, regles.
+#}
+{% macro ligne(l, active, moi, lecture) %}
+	{% set c = l.conversation %}
+	{% set d = l.dernier %}
+	<li>
+		<a href="{{ path('app_messagerie_interne_voir', {jeton: c.jeton}) }}" class="mi-fil-ligne {{ active and active.id == c.id ? 'actif' }} {{ c.estFerme ? 'ferme' }}" data-jeton="{{ c.jeton }}">
+			{% include 'messagerie_interne/_vignette.html.twig' with {c: c, autre: l.autre} only %}
+			<span class="mi-fil-corps">
+				<span class="mi-fil-nom"><b>{{ c.getLibellePour(moi) }}</b>{% if c.estFerme %}<span class="mi-puce gris">fermé</span>{% endif %}{% if lecture %}<span class="mi-puce bleu">lecture</span>{% endif %}</span>
+				<span class="mi-fil-extrait">{% if d %}{{ d.auteur and d.auteur.id == moi.id ? 'Vous' : (d.auteur|nom_equipe|split(' ')|first) }} : {{ d.apercu(60) }}{% elseif c.estPrive %}{{ l.autre and l.autre.employe ? l.autre.employe.fonction }}{% else %}{{ c.description }}{% endif %}</span>
+			</span>
+			<span class="mi-non-lus" data-non-lus{{ l.nonLus == 0 ? ' hidden' }}>{{ l.nonLus }}</span>
+		</a>
+	</li>
+{% endmacro %}
+{% import _self as mi %}
+<aside class="mi-liste" aria-label="Groupes et messages privés">
+	<div class="mi-liste-tete">
+		{% include 'messagerie_interne/_bascule.html.twig' with {actif: 'equipe'} only %}
+		<form method="get" action="{{ path('app_messagerie_interne_recherche') }}" class="mi-recherche" role="search">
+			<label for="mi-q" class="visually-hidden">Rechercher</label>
+			<input type="search" name="q" id="mi-q" placeholder="Rechercher message, fichier, personne" value="{{ q ?? '' }}" minlength="2">
+		</form>
+	</div>
+	<div class="mi-liste-defile">
+		<div class="mi-section">
+			<h2>Groupes</h2>
+			{% if peutCreerGroupe %}<button type="button" class="mi-plus" data-ouvrir="mi-dlg-groupe" title="Nouveau groupe" aria-label="Nouveau groupe">+</button>{% endif %}
+		</div>
+		<ul class="mi-fils">
+			{% for l in fils.groupes %}{{ mi.ligne(l, active, moi, false) }}{% else %}<li class="mi-vide">Aucun groupe pour le moment.</li>{% endfor %}
+		</ul>
+		{% if fils.lecture is not empty %}
+			<div class="mi-section"><h2>Groupes en lecture</h2></div>
+			<p class="mi-aide-liste">Direction : vous lisez ces groupes sans en être membre.</p>
+			<ul class="mi-fils">
+				{% for l in fils.lecture %}{{ mi.ligne(l, active, moi, true) }}{% endfor %}
+			</ul>
+		{% endif %}
+		<div class="mi-section">
+			<h2>Messages privés</h2>
+			<button type="button" class="mi-plus" data-ouvrir="mi-dlg-prive" title="Nouveau message privé" aria-label="Nouveau message privé">+</button>
+		</div>
+		<ul class="mi-fils">
+			{% for l in fils.prives %}{{ mi.ligne(l, active, moi, false) }}{% else %}<li class="mi-vide">Pas encore de message privé.</li>{% endfor %}
+		</ul>
+	</div>
+	<div class="mi-liste-pied">
+		<a href="{{ path('app_messagerie_interne_fichiers') }}" class="mi-lien-fichiers">📁 Fichiers partagés</a>
+		<p class="mi-confidentialite">🔒 {{ regles.phraseConfidentialite }}</p>
+	</div>
+</aside>

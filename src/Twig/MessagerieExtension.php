@@ -6,6 +6,7 @@ use App\Entity\Commandes;
 use App\Entity\ConversationClient;
 use App\Entity\Devis;
 use App\Service\EspaceClient\EspaceClient;
+use App\Entity\Message;
 use App\Entity\MessageClient;
 use App\Entity\NoteConversation;
 use App\Service\Messagerie\Conversations;
@@ -31,7 +32,7 @@ final class MessagerieExtension
 
     /** Le fichier de la note vocale est là (sinon : en cours de réception par la synchronisation). */
     #[AsTwigFunction('note_vocale_presente')]
-    public function notePresente(MessageClient|NoteConversation $element): bool
+    public function notePresente(MessageClient|NoteConversation|Message $element): bool
     {
         return null !== $this->notesVocales->chemin($element);
     }

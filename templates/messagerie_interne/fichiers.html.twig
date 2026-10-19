@@ -1,0 +1,75 @@
+{% extends 'base.html.twig' %}
+
+{# Équipe › Fichiers partagés (docs/messagerie-interne.md, maquette MI04) : seulement les fichiers des fils que la personne peut lire. #}
+{% block title %}Fichiers partagés dans l'équipe{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-interne.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set active = null %}
+	<div class="mi sans-cote">
+		{% include 'messagerie_interne/_liste.html.twig' %}
+		<section class="mi-page" aria-labelledby="mi-fichiers-titre">
+			<div class="mi-page-tete">
+				<h1 id="mi-fichiers-titre">Fichiers partagés dans l'équipe</h1>
+				<form method="get" class="mi-filtres" role="search">
+					<input type="hidden" name="onglet" value="{{ filtres.onglet }}">
+					<label class="visually-hidden" for="mi-fq">Chercher un fichier</label>
+					<input type="search" id="mi-fq" name="q" value="{{ filtres.q }}" placeholder="Nom, groupe, personne, commande">
+					<select name="groupe" aria-label="Groupe" onchange="this.form.submit()">
+						<option value="">Tous les fils</option>
+						{% for g in filtreGroupes %}<option value="{{ g.id }}"{{ filtres.groupe == g.id ? ' selected' }}>{{ g.estPrive ? '✉ ' : '#' }}{{ g.getLibellePour(moi) }}</option>{% endfor %}
+					</select>
+					<select name="personne" aria-label="Envoyé par" onchange="this.form.submit()">
+						<option value="">Tout le monde</option>
+						{% for u in filtrePersonnes %}<option value="{{ u.id }}"{{ filtres.personne == u.id ? ' selected' }}>{{ u|nom_equipe }}</option>{% endfor %}
+					</select>
+					{% if filtreCommandes is not empty %}
+						<select name="commande" aria-label="Commande" onchange="this.form.submit()">
+							<option value="">Toutes les commandes</option>
+							{% for k in filtreCommandes %}<option value="{{ k.id }}"{{ filtres.commande == k.id ? ' selected' }}>{{ k.numero }}</option>{% endfor %}
+						</select>
+					{% endif %}
+					<button class="mi-btn petit">Chercher</button>
+				</form>
+			</div>
+			<nav class="mi-onglets grands" aria-label="Genre de fichier">
+				{% for cle, libelle in onglets %}
+					<a href="{{ path('app_messagerie_interne_fichiers', filtres|merge({onglet: cle})|filter(v => v)) }}" class="{{ cle == filtres.onglet or (filtres.onglet not in onglets|keys and cle == 'tous') ? 'actif' }}">{{ libelle }} · {{ resultat.comptes[cle] }}</a>
+				{% endfor %}
+			</nav>
+			<div class="mi-tableau-cadre">
+				<table class="mi-tableau">
+					<thead><tr><th>Fichier</th><th>Groupe</th><th>Envoyé par</th><th>Date</th><th>Taille</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+					<tbody>
+						{% for p in resultat.fichiers %}
+							{% set cv = p.conversation %}
+							<tr>
+								<td class="mi-td-nom"><span class="mi-ext ext-{{ p.etiquette|lower }}">{{ p.etiquette }}</span> <b>{{ p.nom }}</b>{% if p.message.epingleLe %} <span title="Épinglé">📌</span>{% endif %}{% if p.commande %} <small class="mi-puce gris">{{ p.commande.numero }}</small>{% endif %}</td>
+								<td>{{ cv.estPrive ? 'Message privé' : (cv.estProjet ? cv.nom : '#' ~ cv.nom) }}</td>
+								<td><span class="mi-qui">{% include 'messagerie_interne/_avatar.html.twig' with {u: p.message.auteur, classe: 'mini'} only %} {{ p.message.auteur|nom_equipe|split(' ')|first }}</span></td>
+								<td>{{ p.creeLe|date('d/m') }}</td>
+								<td>{{ p.octets|taille_fichier }}{{ p.estLien ? ' · serveur' }}</td>
+								<td class="mi-td-actions"><a href="{{ path('app_messagerie_interne_fichier', {jeton: cv.jeton, id: p.id}) }}" target="_blank" rel="noopener">Ouvrir</a> · <a href="{{ path('app_messagerie_interne_voir', {jeton: cv.jeton}) }}#m{{ p.message.id }}">Aller au message</a></td>
+							</tr>
+						{% else %}
+							<tr><td colspan="6" class="mi-vide">Aucun fichier{{ filtres.q ? ' pour « ' ~ filtres.q ~ ' »' }}.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<div class="mi-cartes-info">
+				<div><h2>Gros fichiers</h2><p>Les fichiers déjà sur le serveur ne sont pas recopiés : seul un lien circule. Le réseau et le disque restent légers.</p></div>
+				<div><h2>Hors atelier</h2><p>Depuis un téléphone hors réseau, seuls les fichiers de moins de {{ (tailleMax / 1048576)|round }} Mo s'ouvrent : les liens vers le serveur demandent d'être à l'imprimerie.</p></div>
+				<div><h2>Confidentialité</h2><p>Les messages internes ne sont jamais visibles par les clients. {{ regles.phraseConfidentialite }}</p></div>
+			</div>
+		</section>
+	</div>
+	{% include 'messagerie_interne/_dialogues.html.twig' %}
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/messagerie-interne.js') }}" defer></script>
+{% endblock %}

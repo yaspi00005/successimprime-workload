@@ -51,7 +51,8 @@ final class EnvoiPush implements EventSubscriberInterface
      */
     public function aEnvoyer(Notification $notification): void
     {
-        if ($this->push->estConfigure()) {
+        // Notifications de l'équipe : ni l'info, ni ce qui naît pendant les heures calmes (hors critique).
+        if ($this->push->estConfigure() && !$notification->isSilencieuse()) {
             $this->enAttente[] = $notification;
         }
     }
@@ -110,6 +111,18 @@ final class EnvoiPush implements EventSubscriberInterface
     /** @return array{titre: string, texte: string, url: string, tag: string} */
     public static function contenu(Notification $n, string $url): array
     {
-        return ['titre' => 'Succès Imprim', 'texte' => $n->getMessage(), 'url' => $url, 'tag' => 'si-'.($n->getId() ?? uniqid())];
+        if (null === $n->getType()) {
+            return ['titre' => 'Succès Imprim', 'texte' => $n->getMessage(), 'url' => $url, 'tag' => 'si-'.($n->getId() ?? uniqid())];
+        }
+        // Écran de verrouillage (maquette NT05) : le montant seulement si la personne a le droit de le voir.
+        $titre = $n->titrePour($n->getDestinataire()?->getRoles() ?? []);
+
+        return [
+            'titre' => 'Succès Imprim · équipe',
+            'texte' => (Notification::CRITIQUE === $n->getNiveau() ? '⚠ ' : '').$titre.(null !== $n->getDetail() ? "\n".$n->getDetail() : ''),
+            'url' => $url,
+            // Même alerte, même étiquette : un rappel remplace le précédent sur le téléphone.
+            'tag' => 'si-'.($n->getEmpreinte() !== null ? substr(sha1($n->getEmpreinte()), 0, 16) : ($n->getId() ?? uniqid())),
+        ];
     }
 }

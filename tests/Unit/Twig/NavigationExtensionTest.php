@@ -49,7 +49,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'pointage dans Équipe' => ['app_pointage_jour', 'equipe'];
         yield 'équipes en direct avant production' => ['app_atelier_equipes', 'equipe'];
         yield 'paie' => ['app_paie_voir', 'equipe'];
-        yield 'messagerie hors menu' => ['app_chat_index', null];
+        yield 'écran hors menu' => ['app_ecran_inconnu', null];
         yield 'route vide' => ['', null];
         yield 'sans route' => [null, null];
     }
@@ -114,7 +114,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(7, $extension->ongletActif('app_actions_voir'));
-        self::assertNull($extension->ongletActif('app_chat_index'));
+        self::assertNull($extension->ongletActif('app_ecran_inconnu'));
     }
 
     public function testSeptModulesDansLOrdreDesMaquettes(): void

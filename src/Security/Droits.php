@@ -35,6 +35,12 @@ final class Droits
     /** Alertes système (docs/alertes-systeme.md) : recevoir, prendre en charge et résoudre les pannes. */
     public const ALERTES_SYSTEME = 'ROLE_ALERTES_SYSTEME';
 
+    /** Messagerie de l'équipe (docs/messagerie-interne.md) : groupes et messages privés entre collègues. Tous les rôles par défaut. */
+    public const MESSAGERIE_INTERNE = 'ROLE_MESSAGERIE_INTERNE';
+
+    /** Créer des groupes dans la messagerie de l'équipe : la Direction et les responsables par défaut. */
+    public const MESSAGERIE_GROUPES = 'ROLE_MESSAGERIE_GROUPES';
+
     /**
      * @return array<string, array{libelle: string, detail: string, groupe: string}>
      */
@@ -68,6 +74,8 @@ final class Droits
             'ROLE_CREDITS_MESSAGES' => ['libelle' => 'Crédits SMS et e-mail', 'detail' => 'solde et fin du pack SMS, limites e-mail, historique des envois (numéros masqués sans le droit Clients)', 'groupe' => self::GROUPE_FONCTIONS],
             // Alertes système (docs/alertes-systeme.md) : le technicien, en plus de la Direction.
             self::ALERTES_SYSTEME => ['libelle' => 'Alertes système', 'detail' => 'pannes du site, de l\'espace client et de l\'ERP : recevoir les alertes, les prendre en charge, les résoudre', 'groupe' => self::GROUPE_FONCTIONS],
+            self::MESSAGERIE_INTERNE => ['libelle' => 'Messagerie de l\'équipe', 'detail' => 'groupes et messages privés entre collègues (jamais vus des clients)', 'groupe' => self::GROUPE_FONCTIONS],
+            self::MESSAGERIE_GROUPES => ['libelle' => 'Créer des groupes de l\'équipe', 'detail' => 'groupes permanents, de projet ou d\'annonces, membres par rôle', 'groupe' => self::GROUPE_FONCTIONS],
             self::CORBEILLE => ['libelle' => 'Corbeille', 'detail' => 'restaurer ou supprimer pour de bon ce qui a été supprimé (seulement les fiches de ses autres droits)', 'groupe' => self::GROUPE_FONCTIONS],
             'ROLE_STATS_PERSO' => ['libelle' => 'Ses propres statistiques', 'detail' => 'ventes et encaissements de la personne', 'groupe' => self::GROUPE_CHIFFRES],
             'ROLE_STATS_VENTES' => ['libelle' => 'Indicateurs commerciaux', 'detail' => 'devis envoyés, taux de transformation, panier moyen', 'groupe' => self::GROUPE_CHIFFRES],

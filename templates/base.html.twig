@@ -46,6 +46,7 @@
 	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/charte.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/notifications-equipe.css') }}" rel="stylesheet">
 </head>
 <body>
 	<div id="preloader">
@@ -99,54 +100,20 @@
 									</a>
 								</li>
 							{% endif %}
-							{# Cloche : les 10 dernières notifications non lues ; chacune s'ouvre par app_notification_ouvrir (marquée lue, puis sa page). #}
-							{% set reclamationsANotifier = livreurSeul ? [] : mes_reclamations_a_notifier() %}
-							{% set notificationsNonLues = mes_notifications() %}
-							{% set nombreNotifs = nombre_notifications_generales() + reclamationsANotifier|length %}
+							{# Cloche (maquette NT01) : liste triée Urgent / À faire / Info, rechargée à l'ouverture et toutes les 30 s (docs/notifications-equipe.md). #}
+							{% set nombreNotifs = notifications_equipe().non_lues + (livreurSeul ? 0 : mes_reclamations_a_notifier()|length) %}
 							<li class="nav-item dropdown notification_dropdown si-cloche">
-								<a class="nav-link" href="{{ path('app_notification_index') }}" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications" aria-label="Notifications{{ nombreNotifs > 0 ? ', ' ~ nombreNotifs ~ ' non lue' ~ (nombreNotifs > 1 ? 's') }}">
+								<a class="nav-link" href="{{ path('app_notification_index') }}" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications" aria-label="Notifications{{ nombreNotifs > 0 ? ', ' ~ nombreNotifs ~ ' non lue' ~ (nombreNotifs > 1 ? 's') }}" data-si-cloche>
 									<i class="fa fa-bell" aria-hidden="true"></i>
-									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs > 99 ? '99+' : nombreNotifs }}</span>{% endif %}
+									<span class="badge light badge-danger rounded-circle" data-si-cloche-nombre{% if nombreNotifs == 0 %} hidden{% endif %}>{{ nombreNotifs > 99 ? '99+' : nombreNotifs }}</span>
 								</a>
-								<div class="dropdown-menu dropdown-menu-end si-cloche-menu">
-									<div class="si-cloche-tete">
-										<b>Notifications</b>
-										{% if nombreNotifs > 0 %}<span>{{ nombreNotifs }} non lue{{ nombreNotifs > 1 ? 's' }}</span>{% endif %}
-									</div>
-									{% if reclamationsANotifier is not empty or notificationsNonLues is not empty %}
-										<ul class="si-cloche-liste">
-											{% for reclamationANotifier in reclamationsANotifier %}
-												<li>
-													<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item si-cloche-item" title="Réclamation validée — passez à la caisse">
-														<span class="si-cloche-icone si-cloche-icone-caisse" aria-hidden="true"><i class="fa fa-money"></i></span>
-														<span class="si-cloche-corps">
-															<span class="si-cloche-texte">Réclamation validée — passez à la caisse</span>
-															{% if reclamationANotifier.dateValidation %}<time class="si-cloche-quand" datetime="{{ reclamationANotifier.dateValidation|date('c') }}">{{ reclamationANotifier.dateValidation|temps_ecoule(true) }}</time>{% endif %}
-														</span>
-													</a>
-												</li>
-											{% endfor %}
-											{% for notificationGenerale in notificationsNonLues %}
-												<li>
-													<a href="{{ path('app_notification_ouvrir', {id: notificationGenerale.id}) }}" class="dropdown-item si-cloche-item" title="{{ notificationGenerale.message }}">
-														<span class="si-cloche-icone" aria-hidden="true"><i class="fa fa-bell"></i></span>
-														<span class="si-cloche-corps">
-															<span class="si-cloche-texte">{{ notificationGenerale.message|default('Notification') }}</span>
-															<time class="si-cloche-quand" datetime="{{ notificationGenerale.dateCreation|date('c') }}">{{ notificationGenerale.dateCreation|temps_ecoule(true) }}</time>
-														</span>
-													</a>
-												</li>
-											{% endfor %}
-										</ul>
-									{% else %}
-										<p class="si-cloche-vide"><i class="far fa-bell-slash" aria-hidden="true"></i>Aucune nouvelle notification</p>
-									{% endif %}
-									<a href="{{ path('app_notification_index') }}" class="dropdown-item si-cloche-pied">Voir toutes les notifications</a>
+								<div class="dropdown-menu dropdown-menu-end si-cloche-menu" data-si-cloche-menu>
+									{% include 'notification/_cloche_liste.html.twig' %}
 								</div>
 							</li>
-							{% if not livreurSeul %}
+							{% if is_granted('MESSAGERIE_INTERNE_ACCES') and not site_en_ligne() %}
 							<li class="nav-item dropdown notification_dropdown si-masque-mobile">
-								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button" title="Messagerie">
+								<a class="nav-link" href="{{ path('app_messagerie_interne_index') }}" role="button" title="Messagerie de l'équipe">
 									<i class="fa fa-comments"></i>
 									{% set nombreMessages = mes_conversations_non_lues() %}
 									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}
@@ -183,6 +150,7 @@
 
 		{# ---------- Contenu ---------- #}
 		<div class="content-body">
+			{% include 'notification/_banniere.html.twig' %}
 			<div class="container-fluid">
 				{% for type in ['success', 'error', 'danger', 'warning', 'info'] %}
 					{% for message in app.flashes(type) %}
@@ -204,6 +172,10 @@
 
 		{% include 'partials/_barre_mobile.html.twig' %}
 
+		{# Petites fenêtres en bas (8 s, bouton direct) et son court : notifications-equipe.js. #}
+		<div class="si-fenetres" data-si-fenetres aria-live="polite"></div>
+		{% for idCommande in app.flashes('plafond_bloquant') %}{% include 'notification/_plafond_bloquant.html.twig' with {fenetre: fenetre_plafond(idCommande)} only %}{% endfor %}
+
 		<div class="footer">
 			<div class="copyright">
 				<p>Succès Imprim, un service de MDG © {{ 'now'|date('Y') }}</p>
@@ -222,6 +194,7 @@
 	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
 	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
 	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
+	<script src="{{ asset('js/notifications-equipe.js') }}" data-etat="{{ path('app_notification_etat') }}" data-cloche="{{ path('app_notification_cloche') }}" data-son="{{ path('app_notification_son') }}" data-jeton="{{ csrf_token('notifications') }}" data-centre="{{ path('app_notification_index') }}" defer></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

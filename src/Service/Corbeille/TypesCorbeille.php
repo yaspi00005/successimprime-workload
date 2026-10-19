@@ -49,6 +49,9 @@ final class TypesCorbeille
         'bon_livraison_ligne',
         'achat_detail',
         'conversation_participants',
+        // Messagerie de l'équipe : fichiers et réactions d'un message partent et reviennent avec lui.
+        'messages_chat_fichier',
+        'messages_chat_reaction',
         'mouvement_fidelite',
         'tache',
         'objectif',
@@ -401,7 +404,10 @@ final class TypesCorbeille
             'image_ia' => null === ($n = $nom('fichier')) || !is_numeric($ligne['client_id'] ?? null) ? [] : [
                 ['chemin' => 'var/uploads/ia/'.(int) $ligne['client_id'].'/'.$n, 'colonne' => 'fichier'],
             ],
-            'messages_chat' => null === ($n = $nom('piece_jointe_fichier')) ? [] : [['chemin' => 'var/uploads/chat/'.$n, 'colonne' => 'piece_jointe_fichier']],
+            'messages_chat_fichier' => null === ($n = $nom('stockage')) ? [] : array_values(array_filter([
+                ['chemin' => 'var/uploads/chat/'.$n, 'colonne' => 'stockage'],
+                null === ($v = $nom('miniature')) ? null : ['chemin' => 'var/uploads/chat/'.$v, 'colonne' => 'miniature'],
+            ])),
             'reclamations' => null === ($n = $nom('justificatif')) ? [] : [['chemin' => 'var/uploads/reclamations/'.$n, 'colonne' => 'justificatif']],
             'depense' => \is_string($ligne['justificatif'] ?? null) && 1 === preg_match('#^\d{4}/\d{2}/[0-9a-f]{32}\.(jpg|png|webp|pdf)$#', $ligne['justificatif'])
                 ? [['chemin' => 'var/uploads/depenses/'.$ligne['justificatif'], 'colonne' => 'justificatif']] : [],

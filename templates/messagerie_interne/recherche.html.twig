@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{# Recherche dans la messagerie de l'équipe : messages, fichiers et personnes, seulement dans les fils que la personne peut lire. #}
+{% block title %}Recherche · Messagerie de l'équipe{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-interne.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set active = null %}
+	<div class="mi sans-cote">
+		{% include 'messagerie_interne/_liste.html.twig' %}
+		<section class="mi-page" aria-labelledby="mi-recherche-titre">
+			<div class="mi-page-tete">
+				<h1 id="mi-recherche-titre">{{ q|length >= 2 ? 'Recherche « ' ~ q ~ ' »' : 'Recherche' }}</h1>
+			</div>
+			{% if q|length < 2 %}
+				<p class="mi-vide">Tapez au moins 2 lettres : un mot d'un message, un nom de fichier, une personne ou un numéro de commande.</p>
+			{% else %}
+				{% if personnesTrouvees is not empty %}
+					<h2 class="mi-titre-section">Personnes</h2>
+					<div class="mi-personnes">
+						{% for u in personnesTrouvees %}
+							<form method="post" action="{{ path('app_messagerie_interne_prive') }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('mi_prive') }}"><input type="hidden" name="personne" value="{{ u.id }}">
+								<button class="mi-personne">{% include 'messagerie_interne/_avatar.html.twig' with {u: u, classe: 'mini'} only %} <span><b>{{ u|nom_equipe }}</b><small>{{ u.employe ? u.employe.fonction }}</small></span></button>
+							</form>
+						{% endfor %}
+					</div>
+				{% endif %}
+				<h2 class="mi-titre-section">Messages · {{ trouves|length }}</h2>
+				<ul class="mi-resultats">
+					{% for m in trouves %}
+						<li>
+							<a href="{{ path('app_messagerie_interne_voir', {jeton: m.conversation.jeton}) }}#m{{ m.id }}">
+								<span class="mi-resultat-tete"><b>{{ m.auteur|nom_equipe }}</b> dans {{ m.conversation.estPrive ? 'message privé' : '#' ~ m.conversation.nom }} · {{ m.dateEnvoi|date('d/m H:i') }}</span>
+								<span>{{ m.apercu(160) }}</span>
+							</a>
+						</li>
+					{% else %}
+						<li class="mi-vide">Aucun message.</li>
+					{% endfor %}
+				</ul>
+				<h2 class="mi-titre-section">Fichiers · {{ fichiersTrouves|length }}</h2>
+				<ul class="mi-resultats">
+					{% for p in fichiersTrouves %}
+						<li>
+							<a href="{{ path('app_messagerie_interne_voir', {jeton: p.conversation.jeton}) }}#m{{ p.message.id }}">
+								<span class="mi-resultat-tete"><span class="mi-ext ext-{{ p.etiquette|lower }}">{{ p.etiquette }}</span> <b>{{ p.nom }}</b> · {{ p.message.auteur|nom_equipe|split(' ')|first }} · {{ p.creeLe|date('d/m') }}</span>
+							</a>
+						</li>
+					{% else %}
+						<li class="mi-vide">Aucun fichier.</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
+	</div>
+	{% include 'messagerie_interne/_dialogues.html.twig' %}
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/messagerie-interne.js') }}" defer></script>
+{% endblock %}

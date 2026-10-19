@@ -6,10 +6,11 @@ use App\Entity\CommandeDetailFichier;
 use App\Entity\Employes;
 use App\Entity\Etiquette;
 use App\Entity\LotEtiquette;
-use App\Entity\Message;
+use App\Entity\PieceJointeMessage;
 use App\Entity\Reclamation;
 use App\Security\FichierEnvoye;
 use App\Security\FichiersPrivesVoter;
+use App\Security\MessagerieInterneVoter;
 use App\Service\FichiersPrives;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -47,10 +48,11 @@ final class FichiersPrivesController extends AbstractController
     #[Route('/uploads/chat/{nom}', name: 'app_fichiers_ancien_chat', requirements: ['nom' => '[^/]+'], methods: ['GET'])]
     public function ancienChat(string $nom): Response
     {
-        $message = $this->em->getRepository(Message::class)->findOneBy(['pieceJointeFichier' => $nom]) ?? throw $this->createNotFoundException();
-        $this->denyAccessUnlessGranted(FichiersPrivesVoter::CHAT, $message);
+        $piece = $this->em->getRepository(PieceJointeMessage::class)->findOneBy(['stockage' => $nom]) ?? throw $this->createNotFoundException();
+        $conversation = $piece->getConversation() ?? throw $this->createNotFoundException();
+        $this->denyAccessUnlessGranted(MessagerieInterneVoter::VOIR, $conversation);
 
-        return $this->redirectToRoute('app_chat_fichier', ['jeton' => $message->getConversation()?->getJeton(), 'id' => $message->getId()]);
+        return $this->redirectToRoute('app_messagerie_interne_fichier', ['jeton' => $conversation->getJeton(), 'id' => $piece->getId()]);
     }
 
     #[Route('/uploads/prepresse/{chemin}', name: 'app_fichiers_ancien_prepresse', requirements: ['chemin' => '.+'], methods: ['GET'])]

@@ -10,7 +10,7 @@ use App\Entity\User;
  * 15/10/2026) : une personne dont le seul droit est « Livraisons » n'ouvre
  * que les écrans de ROUTES. Toute autre page lui répond « accès refusé »
  * (LivreurSeulSubscriber), même tapée à la main : tableau de bord, clients,
- * commandes, statistiques, recherche, messagerie, liste générale des
+ * commandes, statistiques, recherche, messagerie des clients, liste générale des
  * livraisons et des retraits.
  *
  * Reste ouvert ce que tout le personnel a pour lui-même (Mon espace,
@@ -21,11 +21,14 @@ use App\Entity\User;
  */
 final class LivreurSeul
 {
-    /** Droits qui n'ouvrent rien de plus à un livreur (ses propres statistiques : ventes et encaissements). */
-    public const SANS_EFFET = ['ROLE_LIVRAISON', 'ROLE_STATS_PERSO'];
+    /**
+     * Droits qui n'ouvrent rien de plus à un livreur (ses propres statistiques : ventes et encaissements ;
+     * la messagerie de l'équipe, demande de Yaya du 19/10/2026 : les groupes, photos et vocaux depuis le téléphone).
+     */
+    public const SANS_EFFET = ['ROLE_LIVRAISON', 'ROLE_STATS_PERSO', Droits::MESSAGERIE_INTERNE];
 
     /** Son menu : sa tournée et ses livraisons, rien d'autre (NavigationExtension). */
-    public const MENU = ['app_livraisons_tournee', 'app_livraisons_mes_livraisons'];
+    public const MENU = ['app_livraisons_tournee', 'app_livraisons_mes_livraisons', 'app_messagerie_interne_index'];
 
     /**
      * Pages permises : nom de route exact, ou début de nom quand il finit
@@ -47,6 +50,8 @@ final class LivreurSeul
         'app_photo_employe',
         'app_user_change_password',
         'app_aide_',
+        // Messagerie de l'équipe (docs/messagerie-interne.md) : ses groupes et ses messages privés.
+        'app_messagerie_interne_',
         // Ses notifications : seulement celles de ces pages (NotificationsExtension, NotificationController).
         'app_notification_',
         // Connexion, code de sécurité en ligne, verrouillage.

@@ -1,0 +1,6 @@
+{# Vignette d'un fil : « # » coloré pour un groupe, 📣 pour les annonces, dossier pour un projet, avatar pour un message privé. Variables : c, autre. #}
+{% if c.estPrive %}
+	{% include 'messagerie_interne/_avatar.html.twig' with {u: autre} only %}
+{% else %}
+	<span class="mi-vignette coul-{{ c.couleur }}" aria-hidden="true">{{ c.estAnnonces ? '📣' : (c.estProjet ? '▣' : '#') }}</span>
+{% endif %}

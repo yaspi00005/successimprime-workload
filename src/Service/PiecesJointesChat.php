@@ -2,16 +2,17 @@
 
 namespace App\Service;
 
-use App\Entity\Message;
 use App\Security\FichierEnvoye;
 use App\Service\Atelier\ImagesAtelier;
 use App\Service\EspaceClient\FichiersClient;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 /**
- * Pièces jointes du chat interne (docs/securite.md, « Fichiers envoyés ») :
- * rangées hors de public/ (var/uploads/chat), servies seulement aux
- * participants de la conversation (ChatController::fichier).
+ * Pièces jointes de la messagerie de l'équipe (docs/securite.md, « Fichiers
+ * envoyés », docs/messagerie-interne.md) : rangées hors de public/
+ * (var/uploads/chat), servies seulement à qui lit la conversation
+ * (MessagerieInterneController::fichier). Les envois par morceaux passent
+ * par FichiersEquipe, qui range dans le même dossier.
  *
  * Une photo (JPG, PNG, WebP) est réencodée à l'arrivée comme les images
  * des clients (ImagesAtelier::reencoder) : les données EXIF, dont la
@@ -72,9 +73,9 @@ final class PiecesJointesChat
         return ['fichier' => $nom, 'nomOriginal' => $nomOriginal];
     }
 
-    /** Le fichier joint au message sur le disque, ou null. */
-    public function chemin(Message $message): ?string
+    /** Le fichier rangé sous ce nom sur le disque, ou null. */
+    public function chemin(?string $stockage): ?string
     {
-        return $this->fichiers->cheminDans(self::DOSSIER, $message->getPieceJointeFichier());
+        return $this->fichiers->cheminDans(self::DOSSIER, $stockage);
     }
 }

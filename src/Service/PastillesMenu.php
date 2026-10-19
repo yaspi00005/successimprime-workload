@@ -8,7 +8,9 @@ use App\Entity\DemandeConception;
 use App\Entity\DemandeEmploye;
 use App\Entity\DemandeExceptionPromotion;
 use App\Entity\ConversationClient;
+use App\Security\MessagerieInterneVoter;
 use App\Security\MessagerieVoter;
+use App\Service\MessagerieInterne\MessagesEquipe;
 use App\Entity\Paiements;
 use App\Entity\ReclamationClient;
 use App\Entity\ReponseSondage;
@@ -31,6 +33,7 @@ final class PastillesMenu implements ResetInterface
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Security $security,
+        private readonly MessagesEquipe $messagesEquipe,
     ) {
     }
 
@@ -95,6 +98,10 @@ final class PastillesMenu implements ResetInterface
             $compteurs['app_messages_clients_index'] = $this->security->isGranted('ROLE_ADMIN')
                 ? $this->compter(ConversationClient::class, 'c', 'c.statut = :o AND c.attenteDepuis IS NOT NULL', ['o' => ConversationClient::OUVERTE])
                 : $this->compter(ConversationClient::class, 'c', 'c.statut = :o AND c.attenteDepuis IS NOT NULL AND (c.assigneA = :moi OR c.assigneA IS NULL)', ['o' => ConversationClient::OUVERTE, 'moi' => $utilisateur]);
+        }
+        if ($this->security->isGranted(MessagerieInterneVoter::ACCES)) {
+            // Messagerie de l'équipe : fils (groupes, messages privés) avec un message non lu.
+            $compteurs['app_messagerie_interne_index'] = $this->messagesEquipe->filsNonLus($utilisateur);
         }
         if ($this->security->isGranted('ROLE_RH')) {
             $compteurs['app_demandes_index'] = $this->compter(DemandeEmploye::class, 'd', 'd.etat = :e', ['e' => DemandeEmploye::EN_ATTENTE]);

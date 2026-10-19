@@ -15,6 +15,7 @@ use App\Entity\User;
 use App\Service\ActionsCaisse\ActionsCaisse;
 use App\Service\EspaceClient\MessagesClient;
 use App\Service\NotificationService;
+use App\Service\NotificationsEquipe\NotificationsEquipe;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
@@ -58,6 +59,7 @@ final class Conversations
         private readonly NotificationService $notifications,
         private readonly ActionsCaisse $actions,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne,
+        private readonly ?NotificationsEquipe $equipe = null,
     ) {
     }
 
@@ -588,6 +590,10 @@ final class Conversations
         }
         $this->em->persist($note);
         foreach ($mentionnes as $u) {
+            if (null !== $this->equipe) {
+                $this->equipe->notifier('mention', \sprintf('%s vous cite (%s)', self::nom($par), $c->getTitre()), [$u], mb_strimwidth($texte, 0, 100, '…'), 'Ouvrir', 'app_messages_clients_voir', ['publicId' => (string) $c->getPublicId()], 'mention:note:'.$c->getPublicId().':'.$u->getId(), maintenant: $maintenant);
+                continue;
+            }
             $this->notifications->notifierUtilisateur($u, \sprintf('%s vous cite dans la conversation %s : « %s »', self::nom($par), $c->getTitre(), mb_strimwidth($texte, 0, 100, '…')), 'app_messages_clients_voir', ['publicId' => (string) $c->getPublicId()]);
         }
         $this->em->flush();

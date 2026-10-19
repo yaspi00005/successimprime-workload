@@ -1,0 +1,10 @@
+{# Réactions d'un message (docs/messagerie-interne.md). Variables : m, c, peutReagir. #}
+<div class="mi-reactions" data-reactions="{{ m.id }}">
+	{% for emoji, r in m.reactionsPour(app.user) %}
+		{% if peutReagir %}
+			<button type="button" class="mi-reaction {{ r.moi ? 'moi' }}" data-reagir="{{ emoji }}" title="{{ r.noms|join(', ') }}" aria-pressed="{{ r.moi ? 'true' : 'false' }}">{{ emoji }} {{ r.nombre }}</button>
+		{% else %}
+			<span class="mi-reaction" title="{{ r.noms|join(', ') }}">{{ emoji }} {{ r.nombre }}</span>
+		{% endif %}
+	{% endfor %}
+</div>

@@ -19,7 +19,6 @@
 {% set wa = site_whatsapp() %}
 {% set fiche_google = site_fiche_google() %}
 {% set donnees_entreprise = true %}
-{% set photo_allee = site_photo(constant('App\\Service\\Site\\PhotosSite::ALLEE')) %}
 {% set tailleMo = (tailleMax / 1048576)|round(0, 'floor') %}
 {% set ecran_rappel = creneaux is not null %}
 {% set calcul = site_catalogue().calculateur ? site_lien('app_site_calculateur') : null %}
@@ -178,15 +177,19 @@
 			</form>
 
 			<div class="si-contact-infos">
-				{% if photo_allee %}
-					{# L'allée en grand au-dessus de la carte (photos du local du 17/10/2026) : première photo de la page. #}
-					<figure class="si-local-entete" data-revele>
-						{{ include('site/_photo.html.twig', {photo: photo_allee, sizes: '(max-width: 960px) calc(100vw - 32px), (max-width: 1180px) calc(42vw - 30px), 500px', immediate: not ecran_rappel}) }}
-						<figcaption>L'allée qui mène à notre entrée, sous le balcon rond.</figcaption>
-					</figure>
-				{% endif %}
-				{% if lienPlan %}
-					<div class="si-revele">{{ include('site/_carte_plan.html.twig') }}</div>
+				{# Maquette EC04 : la carte, et à côté les photos du local en vignettes (elles s'ouvrent en grand, galerie « Notre local »). #}
+				{% set vignettes = site_photos_local()|slice(0, 3) %}
+				{% if lienPlan or vignettes %}
+					<div class="si-contact-lieu{{ vignettes ? ' si-avec-vignettes' }} si-revele">
+						{% if lienPlan %}<div class="si-contact-plan">{{ include('site/_carte_plan.html.twig') }}</div>{% endif %}
+						{% if vignettes %}
+							<ul class="si-contact-vignettes si-local-mini">
+								{% for p in vignettes %}
+									<li><a href="#local-{{ p.nom }}" data-ouvrir="local-{{ p.nom }}" aria-haspopup="dialog">{{ include('site/_photo.html.twig', {photo: p, sizes: '140px', immediate: false}) }}<span>{{ p.legende ?? p.alt }}</span></a></li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+					</div>
 				{% endif %}
 
 				<div class="si-contact-cartes">

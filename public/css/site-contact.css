@@ -164,3 +164,35 @@
   .si-canal:hover, .si-dort-tuiles a:hover { transform: none; }
 }
 .si-recu-cote { display: grid; gap: 16px; }
+
+/* Maquette EC04 : formulaire un peu plus large, carte avec les photos du local en vignettes, horaires et coordonnées dessous. */
+.si-contact-grille { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); }
+.si-motif span { padding: 6px 11px; font-size: 13px; }
+.si-motifs-liste { gap: 6px; }
+.si-contact-lieu.si-avec-vignettes { display: grid; grid-template-columns: minmax(0, 1fr) 128px; gap: 8px; }
+.si-contact-lieu .si-carte-boutique .si-plan > svg { height: 262px; }
+.si-contact-vignettes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-rows: repeat(3, minmax(0, 1fr)); gap: 8px; height: 262px; }
+.si-contact-vignettes a { position: relative; display: block; height: 100%; overflow: hidden; border-radius: 12px; background: #DCE3EE; }
+.si-contact-vignettes img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .3s ease; }
+.si-contact-vignettes a:hover img { transform: scale(1.05); }
+.si-contact-vignettes span { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 8px 5px; font-size: 11px; font-weight: 600; line-height: 1.2; color: #fff; background: linear-gradient(transparent, rgba(10, 25, 55, .75)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 960px) {
+  .si-contact-grille { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  /* Trois canaux compacts : ils ne prennent plus tout l'écran avant le formulaire. */
+  .si-canaux { gap: 8px; }
+  .si-canal { flex-wrap: nowrap; gap: 10px; padding: 10px 12px; }
+  .si-canal-icone { width: 42px; height: 42px; border-radius: 12px; }
+  .si-canal-icone svg { width: 22px; height: 22px; }
+  .si-canal h2 { font-size: 15px; }
+  .si-canal p { font-size: 12.5px; }
+  .si-canal p + p { display: none; }
+  .si-canal .si-bouton { flex: none; min-height: 40px; padding: 6px 12px; font-size: 13px; }
+  .si-contact-lieu.si-avec-vignettes { grid-template-columns: 1fr; }
+  .si-contact-lieu .si-carte-boutique .si-plan > svg { height: 200px; }
+  .si-contact-vignettes { grid-template-rows: none; grid-template-columns: repeat(3, minmax(0, 1fr)); height: 92px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .si-contact-vignettes img { transition: none; }
+}

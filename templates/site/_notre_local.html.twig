@@ -35,7 +35,7 @@
 	<script>
 		(function () {
 			if (typeof HTMLDialogElement !== 'function') { return; }
-			document.querySelectorAll('.si-local [data-ouvrir]').forEach(function (lien) {
+			document.querySelectorAll('.si-local [data-ouvrir], .si-local-mini [data-ouvrir]').forEach(function (lien) {
 				lien.addEventListener('click', function (e) {
 					var fenetre = document.getElementById(lien.getAttribute('data-ouvrir'));
 					if (!fenetre) { return; }

@@ -1,11 +1,11 @@
 {#
 	Champ texte d'un formulaire du site, avec son erreur (erreurs[nom]).
 	Variables : nom, libelle, valeur, type (text), attributs (bruts, écrits
-	par le gabarit), exemple (placeholder), aide, facultatif.
+	par le gabarit), exemple (placeholder), aide, facultatif, obligatoire (astérisque).
 #}
 {% set erreur = erreurs[nom] ?? null %}
 <div class="si-champ{{ erreur ? ' si-champ-erreur' }}">
-	<label for="champ-{{ nom }}">{{ libelle }}{% if facultatif ?? false %} <span class="si-facultatif">(facultatif)</span>{% endif %}</label>
-	<input type="{{ type ?? 'text' }}" id="champ-{{ nom }}" name="{{ nom }}" value="{{ valeur }}"{% if exemple ?? null %} placeholder="{{ exemple }}"{% endif %} {{ (attributs ?? '')|raw }}{% if erreur %} aria-invalid="true" aria-describedby="erreur-{{ nom }}"{% elseif aide ?? null %} aria-describedby="aide-{{ nom }}"{% endif %}>
+	<label for="{{ id_champ ?? ('champ-' ~ nom) }}">{{ libelle }}{% if obligatoire ?? false %}<span class="si-requis" aria-hidden="true"> *</span>{% endif %}{% if facultatif ?? false %} <span class="si-facultatif">(facultatif)</span>{% endif %}</label>
+	<input type="{{ type ?? 'text' }}" id="{{ id_champ ?? ('champ-' ~ nom) }}" name="{{ nom }}" value="{{ valeur }}"{% if exemple ?? null %} placeholder="{{ exemple }}"{% endif %} {{ (attributs ?? '')|raw }}{% if erreur %} aria-invalid="true" aria-describedby="erreur-{{ nom }}"{% elseif aide ?? null %} aria-describedby="aide-{{ nom }}"{% endif %}>
 	{% if erreur %}<p class="si-erreur" id="erreur-{{ nom }}">{{ erreur }}</p>{% elseif aide ?? null %}<p class="si-aide" id="aide-{{ nom }}">{{ aide }}</p>{% endif %}
 </div>

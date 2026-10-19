@@ -43,6 +43,7 @@ final class ContactSite
             'court' => self::texteCourt($jours, $ouverture, $fermeture),
             'ouverture' => self::heure($ouverture),
             'fermeture' => self::heure($fermeture),
+            'semaine' => self::semaine($jours, $ouverture, $fermeture, $maintenant, $heures->estOuvre(...)),
         ] + $etat;
     }
 
@@ -60,6 +61,48 @@ final class ContactSite
         $motif = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'fermeture_motif')));
 
         return ['ouvert' => false, 'etat' => 'Fermé exceptionnellement'.('' === $motif ? '' : ' : '.mb_substr($motif, 0, 100)), 'exceptionnel' => true];
+    }
+
+    /**
+     * Les 7 jours à partir de lundi, avec le jour courant marqué (bloc
+     * Horaires de la page Contact, maquette EC04). Un jour férié de cette
+     * semaine est dit fermé.
+     *
+     * @return list<array{nom: string, plage: ?string, aujourdhui: bool}>
+     */
+    public static function semaine(string $jours, string $ouverture, string $fermeture, \DateTimeImmutable $maintenant, ?callable $estOuvre = null): array
+    {
+        [$premier, $dernier] = self::JOURS[$jours] ?? self::JOURS['lun-sam'];
+        $lundi = $maintenant->setTime(0, 0)->modify('-'.((int) $maintenant->format('N') - 1).' days');
+        $liste = [];
+        for ($n = 1; $n <= 7; ++$n) {
+            $jour = $lundi->modify('+'.($n - 1).' days');
+            $ouvert = null !== $estOuvre ? $estOuvre($jour) : ($n >= $premier && $n <= $dernier);
+            $liste[] = [
+                'nom' => ucfirst(self::NOMS_JOURS[$n]),
+                'plage' => $ouvert ? self::heure($ouverture).' – '.self::heure($fermeture) : null,
+                'aujourdhui' => $jour->format('Y-m-d') === $maintenant->format('Y-m-d'),
+            ];
+        }
+
+        return $liste;
+    }
+
+    /**
+     * Accès et livraison de « Comment venir » (maquette EC07), tels que
+     * réglés ; un texte vide n'est pas montré.
+     *
+     * @return array{voiture: ?string, moto: ?string, livraison: ?string}
+     */
+    public function acces(): array
+    {
+        $lire = function (string $cle): ?string {
+            $t = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', $cle)));
+
+            return '' === $t ? null : mb_substr($t, 0, 200);
+        };
+
+        return ['voiture' => $lire('acces_voiture'), 'moto' => $lire('acces_moto'), 'livraison' => $lire('acces_livraison')];
     }
 
     /** Jours fermés d'après les jours travaillés : « Dimanche : fermé », « Samedi et dimanche : fermé », ou null (tous les jours). */

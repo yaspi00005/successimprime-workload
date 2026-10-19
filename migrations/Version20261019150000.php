@@ -13,7 +13,7 @@ use Doctrine\Migrations\AbstractMigration;
  * la conversation ouverte pour la demande, le rappel fait et son alerte ;
  * origine « site » d'une conversation, qui reste au local.
  */
-final class Version20261019120000 extends AbstractMigration
+final class Version20261019150000 extends AbstractMigration
 {
     public function getDescription(): string
     {

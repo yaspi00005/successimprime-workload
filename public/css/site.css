@@ -224,8 +224,8 @@ body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-heig
 .si-cadrage-bas { object-position: 50% 88%; }
 
 /* Animations légères (docs/atelier-3d.md) : transformations seulement, jamais de clic bloqué. */
-.si-anime [data-revele] { transition: transform .6s cubic-bezier(.2, .8, .2, 1) var(--si-delai, 0ms), opacity .6s ease var(--si-delai, 0ms); }
-.si-anime [data-revele]:not(.si-vu) { transform: translateY(22px); opacity: 0; }
+.si-anime [data-revele], .si-anime .si-revele { transition: transform .6s cubic-bezier(.2, .8, .2, 1) var(--si-delai, 0ms), opacity .6s ease var(--si-delai, 0ms); }
+.si-anime [data-revele]:not(.si-vu), .si-anime .si-revele:not(.si-vu) { transform: translateY(22px); opacity: 0; }
 @media (hover: hover) and (pointer: fine) {
   [data-incline] { transition: transform .2s ease-out, box-shadow .2s; will-change: transform; }
   [data-incline]:hover { box-shadow: 0 14px 30px rgba(15, 35, 75, .14); }

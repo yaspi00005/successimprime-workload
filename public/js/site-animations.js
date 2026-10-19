@@ -1,6 +1,6 @@
 /*
  * Animations légères du site (docs/atelier-3d.md) : les blocs marqués
- * data-revele glissent en place quand ils arrivent à l'écran, les cartes
+ * data-revele (ou la classe si-revele) glissent en place quand ils arrivent à l'écran, les cartes
  * data-incline s'inclinent un peu sous la souris, les photos avant / après
  * se comparent avec un curseur. Pas de mouvement si la personne a demandé
  * de réduire les animations (le curseur marche quand même) ; rien n'est
@@ -42,7 +42,7 @@
 
   if (reduit) return;
 
-  var blocs = document.querySelectorAll('[data-revele]');
+  var blocs = document.querySelectorAll('[data-revele], .si-revele');
   if (blocs.length && 'IntersectionObserver' in window) {
     var hauteur = window.innerHeight || 800;
     var observateur = new IntersectionObserver(function (entrees) {

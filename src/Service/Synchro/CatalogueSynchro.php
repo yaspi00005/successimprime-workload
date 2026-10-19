@@ -117,7 +117,7 @@ final class CatalogueSynchro
         // Frais de « Livraison à Bamako » de la commande en ligne (un des paliers). Les objets restent au local.
         'saisie' => ['paliers_livraison', 'livraison_en_ligne'],
         // Repère de l'adresse, délai de réponse et largeur annoncée : montrés par le site (docs/site-vitrine.md).
-        'site_contact' => ['lien_plan', 'repere', 'delai_reponse', 'largeur_max', 'fermeture', 'fermeture_motif'],
+        'site_contact' => ['lien_plan', 'repere', 'delai_reponse', 'largeur_max', 'fermeture', 'fermeture_motif', 'acces_voiture', 'acces_moto', 'acces_livraison'],
         // Nos engagements, écran « atelier fermé » avec rappel, accueil et packs (textes du gérant du 19/10/2026).
         'site_engagements' => ['e1_titre', 'e1_promesse', 'e1_sinon', 'e2_titre', 'e2_promesse', 'e2_sinon', 'e3_titre', 'e3_promesse', 'e3_sinon', 'e4_titre', 'e4_promesse', 'e4_sinon', 'e5_titre', 'e5_promesse', 'e5_sinon', 'e6_titre', 'e6_promesse', 'e6_sinon', 'ne_promet_pas', 'delai_reclamation', 'rappel_actif', 'rappel_debut', 'rappel_fin', 'rappel_par_heure'],
         'site_accueil' => ['delai_visuel', 'packs_visibles', 'pack1_nom', 'pack1_contenu', 'pack1_prix', 'pack2_nom', 'pack2_contenu', 'pack2_prix', 'pack3_nom', 'pack3_contenu', 'pack3_prix', 'pack4_nom', 'pack4_contenu', 'pack4_prix'],

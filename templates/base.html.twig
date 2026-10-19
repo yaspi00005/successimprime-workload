@@ -160,6 +160,14 @@
 						</div>
 					{% endfor %}
 				{% endfor %}
+				{# Lien wa.me prêt (« fichier à venir » à la saisie de la commande, docs/prepresse.md). #}
+				{% for lien in app.flashes('whatsapp') %}
+					<div class="alert alert-success alert-dismissible fade show" role="alert">
+						<i class="fab fa-whatsapp me-1" aria-hidden="true"></i>{{ lien.texte }}
+						<a class="alert-link ms-1" href="{{ lien.url }}" target="_blank" rel="noopener">Ouvrir WhatsApp</a>
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+					</div>
+				{% endfor %}
 				{% block onglets_section %}{% include 'partials/_onglets_section.html.twig' %}{% endblock %}
 				{% set moduleEnLecture = module_en_lecture(routeCourante) %}
 				{% if moduleEnLecture %}

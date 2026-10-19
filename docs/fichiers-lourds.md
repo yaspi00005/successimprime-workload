@@ -8,7 +8,7 @@ Demande de Yaya du 10/10/2026. Les fichiers d'impression sont souvent lourds (PD
 ## Ce qui existe déjà
 
 - **Envoi depuis la page commande et depuis le contrôle prépresse.** Le fichier part en morceaux de 5 Mo. Si la connexion coupe, l'envoi reprend là où il s'était arrêté. La limite est de 750 Mo par fichier (`FichierUploadController`).
-- **« Dossier partagé » sur le serveur** (`var/uploads/dossier_partage`). On y dépose `123_nom.pdf`, où 123 est la référence du travail, et le bouton Importer rattache le fichier au travail sans le recopier.
+- **« Dossier partagé » sur le serveur** (`var/uploads/dossier_partage`). On y dépose `CMD-000378_5,5x7.pdf` (numéro de la commande, puis le format) ou `123_nom.pdf` (référence du travail) : l'import automatique rattache le fichier sans le recopier (voir plus bas et docs/prepresse.md).
 - **Nettoyage automatique** des fichiers de production après la durée de conservation (`FICHIER_PRODUCTION_RETENTION_MONTHS`).
 
 Une fois l'application sur le VPS, le dossier partagé n'est plus sur un PC de l'imprimerie. Il faut donc un moyen de faire passer les fichiers entre l'imprimerie et le serveur.
@@ -26,6 +26,27 @@ Sécurité des liens :
 - jamais d'adresse interne au serveur ;
 - taille maximale ;
 - les liens de partage des sites connus sont convertis en lien de téléchargement direct.
+
+## Import automatique du dossier partagé (19/10/2026)
+
+La tâche `app:dossier-partage:importer` tourne **chaque minute** sur l'ERP de l'imprimerie. Elle lit le dossier partagé à plat (pas de sous-dossier, pas de lien) et, pour chaque fichier :
+
+- nommé `CMD-000378_5,5x7.pdf` ou `CMD-000378-10-2026 affiche.pdf` : il est rattaché à la commande, au format écrit dans le nom. Une commande d'un seul format, ou d'un seul format encore sans fichier, n'a pas besoin du format ;
+- nommé `123_nom.pdf` : il est rattaché au travail « Réf: #123 », comme avant ;
+- sinon, ou si la commande est introuvable, terminée ou si le format est à choisir : il **reste dans le dossier** et s'affiche dans « Fichiers à classer » et sur la page du dossier partagé.
+
+Le fichier rattaché est **déplacé** (pas lu en mémoire, pas recopié quand c'est le même disque) vers les fichiers privés des commandes, renommé « commande_format », et la commande passe en « À contrôler ». Un fichier encore en cours de copie (taille qui change, modifié il y a moins de 30 secondes, extension `.part`, `.crdownload`, `.tmp`…) attend la minute suivante. Relancer la tâche ne rattache jamais deux fois : un fichier rattaché n'est plus dans le dossier. Une copie est aussi rangée dans le dossier du client (« 02 Fichiers reçus\AAAA-MM ») quand les dossiers clients sont réglés ; l'ERP ne déplace ni ne supprime rien dans les dossiers de l'imprimerie.
+
+Planifier la tâche :
+
+- **Windows** : elle est lancée par `scripts\windows\synchro.bat`, déjà planifié chaque minute (`installer_tache_synchro.bat`) ;
+- **Linux ou Mac**, `crontab -e` :
+
+```
+* * * * * cd /chemin/du/projet && php bin/console app:dossier-partage:importer -q >> var/log/dossier-partage.log 2>&1
+```
+
+Le bouton « Rattacher maintenant » de la page du dossier partagé lance le même import tout de suite.
 
 ## Récupération en local, sur le PC du prépresse et du RIP
 

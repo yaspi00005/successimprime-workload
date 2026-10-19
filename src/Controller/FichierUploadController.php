@@ -3,9 +3,10 @@
 namespace App\Controller;
 
 use App\Entity\CommandeDetailFichier;
+use App\Entity\User;
 use App\Repository\CommandeDetailFichierRepository;
-use App\Repository\CommandesDetailsRepository;
 use App\Security\FichierEnvoye;
+use App\Service\Prepresse\DossierPartage;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -406,162 +407,70 @@ final class FichierUploadController extends AbstractController
         return $response;
     }
 
+    /**
+     * Le dossier partagé des fichiers lourds (docs/fichiers-lourds.md,
+     * docs/prepresse.md) : les fichiers nommés « CMD-numéro_format » ou
+     * « 123_nom » se rattachent tout seuls chaque minute
+     * (app:dossier-partage:importer) ; les autres restent ici et dans
+     * « Fichiers à classer ». Lien depuis Prépresse et BAT.
+     */
     #[Route(
         '/dossier-partage',
         name: 'app_fichier_dossier_partage',
         methods: ['GET']
     )]
-    public function dossierPartage(): Response
+    public function dossierPartage(DossierPartage $partage): Response
     {
         $this->denyAccessUnlessGranted('ROLE_PREPRESSE');
 
-        $fichiers = [];
-
-        foreach (glob($this->dossierPartage.'/*') ?: [] as $chemin) {
-            if (!is_file($chemin)) {
-                continue;
-            }
-
-            $nom = basename($chemin);
-
-            $fichiers[] = [
-                'nom' => $nom,
-                'taille' => filesize($chemin) ?: 0,
-                'referenceValide' => (bool) preg_match('/^\d+[-_]/', $nom),
-            ];
-        }
+        $raisons = array_column($partage->nonReconnus(), 'raison', 'nom');
+        $fichiers = array_map(static fn (array $f): array => [
+            'nom' => $f['nom'],
+            'taille' => $f['taille'],
+            'modifieLe' => $f['modifieLe'],
+            'pret' => $f['pret'],
+            'raison' => $raisons[$f['nom']] ?? null,
+        ], $partage->fichiers());
 
         return $this->render('commande_fichiers/dossier_partage.html.twig', [
             'fichiers' => $fichiers,
-            'cheminDossier' => $this->dossierPartage,
+            'cheminDossier' => $partage->dossier(),
         ]);
     }
 
+    /** « Importer maintenant » : le même import que la tâche de chaque minute, noté au nom de la personne. */
     #[Route(
         '/dossier-partage/importer',
         name: 'app_fichier_dossier_partage_importer',
         methods: ['POST']
     )]
-    public function importerDossierPartage(
-        Request $request,
-        CommandesDetailsRepository $commandesDetailsRepository,
-        EntityManagerInterface $entityManager
-    ): Response {
+    public function importerDossierPartage(Request $request, DossierPartage $partage): Response
+    {
         $this->denyAccessUnlessGranted('ROLE_PREPRESSE');
 
         if (!$this->isCsrfTokenValid(
             'dossier-partage-importer',
             (string) $request->request->get('_token')
         )) {
-            $this->addFlash(
-                'error',
-                'Jeton de sécurité invalide, merci de réessayer.'
-            );
+            $this->addFlash('error', 'La page a expiré. Rechargez-la et recommencez.');
 
             return $this->redirectToRoute('app_fichier_dossier_partage');
         }
 
-        $importes = [];
-        $ignores = [];
+        $utilisateur = $this->getUser();
+        $bilan = $partage->importer(new \DateTimeImmutable(), $utilisateur instanceof User ? $utilisateur : null);
 
-        foreach (glob($this->dossierPartage.'/*') ?: [] as $chemin) {
-            if (!is_file($chemin)) {
-                continue;
-            }
-
-            $nom = basename($chemin);
-
-            /*
-             * Convention de nommage attendue :
-             * <id du travail>_nom-du-fichier.ext
-             * ou <id du travail>-nom-du-fichier.ext
-             *
-             * L'id du travail est affiché sur la fiche de la
-             * commande (« Réf: #123 ») à côté de chaque travail.
-             */
-            if (!preg_match('/^(\d+)[-_](.+)$/', $nom, $correspondances)) {
-                $ignores[] = $nom.' (nom sans référence de travail en préfixe)';
-                continue;
-            }
-
-            $detailId = (int) $correspondances[1];
-            $nomOriginal = $correspondances[2];
-
-            $detail = $commandesDetailsRepository->find($detailId);
-
-            if ($detail === null) {
-                $ignores[] = $nom.' (aucun travail avec la référence #'.$detailId.')';
-                continue;
-            }
-
-            $extension = strtolower(
-                pathinfo($nomOriginal, PATHINFO_EXTENSION)
-            );
-
-            $nomStockage = bin2hex(random_bytes(32));
-
-            if ($extension !== '') {
-                $nomStockage .= '.'.preg_replace(
-                    '/[^a-z0-9]/i',
-                    '',
-                    $extension
-                );
-            }
-
-            $cheminFinal = $this->dossierFinal.'/'.$nomStockage;
-
-            /*
-             * rename() déplace le fichier sans le recopier : même
-             * un fichier de plusieurs Go est instantané, puisque
-             * le dossier partagé et le dossier final sont sur le
-             * même disque.
-             */
-            if (!rename($chemin, $cheminFinal)) {
-                $ignores[] = $nom.' (impossible de déplacer le fichier)';
-                continue;
-            }
-
-            $typeMime = mime_content_type($cheminFinal);
-
-            $fichier = (new CommandeDetailFichier())
-                ->setJetonUpload(bin2hex(random_bytes(32)))
-                ->setCommandeDetail($detail)
-                ->setNomOriginal($nomOriginal)
-                ->setNomStockage($nomStockage)
-                ->setTypeMime(
-                    is_string($typeMime) ? $typeMime : 'application/octet-stream'
-                )
-                ->setTaille((int) (filesize($cheminFinal) ?: 0))
-                ->setNombreMorceaux(1)
-                ->setMorceauxRecus(1)
-                ->marquerUploadTermine();
-
-            $entityManager->persist($fichier);
-
-            $importes[] = $nomOriginal.' → travail #'.$detailId;
+        if ($bilan['importes'] !== []) {
+            $this->addFlash('success', count($bilan['importes']).' fichier(s) rattaché(s) : '.implode(', ', $bilan['importes']));
         }
-
-        $entityManager->flush();
-
-        if ($importes !== []) {
-            $this->addFlash(
-                'success',
-                count($importes).' fichier(s) importé(s) : '.implode(', ', $importes)
-            );
+        if ($bilan['enCours'] > 0) {
+            $this->addFlash('warning', $bilan['enCours'].' fichier(s) encore en cours de copie : ils seront rattachés dans une minute.');
         }
-
-        if ($ignores !== []) {
-            $this->addFlash(
-                'error',
-                count($ignores).' fichier(s) ignoré(s) : '.implode(', ', $ignores)
-            );
+        if ($bilan['ignores'] !== []) {
+            $this->addFlash('error', count($bilan['ignores']).' fichier(s) pas reconnu(s), laissé(s) dans le dossier : '.implode(', ', $bilan['ignores']));
         }
-
-        if ($importes === [] && $ignores === []) {
-            $this->addFlash(
-                'success',
-                'Le dossier partagé est vide, rien à importer.'
-            );
+        if ($bilan['importes'] === [] && $bilan['ignores'] === [] && $bilan['enCours'] === 0) {
+            $this->addFlash('success', 'Le dossier partagé est vide, rien à rattacher.');
         }
 
         return $this->redirectToRoute('app_fichier_dossier_partage');

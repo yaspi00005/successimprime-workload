@@ -1,0 +1,105 @@
+{#
+	Une commande de la liste (PQ01) : numéro, client, travail, fichiers
+	reçus x/y, ancienneté, une action ; dépliée, ses formats. Paramètres :
+	c (ListePrepresse::commandes), ouverte.
+#}
+{% set action = c.action %}
+<article class="pq-cmd {{ ouverte ? 'ouverte' }}" id="commande-{{ c.id }}"
+	data-pq-commande="{{ c.id }}"
+	data-onglets="{{ c.onglets|join(' ') }}"
+	data-recherche="{{ c.recherche }}"
+	data-date="{{ c.dateCommande|date('U') }}"
+	data-livraison="{{ c.dateLivraison ? c.dateLivraison|date('U') : '9999999999' }}"
+	data-depot-url="{{ path('app_controle_pre_presse_depot', {id: c.id}) }}">
+	<div class="pq-cmd-tete" data-pq-deplier>
+		<button type="button" class="pq-chevron" aria-expanded="{{ ouverte ? 'true' : 'false' }}" aria-controls="formats-{{ c.id }}" aria-label="Voir les formats de {{ c.numero }}"><i class="fas fa-chevron-right"></i></button>
+		<div>
+			<div class="pq-num">{{ c.numero }}</div>
+			{% if not c.clientJoignable %}
+				<div class="pq-sans-client"><i class="fas fa-exclamation-triangle me-1"></i>{{ c.client ? c.client ~ ' · sans numéro' : 'client non renseigné' }} <span class="pq-muet">{{ c.dateCommande|date('d/m H:i') }}</span></div>
+			{% else %}
+				<div class="pq-client">{{ c.client }} <span class="pq-muet">{{ c.dateCommande|date('d/m H:i') }}</span></div>
+			{% endif %}
+			{% if c.enPause %}<div class="pq-pause"><i class="fas fa-pause-circle me-1"></i>En pause : livraison retirée</div>{% endif %}
+		</div>
+		<div class="pq-travail">
+			<b title="{{ c.titre }}">{{ c.titre }}</b>
+			<span class="pq-muet">{{ c.detail }}</span>
+		</div>
+		<div class="pq-progression">
+			<div class="pq-segments" aria-hidden="true">
+				{% for f in c.formats %}<i class="{{ f.etat == 'sans_fichier' ? '' : (f.etat == 'a_controler' or f.etat == 'retour' ? 'controle' : 'recu') }}"></i>{% endfor %}
+			</div>
+			{% if c.manquants > 0 %}
+				<small>{{ c.recus }} / {{ c.total }} fichier{{ c.total > 1 ? 's' }} reçu{{ c.recus > 1 ? 's' }}</small>
+			{% elseif c.compte.a_controler > 0 or c.compte.retour > 0 %}
+				<small class="complet">fichier{{ c.total > 1 ? 's' }} reçu{{ c.total > 1 ? 's' }} · à contrôler</small>
+			{% else %}
+				<small class="fini">{{ c.compte.bat > 0 ? 'BAT chez le client' : 'prêt pour la production' }}</small>
+			{% endif %}
+		</div>
+		<div class="pq-age">
+			<span class="pq-badge {{ c.ageCouleur }}"><i class="far fa-clock"></i>{{ c.age }} {{ c.ageQuoi }}</span>
+		</div>
+		<div class="pq-actions">
+			{% if action.action == 'deposer' %}
+				<button type="button" class="pq-btn jaune" data-pq-deposer><i class="fas fa-paperclip"></i>{{ action.libelle }}</button>
+			{% elseif action.action == 'controler' or action.action == 'corriger' %}
+				<a class="pq-btn {{ action.action == 'corriger' ? 'violet' : 'bleu' }}" href="{{ path('app_controle_pre_presse_controler', {id: c.aControlerLigne}) }}">{{ action.libelle }}</a>
+			{% elseif action.action == 'relancer' %}
+				<a class="pq-btn bleu" href="{{ path('app_controle_pre_presse_controler', {id: c.batLigne}) }}"><i class="far fa-comment-dots"></i>Relancer le BAT</a>
+			{% else %}
+				<a class="pq-btn" href="{{ path('app_commandes_show', {id: c.id}) }}">Voir</a>
+			{% endif %}
+			{% if action.secondaire == 'associer' %}
+				<a class="pq-btn" href="{{ path('app_commandes_edit', {id: c.id}) }}" title="Choisir le client (avec son numéro) sur la commande">Associer</a>
+			{% elseif action.secondaire == 'relancer' %}
+				<a class="pq-btn" href="{{ path('app_controle_pre_presse_relances', {commande: c.id}) }}"><i class="far fa-comment-dots"></i>Relancer</a>
+			{% elseif action.secondaire == 'deposer' %}
+				<button type="button" class="pq-btn" data-pq-deposer><i class="fas fa-paperclip"></i>Déposer</button>
+			{% endif %}
+		</div>
+	</div>
+
+	<div class="pq-formats" id="formats-{{ c.id }}" {{ ouverte ? '' : 'hidden' }}>
+		<table>
+			<thead>
+				<tr><th>Format</th><th class="text-end">Qté</th><th>Fichier</th><th>Statut</th><th></th></tr>
+			</thead>
+			<tbody>
+				{% for f in c.formats %}
+					<tr>
+						<td><b>{{ f.format }}</b></td>
+						<td class="num">{{ f.quantite|number_format(0, ',', ' ') }}</td>
+						<td>
+							{% if f.fichiers is not empty %}
+								{% for fichier in f.fichiers %}
+									<a class="pq-fichier-ok d-block" href="{{ path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id}) }}" target="_blank" rel="noopener"><i class="fas fa-check me-1"></i>{{ fichier.nom }}</a>
+								{% endfor %}
+							{% elseif f.lie %}
+								<span class="pq-fichier-ok"><i class="fas fa-link me-1"></i>fichier du dossier client</span>
+							{% else %}
+								<span class="pq-depose" data-pq-zone-ligne="{{ f.id }}" role="button" tabindex="0" title="Glisser le fichier ici ou cliquer pour le choisir">— glisser ici</span>
+							{% endif %}
+						</td>
+						<td>
+							<span class="pq-badge {{ f.couleur == 'rouge' ? 'rouge-clair' : f.couleur }}">{{ f.statut }}</span>
+							{% if f.retour %}<div class="pq-muet">{{ f.retour }}</div>{% endif %}
+						</td>
+						<td class="text-end">
+							{% if f.etat == 'sans_fichier' %}
+								<button type="button" class="pq-btn petit" data-pq-deposer data-pq-ligne="{{ f.id }}" aria-label="Déposer le fichier du format {{ f.format }}"><i class="fas fa-paperclip"></i></button>
+							{% else %}
+								<a class="fw-bold" href="{{ path('app_controle_pre_presse_controler', {id: f.id}) }}">{{ f.etat == 'pret' ? 'Voir' : 'Contrôler' }}</a>
+							{% endif %}
+						</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		{% if c.petits %}
+			<p class="pq-conseil"><i class="fas fa-lightbulb me-1"></i>{{ c.petits.nombre }} petits formats du même {{ c.petits.support|lower }} : à monter sur une seule planche pour la découpe laser.
+				<a href="{{ path('app_montage_outil', {ligne: c.premiereLigne}) }}">Ouvrir le montage ›</a></p>
+		{% endif %}
+	</div>
+</article>

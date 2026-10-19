@@ -256,7 +256,8 @@ final class CommandesController extends AbstractController
         NotificationService $notificationService,
         Parametres $parametres,
         PromotionsSaisie $promotionsSaisie,
-        AccordsPlafond $accordsPlafond
+        AccordsPlafond $accordsPlafond,
+        \App\Service\Prepresse\RelancesFichiers $relancesFichiers
     ): Response {
         $commande = new Commandes();
         $plafondBloque = false;
@@ -569,6 +570,23 @@ final class CommandesController extends AbstractController
 
                             break;
                         }
+                    }
+                }
+
+                /*
+                 * « Fichier à venir » coché à la caisse (docs/prepresse.md) :
+                 * le lien d'envoi part tout de suite sur WhatsApp (lien
+                 * wa.me, message avec les formats attendus) ; les relances
+                 * J+1, J+3, J+7 suivent si le fichier n'arrive pas.
+                 */
+                if ($request->request->getBoolean('fichier_a_venir')) {
+                    $commande->setFichierAVenir(true);
+                    $manquants = \App\Service\Prepresse\RelancesFichiers::manquants($commande);
+                    $whatsapp = [] !== $manquants && \App\Service\Prepresse\ListePrepresse::clientJoignable($commande->getClients())
+                        ? \App\Service\Prepresse\RelancesFichiers::whatsapp($commande->getClients(), $relancesFichiers->message($commande, $manquants))
+                        : null;
+                    if (null !== $whatsapp) {
+                        $this->addFlash('whatsapp', ['texte' => sprintf('Fichier à venir : envoyez au client le lien d\'envoi de la commande %s.', $commande->getNumero()), 'url' => $whatsapp]);
                     }
                 }
 

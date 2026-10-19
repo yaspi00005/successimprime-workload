@@ -1,0 +1,19 @@
+{#
+	Barre commune : recherche (commande, client, travail) et bascule
+	Liste / Tableau / Relances. Paramètres : vue
+	(liste, tableau, relances), recherche.
+#}
+<header class="pq-entete">
+	{# Le fil (Atelier › …) et le titre sont dans l'en-tête commun (base.html.twig, bloc title). #}
+	<div class="pq-outils">
+		<form class="pq-recherche" method="get" action="{{ path(vue == 'liste' ? 'app_controle_pre_presse_index' : (vue == 'tableau' ? 'app_controle_pre_presse_tableau' : 'app_controle_pre_presse_relances')) }}" role="search">
+			<i class="fas fa-search" aria-hidden="true"></i>
+			<input type="search" name="q" value="{{ recherche|default('') }}" placeholder="Commande, client, travail…" aria-label="Chercher une commande, un client ou un travail" data-pq-recherche>
+		</form>
+		<nav class="pq-bascule" aria-label="Affichage">
+			<a href="{{ path('app_controle_pre_presse_index') }}" class="{{ vue == 'liste' ? 'actif' }}"><i class="fas fa-bars me-1"></i>Liste</a>
+			<a href="{{ path('app_controle_pre_presse_tableau') }}" class="{{ vue == 'tableau' ? 'actif' }}"><i class="fas fa-columns me-1"></i>Tableau</a>
+			<a href="{{ path('app_controle_pre_presse_relances') }}" class="{{ vue == 'relances' ? 'actif' }}"><i class="fas fa-bell me-1"></i>Relances</a>
+		</nav>
+	</div>
+</header>

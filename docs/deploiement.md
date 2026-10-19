@@ -210,6 +210,13 @@ Devis (docs/devis.md) : sur l'ERP local, `app:devis:relances` chaque heure. Sous
 0 * * * * cd /chemin/du/projet && php bin/console app:devis:relances -q >> var/log/devis-relances.log 2>&1
 ```
 
+Prépresse (docs/prepresse.md) : sur l'ERP local, `app:dossier-partage:importer` chaque minute (lancée par `scripts\windows\synchro.bat`) et `app:prepresse:relances` chaque heure (lancée par `scripts\windows\devis_relances.bat`). Sous Linux ou Mac, `crontab -e` :
+
+```
+* * * * * cd /chemin/du/projet && php bin/console app:dossier-partage:importer -q >> var/log/dossier-partage.log 2>&1
+5 * * * * cd /chemin/du/projet && php bin/console app:prepresse:relances -q >> var/log/prepresse-relances.log 2>&1
+```
+
 Rapports du jour, de la semaine et du mois par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : sur l'ERP local, `MAILER_DSN` et `MAILER_FROM_ADDRESS` (la même boîte que ci-dessus) dans son `.env.local`, et la tâche chaque quart d'heure. Sous Windows : `scripts\windows\installer_tache_rapports_mail.bat` ; sous Linux ou Mac, `crontab -e` :
 
 ```

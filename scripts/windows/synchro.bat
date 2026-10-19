@@ -31,4 +31,8 @@ set RESULTAT=%ERRORLEVEL%
 :: escalade au responsable puis a la direction, rappels des urgentes.
 "%PHP%" "%PROJET%\bin\console" app:notifications --no-interaction >> "%LOG_FILE%" 2>&1
 
+:: Prepresse (docs/prepresse.md) : fichiers du dossier partage nommes
+:: "CMD-numero_format" rattaches a leur commande.
+"%PHP%" "%PROJET%\bin\console" app:dossier-partage:importer --no-interaction >> "%LOG_FILE%" 2>&1
+
 exit /b %RESULTAT%

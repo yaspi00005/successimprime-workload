@@ -60,6 +60,8 @@ final class DemoCommand extends Command
         'DELETE FROM atelier_machine WHERE machine_id >= 900000',
         'DELETE FROM incident_machine WHERE machine_id >= 900000',
         'DELETE FROM entretien_machine WHERE machine_id >= 900000',
+        // Réservations de stock faites à la validation des commandes fictives (poste machiniste, prépresse) : avant leurs articles.
+        'DELETE FROM stock_reservation WHERE commande_detail_id >= 900000',
     ];
 
     public function __construct(
@@ -103,7 +105,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...AchatsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PrepresseDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...AchatsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -154,6 +156,8 @@ final class DemoCommand extends Command
             $this->lancer('app:messagerie:demo', [], $output);
             // Poste machiniste : huit travaux de demo.oumar, du fichier à vérifier au colis prêt (docs/poste-machiniste.md).
             $this->lancer('app:poste-machiniste:demo', [], $output);
+            // Prépresse : Fofana 2 fichiers sur 6, relances, BAT chez Samaké, vinyle prêt (docs/prepresse.md).
+            $this->lancer('app:prepresse:demo', [], $output);
             // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).
             $this->lancer('app:fiche-client:demo', [], $output);
             // Dossiers clients : faux serveur sous var/dossiers-demo, liés, proposés et à classer (docs/dossiers-clients.md).

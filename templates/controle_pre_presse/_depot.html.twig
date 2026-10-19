@@ -1,0 +1,64 @@
+{#
+	Fenêtre « Déposer les fichiers » (maquette PQ02, docs/prepresse.md) :
+	plusieurs fichiers d'un coup, chacun associé à un format de la commande
+	par le serveur (nom, dimensions, proportions). Les fichiers partent
+	par morceaux de 5 Mo (FichierUploadController : reprise, 750 Mo au
+	plus) ; l'onglet « Dossier partagé » propose les fichiers lourds déjà
+	posés sur le serveur. Rien n'est rattaché avant « Enregistrer ».
+#}
+{% set jetonModele = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' %}
+<dialog class="pq-modale" id="pq-depot"
+	data-csrf="{{ csrf_token('prepresse-depot') }}"
+	data-upload-csrf="{{ csrf_token('upload-commande') }}"
+	data-upload-initialiser="{{ path('app_fichier_upload_initialiser') }}"
+	data-upload-morceau="{{ path('app_fichier_upload_morceau', {jeton: jetonModele, index: 0})|replace({(jetonModele): '__JETON__'})|replace({'/morceaux/0': '/morceaux/__INDEX__'}) }}"
+	data-upload-supprimer="{{ path('app_fichier_upload_supprimer', {jeton: jetonModele})|replace({(jetonModele): '__JETON__'}) }}"
+	data-associer="{{ path('app_controle_pre_presse_depot_associer', {id: 0})|replace({'/0/': '/__ID__/'}) }}"
+	data-enregistrer="{{ path('app_controle_pre_presse_depot_enregistrer', {id: 0})|replace({'/0/': '/__ID__/'}) }}"
+	aria-labelledby="pq-depot-titre">
+	<form method="dialog" class="pq-modale-corps" data-pq-depot-form>
+		<div class="pq-modale-tete">
+			<div>
+				<h2 id="pq-depot-titre">Déposer les fichiers</h2>
+				<p data-pq-depot-sous-titre>Glissez plusieurs fichiers : chacun est associé automatiquement à un format de la commande.</p>
+			</div>
+			<button type="submit" class="pq-fermer" value="annuler" aria-label="Fermer">×</button>
+		</div>
+
+		<div class="pq-sources" role="tablist">
+			<button type="button" class="actif" data-pq-source="ordinateur" role="tab">Depuis l'ordinateur</button>
+			<button type="button" data-pq-source="partage" role="tab">Dossier partagé <span data-pq-partage-nombre></span></button>
+		</div>
+
+		<div data-pq-panneau="ordinateur">
+			<label class="pq-zone" data-pq-zone>
+				<input type="file" multiple hidden data-pq-fichiers>
+				<i class="fas fa-cloud-upload-alt me-1"></i><b>Glissez les fichiers ici</b> ou cliquez pour les choisir · PDF, images, fichiers de travail · 750 Mo au plus chacun
+			</label>
+		</div>
+		<div data-pq-panneau="partage" hidden>
+			<p class="pq-muet mb-2">Fichiers lourds posés dans le dossier partagé du serveur qui semblent être pour cette commande (numéro, client ou format dans le nom). Cochés, ils en sortent à l'enregistrement : déplacés vers la commande et renommés « commande_format ».</p>
+			<div data-pq-partage-liste></div>
+		</div>
+
+		<div class="table-responsive-sm">
+			<table class="pq-depot-table" data-pq-depot-table hidden>
+				<thead>
+					<tr><th>Fichier déposé</th><th></th><th>Format de la commande</th><th>Associé par</th><th>Dimensions du fichier</th></tr>
+				</thead>
+				<tbody data-pq-depot-lignes></tbody>
+			</table>
+		</div>
+		<p class="pq-erreur" data-pq-depot-erreur hidden></p>
+
+		<div class="pq-pied">
+			<div class="pq-resume" data-pq-resume><span class="pq-muet">Aucun fichier pour l'instant.</span></div>
+			<div class="pq-rangement" data-pq-rangement></div>
+		</div>
+
+		<div class="pq-modale-actions">
+			<button type="submit" class="pq-btn" value="annuler">Annuler</button>
+			<button type="button" class="pq-btn bleu" data-pq-enregistrer disabled>Enregistrer · passer en « À contrôler »</button>
+		</div>
+	</form>
+</dialog>

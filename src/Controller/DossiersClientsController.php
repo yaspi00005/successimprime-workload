@@ -22,6 +22,7 @@ use App\Service\DossiersClients\PublicationFichiers;
 use App\Service\DossiersClients\Rapprochement;
 use App\Service\DossiersClients\ReglagesDossiers;
 use App\Service\Http\Entree;
+use App\Service\Prepresse\DossierPartage;
 use App\Service\ProduitsClient\DossierClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -252,7 +253,7 @@ final class DossiersClientsController extends AbstractController
     /* ===================== DS03 : fichiers à classer ===================== */
 
     #[Route('/a-classer', name: 'a_classer', methods: ['GET'])]
-    public function aClasser(ClassementFichiers $classement): Response
+    public function aClasser(ClassementFichiers $classement, DossierPartage $partage): Response
     {
         if ($this->reglages->enLigne()) {
             return $this->render('dossiers_clients/en_ligne.html.twig', ['titre' => 'Fichiers à classer']);
@@ -278,6 +279,8 @@ final class DossiersClientsController extends AbstractController
             'peut_retirer' => $this->reglages->droits()->peutQuelquePart($moi->getRoles(), 'supprimer'),
             'confiance_masse' => ClassementFichiers::CONFIANCE_MASSE,
             'exemple' => NommageFichier::nomAutomatique('CM-0175', 'photo-facade', new \DateTimeImmutable('2026-10-19'), 'jpg'),
+            // Fichiers du dossier partagé de la prépresse sans numéro reconnu : listés ici, laissés en place.
+            'partage_non_reconnus' => $partage->nonReconnus(),
         ]);
     }
 

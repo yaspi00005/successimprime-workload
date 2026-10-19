@@ -113,6 +113,20 @@
 			</div>
 		{% endif %}
 
+		{# Dossier partagé de la prépresse : les fichiers lourds dont le nom n'a pas de numéro de commande reconnu (docs/prepresse.md). #}
+		{% if partage_non_reconnus is not empty %}
+			<section class="dc-carte" id="dossier-partage">
+				<h2>Dossier partagé · {{ partage_non_reconnus|length }} fichier{{ partage_non_reconnus|length > 1 ? 's' }} pas reconnu{{ partage_non_reconnus|length > 1 ? 's' }}</h2>
+				<p class="dc-legende">Fichiers lourds posés dans le dossier partagé de la prépresse, laissés où ils sont. Renommez-les « CMD-numéro_format » pour qu'ils se rattachent tout seuls, ou ouvrez la commande dans Prépresse et choisissez-les dans « Déposer › Dossier partagé ».</p>
+				<ul class="list-unstyled mb-2">
+					{% for f in partage_non_reconnus %}
+						<li class="mb-1" style="overflow-wrap: anywhere"><b>{{ f.nom }}</b> <span class="dc-legende">· {{ (f.taille / 1024 / 1024)|number_format(1, ',', ' ') }} Mo · {{ f.raison }}</span></li>
+					{% endfor %}
+				</ul>
+				{% if is_granted('ROLE_PREPRESSE') %}<a href="{{ path('app_fichier_dossier_partage') }}">Voir le dossier partagé ›</a>{% endif %}
+			</section>
+		{% endif %}
+
 		<div class="dc-trois">
 			<section class="dc-carte"><h2>Comment l'outil devine</h2><p>Numéro de client, de commande ou de devis dans le nom du fichier ou du dossier, nom du client dans le fichier, dossier d'origine (WhatsApp, scanner, téléchargements). Aucun accès à WhatsApp : seuls les fichiers enregistrés dans le dossier sont lus.</p></section>
 			<section class="dc-carte"><h2>Nom automatique</h2><code class="dc-exemple">{{ exemple }}</code><p class="dc-legende">renommé au classement, l'original est gardé</p></section>

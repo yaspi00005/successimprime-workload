@@ -61,7 +61,7 @@ final class RecetteAcces
         'app_immobilisations_registre' => 'Registre des biens confiés : chacun voit les siens, sans montant (DroitsPatrimoinePrimesTest).',
         'app_immobilisations_releve' => 'Relevés de compteurs des machines saisis par la production (autoriserReleve : ROLE_PRODUCTION_GERER).',
         'app_immobilisations_releves' => 'Relevés de compteurs des machines saisis par la production (autoriserReleve : ROLE_PRODUCTION_GERER).',
-        'app_fichier_dossier_partage' => 'Dossier partagé des fichiers : à la prépresse (denyAccessUnlessGranted ROLE_PREPRESSE), rangé sous Grille tarifaire.',
+        'app_fichier_dossier_partage' => 'Dossier partagé des fichiers : à la prépresse (denyAccessUnlessGranted ROLE_PREPRESSE), lien depuis Prépresse et BAT (docs/prepresse.md).',
         'app_mouvement_tresorerie_new' => 'Entrée, sortie ou virement saisi par la caisse sans « Trésorerie et soldes » (ROLE_TRESORERIE_SAISIR ou TRANSFERER) : aucun solde affiché, retour à la caisse (MouvementTresorerieController::new).',
     ];
 

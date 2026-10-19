@@ -311,6 +311,21 @@ final class CatalogueParametres
                 'note' => 'L\'outil de montage part de ces valeurs. Depuis un travail PAO, le bouton « Monter » charge le fichier, le format et la quantité, et range le PDF dans la commande.',
             ],
 
+            // Prépresse (docs/prepresse.md, maquette PQ04) : relances des fichiers manquants, faites par
+            // app:prepresse:relances. WhatsApp n'a pas d'API : le lien wa.me est préparé pour la prépresse.
+            'relances_fichiers' => [
+                'famille' => 'atelier', 'libelle' => 'Relances des fichiers', 'icone' => 'fa-paperclip',
+                'roles' => ['ROLE_ADMIN', 'ROLE_PREPRESSE'], 'route' => 'app_controle_pre_presse_relances',
+                'champs' => [
+                    ['cle' => 'j1', 'type' => 'interrupteur', 'libelle' => 'J+1 · WhatsApp avec la liste des fichiers manquants', 'aide' => 'Message prêt à ouvrir, la prépresse est prévenue', 'defaut' => true],
+                    ['cle' => 'j3', 'type' => 'interrupteur', 'libelle' => 'J+3 · WhatsApp et message dans l\'espace client', 'defaut' => true],
+                    ['cle' => 'j7', 'type' => 'interrupteur', 'libelle' => 'J+7 · Appel par la caisse, noté dans la fiche', 'aide' => 'Une ligne « Fichier manquant » dans Mes actions', 'defaut' => true],
+                    ['cle' => 'j15', 'type' => 'interrupteur', 'libelle' => 'J+15 · Commande mise en pause, date de livraison retirée', 'aide' => 'Remise quand le fichier arrive', 'defaut' => true],
+                ],
+                'motsCles' => ['Fichiers manquants · relances J+1, J+3, J+7', 'WhatsApp · lien wa.me', 'Commande en pause sans fichier'],
+                'note' => 'Comptées depuis la commande, une fois chacune. Si plusieurs étapes sont dues d\'un coup, seule la plus avancée est faite. La tâche app:prepresse:relances passe chaque heure.',
+            ],
+
             // « Mes produits » (docs/mes-produits.md, maquette MP02) et « Dossiers clients » (docs/dossiers-clients.md,
             // maquettes DS01 à DS04) : le dossier des clients sur le serveur de l'atelier. ERP local seulement : le
             // site n'en sait rien (ces réglages ne sont pas dans CatalogueSynchro::REGLAGES_PUBLICS). L'écran

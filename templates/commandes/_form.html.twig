@@ -1254,6 +1254,14 @@
 					</div>
 				{% endif %}
 
+				{% if commande.id is null %}
+					{# Pas de fichier à la caisse : le client reçoit tout de suite le lien d'envoi (docs/prepresse.md). #}
+					<label class="form-check mt-2 mb-0 small">
+						<input type="checkbox" class="form-check-input" name="fichier_a_venir" value="1">
+						<span class="form-check-label">Fichier à venir : envoyer au client le lien d'envoi sur WhatsApp</span>
+					</label>
+				{% endif %}
+
 				{% if not dejaConfirmee %}
 					<p class="si-note-confirmation">À la confirmation : numéro de commande, fiches de travail et lignes envoyées à la file de production.</p>
 				{% endif %}

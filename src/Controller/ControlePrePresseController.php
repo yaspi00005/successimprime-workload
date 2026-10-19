@@ -50,41 +50,7 @@ final class ControlePrePresseController extends AbstractController
     {
     }
 
-    #[Route('/', name: 'index', methods: ['GET'])]
-    public function index(
-        CommandesDetailsRepository $detailsRepository
-    ): Response {
-        /*
-         * Affiche uniquement les lignes ayant au moins un fichier
-         * ET nécessitant réellement un contrôle prépresse : une
-         * ligne en impression directe (prePresseNecessaire = false)
-         * ne doit jamais apparaître ici, même si un fichier y est
-         * rattaché.
-         */
-        $details = $detailsRepository
-            ->createQueryBuilder('detail')
-            ->addSelect('commande', 'produit', 'fichier')
-            ->innerJoin('detail.commande', 'commande')
-            ->leftJoin('detail.produit', 'produit')
-            ->leftJoin(
-                'detail.fichiers',
-                'fichier',
-                'WITH',
-                'fichier.actif = :actif'
-            )
-            ->andWhere('detail.prePresseNecessaire = :prepresseNecessaire')
-            ->setParameter('actif', true)
-            ->setParameter('prepresseNecessaire', true)
-            ->orderBy('commande.dateCommande', 'DESC')
-            ->addOrderBy('detail.id', 'DESC')
-            ->distinct()
-            ->getQuery()
-            ->getResult();
-
-        return $this->render('controle_pre_presse/index.html.twig', [
-            'details' => $details,
-        ]);
-    }
+    // La liste (maquette PQ01), le tableau, le dépôt groupé et les relances : PrepresseController.
 
     /*
      * ============================================================

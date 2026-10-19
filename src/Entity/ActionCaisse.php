@@ -34,6 +34,8 @@ class ActionCaisse
         'manuelle' => ['Action', 'M'],
         // Dossiers clients (docs/dossiers-clients.md, DS03) : fichier déposé dans « À classer » et pas classé depuis 24 h.
         'classer' => ['Fichier à classer', 'C'],
+        // Prépresse (docs/prepresse.md, PQ04) : J+7 sans fichier, la caisse appelle le client et note sa réponse.
+        'fichier' => ['Fichier manquant', 'F'],
     ];
 
     public const RESULTATS = [

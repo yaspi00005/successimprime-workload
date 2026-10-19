@@ -1,0 +1,86 @@
+{% extends 'controle_pre_presse/_base.html.twig' %}
+
+{#
+	Prépresse, une ligne par commande (maquette PQ01, docs/prepresse.md) :
+	les formats d'une commande regroupés, fichiers reçus x/y, ancienneté,
+	une action par commande. Onglets, recherche et tri se font dans la
+	page (prepresse.js) ; « ?onglet= », « ?q= » et « ?commande= » ouvrent
+	directement le bon onglet, la recherche ou la commande dépliée.
+#}
+
+{% block title %}Prépresse{% endblock %}
+
+{% block body %}
+	<div class="pq-page" data-sans-filtres data-pq-liste data-ids-a-controler="{{ idsAControler|join(',') }}" data-verifier-url="{{ path('app_controle_pre_presse_verifier_nouveaux') }}">
+		{% include 'demandes_conception/_bandeau.html.twig' %}
+		{% include 'produits_clients_prepresse/_bandeau.html.twig' %}
+		{% include 'controle_pre_presse/_entete.html.twig' with {titre: 'Prépresse', vue: 'liste'} %}
+
+		{# Indicateurs : un clic ouvre l'onglet correspondant. #}
+		<div class="pq-kpis">
+			<a class="pq-kpi rouge {{ onglet == 'sans_fichier' ? 'actif' }}" href="?onglet=sans_fichier" data-pq-onglet="sans_fichier">
+				<b>{{ indicateurs.sans_fichier.nombre }}</b><span>commande{{ indicateurs.sans_fichier.nombre > 1 ? 's' }} sans fichier</span><small>{{ indicateurs.sans_fichier.detail }}</small>
+			</a>
+			<a class="pq-kpi jaune" href="?onglet=a_controler" data-pq-onglet="a_controler">
+				<b>{{ indicateurs.a_controler.nombre }}</b><span>à contrôler</span><small>{{ indicateurs.a_controler.detail }}</small>
+			</a>
+			<a class="pq-kpi bleu" href="?onglet=bat" data-pq-onglet="bat">
+				<b>{{ indicateurs.bat.nombre }}</b><span>BAT en attente client</span><small>{{ indicateurs.bat.detail }}</small>
+			</a>
+			<a class="pq-kpi violet" href="?onglet=retour" data-pq-onglet="retour">
+				<b>{{ indicateurs.retours.nombre }}</b><span>retour{{ indicateurs.retours.nombre > 1 ? 's' }} machiniste</span><small>{{ indicateurs.retours.detail }}</small>
+			</a>
+			<a class="pq-kpi vert" href="{{ path('app_controle_pre_presse_tableau') }}">
+				<b>{{ indicateurs.valides.nombre }}</b><span>validé{{ indicateurs.valides.nombre > 1 ? 's' }} aujourd'hui</span><small>{{ indicateurs.valides.detail }}</small>
+			</a>
+		</div>
+
+		<section class="pq-carte">
+			<div class="pq-barre-outils">
+				<nav class="pq-onglets" aria-label="Où en sont les commandes">
+					{% for cle, libelle in onglets %}
+						<a href="?onglet={{ cle }}" data-pq-onglet="{{ cle }}" class="{{ cle == onglet ? 'actif' }}">{{ libelle }} · {{ nombres[cle] }}</a>
+					{% endfor %}
+				</nav>
+				<div class="pq-droite">
+					<label class="pq-muet mb-0" for="pq-tri">Trier :</label>
+					<select id="pq-tri" class="pq-tri" data-pq-tri>
+						<option value="anciens">les plus anciens</option>
+						<option value="recents">les plus récents</option>
+						<option value="livraison">livraison la plus proche</option>
+					</select>
+					{% if aRelancer > 0 %}
+						<a class="pq-btn vert" href="{{ path('app_controle_pre_presse_relances') }}"><i class="fab fa-whatsapp"></i>Relancer les {{ aRelancer }} client{{ aRelancer > 1 ? 's' }}</a>
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="pq-commandes" data-pq-commandes>
+				{% for c in commandes %}
+					{% include 'controle_pre_presse/_commande.html.twig' with {c: c, ouverte: ouverte == c.id} %}
+				{% endfor %}
+			</div>
+			<p class="pq-vide" data-pq-vide {{ commandes is not empty ? 'hidden' }}>Rien ici pour le moment.</p>
+			<button type="button" class="pq-plus" data-pq-plus hidden></button>
+
+			<div class="pq-partage">
+				<i class="fas fa-folder-open" aria-hidden="true"></i>
+				{% if partage > 0 %}
+					<span><b>{{ partage }} fichier{{ partage > 1 ? 's' }}</b> dans le dossier partagé, pas encore rattaché{{ partage > 1 ? 's' }}.</span>
+				{% else %}
+					<span>Dossier partagé vide : les fichiers lourds nommés « CMD-numéro_format » s'y rattachent tout seuls.</span>
+				{% endif %}
+				<a href="{{ path('app_fichier_dossier_partage') }}">Voir le dossier partagé ›</a>
+				<span class="pq-muet">·</span>
+				<a href="{{ path('app_dossiers_clients_a_classer') }}">Fichiers à classer ›</a>
+			</div>
+		</section>
+
+		{% include 'controle_pre_presse/_depot.html.twig' %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/prepresse.js') }}" defer></script>
+{% endblock %}

@@ -18,3 +18,7 @@ set LOG_FILE=%PROJET%\var\log\devis_relances.log
 if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"
 
 "%PHP%" "%PROJET%\bin\console" app:devis:relances >> "%LOG_FILE%" 2>&1
+
+:: Prepresse (docs/prepresse.md) : relances des fichiers manquants
+:: (J+1, J+3, J+7, J+15), meme tache, chaque heure.
+"%PHP%" "%PROJET%\bin\console" app:prepresse:relances >> "%LOG_FILE%" 2>&1

@@ -246,6 +246,22 @@ class Commandes implements AppartientASociete
     #[ORM\Column(options: ['default' => false])]
     private bool $soldeOuverture = false;
 
+    /*
+     * Prépresse (docs/prepresse.md, PQ04) : à J+15 sans fichier, la
+     * commande est mise en pause et sa date de livraison retirée ; la date
+     * gardée ici est remise quand le fichier arrive. Restent au local
+     * (CatalogueSynchro ne les liste pas).
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $enPauseFichiersLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $dateLivraisonAvantPause = null;
+
+    /** « Fichier à venir » coché à la saisie : le lien d'envoi part tout de suite au client. */
+    #[ORM\Column(name: 'fichier_a_venir', options: ['default' => false])]
+    private bool $fichierAVenir = false;
+
     public function __construct()
     {
         $this->dateCommande = new \DateTimeImmutable();
@@ -1014,5 +1030,56 @@ class Commandes implements AppartientASociete
     public function getLibelle(): string
     {
         return $this->soldeOuverture ? 'Solde d\'ouverture' : ($this->numero ?? 'Nouvelle commande');
+    }
+
+    public function getEnPauseFichiersLe(): ?\DateTimeImmutable
+    {
+        return $this->enPauseFichiersLe;
+    }
+
+    public function getDateLivraisonAvantPause(): ?\DateTimeImmutable
+    {
+        return $this->dateLivraisonAvantPause;
+    }
+
+    public function estEnPauseFichiers(): bool
+    {
+        return null !== $this->enPauseFichiersLe;
+    }
+
+    /** J+15 sans fichier : la date de livraison est retirée et gardée. */
+    public function mettreEnPauseFichiers(\DateTimeImmutable $le): static
+    {
+        if (null === $this->enPauseFichiersLe) {
+            $this->enPauseFichiersLe = $le;
+            $this->dateLivraisonAvantPause = null !== $this->dateLivraison ? \DateTimeImmutable::createFromInterface($this->dateLivraison) : null;
+            $this->dateLivraison = null;
+        }
+
+        return $this;
+    }
+
+    /** Le fichier est arrivé : la date de livraison gardée revient. */
+    public function reprendreApresPause(): static
+    {
+        if (null !== $this->enPauseFichiersLe) {
+            $this->dateLivraison = $this->dateLivraison ?? $this->dateLivraisonAvantPause;
+            $this->dateLivraisonAvantPause = null;
+            $this->enPauseFichiersLe = null;
+        }
+
+        return $this;
+    }
+
+    public function isFichierAVenir(): bool
+    {
+        return $this->fichierAVenir;
+    }
+
+    public function setFichierAVenir(bool $fichierAVenir): static
+    {
+        $this->fichierAVenir = $fichierAVenir;
+
+        return $this;
     }
 }

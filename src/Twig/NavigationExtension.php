@@ -109,7 +109,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Maintenance', 'route' => 'app_atelier_maintenance', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_maintenance', 'app_atelier_incident_', 'app_atelier_entretien_', 'app_atelier_tetes']],
             ['libelle' => 'Mon travail', 'route' => 'app_atelier_operateur', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_operateur']],
             ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
-            ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_']],
+            ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Demandes de conception', 'route' => 'app_demandes_conception_index', 'role' => ['ROLE_PREPRESSE', 'ROLE_COMMANDE'], 'prefixes' => ['app_demandes_conception_']],
             // Dossiers clients (docs/dossiers-clients.md, DS03) : graphiste et caisse par défaut (matrice « Qui voit quoi »).
@@ -152,7 +152,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
-            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_noms_commerciaux', 'app_categorie_produit_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
+            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_noms_commerciaux', 'app_categorie_produit_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_journal_activite_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
@@ -328,7 +328,8 @@ final class NavigationExtension extends AbstractExtension
         'app_user_' => 'reglages',
         'app_journal_activite_' => 'reglages',
         'app_parametres_paiement_' => 'reglages',
-        'app_fichier_dossier_partage' => 'reglages',
+        // Dossier partagé des fichiers lourds : rangé à la prépresse (docs/prepresse.md).
+        'app_fichier_dossier_partage' => 'atelier',
         'app_ecran_tv_' => 'reglages',
         'app_site_contenu_' => 'reglages',
         'app_appareils_' => 'reglages',

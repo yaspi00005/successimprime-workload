@@ -43,7 +43,7 @@
 		<h2>Entreprise</h2>
 		{% set cartes = [] %}
 		{% if s.montants %}
-			{% set cartes = cartes|merge([x.carte('CA facturé', x.f(e.ca, 'fcfa'), e.objectif_semaine is not null ? 'objectif ' ~ x.f(e.objectif_semaine, 'fcfa') ~ ' (' ~ (e.ca * 100 / e.objectif_semaine)|round ~ ' %)' : x.ecart(e.ca, e.ca_avant ?? null))]) %}
+			{% set cartes = cartes|merge([x.carte('CA facturé imprimerie', x.f(e.ca, 'fcfa'), e.objectif_semaine is not null ? 'objectif ' ~ x.f(e.objectif_semaine, 'fcfa') ~ ' (' ~ (e.ca * 100 / e.objectif_semaine)|round ~ ' %)' : x.ecart(e.ca, e.ca_avant ?? null))]) %}
 		{% endif %}
 		{% set cartes = cartes|merge([
 			x.carte('Commandes', e.commandes, x.ecart(e.commandes, e.commandes_avant)),
@@ -62,6 +62,17 @@
 				<tr>{% for c in rangee %}<td>{{ c }}</td>{% endfor %}</tr>
 				<tr><td colspan="4" style="height: 6px"></td></tr>
 			{% endfor %}
+		</table>
+
+		{# Imprimerie / hors imprimerie / total (docs/hors-imprimerie.md). #}
+		{% set rep = e.repartition %}
+		<table class="donnees">
+			<thead><tr><th>Activité</th>{% if s.montants %}<th class="droite">CA facturé</th><th class="droite">Part</th>{% endif %}<th class="droite">Commandes</th></tr></thead>
+			<tbody>
+				{% for cle, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', total: 'Total'} %}
+					<tr class="{{ loop.index is even ? 'paire' }}"><td>{% if cle == 'total' %}<strong>Total</strong>{% else %}{{ libelle }}{% endif %}</td>{% if s.montants %}<td class="droite">{{ x.f(rep[cle].ca, 'fcfa') }}</td><td class="droite">{{ cle == 'total' ? '100 %' : (rep[cle].part is not null ? rep[cle].part ~ ' %' : '—') }}</td>{% endif %}<td class="droite">{{ rep[cle].commandes }}</td></tr>
+				{% endfor %}
+			</tbody>
 		</table>
 
 		{% if s.montants and e.mois is not null %}

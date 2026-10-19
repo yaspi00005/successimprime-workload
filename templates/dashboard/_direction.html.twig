@@ -27,13 +27,15 @@
 			<div class="card si-kpi">
 				<div class="card-body">
 					<div class="d-flex justify-content-between align-items-start">
-						<span class="si-kpi-libelle">CA facturé du mois</span>
+						<span class="si-kpi-libelle">CA facturé du mois · imprimerie</span>
 						{{ d.courbe(indicateurs.ca.courbe, '#1FA855') }}
 					</div>
 					<div class="si-kpi-valeur">{{ d.montant(indicateurs.ca.valeur) }}</div>
 					{{ d.tendance(indicateurs.ca.variation, 'vs mois dernier') }}
 					{% if indicateurs.ca.variation is null %}<span class="si-tendance text-muted">Pas de comparaison possible</span>{% endif %}
 					{% if indicateurs.ca.variationAnPasse is not null %}<div class="si-tendance-an">{{ indicateurs.ca.variationAnPasse > 0 ? '+' }}{{ indicateurs.ca.variationAnPasse }} % vs {{ 'now'|date_modify('-1 year')|date('m/Y') }}</div>{% endif %}
+					{# Ventes hors imprimerie (docs/hors-imprimerie.md) : à part du CA de l'imprimerie. #}
+					{% if indicateurs.ca.hors|default(0) > 0 %}<div class="si-tendance-an">Hors imprimerie : {{ d.montant(indicateurs.ca.hors) }}</div>{% endif %}
 				</div>
 			</div>
 		</div>
@@ -119,7 +121,7 @@
 		<div class="{{ peutVoirProduction ? 'col-xl-4' : 'col-12' }} d-none d-md-block">
 			<div class="card si-bloc">
 				<div class="si-bloc-tete">
-					<h4>Croissance du CA</h4>
+					<h4>Croissance du CA · imprimerie</h4>
 					<span class="si-bloc-note">12 mois</span>
 				</div>
 				<div class="si-barres">

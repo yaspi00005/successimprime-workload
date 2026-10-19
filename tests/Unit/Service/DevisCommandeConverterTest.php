@@ -60,6 +60,18 @@ final class DevisCommandeConverterTest extends TestCase
         self::assertFalse((new DevisCommandeConverter($this->em()))->convertir($sansFrais)->estALivrer(), 'sans frais : retrait, comme avant');
     }
 
+    public function testLaCaseHorsImprimerieSuitLeDevis(): void
+    {
+        $devis = (new Devis())->setStatut(Devis::STATUT_ACCEPTE)->setHorsImprimerie(true)->setObjet('Matériel informatique');
+        $devis->addDevisDetail((new DevisDetails())->setDesignation('Tablettes')->setQuantite(5));
+
+        self::assertTrue((new DevisCommandeConverter($this->em()))->convertir($devis)->isHorsImprimerie());
+
+        $imprimerie = (new Devis())->setStatut(Devis::STATUT_ACCEPTE);
+        $imprimerie->addDevisDetail((new DevisDetails())->setDesignation('Flyers A5')->setQuantite(1));
+        self::assertFalse((new DevisCommandeConverter($this->em()))->convertir($imprimerie)->isHorsImprimerie());
+    }
+
     private function em(): EntityManagerInterface
     {
         $commande = null;

@@ -58,11 +58,15 @@ final class TableauDeBordService
         $debutAnPasse = $debutMois->modify('-1 year');
         $debutSerie = $maintenant->setTime(0, 0)->modify('monday this week')->modify('-7 weeks');
 
-        $factures = $this->facturesDepuis(min($debutSerie, $debutAnPasse));
+        // CA de l'imprimerie ; le hors imprimerie (docs/hors-imprimerie.md) est rendu à part.
+        $toutes = $this->facturesDepuis(min($debutSerie, $debutAnPasse));
+        $factures = array_values(array_filter($toutes, static fn (array $f): bool => !$f['hors']));
+        $horsImprimerie = array_values(array_filter($toutes, static fn (array $f): bool => $f['hors']));
         $encaissements = $this->mouvementsDepuis(min($debutSerie, $debutMoisPrecedent), MouvementTresorerie::TYPE_ENCAISSEMENT);
         $decaissements = $this->mouvementsDepuis($debutMois, MouvementTresorerie::TYPE_DECAISSEMENT);
 
         $caMois = self::somme($factures, $debutMois, $maintenant);
+        $horsMois = self::somme($horsImprimerie, $debutMois, $maintenant);
         $encaisseMois = self::somme($encaissements, $debutMois, $maintenant);
         $decaisseMois = self::somme($decaissements, $debutMois, $maintenant);
 
@@ -72,11 +76,13 @@ final class TableauDeBordService
                 'variation' => self::variation($caMois, self::somme($factures, $debutMoisPrecedent, $maintenant->modify('-1 month'))),
                 'variationAnPasse' => self::variation($caMois, self::somme($factures, $debutAnPasse, $maintenant->modify('-1 year'))),
                 'courbe' => self::pointsCourbe(self::serieHebdomadaire($factures, $debutSerie, 8)),
+                'hors' => $horsMois,
             ],
             'encaisse' => [
                 'valeur' => $encaisseMois,
                 'variation' => self::variation($encaisseMois, self::somme($encaissements, $debutMoisPrecedent, $maintenant->modify('-1 month'))),
-                'taux' => $caMois > 0 ? (int) round($encaisseMois * 100 / $caMois) : null,
+                // Les encaissements comptent toutes les ventes : rapportés à tout le CA facturé.
+                'taux' => $caMois + $horsMois > 0 ? (int) round($encaisseMois * 100 / ($caMois + $horsMois)) : null,
                 'courbe' => self::pointsCourbe(self::serieHebdomadaire($encaissements, $debutSerie, 8)),
             ],
             'solde' => [
@@ -193,7 +199,7 @@ final class TableauDeBordService
     }
 
     /**
-     * CA des 12 derniers mois, le mois en cours en dernier.
+     * CA de l'imprimerie des 12 derniers mois, le mois en cours en dernier.
      *
      * @return list<array{libelle: string, montant: int, hauteur: int, courant: bool}>
      */
@@ -201,7 +207,9 @@ final class TableauDeBordService
     {
         $debut = $maintenant->modify('first day of this month')->setTime(0, 0)->modify('-11 months');
 
-        return self::serieMensuelle($this->facturesDepuis($debut), $debut, 12);
+        $imprimerie = array_values(array_filter($this->facturesDepuis($debut), static fn (array $f): bool => !$f['hors']));
+
+        return self::serieMensuelle($imprimerie, $debut, 12);
     }
 
     /**
@@ -306,7 +314,8 @@ final class TableauDeBordService
         }
 
         if (null !== $finances) {
-            $ca = (int) $finances['indicateurs']['ca']['valeur'];
+            // Les créances comptent toutes les factures : le CA hors imprimerie compris.
+            $ca = (int) $finances['indicateurs']['ca']['valeur'] + (int) ($finances['indicateurs']['ca']['hors'] ?? 0);
             $taux = $finances['indicateurs']['encaisse']['taux'];
             $creances = $finances['creances'];
 
@@ -465,15 +474,17 @@ final class TableauDeBordService
     }
 
     /**
-     * Factures emises (le CA facture), hors brouillons et annulees.
+     * Factures emises (le CA facture), hors brouillons et annulees ;
+     * « hors » : vente hors imprimerie (case de la commande).
      *
-     * @return list<array{date: \DateTimeInterface, montant: int}>
+     * @return list<array{date: \DateTimeInterface, montant: int, hors: bool}>
      */
     private function facturesDepuis(\DateTimeImmutable $debut): array
     {
         $resultats = $this->entityManager->createQueryBuilder()
-            ->select('f.dateFacture AS date', 'f.totalTtc AS montant')
+            ->select('f.dateFacture AS date', 'f.totalTtc AS montant', 'c.horsImprimerie AS hors')
             ->from(Factures::class, 'f')
+            ->leftJoin('f.commande', 'c')
             ->andWhere('f.etat = :emise')
             ->andWhere('f.typeDocument = :facture')
             ->andWhere('f.dateFacture >= :debut')
@@ -483,7 +494,7 @@ final class TableauDeBordService
             ->getQuery()
             ->getArrayResult();
 
-        return array_map(static fn (array $ligne): array => ['date' => $ligne['date'], 'montant' => (int) $ligne['montant']], $resultats);
+        return array_map(static fn (array $ligne): array => ['date' => $ligne['date'], 'montant' => (int) $ligne['montant'], 'hors' => (bool) $ligne['hors']], $resultats);
     }
 
     /**

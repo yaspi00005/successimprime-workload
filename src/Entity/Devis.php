@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\HorsImprimerieTrait;
 use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\PublicIdTrait;
 use App\Entity\Trait\RemiseGlobaleDocumentTrait;
@@ -25,6 +26,7 @@ class Devis implements AppartientASociete
     use SocieteTrait;
     use CodePromoDocumentTrait;
     use LivraisonObjetDocumentTrait;
+    use HorsImprimerieTrait;
     use RemiseGlobaleDocumentTrait;
     // Conditions, versions, ouvertures, réponse du client et relances (docs/devis.md).
     use SuiviDevisTrait;

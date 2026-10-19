@@ -224,7 +224,9 @@ final class DevisCommandeConverter
          */
         $commande
             ->setFraisLivraison($devis->getFraisLivraison())
-            ->setObjet($devis->getObjet());
+            ->setObjet($devis->getObjet())
+            // Vente hors imprimerie (docs/hors-imprimerie.md) : la commande suit le devis.
+            ->setHorsImprimerie($devis->isHorsImprimerie());
 
         if ($devis->getFraisLivraison() > 0) {
             $commande->setModeLivraison(Commandes::LIVRAISON_DOMICILE);

@@ -189,6 +189,8 @@ final class RapportSemaine
             'creances' => null,
             'factures_echues' => 0,
             'ca_30_jours' => 0,
+            // Imprimerie / hors imprimerie / total (docs/hors-imprimerie.md) : le CA avec les montants seulement.
+            'repartition' => $this->objectifs->repartition($debut, $fin, $sections['montants']),
         ];
 
         // Par agent : commandes (chiffres globaux), et CA avec les montants.
@@ -206,7 +208,8 @@ final class RapportSemaine
             $e['ca_avant'] = (int) ($this->objectifs->realises('ca', 'global', $avant->debut, $avant->fin())[0] ?? 0);
             $e['objectif_semaine'] = Objectifs::prorata($this->objectifs->parMois('ca:global:0', $debut, $fin), $debut, $fin);
             $e['mois'] = $this->moisAuDimanche($semaine, 'ca:global:0', null);
-            $e['ca_30_jours'] = (int) ($this->objectifs->realises('ca', 'global', $fin->modify('-30 days'), $fin)[0] ?? 0);
+            // Comparé aux créances, qui comptent toutes les factures : le CA hors imprimerie compris.
+            $e['ca_30_jours'] = (int) ($this->objectifs->realises('ca', 'global', $fin->modify('-30 days'), $fin, null, Activite::TOUT)[0] ?? 0);
 
             $categories = $this->objectifs->realises('ca', 'categorie', $debut, $fin);
             arsort($categories);
@@ -220,7 +223,7 @@ final class RapportSemaine
         if ($sections['encaissement']) {
             $e['encaisse'] = $this->objectifs->encaisse($debut, $fin);
             $e['taux_encaissement'] = $this->objectifs->tauxEncaissement($debut, $fin);
-            $facture = (int) ($this->objectifs->realises('ca', 'global', $debut, $fin)[0] ?? 0);
+            $facture = (int) ($this->objectifs->realises('ca', 'global', $debut, $fin, null, Activite::TOUT)[0] ?? 0);
             if (0 === $facture) {
                 $e['taux_encaissement'] = null;
             }

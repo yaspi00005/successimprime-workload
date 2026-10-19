@@ -44,7 +44,10 @@ ACTIVITÉ
 
 {% if r.ventes is not null %}
 CHIFFRE D’AFFAIRES
-- CA facturé : {{ m.v(r.ventes.facture, 'f') }}{{ t.pct(r.ventes.facture, r.ventes.avant, comp) }}{% if r.ventes.objectif is not null %}, objectif {{ m.v(r.ventes.objectif, 'f') }} ({{ r.ventes.part }} %){% endif %}
+- CA facturé imprimerie : {{ m.v(r.ventes.facture, 'f') }}{{ t.pct(r.ventes.facture, r.ventes.avant, comp) }}{% if r.ventes.objectif is not null %}, objectif {{ m.v(r.ventes.objectif, 'f') }} ({{ r.ventes.part }} %){% endif %}
+{% if r.ventes.hors|default(0) > 0 %}
+- Hors imprimerie : {{ m.v(r.ventes.hors, 'f') }} · total {{ m.v(r.ventes.facture + r.ventes.hors, 'f') }}
+{% endif %}
 
 {% if r.ventes.mois is not null %}- CA {{ r.ventes.de_mois }} à ce jour : {{ m.v(r.ventes.mois.realise, 'f') }}{% if r.ventes.mois.objectif is not null %} sur {{ m.v(r.ventes.mois.objectif, 'f') }} ({{ r.ventes.mois.part }} %){% endif %}
 

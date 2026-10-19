@@ -72,6 +72,8 @@
 			<a href="{{ path('app_devis_index') }}" class="si-dv-retour" aria-label="Retour à la liste"><i class="fas fa-chevron-left"></i></a>
 			<h1>{{ devis.numero ?: '#' ~ devis.id }}{% if devis.objet %} · {{ devis.objet }}{% endif %}</h1>
 			<span class="si-dv-statut si-dv-st-{{ cleStatut }}">{{ devis.statutLibelle }}</span>
+			{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part, suit le devis à la commande. #}
+			{% if devis.horsImprimerie %}<span class="si-badge-hors" title="Vente de matériel, informatique… : comptée à part de l'imprimerie dans les statistiques">Hors imprimerie</span>{% endif %}
 			<span class="si-dv-fiche-sous">
 				{%- if devis.version > 1 %}version {{ devis.version }}{% endif -%}
 				{%- if devis.version > 1 and devis.dateValidite and (enAttente or devis.statut == 'expire') %} · {% endif -%}

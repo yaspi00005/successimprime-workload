@@ -254,6 +254,14 @@ class CommandesType extends AbstractType
                 ],
             ])
 
+            // Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part dans les statistiques ;
+            // ses lignes ne passent ni par la prépresse ni par l'atelier (HorsImprimerieListener).
+            ->add('horsImprimerie', CheckboxType::class, [
+                'label' => 'Hors imprimerie',
+                'required' => false,
+                'help' => 'Vente de matériel, informatique… : comptée à part de l\'imprimerie dans les statistiques',
+            ])
+
             // « Commandé par » : la personne du client qui commande (une entreprise en a souvent plusieurs).
             // Pour une commande passée en ligne, c'est déjà le nom de la personne connectée.
             ->add('demandeePar', TextType::class, [

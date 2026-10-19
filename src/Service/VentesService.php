@@ -237,6 +237,7 @@ final class VentesService
             'agent' => self::agent($devis->getAgents()),
             'montant' => $devis->getTotalTtc(),
             'statut' => self::statutDevis($devis->getStatut(), $devis->getDateDevis(), $maintenant),
+            'hors' => $devis->isHorsImprimerie(),
         ];
     }
 
@@ -268,6 +269,7 @@ final class VentesService
             'montant' => $commande->getTotalTtc(),
             'statut' => $statut,
             'enRetard' => $enRetard,
+            'hors' => $commande->isHorsImprimerie(),
         ];
     }
 

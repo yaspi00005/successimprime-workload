@@ -137,6 +137,13 @@ class DevisType extends AbstractType
                 ],
             ])
 
+            // Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part dans les statistiques ; suit le devis à la commande.
+            ->add('horsImprimerie', CheckboxType::class, [
+                'label' => 'Hors imprimerie',
+                'required' => false,
+                'help' => 'Vente de matériel, informatique… : comptée à part de l\'imprimerie dans les statistiques',
+            ])
+
             // « À l'attention de » : la personne du client qui demande (une entreprise en a souvent plusieurs).
             ->add('interlocuteur', TextType::class, [
                 'label' => 'À l\'attention de',

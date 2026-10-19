@@ -1120,6 +1120,13 @@
 						{% for objet in objets_suggeres() %}<option value="{{ objet }}"></option>{% endfor %}
 					</datalist>
 				</div>
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part de l'imprimerie dans les statistiques ; ses lignes sautent la prépresse et l'atelier. #}
+				<div class="form-check mt-2 si-hors-imprimerie">
+					{{ form_widget(form.horsImprimerie, {attr: {class: 'form-check-input'}}) }}
+					<label class="form-check-label fw-semibold" for="{{ form.horsImprimerie.vars.id }}">Hors imprimerie</label>
+					<small class="d-block text-muted">{{ form.horsImprimerie.vars.help }} (pas de prépresse ni d'atelier).</small>
+					{{ form_errors(form.horsImprimerie) }}
+				</div>
 				{% include 'partials/_interlocuteur.html.twig' with {champ: form.demandeePar, libelle: 'Commandé par'} %}
 			</div>
 

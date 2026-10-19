@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Security\AccesEnLigne;
 use App\Service\Http\Entree;
+use App\Service\Statistiques\Activite;
 use App\Service\Statistiques\Export\ExportExcel;
 use App\Service\Statistiques\Export\ExportPdf;
 use App\Service\Statistiques\Export\ExportsStatistiques;
@@ -22,6 +23,9 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * vente demandent ROLE_STATS_VENTES, la marge ROLE_COUT_MARGE, le taux
  * d'encaissement ROLE_PAIEMENT_VOIR. La page et ses exports passent par
  * donnees() : un chiffre masqué n'est ni à l'écran ni dans le fichier.
+ *
+ * Filtre « activite » (docs/hors-imprimerie.md) : l'imprimerie par défaut,
+ * le hors imprimerie ou tout ; la carte de répartition montre les deux.
  */
 #[Route('/statistiques', name: 'app_statistiques_')]
 #[IsGranted('ROLE_STATS_GLOBAL')]
@@ -47,7 +51,8 @@ final class StatistiquesRapportsController extends AbstractController
     public function exporter(string $format, Request $request, ExportExcel $excel, ExportPdf $pdf, EntityManagerInterface $em): Response
     {
         $d = $this->donnees($request);
-        $periode = StatistiquesRapports::PERIODES[$d['periode']].' depuis le '.$d['debut']->format('d/m/Y');
+        $periode = StatistiquesRapports::PERIODES[$d['periode']].' depuis le '.$d['debut']->format('d/m/Y')
+            .(Activite::IMPRIMERIE !== $d['activite'] ? ' · '.Activite::LIBELLES[$d['activite']] : '');
 
         return $this->reponseExport(ExportsStatistiques::rapports($d, $d['droits'], $periode), $format, $excel, $pdf, $em);
     }
@@ -63,10 +68,13 @@ final class StatistiquesRapportsController extends AbstractController
         }
         $droits = $this->droitsStatistiques();
         $maintenant = new \DateTimeImmutable();
-        $d = $this->rapports->donnees($maintenant, $mois, $droits['marges']);
+        $d = $this->rapports->donnees($maintenant, $mois, $droits['marges'], Activite::lire($request->query->get('activite')));
 
         if (!$droits['ventes']) {
             unset($d['kpi']['ca'], $d['kpi']['ca_evolution'], $d['kpi']['panier'], $d['kpi']['factures'], $d['mois'], $d['top_client'], $d['top_agent']);
+            foreach (['imprimerie', 'hors', 'total'] as $cote) {
+                unset($d['repartition'][$cote]['ca'], $d['repartition'][$cote]['part']);
+            }
         }
 
         // Objectifs : tables locales, pas sur le site en ligne.

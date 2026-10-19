@@ -339,6 +339,8 @@
 .si-dv-entete .form-label,
 .si-dv-entete label { font-size: 0.78rem; color: var(--dv-doux); font-weight: 600; }
 .si-dv-entete-objet { grid-column: 1 / -1; }
+/* Case « Hors imprimerie » (docs/hors-imprimerie.md) : toute la largeur, sous l'objet. */
+.si-dv-entete-hors { grid-column: 1 / -1; margin-top: 0 !important; }
 .si-dv-entete .js-validite-date { display: block; margin-top: 3px; font-size: 0.74rem; }
 .si-dv-entete .si-client-carte { margin: 0; }
 

@@ -110,7 +110,7 @@
 							<tr>
 								<td class="si-dv-numero" data-label="N°"><a href="{{ path('app_devis_show', {id: d.id}) }}">{{ d.numero ?: '#' ~ d.id }}</a></td>
 								<td class="si-dv-client" data-label="Client"><span class="si-dv-avatar si-dv-a{{ (d.clients ? d.clients.id : 0) % 6 }}">{{ _self.initiales(nom) }}</span>{{ nom }}</td>
-								<td class="si-dv-objet" data-label="Objet">{{ objets[d.id] ?: '—' }}</td>
+								<td class="si-dv-objet" data-label="Objet">{{ objets[d.id] ?: '—' }}{% if d.horsImprimerie %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}</td>
 								<td class="text-end si-dv-montant" data-label="Montant">{{ d.totalTtc|number_format(0, ',', ' ') }} F</td>
 								<td data-label="Statut"><span class="si-dv-statut si-dv-st-{{ cleStatut }}">{{ d.statutLibelle }}</span></td>
 								<td class="si-dv-suivi si-dv-ton-{{ suivi.ton }}" data-label="Suivi">{{ suivi.texte }}</td>

@@ -365,6 +365,8 @@ final class CatalogueSynchro
                     'codeSaisi', 'remiseCodePromo',
                     // Frais de livraison (déjà dans les totaux) et objet (docs/documents-livraisons.md).
                     'fraisLivraison', 'objet',
+                    // Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part dans les statistiques.
+                    'horsImprimerie',
                     // Commande en ligne (docs/espace-client.md) : délai demandé (standard, express) et créneau de livraison.
                     'delaiProduction', 'creneauLivraison',
                     // Livraison programmée par le client dans son espace (maquette DB09).
@@ -376,7 +378,8 @@ final class CatalogueSynchro
                 // Le code promo d'une commande passée en ligne n'est retenu que par l'imprimerie, à la confirmation.
                 // Les frais de livraison d'une commande passée en ligne viennent du réglage « Frais de livraison en ligne » :
                 // contrôlés à l'arrivée (Synchro::verifierFraisEnLigne), l'imprimerie peut les changer à la confirmation.
-                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
+                // Une commande passée en ligne est toujours de l'imprimerie : seule l'imprimerie la classe « hors imprimerie ».
+                'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null, 'horsImprimerie' => false],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
                     // Le client programme, puis reprogramme tant que le livreur n'est pas parti (ProgrammationLivraison::appliquer).
@@ -470,7 +473,7 @@ final class CatalogueSynchro
                 'champs' => [
                     'numero', 'emetteur', 'dateDevis', 'remise', 'tva', 'totalHt', 'totalTtc', 'montantApayer', 'deleted', 'statut', 'etat',
                     'tokenAuthenticite', 'facturerAUnTiers', 'nomFacturation', 'adresseFacturation', 'telephoneFacturation', 'emailFacturation',
-                    'codeSaisi', 'remiseCodePromo', 'fraisLivraison', 'objet',
+                    'codeSaisi', 'remiseCodePromo', 'fraisLivraison', 'objet', 'horsImprimerie',
                     // Personne du client à qui le devis s'adresse (« À l'attention de »).
                     'interlocuteur',
                     // Suivi du devis (docs/devis.md) : versions, validité, conditions, envoi, ouvertures, réponse.

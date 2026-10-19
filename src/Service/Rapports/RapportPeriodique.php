@@ -26,6 +26,7 @@ use App\Service\Finances\VueEnsemble;
 use App\Service\Parametres\Parametres;
 use App\Service\Pointage\CalculPointage;
 use App\Service\Pointage\Pointages;
+use App\Service\Statistiques\Activite;
 use App\Service\Statistiques\Objectifs;
 use App\Service\TableauDeBordService;
 use App\Service\VentesService;
@@ -281,6 +282,8 @@ final class RapportPeriodique
                 'avant' => (int) ($this->objectifs->realises('ca', 'global', $c->debut, $c->fin)[0] ?? 0),
                 'objectif' => $objectif,
                 'part' => null !== $objectif && $objectif > 0 ? (int) round($facture * 100 / $objectif) : null,
+                // CA facturé hors imprimerie (docs/hors-imprimerie.md), compté à part de l'objectif.
+                'hors' => (int) ($this->objectifs->realises('ca', 'global', $p->debut, $p->fin, null, Activite::HORS)[0] ?? 0),
                 // Le mois en cours, arrêté à la fin de la période (rapports du jour et de la semaine).
                 'mois' => PeriodeRapport::MOIS === $p->type ? null : $this->avancementDuMois('ca', $mois, $arret),
                 // « CA d'octobre 2026 à ce jour ».
@@ -606,7 +609,7 @@ final class RapportPeriodique
             return array_map(static fn (array $l): array => ['libelle' => Paiements::MODES_LABELS[$l['mode']] ?? (string) $l['mode'], 'montant' => (int) $l['montant'], 'nombre' => (int) $l['nombre']], $lignes);
         };
         $modes = $parMode($p);
-        $facture = (int) ($this->objectifs->realises('ca', 'global', $p->debut, $p->fin)[0] ?? 0);
+        $facture = (int) ($this->objectifs->realises('ca', 'global', $p->debut, $p->fin, null, Activite::TOUT)[0] ?? 0);
 
         $attente = $this->em->createQueryBuilder()
             ->select('COUNT(p.id) AS nombre', 'COALESCE(SUM(p.montant), 0) AS montant')

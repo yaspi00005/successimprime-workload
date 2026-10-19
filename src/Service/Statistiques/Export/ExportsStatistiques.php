@@ -39,6 +39,9 @@ final class ExportsStatistiques
         }
 
         $tableaux = [new Tableau('Indicateurs', ['Indicateur' => 'texte', 'Valeur' => 'entier', 'Unité' => 'texte', 'Évolution' => 'texte'], $indicateurs)];
+        if (isset($d['repartition'])) {
+            $tableaux[] = self::tableauRepartition($d['repartition']);
+        }
 
         if ($droits['ventes'] && isset($d['mois'])) {
             $avecObjectif = isset($d['objectifs_mois']);
@@ -129,6 +132,33 @@ final class ExportsStatistiques
     }
 
     /**
+     * « Imprimerie / Hors imprimerie / Total » (Activite::repartition) :
+     * le CA et la marge seulement s'ils sont dans les données (leur droit).
+     *
+     * @param array{imprimerie: array<string, mixed>, hors: array<string, mixed>, total: array<string, mixed>} $rep
+     */
+    public static function tableauRepartition(array $rep): Tableau
+    {
+        $avecCa = \array_key_exists('ca', $rep['total']);
+        $avecMarge = \array_key_exists('marge', $rep['total']);
+        $colonnes = ['Activité' => 'texte'] + ($avecCa ? ['CA facturé' => 'fcfa', 'Part' => 'pourcent'] : []) + ($avecMarge ? ['Marge brute' => 'pourcent'] : []) + ['Commandes' => 'entier'];
+        $ligne = static fn (string $libelle, array $l, ?int $part): array => array_merge(
+            [$libelle],
+            $avecCa ? [$l['ca'], $part] : [],
+            $avecMarge ? [$l['marge']] : [],
+            [$l['commandes']],
+        );
+
+        return new Tableau(
+            'Imprimerie et hors imprimerie',
+            $colonnes,
+            [$ligne('Imprimerie', $rep['imprimerie'], $rep['imprimerie']['part'] ?? null), $ligne('Hors imprimerie', $rep['hors'], $rep['hors']['part'] ?? null)],
+            $ligne('Total', $rep['total'], $avecCa ? 100 : null),
+            'Hors imprimerie : ventes de matériel, informatique… cochées sur le devis ou la commande.',
+        );
+    }
+
+    /**
      * Agents, caisse et production (statistiques globales).
      *
      * @param array<string, mixed> $d
@@ -138,6 +168,9 @@ final class ExportsStatistiques
     {
         $montant = $droits['ventes'];
         $tableaux = [];
+        if (isset($d['repartition'])) {
+            $tableaux[] = self::tableauRepartition($d['repartition']);
+        }
 
         $tableaux[] = new Tableau(
             'Ventes par agent',

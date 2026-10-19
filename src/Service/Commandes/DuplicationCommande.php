@@ -96,6 +96,7 @@ final class DuplicationCommande
             ->setTva($source->getTva())
             ->setRemise($source->getRemise())
             ->setObjet($source->getObjet())
+            ->setHorsImprimerie($source->isHorsImprimerie())
             ->setModeLivraison($source->getModeLivraison())
             ->setAdresseLivraison($source->getAdresseLivraison())
             ->setFraisLivraison($source->getFraisLivraison());

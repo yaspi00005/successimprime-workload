@@ -6,7 +6,9 @@ use App\Security\AccesEnLigne;
 use App\Service\EvolutionTemporelleService;
 use App\Service\Statistiques\Export\ExportExcel;
 use App\Service\Statistiques\Export\ExportPdf;
+use App\Service\Statistiques\Activite;
 use App\Service\Statistiques\Export\ExportsStatistiques;
+use App\Service\Statistiques\Objectifs;
 use App\Service\Statistiques\StatistiquesArticlesService;
 use App\Service\Statistiques\StatistiquesGlobalesService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -23,6 +25,10 @@ use Symfony\Component\Routing\Attribute\Route;
  * demandent en plus ROLE_STATS_VENTES, les encaissements par caissière
  * ROLE_PAIEMENT_VOIR : sans le droit, ils ne sont ni calculés ni envoyés
  * à la page, aux graphiques ou aux exports (donnees()).
+ *
+ * Ventes par agent, top produits et ventes d'articles comptent
+ * l'imprimerie seule, sauf filtre « activite » (docs/hors-imprimerie.md) ;
+ * la carte de répartition montre l'imprimerie, le hors imprimerie et le total.
  */
 #[Route('/statistiques/globales', name: 'app_statistiques_globales_')]
 final class StatistiquesController extends AbstractController
@@ -34,6 +40,7 @@ final class StatistiquesController extends AbstractController
         private readonly StatistiquesArticlesService $statistiquesArticlesService,
         private readonly EvolutionTemporelleService $evolutionTemporelleService,
         private readonly AccesEnLigne $acces,
+        private readonly Objectifs $objectifs,
     ) {
     }
 
@@ -47,7 +54,8 @@ final class StatistiquesController extends AbstractController
     public function exporter(string $format, Request $request, ExportExcel $excel, ExportPdf $pdf, EntityManagerInterface $em): Response
     {
         $d = $this->donnees($request);
-        $periode = \sprintf('du %s au %s', (new \DateTimeImmutable($d['filtres']['date_debut']))->format('d/m/Y'), (new \DateTimeImmutable($d['filtres']['date_fin']))->format('d/m/Y'));
+        $periode = \sprintf('du %s au %s', (new \DateTimeImmutable($d['filtres']['date_debut']))->format('d/m/Y'), (new \DateTimeImmutable($d['filtres']['date_fin']))->format('d/m/Y'))
+            .(Activite::IMPRIMERIE !== $d['activite'] ? ' · '.Activite::LIBELLES[$d['activite']] : '');
 
         return $this->reponseExport(ExportsStatistiques::globales($d, $d['droits'], $periode), $format, $excel, $pdf, $em);
     }
@@ -68,15 +76,19 @@ final class StatistiquesController extends AbstractController
         $granulariteStock = $this->evolutionTemporelleService->normaliserGranularite(
             $request->query->get('granularite_stock')
         );
-        $parAgent = $this->statistiquesGlobalesService->ventesParAgent($debut, $fin);
-        $ventesArticles = $this->statistiquesArticlesService->ventesArticles($debut, $fin);
+        $activite = Activite::lire($request->query->get('activite'));
+        $parAgent = $this->statistiquesGlobalesService->ventesParAgent($debut, $fin, $activite);
+        $ventesArticles = $this->statistiquesArticlesService->ventesArticles($debut, $fin, 15, $activite);
 
         return [
             'parAgent' => $droits['ventes'] ? $parAgent : $sansMontant($parAgent),
             'parCaissiere' => $droits['paiements'] ? $this->statistiquesGlobalesService->encaissementsParCaissiere($debut, $fin) : null,
             'parProduction' => $this->statistiquesGlobalesService->productionParAgent($debut, $fin),
             'parMachine' => $this->statistiquesGlobalesService->rendementParMachine($debut, $fin),
-            'topProduits' => $this->statistiquesGlobalesService->topProduits($debut, $fin),
+            'topProduits' => $this->statistiquesGlobalesService->topProduits($debut, $fin, 15, $activite),
+            // Le CA facturé n'y est qu'avec le droit de voir les montants de vente.
+            'repartition' => $this->objectifs->repartition($debut, $fin->modify('+1 second'), $droits['ventes']),
+            'activite' => $activite,
             'ventesArticles' => $droits['ventes'] ? $ventesArticles : $sansMontant($ventesArticles),
             'evolutionStock' => $this->statistiquesArticlesService->evolutionStock($granulariteStock),
             'granulariteStock' => $granulariteStock,
@@ -120,6 +132,7 @@ final class StatistiquesController extends AbstractController
             [
                 'date_debut' => $debut->format('Y-m-d'),
                 'date_fin' => $fin->format('Y-m-d'),
+                'activite' => Activite::lire($request->query->get('activite')),
             ],
         ];
     }

@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\HorsImprimerieTrait;
 use App\Entity\Trait\LivraisonObjetDocumentTrait;
 use App\Entity\Trait\RemiseGlobaleDocumentTrait;
 use App\Entity\Trait\SocieteTrait;
@@ -24,6 +25,7 @@ class Commandes implements AppartientASociete
     use SocieteTrait;
     use CodePromoDocumentTrait;
     use LivraisonObjetDocumentTrait;
+    use HorsImprimerieTrait;
     use RemiseGlobaleDocumentTrait;
 
     /*

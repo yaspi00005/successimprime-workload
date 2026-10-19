@@ -105,6 +105,8 @@
 					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
 				</small>
 				{% if commande.objet %}<small>Objet : {{ commande.objet }}</small>{% endif %}
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : ni prépresse ni atelier, comptée à part. #}
+				{% if commande.horsImprimerie %}<small><span class="si-badge-hors" title="Vente de matériel, informatique… : comptée à part de l'imprimerie dans les statistiques, sans prépresse ni atelier">Hors imprimerie</span></small>{% endif %}
 				{% if commande.delaiProduction %}<small>Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait à l\'imprimerie' }}</small>{% endif %}
 			</div>
 		</div>

@@ -29,6 +29,11 @@ use Doctrine\ORM\EntityManagerInterface;
  *  - nouveaux clients : première commande dans le mois ;
  *  - taux d'encaissement : paiements validés du mois ÷ CA facturé du mois.
  *
+ * Le CA facturé et les commandes comptent l'imprimerie seule : les ventes
+ * « hors imprimerie » (docs/hors-imprimerie.md) n'entrent ni dans les
+ * objectifs ni dans les primes. Le taux d'encaissement, lui, rapporte
+ * tous les paiements à tout le CA facturé.
+ *
  * Sans objectif enregistré, le CA global reprend le réglage « Objectif de
  * CA facturé par mois », le CA d'un agent son « Objectif de ventes du
  * mois » (fiche utilisateur) et le taux d'encaissement 80 %, le seuil
@@ -389,14 +394,15 @@ final class Objectifs
 
     /**
      * Réalisé d'un indicateur sur la période, par cible (0 pour global).
+     * $activite (Activite) ne joue que pour le CA et les commandes.
      *
      * @return array<int, float>
      */
-    public function realises(string $indicateur, string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent = null): array
+    public function realises(string $indicateur, string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent = null, string $activite = Activite::IMPRIMERIE): array
     {
         return match ($indicateur) {
-            'ca' => $this->ca($axe, $debut, $fin, $agent),
-            'commandes' => $this->commandes($axe, $debut, $fin, $agent),
+            'ca' => $this->ca($axe, $debut, $fin, $agent, $activite),
+            'commandes' => $this->commandes($axe, $debut, $fin, $agent, $activite),
             'surface' => $this->surface($axe, $debut, $fin),
             'nouveaux_clients' => [0 => (float) $this->nouveauxClients($debut, $fin)],
             'taux_encaissement' => [0 => $this->tauxEncaissement($debut, $fin)],
@@ -405,14 +411,29 @@ final class Objectifs
     }
 
     /**
+     * Carte « Imprimerie / Hors imprimerie / Total » de la période
+     * (Activite::repartition) : commandes, et CA facturé avec le droit de
+     * voir les montants.
+     *
+     * @return array{imprimerie: array<string, mixed>, hors: array<string, mixed>, total: array<string, mixed>}
+     */
+    public function repartition(\DateTimeImmutable $debut, \DateTimeImmutable $fin, bool $montants): array
+    {
+        $cote = fn (string $activite): array => ['commandes' => (int) ($this->commandes('global', $debut, $fin, null, $activite)[0] ?? 0)]
+            + ($montants ? ['ca' => (int) ($this->ca('global', $debut, $fin, null, $activite)[0] ?? 0)] : []);
+
+        return Activite::repartition($cote(Activite::IMPRIMERIE), $cote(Activite::HORS));
+    }
+
+    /**
      * CA facturé : factures émises (hors pro formas) de la période.
      *
      * @return array<int, float>
      */
-    private function ca(string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent): array
+    private function ca(string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent, string $activite = Activite::IMPRIMERIE): array
     {
         if ('categorie' === $axe) {
-            return $this->caParCategorie($debut, $fin);
+            return $this->caParCategorie($debut, $fin, $activite);
         }
 
         $qb = $this->em->createQueryBuilder()
@@ -425,6 +446,7 @@ final class Objectifs
             ->setParameter('facture', Factures::TYPE_FACTURE)
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin);
+        Activite::filtrer($qb, 'c', $activite, true);
 
         if ('global' === $axe) {
             return [0 => (float) $qb->select('COALESCE(SUM(f.totalTtc), 0)')->getQuery()->getSingleScalarResult()];
@@ -443,9 +465,9 @@ final class Objectifs
     /**
      * @return array<int, float>
      */
-    private function caParCategorie(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    private function caParCategorie(\DateTimeImmutable $debut, \DateTimeImmutable $fin, string $activite): array
     {
-        $lignes = $this->em->createQueryBuilder()
+        $qb = $this->em->createQueryBuilder()
             ->select('f.id AS facture', 'f.totalTtc AS montant', 'cat.id AS categorie', 'l.totalTtc AS ttc', 'l.statutProduction AS statut')
             ->from(Factures::class, 'f')
             ->leftJoin('f.commande', 'c')
@@ -458,7 +480,8 @@ final class Objectifs
             ->setParameter('emise', Factures::ETAT_EMISE)
             ->setParameter('facture', Factures::TYPE_FACTURE)
             ->setParameter('debut', $debut)
-            ->setParameter('fin', $fin)
+            ->setParameter('fin', $fin);
+        $lignes = Activite::filtrer($qb, 'c', $activite, true)
             ->getQuery()
             ->getArrayResult();
 
@@ -486,7 +509,7 @@ final class Objectifs
      *
      * @return array<int, float>
      */
-    private function commandes(string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent): array
+    private function commandes(string $axe, \DateTimeImmutable $debut, \DateTimeImmutable $fin, ?User $agent, string $activite = Activite::IMPRIMERIE): array
     {
         $qb = $this->em->createQueryBuilder()
             ->select('c.id', 'IDENTITY(c.agents) AS agent', 'COUNT(l.id) AS lignes', 'SUM(CASE WHEN l.statutProduction = :annulee THEN 1 ELSE 0 END) AS annulees')
@@ -498,6 +521,7 @@ final class Objectifs
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
             ->groupBy('c.id');
+        Activite::filtrer($qb, 'c', $activite);
         if (null !== $agent) {
             $qb->andWhere('c.agents = :agent')->setParameter('agent', $agent);
         }
@@ -557,10 +581,10 @@ final class Objectifs
             ->getArrayResult());
     }
 
-    /** Paiements validés (paiement avec le solde du client compris) ÷ CA facturé, en %. */
+    /** Paiements validés (paiement avec le solde du client compris) ÷ CA facturé (hors imprimerie compris), en %. */
     public function tauxEncaissement(\DateTimeImmutable $debut, \DateTimeImmutable $fin): float
     {
-        $facture = $this->ca('global', $debut, $fin, null)[0];
+        $facture = $this->ca('global', $debut, $fin, null, Activite::TOUT)[0];
         if ($facture <= 0) {
             return 0.0;
         }

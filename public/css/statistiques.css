@@ -110,3 +110,11 @@ a.si-st-carte-lien:hover { box-shadow: 0 8px 28px rgba(15, 69, 144, 0.16); }
 /* ---------- Mes statistiques : objectifs de la personne ; divers ---------- */
 .si-st-mes-objectifs { margin: 0 0 20px; }
 .si-st-insecable { white-space: nowrap; }
+
+/* ---------- Imprimerie / hors imprimerie / total (docs/hors-imprimerie.md) ---------- */
+.card.si-st-activite { margin: 16px 0; padding: 14px 16px; height: auto; }
+.si-st-activite header { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; margin-bottom: 8px; }
+.si-st-activite h3 { font-size: 14.5px; font-weight: 800; color: #0F4590; margin: 0; }
+.si-st-activite header small { color: #64748B; font-size: 12px; }
+.si-st-activite table th, .si-st-activite table td { white-space: nowrap; }
+.si-st-activite .si-st-activite-total th, .si-st-activite .si-st-activite-total td { font-weight: 800; border-top: 2px solid #CBD5E1; }

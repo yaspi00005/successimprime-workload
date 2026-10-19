@@ -51,3 +51,59 @@
 		{% endif %}
 	</article>
 {% endmacro %}
+
+{#
+	Carte « Imprimerie / Hors imprimerie / Total » d'une période
+	(Activite::repartition, docs/hors-imprimerie.md). Une colonne n'existe
+	que si le chiffre a été calculé : le CA et la marge ne sont dans les
+	données qu'avec leur droit.
+#}
+{% macro repartition(rep, titre, note) %}
+	{% import _self as m %}
+	{% set avecCa = rep.total.ca is defined %}
+	{% set avecMarge = rep.total.marge is defined %}
+	<section class="card si-st-activite" aria-label="{{ titre|default('Imprimerie et hors imprimerie') }}">
+		<header>
+			<h3><i class="fas fa-layer-group me-1"></i>{{ titre|default('Imprimerie et hors imprimerie') }}</h3>
+			{% if note|default('') %}<small>{{ note }}</small>{% endif %}
+		</header>
+		<div class="table-responsive">
+			<table class="table table-sm mb-0" data-sans-filtres>
+				<thead>
+					<tr>
+						<th scope="col">Activité</th>
+						{% if avecCa %}<th scope="col" class="text-end">CA facturé</th><th scope="col" class="text-end">Part</th>{% endif %}
+						{% if avecMarge %}<th scope="col" class="text-end">Marge brute</th>{% endif %}
+						<th scope="col" class="text-end">Commandes</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for cle, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', total: 'Total'} %}
+						{% set l = rep[cle] %}
+						<tr class="si-st-activite-{{ cle }}">
+							<th scope="row">{% if cle == 'hors' %}<span class="si-badge-hors">Hors imprimerie</span>{% else %}{{ libelle }}{% endif %}</th>
+							{% if avecCa %}
+								<td class="text-end">{{ m.valeur(l.ca, 'fcfa') }}</td>
+								<td class="text-end">{{ cle == 'total' ? '100 %' : (l.part is not null ? l.part ~ ' %' : '—') }}</td>
+							{% endif %}
+							{% if avecMarge %}<td class="text-end">{{ l.marge is null ? '—' : m.valeur(l.marge, 'pourcent') }}</td>{% endif %}
+							<td class="text-end">{{ l.commandes|number_format(0, ',', ' ') }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{% endmacro %}
+
+{# Choix de l'activité comptée par les tableaux de ventes (filtre « activite »). #}
+{% macro filtre_activite(activite, classe) %}
+	<div class="{{ classe|default('') }}">
+		<label class="form-label" for="filtre-activite">Activité</label>
+		<select id="filtre-activite" name="activite" class="form-select form-control">
+			{% for valeur, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', tout: 'Tout (imprimerie et hors imprimerie)'} %}
+				<option value="{{ valeur }}" {{ activite == valeur ? 'selected' }}>{{ libelle }}</option>
+			{% endfor %}
+		</select>
+	</div>
+{% endmacro %}

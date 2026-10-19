@@ -81,7 +81,7 @@
 			<div class="si-stats-kpis si-st-chiffres">
 				{% if s.montants %}
 					<article class="card si-stats-kpi">
-						<h2>CA facturé</h2>
+						<h2>CA facturé imprimerie</h2>
 						<strong>{{ st.valeur(e.ca, 'fcfa') }}</strong>
 						{{ _self.ecart(e.ca, e.ca_avant ?? null, semaine) }}
 						{% if e.objectif_semaine is not null %}<small>objectif de la semaine {{ st.valeur(e.objectif_semaine, 'fcfa') }} ({{ (e.ca * 100 / e.objectif_semaine)|round }} %)</small>{% endif %}
@@ -120,6 +120,9 @@
 					</article>
 				{% endif %}
 			</div>
+
+			{# Imprimerie / hors imprimerie / total : le CA seulement avec les montants (RapportSemaine). #}
+			{{ st.repartition(e.repartition, 'Imprimerie et hors imprimerie', 'CA facturé et commandes de la semaine ; les chiffres ci-dessus comptent l’imprimerie') }}
 
 			<div class="si-st-semaine-grille">
 				<section class="card si-st-bloc">

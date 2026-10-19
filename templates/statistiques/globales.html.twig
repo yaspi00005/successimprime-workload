@@ -16,6 +16,8 @@
 
 {% block body %}
 
+{% set libelleActivite = {imprimerie: 'imprimerie', hors: 'hors imprimerie', tout: 'imprimerie et hors imprimerie'}[activite] %}
+
 <div class="side-app">
 
 	<div class="page-header">
@@ -49,7 +51,7 @@
 
 			<form method="get" class="row align-items-end">
 
-				<div class="col-md-4 mb-2">
+				<div class="col-md-3 mb-2">
 
 					<label class="form-label">
 						Du
@@ -64,7 +66,7 @@
 
 				</div>
 
-				<div class="col-md-4 mb-2">
+				<div class="col-md-3 mb-2">
 
 					<label class="form-label">
 						Au
@@ -79,7 +81,10 @@
 
 				</div>
 
-				<div class="col-md-4 mb-2">
+				{# Ventes par agent, top produits, ventes d'articles : imprimerie par défaut (docs/hors-imprimerie.md). #}
+				{{ st.filtre_activite(activite, 'col-md-3 mb-2') }}
+
+				<div class="col-md-3 mb-2">
 
 					<button type="submit" class="btn btn-primary btn-block">
 						<i class="fa fa-filter mr-1"></i>
@@ -95,6 +100,8 @@
 	</div>
 
 
+	{{ st.repartition(repartition, 'Imprimerie et hors imprimerie', 'Factures émises sur la période · commandes de la période') }}
+
 	<div class="row">
 
 		{# ==========================================================
@@ -109,6 +116,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-shopping-cart mr-1"></i>
 						Ventes par agent
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 
@@ -311,6 +319,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-star mr-1"></i>
 						Top des produits commandés
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 
@@ -391,6 +400,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-tags mr-1"></i>
 						Ventes d'articles (livrés directement au client)
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 

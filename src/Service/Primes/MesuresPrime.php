@@ -78,7 +78,10 @@ final class MesuresPrime
         return $mesures;
     }
 
-    /** Factures émises de l'agent rapportées à son objectif du mois (Statistiques › Objectifs), sinon celui du barème. */
+    /**
+     * Factures émises de l'agent rapportées à son objectif du mois (Statistiques › Objectifs), sinon celui du barème.
+     * Imprimerie seule : Objectifs::realises ne compte pas les ventes hors imprimerie.
+     */
     private function ventes(User $agent, \DateTimeImmutable $debut, \DateTimeImmutable $fin, int $objectifBareme): array
     {
         // L'objectif de chiffre d'affaires fixé à la personne (Statistiques › Objectifs) remplace celui du barème.
@@ -102,7 +105,8 @@ final class MesuresPrime
     {
         $statuts = $this->em->createQueryBuilder()
             ->select('d.statut')->from(Devis::class, 'd')
-            ->where('d.agents = :agent')->andWhere('d.deleted = false')->andWhere('d.statut IN (:emis)')
+            // Devis de l'imprimerie seule (docs/hors-imprimerie.md), comme le CA des ventes.
+            ->where('d.agents = :agent')->andWhere('d.deleted = false')->andWhere('d.horsImprimerie = false')->andWhere('d.statut IN (:emis)')
             ->andWhere('d.dateDevis >= :debut AND d.dateDevis < :fin')
             ->setParameter('agent', $agent)->setParameter('emis', MesStatistiques::DEVIS_EMIS)
             ->setParameter('debut', $debut)->setParameter('fin', $fin)

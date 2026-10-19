@@ -909,6 +909,13 @@
 					</datalist>
 				</div>
 				{{ form_errors(form.validiteJours) }}{{ form_errors(form.delaiRealisation) }}{{ form_errors(form.objet) }}
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part de l'imprimerie dans les statistiques ; suit le devis à la commande. #}
+				<div class="form-check mt-2 si-dv-entete-hors si-hors-imprimerie">
+					{{ form_widget(form.horsImprimerie, {attr: {class: 'form-check-input'}}) }}
+					<label class="form-check-label fw-semibold" for="{{ form.horsImprimerie.vars.id }}">Hors imprimerie</label>
+					<small class="d-block text-muted">{{ form.horsImprimerie.vars.help }}.</small>
+					{{ form_errors(form.horsImprimerie) }}
+				</div>
 			</div>
 
 			{# ---------- Lignes ---------- #}

@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\Catalogue\ProduitsDemo;
+use App\Service\Commandes\HorsImprimerieDemo;
 use App\Service\NotificationsEquipe\NotificationsDemo;
 use App\Service\Site\EquipeDemo;
 use App\Service\Societes\RattachementSql;
@@ -116,6 +117,8 @@ final class DemoCommand extends Command
                 ProduitsDemo::charger($this->connexion);
                 // Notifications de l'équipe (docs/notifications-equipe.md) : mention, commande prête, accord de plafond, reportée, historique.
                 NotificationsDemo::charger($this->connexion);
+                // Ventes hors imprimerie (docs/hors-imprimerie.md) : tablettes et ordinateurs facturés, comptés à part.
+                HorsImprimerieDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

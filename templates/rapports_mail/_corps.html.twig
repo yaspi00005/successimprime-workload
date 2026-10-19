@@ -80,8 +80,14 @@
 				{% set v = r.ventes %}
 				{{ m.titre('Chiffre d’affaires', c1) }}
 				{{ m.grille([
-					m.kpi('CA facturé', m.v(v.facture, 'f'), m.ecart(v.facture, v.avant, comp, 'f'), v.objectif is not null ? 'objectif ' ~ m.v(v.objectif, 'f') ~ ' (' ~ v.part ~ ' %)' : 'pas d’objectif fixé'),
+					m.kpi('CA facturé imprimerie', m.v(v.facture, 'f'), m.ecart(v.facture, v.avant, comp, 'f'), v.objectif is not null ? 'objectif ' ~ m.v(v.objectif, 'f') ~ ' (' ~ v.part ~ ' %)' : 'pas d’objectif fixé'),
 				]) }}
+				{# Ventes hors imprimerie (docs/hors-imprimerie.md) : à part, hors objectif. #}
+				{% if v.hors|default(0) > 0 %}
+					<div style="margin-top: 8px; font-size: 13px; color: #374151;">
+						<strong>Hors imprimerie :</strong> {{ m.v(v.hors, 'f') }} · <strong>Total :</strong> {{ m.v(v.facture + v.hors, 'f') }}
+					</div>
+				{% endif %}
 				{% if v.mois is not null %}
 					<div style="margin-top: 8px; font-size: 13px; color: #374151;">
 						<strong>CA {{ v.de_mois }} à ce jour :</strong> {{ m.v(v.mois.realise, 'f') }}{% if v.mois.objectif is not null %} sur un objectif de {{ m.v(v.mois.objectif, 'f') }} · {{ etats[v.mois.etat] ?? v.mois.etat }}{% endif %}

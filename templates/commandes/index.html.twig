@@ -206,7 +206,7 @@
 						{% for l in lignes %}
 							{% set commande = l.commande %}
 							<tr class="{{ l.enRetard ? 'si-cs-retard' }}" data-lien="{{ path('app_commandes_show', {id: commande.id}) }}">
-								<td class="si-cs-c-num"><a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="si-cs-num">{{ commande.numero }}</a></td>
+								<td class="si-cs-c-num"><a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="si-cs-num">{{ commande.numero }}</a>{% if commande.horsImprimerie %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}</td>
 								<td class="si-cs-c-client" data-filtre-valeur="{{ l.client.nom }}">
 									<span class="si-cs-client"><span class="si-cs-pastille si-cs-teinte-{{ l.client.teinte }}" aria-hidden="true">{{ l.client.initiales }}</span><span>{{ l.client.nom }}</span></span>
 								</td>
@@ -266,7 +266,7 @@
 							{% set commande = l.commande %}
 							<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="si-cs-fiche{{ l.enRetard ? ' retard' }}">
 								<span class="si-cs-fiche-tete">
-									<b>{{ commande.numero }}</b>
+									<b>{{ commande.numero }}</b>{% if commande.horsImprimerie %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}
 									{% if l.pourLe %}<small class="{{ l.enRetard ? 'retard' }}"><i class="far fa-calendar me-1" aria-hidden="true"></i>{{ l.pourLe|date('d/m') }}</small>{% endif %}
 								</span>
 								<span class="si-cs-client"><span class="si-cs-pastille si-cs-teinte-{{ l.client.teinte }}" aria-hidden="true">{{ l.client.initiales }}</span><span>{{ l.client.nom }}</span></span>

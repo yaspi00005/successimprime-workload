@@ -193,7 +193,7 @@
 							</span>
 						</label>
 						{% if fichier.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'] and fichier.estUploadTermine %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id, fichier: fichier.id}) }}" class="btn btn-light btn-sm" title="Redimensionner, contour, fichier final"><i class="fas fa-crop-alt"></i><span class="visually-hidden">Retoucher</span></a>{% endif %}
-						{% if pdf_convertible and fichier.typeMime == 'application/pdf' and fichier.estUploadTermine and fichier.actif %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id, pdf: fichier.id}) }}" class="btn btn-light btn-sm" title="Convertir en image (PNG ou JPEG), puis retoucher"><i class="fas fa-image"></i><span class="visually-hidden">Convertir en image</span></a>{% endif %}
+						{% if pdf_convertible and fichier.estPdf and fichier.estUploadTermine and fichier.actif %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id, pdf: fichier.id}) }}" class="btn btn-light btn-sm" title="Convertir en image (PNG ou JPEG), puis retoucher"><i class="fas fa-image"></i><span class="visually-hidden">Convertir en image</span></a>{% endif %}
 						<a href="{{ path('app_controle_pre_presse_controler', {id: detail.id, fichier: fichier.id}) }}" class="btn btn-light btn-sm">Voir</a>
 					</li>
 				{% endfor %}

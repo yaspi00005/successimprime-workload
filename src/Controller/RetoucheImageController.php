@@ -485,7 +485,7 @@ final class RetoucheImageController extends AbstractController
     {
         $pdfs = array_values(array_filter(
             $detail->getFichiers()->toArray(),
-            static fn (CommandeDetailFichier $f): bool => $f->isActif() && $f->estUploadTermine() && 'application/pdf' === $f->getTypeMime(),
+            static fn (CommandeDetailFichier $f): bool => $f->isActif() && $f->estUploadTermine() && $f->estPdf(),
         ));
         usort($pdfs, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getVersion(), $b->getId()] <=> [$a->getVersion(), $a->getId()]);
 

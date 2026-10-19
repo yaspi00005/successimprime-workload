@@ -631,6 +631,20 @@ class CommandeDetailFichier
         return $this;
     }
 
+    /**
+     * PDF reconnu par son type ou, à défaut, par l'extension de son nom :
+     * certains navigateurs et les anciens envois notent
+     * « application/octet-stream » ou « application/x-pdf ».
+     */
+    public function estPdf(): bool
+    {
+        if (\in_array(strtolower((string) $this->typeMime), ['application/pdf', 'application/x-pdf', 'application/acrobat', 'applications/vnd.pdf', 'text/pdf'], true)) {
+            return true;
+        }
+
+        return str_ends_with(strtolower(trim((string) ($this->nomOriginal ?? $this->nomStockage))), '.pdf');
+    }
+
     public function estUploadTermine(): bool
     {
         return $this->statut === self::STATUT_TERMINE

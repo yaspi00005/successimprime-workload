@@ -117,6 +117,12 @@ final class AgentSynchro
                 }
                 $bilan['octets'] += $vocales['octets'];
                 $recus['octets'] += $vocalesRecues['octets'];
+                // Fichiers publiés pour les clients depuis leur dossier (« Envoyer au client »).
+                $publies = $this->fichiers->envoyerPublies(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']));
+                if ($publies['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier_publie', \sprintf('%d fichier%s publié%s pour les clients (%s Mo)', $publies['envoyes'], ...[...array_fill(0, 2, $publies['envoyes'] > 1 ? 's' : ''), number_format($publies['octets'] / 1048576, 1, ',', ' ')]), SynchroEchange::OK);
+                }
+                $bilan['octets'] += $publies['octets'];
                 // Puis la copie chiffrée des sauvegardes, avec ce qui reste du budget du cycle.
                 foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']), $maintenant) as $copie) {
                     $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, null, \sprintf('Sauvegarde %s chiffrée, %s (%s Mo)', $copie['nom'], $copie['partie'] === 'base' ? 'base' : 'fichiers', number_format($copie['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);

@@ -174,6 +174,7 @@ final class Parametres
             'machines' => self::nb($compter(Machines::class), 'machine').' · amortissement '.($v['amortissement'] === 'usage' ? 'à l\'usage' : 'linéaire'),
             'stock' => $this->etatStock($badge),
             'montage' => $v['formats'].' · marge '.$v['marge_mm'].' mm',
+            'produits_clients' => '' !== trim((string) $v['dossier_racine']) ? trim((string) $v['dossier_racine']).($v['surveiller'] ? ' · surveillé' : '').($v['analyse_nuit'] ? ' · analyse à '.self::heure((string) $v['analyse_heure']) : '') : 'dossier pas encore réglé',
             'utilisateurs' => self::nb($compter(User::class, ['actif' => true]), 'compte').' · '.self::nb($compter(RoleUtilisateur::class), 'rôle'),
             'pointage' => ($v['photo'] ? 'QR + photo' : 'QR').' · tolérance '.$v['tolerance_minutes'].' min',
             'horaires' => str_replace('-', ' – ', $v['jours']).' · '.self::heure($v['ouverture']).' – '.self::heure($v['fermeture']),

@@ -4,6 +4,7 @@ namespace App\Service\Synchro;
 
 use App\Entity\CommandeDetailFichier;
 use App\Entity\ControlePrePresse;
+use App\Entity\FichierPublie;
 use App\Entity\MessageClient;
 use App\Entity\SynchroFichier;
 use App\Service\EspaceClient\EspaceClient;
@@ -224,6 +225,71 @@ final class FichiersSynchro
         }
 
         return $bilan;
+    }
+
+    /* ---------- Fichiers publiés pour le client (dossiers clients) ---------- */
+
+    /** @return list<FichierPublie> copies publiées et visibles, à tenir à jour sur le site */
+    public function publiesAEnvoyer(): array
+    {
+        return $this->em->getRepository(FichierPublie::class)->findBy(['retireLe' => null], ['id' => 'DESC'], 500);
+    }
+
+    /**
+     * Envoie au site les copies publiées pour les clients (« Envoyer au
+     * client », docs/dossiers-clients.md), dans la limite du budget. Seule
+     * la copie part, jamais le fichier du serveur de l'atelier.
+     *
+     * @param callable(string, array<string, mixed>): array<string, mixed> $appeler appel signé au site
+     *
+     * @return array{envoyes: int, octets: int, manquants: int}
+     */
+    public function envoyerPublies(callable $appeler, int $budget = self::BUDGET_CYCLE): array
+    {
+        $bilan = ['envoyes' => 0, 'octets' => 0, 'manquants' => 0];
+        foreach ($this->publiesAEnvoyer() as $p) {
+            if ($bilan['octets'] >= $budget) {
+                break;
+            }
+            $nom = basename($p->getNomStockage());
+            $chemin = $this->projet.'/var/uploads/publies/'.$nom;
+            if (!preg_match(self::NOM_SUR, $nom) || !is_file($chemin)) {
+                ++$bilan['manquants'];
+                continue;
+            }
+            $this->pousser($appeler, '/api/synchro/fichier-publie', $p->getPublicId()->toRfc4122(), $chemin, (string) $p->getNom(), $budget, $bilan);
+        }
+
+        return $bilan;
+    }
+
+    /**
+     * Côté site : reçoit un morceau d'une copie publiée (ou, sans morceau,
+     * dit où reprendre). La fiche doit être arrivée et annoncer cette
+     * empreinte et cette taille.
+     *
+     * @param array<string, mixed> $donnees id, empreinte, taille, position?, morceau? (base64)
+     *
+     * @return array{recu: int, termine: bool}
+     */
+    public function recevoirPublie(array $donnees): array
+    {
+        $p = $this->serialiseur->trouver('fichier_publie', (string) ($donnees['id'] ?? ''));
+        if (!$p instanceof FichierPublie) {
+            throw new \InvalidArgumentException('Fiche du fichier publié pas encore reçue');
+        }
+        $nom = basename($p->getNomStockage());
+        $empreinte = strtolower((string) ($donnees['empreinte'] ?? ''));
+        $taille = (int) ($donnees['taille'] ?? -1);
+        if (!preg_match(self::NOM_SUR, $nom) || $empreinte !== $p->getEmpreinte() || $taille !== $p->getTaille()) {
+            throw new \InvalidArgumentException('Fichier publié mal décrit');
+        }
+        $morceau = isset($donnees['morceau']) ? base64_decode((string) $donnees['morceau'], true) : null;
+        if ($morceau === false) {
+            throw new \InvalidArgumentException('Morceau invalide');
+        }
+
+        return self::ecrire($this->projet.'/var/uploads/publies', $nom, $empreinte, $taille, (int) ($donnees['position'] ?? -1), $morceau);
     }
 
     /* ---------- Notes vocales de la messagerie ---------- */

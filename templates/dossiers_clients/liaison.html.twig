@@ -1,0 +1,165 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Lier les dossiers existants (maquette DS02) : l'outil retrouve le
+	dossier de chaque client (code dans le nom, puis ressemblance du nom),
+	vous validez. La liaison suit un petit fichier caché « .succes » posé
+	dans le dossier. Rien n'est déplacé ni supprimé.
+#}
+
+{% set jeton = csrf_token('dossiers-clients') %}
+{% set sep = (racine_postes ?: racine) matches '/^(\\\\\\\\|[A-Za-z]:)/' ? '\\' : '/' %}
+{% macro initiales(nom) %}{{ nom|split(' ')|filter(m => m)|slice(0, 2)|map(m => m|first|upper)|join('') }}{% endmacro %}
+{% macro client(c) %}<span class="dc-client"><span class="dc-avatar">{{ _self.initiales(c.nomComplet) }}</span><span><b>{{ c.nomComplet }}</b><small>{{ c.code }}</small></span></span>{% endmacro %}
+{% macro barre(score) %}<span class="dc-ressemblance"><span class="dc-jauge {{ score >= 90 ? 'dc-c-ok' : (score >= 75 ? 'dc-c-moyen' : 'dc-c-bas') }}"><i style="width: {{ score }}%"></i></span>{{ score }} %</span>{% endmacro %}
+
+{% block title %}Lier les dossiers existants{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="dc-page">
+		<header class="dc-entete dc-entete-actions">
+			<div>
+				<p class="dc-fil"><a href="{{ path('app_reglages_parametres_index') }}">Réglages</a> › <a href="{{ path('app_dossiers_clients_reglages') }}">Dossiers clients</a></p>
+				<h1>Lier les dossiers existants aux fiches clients</h1>
+			</div>
+			<div class="dc-entete-boutons">
+				<form method="post" action="{{ path('app_dossiers_clients_rechercher') }}"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn">Relancer la recherche</button></form>
+				<form method="post" action="{{ path('app_dossiers_clients_valider_suggestions') }}" data-dc-confirmer="Lier chaque client à son dossier proposé ({{ compteurs.suggeres }}) ?"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn-principal" {{ compteurs.suggeres == 0 ? 'disabled' }}>Valider les {{ compteurs.suggeres }} suggestion{{ compteurs.suggeres > 1 ? 's' }}</button></form>
+			</div>
+		</header>
+
+		{% if not racine %}
+			<div class="dc-carte dc-vide"><i class="fas fa-folder-open"></i><p><b>Le dossier racine des clients n'est pas réglé.</b></p><a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_reglages') }}">Régler l'emplacement</a></div>
+		{% else %}
+			<div class="dc-kpis">
+				<a class="dc-carte dc-kpi" href="{{ path('app_dossiers_clients_liaison', {vue: 'lie'}) }}"><span>Dossiers trouvés</span><strong>{{ compteurs.dossiers }}</strong><small>dans {{ racine_postes ?: racine }}</small></a>
+				<a class="dc-carte dc-kpi {{ vue == 'lie' ? 'actif' }}" href="{{ path('app_dossiers_clients_liaison', {vue: 'lie'}) }}"><span>Liés à un client</span><strong class="dc-vert">{{ compteurs.lies }}</strong><small>{{ compteurs.dossiers > 0 ? (100 * compteurs.lies / compteurs.dossiers)|round ~ ' %' : '—' }}</small></a>
+				<a class="dc-carte dc-kpi {{ vue == 'suggere' ? 'actif' }}" href="{{ path('app_dossiers_clients_liaison', {vue: 'suggere'}) }}"><span>Suggestions à valider</span><strong class="dc-orange">{{ compteurs.suggeres }}</strong><small>nom proche du client</small></a>
+				<a class="dc-carte dc-kpi {{ vue == 'sans_client' ? 'actif' }}" href="{{ path('app_dossiers_clients_liaison', {vue: 'sans_client'}) }}"><span>Dossiers sans client</span><strong class="dc-rouge">{{ compteurs.sans_client }}</strong><small>anciens clients ou doublons</small></a>
+			</div>
+
+			<nav class="dc-onglets" aria-label="Vues">
+				{% for k, l in {suggere: 'Suggestions', lie: 'Liés', introuvable: 'Clients sans dossier', sans_client: 'Dossiers sans client'} %}
+					<a href="{{ path('app_dossiers_clients_liaison', {vue: k}) }}" class="{{ vue == k ? 'actif' }}" {{ vue == k ? 'aria-current="page"' }}>{{ l }}</a>
+				{% endfor %}
+				{% if etat %}<span class="dc-legende">Dernière recherche {{ date(etat.le)|temps_ecoule }}</span>{% endif %}
+			</nav>
+
+			<div class="dc-carte dc-tableau-carte">
+				{% if vue == 'sans_client' %}
+					{% if sans_client is empty %}<p class="dc-vide-court">Chaque dossier est lié ou proposé à un client.</p>{% else %}
+						<table class="dc-tableau">
+							<thead><tr><th>Dossier sans client</th><th>Lier à un client</th></tr></thead>
+							<tbody>
+								{% for dossier in sans_client|slice((page - 1) * 50, 50) %}
+									<tr>
+										<td data-label="Dossier"><span class="dc-dossier"><i class="fas fa-folder"></i><code>{{ dossier }}</code></span></td>
+										<td data-label="Lier à">
+											<form method="post" action="{{ path('app_dossiers_clients_lier_dossier') }}" class="dc-en-ligne">
+												<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="dossier" value="{{ dossier }}">
+												<input name="client_texte" class="form-control form-control-sm" list="dc-clients" data-dc-chercher-client autocomplete="off" placeholder="Code ou nom du client" required aria-label="Client pour {{ dossier }}">
+												<button class="btn btn-sm dc-btn">Lier</button>
+											</form>
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+						{% include 'dossiers_clients/_pages.html.twig' with {total: sans_client|length} %}
+					{% endif %}
+				{% elseif vue == 'introuvable' %}
+					<form method="get" class="dc-filtre-ligne" role="search">
+						<input type="hidden" name="vue" value="introuvable">
+						<input type="search" name="q" value="{{ q }}" class="form-control form-control-sm" placeholder="Chercher un client (code ou nom)" aria-label="Chercher un client">
+						<button class="btn btn-sm dc-btn">Chercher</button>
+						<span class="dc-legende">{{ total_introuvables }} client{{ total_introuvables > 1 ? 's' }} sans dossier proche</span>
+					</form>
+					{% if introuvables is empty %}<p class="dc-vide-court">Aucun client sans dossier{{ q ? ' pour « ' ~ q ~ ' »' }}.</p>{% else %}
+						<table class="dc-tableau">
+							<thead><tr><th>Client dans l'ERP</th><th>Dossier</th><th>Statut</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+							<tbody>
+								{% for c in introuvables %}
+									<tr>
+										<td data-label="Client">{{ _self.client(c) }}</td>
+										<td data-label="Dossier"><span class="dc-gris">aucun dossier proche</span></td>
+										<td data-label="Statut"><span class="dc-statut dc-s-introuvable">Introuvable</span></td>
+										<td class="dc-actions-cellule">
+											<form method="post" action="{{ path('app_dossiers_clients_creer', {publicId: c.publicId}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="retour" value="{{ app.request.requestUri }}"><button class="dc-lien">+ Créer le dossier</button></form>
+											<button type="button" class="dc-lien" data-dc-basculer="dc-choix-{{ c.id }}">Choisir un dossier</button>
+											<form method="post" action="{{ path('app_dossiers_clients_lier', {publicId: c.publicId}) }}" id="dc-choix-{{ c.id }}" class="dc-en-ligne" hidden>
+												<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="retour" value="{{ app.request.requestUri }}">
+												<input name="dossier" class="form-control form-control-sm" list="dc-dossiers" required placeholder="Nom du dossier" aria-label="Dossier pour {{ c.nomComplet }}">
+												<button class="btn btn-sm dc-btn">Lier</button>
+											</form>
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+						{% include 'dossiers_clients/_pages.html.twig' with {total: total_introuvables} %}
+					{% endif %}
+				{% else %}
+					{% if lignes is empty %}
+						<p class="dc-vide-court">{{ vue == 'suggere' ? 'Aucune suggestion à valider.' : 'Aucun dossier lié pour l\'instant : lancez la recherche.' }}</p>
+					{% else %}
+						<table class="dc-tableau">
+							<thead><tr><th>Client dans l'ERP</th><th>Dossier Windows trouvé</th><th>Contenu</th><th>Ressemblance</th><th>Statut</th><th><span class="visually-hidden">Actions</span></th></tr></thead>
+							<tbody>
+								{% for l in lignes %}
+									{% set c = l.client %}
+									<tr>
+										<td data-label="Client">{{ _self.client(c) }}</td>
+										<td data-label="Dossier"><span class="dc-dossier"><i class="fas fa-folder"></i><code>{{ l.nomDossier }}</code></span>{% if l.absent %}<small class="dc-rouge"> introuvable sur le serveur</small>{% endif %}</td>
+										<td data-label="Contenu">{{ l.nombreFichiers }} fichier{{ l.nombreFichiers > 1 ? 's' }}</td>
+										<td data-label="Ressemblance">{{ _self.barre(l.score) }}</td>
+										<td data-label="Statut">{% if l.estLie %}<span class="dc-statut dc-s-lie">Lié</span>{% else %}<span class="dc-statut dc-s-suggere">Suggéré</span>{% endif %}</td>
+										<td class="dc-actions-cellule">
+											{% if not l.estLie %}
+												<form method="post" action="{{ path('app_dossiers_clients_lier', {publicId: c.publicId}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="dossier" value="{{ l.nomDossier }}"><input type="hidden" name="retour" value="{{ app.request.requestUri }}"><button class="dc-lien"><i class="fas fa-check"></i> Valider</button></form>
+												<span class="dc-gris" aria-hidden="true">·</span>
+											{% endif %}
+											<button type="button" class="dc-lien" data-dc-basculer="dc-choix-{{ c.id }}">{{ l.estLie ? 'Changer' : 'Choisir un autre' }}</button>
+											<form method="post" action="{{ path('app_dossiers_clients_lier', {publicId: c.publicId}) }}" id="dc-choix-{{ c.id }}" class="dc-en-ligne" hidden>
+												<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="retour" value="{{ app.request.requestUri }}">
+												<input name="dossier" class="form-control form-control-sm" list="dc-dossiers" required placeholder="Nom du dossier" aria-label="Autre dossier pour {{ c.nomComplet }}">
+												<button class="btn btn-sm dc-btn">Lier</button>
+											</form>
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+						{% include 'dossiers_clients/_pages.html.twig' with {total: total_lignes} %}
+					{% endif %}
+				{% endif %}
+			</div>
+			<datalist id="dc-dossiers">{% for d in libres %}<option value="{{ d }}"></option>{% endfor %}</datalist>
+			<datalist id="dc-clients" data-dc-url="{{ path('app_dossiers_clients_chercher_client') }}"></datalist>
+		{% endif %}
+
+		<div class="dc-deux">
+			<section class="dc-carte">
+				<h2>Créer le dossier d'un nouveau client</h2>
+				<pre class="dc-arbre">{{ racine_postes ?: (racine ?: '\\\\SERVEUR\\Clients') }}{{ sep }}<b>{{ exemple_dossier }}</b>{{ sep }}
+{% for e in modele.entrees %}  {{ loop.last ? '└' : '├' }} {{ e.dossier }}
+{% endfor %}</pre>
+				<p class="dc-legende">Créé automatiquement pour un nouveau client (à la prochaine analyse, dans les 5 minutes), selon le modèle. Si un dossier proche existe déjà, il est proposé au lieu d'en créer un.</p>
+			</section>
+			<section class="dc-carte">
+				<h2>Ce que fait la liaison</h2>
+				<p>L'ERP <b>lit</b> le dossier et l'affiche dans la fiche. Il ne déplace et ne supprime jamais vos fichiers. Si un dossier est renommé dans Windows, la liaison suit grâce à un petit fichier caché « .succes » posé dans le dossier.</p>
+				<p class="dc-legende">Liaison sûre : code du client dans le nom du dossier (« C-0087 … »). Sinon le nom est comparé sans accents ni majuscules, sans les mots comme SARL ou Ets : à partir de {{ seuil }} % c'est une suggestion, à valider.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/dossiers-clients.js') }}" defer></script>
+{% endblock %}

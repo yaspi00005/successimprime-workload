@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\AchatDetailRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
@@ -32,6 +33,30 @@ class AchatDetail
 
     #[ORM\Column(options: ['default' => 0])]
     private int $totalHt = 0;
+
+    /*
+     * La quantité en unité de stock (m², litres…) au moment de la
+     * commande : rouleaux × m² par rouleau.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $quantiteStock = null;
+
+    /*
+     * Coût de revient d'une unité de stock rendue à Bamako : prix d'achat
+     * ramené au m², plus sa part de transport et de transit.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $coutRevientUnitaire = null;
+
+    /*
+     * Réception ligne par ligne (maquette SU05) : vide tant que la
+     * réception détaillée n'est pas faite, la quantité commandée compte.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $quantiteRecue = null;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $quantiteAbimee = 0;
 
     public function getId(): ?int
     {
@@ -91,6 +116,54 @@ class AchatDetail
     public function getTotalHt(): int
     {
         return $this->totalHt;
+    }
+
+    public function getQuantiteStock(): ?float
+    {
+        return $this->quantiteStock !== null ? (float) $this->quantiteStock : null;
+    }
+
+    public function setQuantiteStock(?float $quantiteStock): static
+    {
+        $this->quantiteStock = $quantiteStock !== null ? number_format(max(0.0, $quantiteStock), 3, '.', '') : null;
+
+        return $this;
+    }
+
+    public function getCoutRevientUnitaire(): ?int
+    {
+        return $this->coutRevientUnitaire;
+    }
+
+    public function setCoutRevientUnitaire(?int $coutRevientUnitaire): static
+    {
+        $this->coutRevientUnitaire = $coutRevientUnitaire !== null ? max(0, $coutRevientUnitaire) : null;
+
+        return $this;
+    }
+
+    public function getQuantiteRecue(): ?int
+    {
+        return $this->quantiteRecue;
+    }
+
+    public function setQuantiteRecue(?int $quantiteRecue): static
+    {
+        $this->quantiteRecue = $quantiteRecue !== null ? max(0, $quantiteRecue) : null;
+
+        return $this;
+    }
+
+    public function getQuantiteAbimee(): int
+    {
+        return $this->quantiteAbimee;
+    }
+
+    public function setQuantiteAbimee(int $quantiteAbimee): static
+    {
+        $this->quantiteAbimee = max(0, $quantiteAbimee);
+
+        return $this;
     }
 
     private function calculerTotalHt(): void

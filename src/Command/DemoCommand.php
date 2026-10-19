@@ -3,6 +3,7 @@
 namespace App\Command;
 
 use App\Service\Catalogue\ProduitsDemo;
+use App\Service\Achats\AchatsDemo;
 use App\Service\Commandes\HorsImprimerieDemo;
 use App\Service\NotificationsEquipe\NotificationsDemo;
 use App\Service\Site\EquipeDemo;
@@ -102,7 +103,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...AchatsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -119,6 +120,8 @@ final class DemoCommand extends Command
                 NotificationsDemo::charger($this->connexion);
                 // Ventes hors imprimerie (docs/hors-imprimerie.md) : tablettes et ordinateurs facturés, comptés à part.
                 HorsImprimerieDemo::charger($this->connexion);
+                // Achats (docs/achats.md) : fournisseurs des maquettes SU01 à SU03, un an de commandes d'achat, retards, casse, dettes.
+                AchatsDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

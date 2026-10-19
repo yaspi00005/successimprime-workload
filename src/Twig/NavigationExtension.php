@@ -115,7 +115,10 @@ final class NavigationExtension extends AbstractExtension
             // Dossiers clients (docs/dossiers-clients.md, DS03) : graphiste et caisse par défaut (matrice « Qui voit quoi »).
             ['libelle' => 'Fichiers à classer', 'route' => 'app_dossiers_clients_a_classer', 'role' => 'DOSSIERS_CLASSER', 'prefixes' => ['app_dossiers_clients_a_classer', 'app_dossiers_clients_classer', 'app_dossiers_clients_retirer_a_classer', 'app_dossiers_clients_analyser_a_classer']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],
-            ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_achat_', 'app_fournisseur_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
+            ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
+            // Achats (docs/achats.md, SU01 à SU03) : fournisseurs et commandes d'achat, la Direction. Réceptions, coûts et réappro viendront (SU04 à SU07).
+            ['libelle' => 'Fournisseurs', 'route' => 'app_fournisseur_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_fournisseur_']],
+            ['libelle' => 'Commandes d\'achat', 'route' => 'app_achat_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_achat_']],
             ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
             ['libelle' => 'Relevés de compteurs', 'route' => 'app_atelier_releves', 'role' => ['ROLE_PRODUCTION_GERER', 'ROLE_COMPTABILITE'], 'prefixes' => ['app_atelier_releves']],
         ],

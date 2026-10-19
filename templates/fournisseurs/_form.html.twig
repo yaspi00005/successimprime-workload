@@ -1,72 +1,46 @@
+{# Fiche fournisseur à remplir (maquette SU02) : identité, contact, conditions. #}
 {{ form_start(form) }}
+	<section class="ac-carte">
+		<h2>Identité</h2>
+		<div class="row g-3">
+			<div class="col-md-6">{{ form_row(form.nom) }}</div>
+			<div class="col-md-6">{{ form_row(form.fournit) }}</div>
+			<div class="col-md-3 col-6">{{ form_row(form.ville) }}</div>
+			<div class="col-md-3 col-6">{{ form_row(form.pays) }}</div>
+			<div class="col-md-6">{{ form_row(form.couleur) }}</div>
+		</div>
+	</section>
 
-<div class="card-body">
+	<section class="ac-carte">
+		<h2>Contact</h2>
+		<div class="row g-3">
+			<div class="col-md-6">{{ form_row(form.contactNom) }}</div>
+			<div class="col-md-6">{{ form_row(form.contactTelephone) }}</div>
+			<div class="col-md-6">{{ form_row(form.telephone, {label: 'Téléphone fixe (8 chiffres)'}) }}</div>
+			<div class="col-md-6">{{ form_row(form.email) }}</div>
+			<div class="col-12">{{ form_row(form.adresse) }}</div>
+		</div>
+	</section>
 
-	<div class="row">
-
-		<div class="col-md-6">
-			<div class="form-group">
-				{{ form_label(form.nom) }}
-				{{ form_widget(form.nom) }}
-				{{ form_errors(form.nom) }}
+	<section class="ac-carte">
+		<h2>Conditions</h2>
+		<div class="row g-3">
+			<div class="col-md-8">{{ form_row(form.conditionsPaiement) }}</div>
+			<div class="col-md-4">{{ form_row(form.acomptePourcentage) }}</div>
+			<div class="col-md-8">{{ form_row(form.transport) }}</div>
+			<div class="col-md-4">{{ form_row(form.delaiPromisJours) }}</div>
+			<div class="col-12">
+				<div class="form-check form-switch">
+					{{ form_widget(form.actif, {attr: {class: 'form-check-input'}}) }}
+					<label class="form-check-label" for="{{ form.actif.vars.id }}">Fournisseur actif</label>
+				</div>
 			</div>
 		</div>
+		{{ form_errors(form) }}
+	</section>
 
-		<div class="col-md-6">
-			<div class="form-group">
-				{{ form_label(form.telephone) }}
-				{{ form_widget(form.telephone) }}
-				{{ form_errors(form.telephone) }}
-			</div>
-		</div>
-
-		<div class="col-md-6">
-			<div class="form-group">
-				{{ form_label(form.email) }}
-				{{ form_widget(form.email) }}
-				{{ form_errors(form.email) }}
-			</div>
-		</div>
-
-		<div class="col-md-6">
-			<div class="form-group mt-4">
-				<label class="custom-switch mb-0">
-					{{ form_widget(form.actif, {attr: {class: 'custom-switch-input'}}) }}
-					<span class="custom-switch-indicator"></span>
-					<span class="custom-switch-description">
-						Fournisseur actif
-					</span>
-				</label>
-			</div>
-		</div>
-
-		<div class="col-md-12">
-			<div class="form-group">
-				{{ form_label(form.adresse) }}
-				{{ form_widget(form.adresse) }}
-				{{ form_errors(form.adresse) }}
-			</div>
-		</div>
-
+	<div class="ac-actions-pied">
+		<a href="{{ fournisseur is defined and fournisseur.id ? path('app_fournisseur_show', {id: fournisseur.id}) : path('app_fournisseur_index') }}" class="btn btn-light">Retour</a>
+		<button type="submit" class="btn btn-danger">Enregistrer</button>
 	</div>
-
-	{% if form.vars.errors|length > 0 %}
-		<div class="alert alert-danger mt-3">
-			{{ form_errors(form) }}
-		</div>
-	{% endif %}
-
-</div>
-
-<div class="card-footer text-right">
-	<a href="{{ path('app_fournisseur_index') }}" class="btn btn-secondary">
-		<i class="fa fa-arrow-left mr-1"></i>
-		Retour
-	</a>
-	<button type="submit" class="btn btn-primary-light">
-		<i class="fa fa-save mr-1"></i>
-		Enregistrer
-	</button>
-</div>
-
 {{ form_end(form) }}

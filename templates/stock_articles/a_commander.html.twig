@@ -35,6 +35,10 @@
 				{% elseif not f %}
 					<span class="text-muted small">Choisissez un fournisseur principal sur la fiche article.</span>
 				{% endif %}
+				{% if f %}
+					{# Commande d'achat (docs/achats.md) : depuis l'alerte du premier article, les autres du fournisseur sont proposés. #}
+					<a class="btn btn-danger btn-sm d-print-none" href="{{ path('app_achat_new', {article: groupe.lignes[0].article.id, fournisseur: f.id}) }}"><i class="fas fa-file-invoice me-1"></i>Commande d'achat</a>
+				{% endif %}
 			</div>
 			<div class="table-responsive">
 				<table class="table si-table align-middle mb-0">

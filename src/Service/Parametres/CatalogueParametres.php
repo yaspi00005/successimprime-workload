@@ -286,6 +286,18 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_stock_articles_index', 'champs' => [],
                 'motsCles' => ['Seuil minimum · articles à commander', 'Alertes de stock', 'Inventaire'],
             ],
+            // Achats (docs/achats.md, maquettes SU01 à SU03) : validation des commandes d'achat et alertes.
+            'achats' => [
+                'famille' => 'atelier', 'libelle' => 'Achats et fournisseurs', 'icone' => 'fa-truck',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_fournisseur_index',
+                'champs' => [
+                    ['cle' => 'seuil_validation', 'type' => 'nombre', 'libelle' => 'Commande d\'achat à faire valider au-delà de', 'aide' => 'Total rendu Bamako ; validée par la direction', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000000, 'defaut' => 500000],
+                    ['cle' => 'marge_securite_jours', 'type' => 'nombre', 'libelle' => 'Marge de sécurité', 'aide' => 'Alerte quand les jours restants ≤ délai du fournisseur + cette marge', 'suffixe' => 'jours', 'min' => 0, 'max' => 60, 'defaut' => 5],
+                    ['cle' => 'jours_regroupement', 'type' => 'nombre', 'libelle' => 'Regrouper les articles à commander dans les', 'aide' => 'Proposés dans la même commande pour partager le transport', 'suffixe' => 'jours', 'min' => 0, 'max' => 60, 'defaut' => 14],
+                ],
+                'motsCles' => ['Validation des commandes d\'achat', 'Marge de sécurité · réapprovisionnement', 'Partager le transport'],
+                'note' => 'Une commande d\'achat dont le total rendu Bamako (marchandise, transport et transit) dépasse le seuil attend la validation de la direction ; en dessous, elle part dès l\'envoi.',
+            ],
             'montage' => [
                 'famille' => 'atelier', 'libelle' => 'Montage PAO', 'icone' => 'fa-th-large',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'route' => 'app_montage_outil',

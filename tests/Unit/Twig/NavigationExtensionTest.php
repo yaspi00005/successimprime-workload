@@ -27,6 +27,8 @@ final class NavigationExtensionTest extends TestCase
         yield 'commande' => ['app_commandes_show', 'ventes'];
         yield 'production' => ['app_production_index', 'atelier'];
         yield 'stock' => ['app_stock_etat_index', 'atelier'];
+        yield 'fournisseurs (achats)' => ['app_fournisseur_show', 'atelier'];
+        yield 'commandes d\'achat' => ['app_achat_edit', 'atelier'];
         yield 'facture' => ['app_factures_show', 'finances'];
         yield 'caisse' => ['app_caisse_index', 'finances'];
         yield 'à valider' => ['app_a_valider_index', 'finances'];
@@ -115,6 +117,11 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(7, $extension->ongletActif('app_actions_voir'));
+        // Achats (docs/achats.md) : « Fournisseurs » et « Commandes d'achat » juste après « Articles et stock ».
+        self::assertSame(11, $extension->ongletActif('app_stock_articles_fiche'));
+        self::assertSame(12, $extension->ongletActif('app_fournisseur_show'));
+        self::assertSame(13, $extension->ongletActif('app_achat_new'));
+        self::assertSame(14, $extension->ongletActif('app_machines_index'));
         self::assertNull($extension->ongletActif('app_ecran_inconnu'));
     }
 
@@ -152,6 +159,8 @@ final class NavigationExtensionTest extends TestCase
         $caisse = array_column($extension->menu(null, RoleUtilisateur::MENU_COURT, ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_PAIEMENT_VOIR'])['entrees'], 'route');
         self::assertSame(['app_home', 'app_caisse_index', 'app_actions_index', 'app_clients_index', 'app_messages_clients_index', 'app_ventes_index', 'app_finances_encaissements', 'app_livraisons_suivi'], $caisse);
         self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
+        self::assertNotContains('app_fournisseur_index', $caisse, 'achats réservés à la Direction');
+        self::assertNotContains('app_achat_index', $caisse, 'achats réservés à la Direction');
         self::assertNotContains('app_livraisons_mes_livraisons', $caisse);
 
         // Prépresse : le suivi des livraisons, sans les écrans du livreur.

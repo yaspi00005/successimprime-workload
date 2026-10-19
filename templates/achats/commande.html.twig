@@ -1,0 +1,257 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Commande d'achat (maquette SU03, docs/achats.md) : articles en unité
+	d'achat, frais pour amener la marchandise à Bamako répartis au m²,
+	total rendu, coût de revient, livraison prévue et validation. Le même
+	écran sert à la saisie (brouillon) et à la lecture.
+#}
+
+{% block title %}Commande d'achat · {{ fournisseur.nomCourt }}{% endblock %}
+{% block page_title %}Commande d'achat{% endblock %}
+
+{% set u = detail.unite ?? 'unité' %}
+{% set au_dessus = a_valider %}
+
+{% block header_actions %}
+	{% if modifiable %}
+		<li class="nav-item">
+			<button type="submit" form="commande-achat" name="action" value="brouillon" class="btn btn-light btn-sm si-btn-entete">Brouillon</button>
+		</li>
+		<li class="nav-item">
+			<button type="submit" form="commande-achat" name="action" value="envoyer" class="btn btn-danger btn-sm si-btn-entete" data-ac-envoyer data-libelle-valider="Envoyer pour validation" data-libelle-passer="Passer la commande">{{ au_dessus ? 'Envoyer pour validation' : 'Passer la commande' }}</button>
+		</li>
+	{% else %}
+		{% if achat.estAValider and peut_valider %}
+			<li class="nav-item">
+				<form method="post" action="{{ path('app_achat_refuser', {id: achat.id}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('refuser_achat' ~ achat.id) }}">
+					<button type="submit" class="btn btn-light btn-sm si-btn-entete">Renvoyer en brouillon</button>
+				</form>
+			</li>
+			<li class="nav-item">
+				<form method="post" action="{{ path('app_achat_valider', {id: achat.id}) }}" data-confirmer="Valider la commande {{ achat.numero }} ?" data-confirmer-detail="{{ m.f(achat.totalRendu) }} rendus Bamako : la commande part chez {{ fournisseur.nomCourt }}." data-confirmer-bouton="Valider">
+					<input type="hidden" name="_token" value="{{ csrf_token('valider_achat' ~ achat.id) }}">
+					<button type="submit" class="btn btn-danger btn-sm si-btn-entete">Valider la commande</button>
+				</form>
+			</li>
+		{% endif %}
+		{% if achat.statut in ['commandee', 'demande'] %}
+			<li class="nav-item">
+				<form method="post" action="{{ path('app_achat_en_route', {id: achat.id}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('en_route_achat' ~ achat.id) }}">
+					<button type="submit" class="btn btn-light btn-sm si-btn-entete">En route</button>
+				</form>
+			</li>
+		{% endif %}
+		{% if achat.estEnCours %}
+			<li class="nav-item">
+				<form method="post" action="{{ path('app_achat_recevoir', {id: achat.id}) }}" data-confirmer="Réceptionner {{ achat.numero }} ?" data-confirmer-detail="Toute la quantité commandée entre en stock, au coût de revient (transport et transit compris)." data-confirmer-bouton="Valider">
+					<input type="hidden" name="_token" value="{{ csrf_token('recevoir_achat' ~ achat.id) }}">
+					<button type="submit" class="btn btn-danger btn-sm si-btn-entete">Réceptionner</button>
+				</form>
+			</li>
+		{% endif %}
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% import _self as moi %}
+	<div class="ac-page" data-ac-commande data-seuil="{{ seuil }}" data-acompte="{{ achat.acomptePourcentage }}">
+
+		<p class="ac-muet mb-2">
+			<a href="{{ path('app_achat_index') }}" class="text-reset">Commandes d'achat</a> ›
+			{{ achat.id ? achat.numero : 'Nouvelle' }} ·
+			<a href="{{ path('app_fournisseur_show', {id: fournisseur.id}) }}" class="text-reset">{{ fournisseur.nomCourt }}</a>
+			{% if achat.id %} · {{ m.statut(achat) }}{% endif %}
+		</p>
+
+		{% if alerte %}
+			<div class="ac-banniere">
+				<i class="fas fa-lightbulb" aria-hidden="true"></i>
+				<div>
+					<b>Créée depuis l'alerte « {{ alerte.article.designation|split(' · ')|first }} : {{ alerte.texte == 'maintenant' ? 'commander maintenant' : (alerte.texte == 'sous le minimum' ? 'sous le minimum' : 'commander ' ~ alerte.texte) }} ».</b>
+					{% if alerte.ajoutes is not empty %}
+						{% for a in alerte.ajoutes %}
+							{{ loop.first ? '' : ' ' }}{{ (a.article.designation|split(' · ')|first) }} a été ajouté : il faudrait le commander {{ a.dans > 0 ? 'dans ' ~ a.dans ~ ' jours' : 'maintenant aussi' }}{{ loop.last ? ', autant partager le transport.' : ' ;' }}
+						{% endfor %}
+					{% endif %}
+				</div>
+				{% if alerte.economie|default(0) > 0 %}<span class="ac-economie">≈ {{ m.f(alerte.economie) }} économisés</span>{% endif %}
+			</div>
+		{% elseif achat.origineAlerte %}
+			<div class="ac-banniere"><i class="fas fa-lightbulb" aria-hidden="true"></i><div>Créée depuis l'alerte de réapprovisionnement de <b>{{ achat.origineAlerte.designation|split(' · ')|first }}</b>.</div></div>
+		{% endif %}
+		{% if achat.estAValider %}
+			<div class="ac-banniere attente"><i class="fas fa-hourglass-half" aria-hidden="true"></i><div><b>En attente de la direction :</b> le total rendu dépasse {{ m.f(seuil) }}. {{ peut_valider ? 'Validez-la pour qu\'elle parte chez le fournisseur.' : 'La direction la validera.' }}</div></div>
+		{% endif %}
+
+		{# En lecture, un simple bloc : les boutons d'annulation sont leurs propres formulaires. #}
+		{% if modifiable %}
+			<form method="post" id="commande-achat" action="{{ achat.id ? path('app_achat_edit', {id: achat.id}) : path('app_achat_new', achat.origineAlerte ? {fournisseur: fournisseur.id, article: achat.origineAlerte.id} : {fournisseur: fournisseur.id}) }}" class="ac-grille commande" novalidate>
+			<input type="hidden" name="_token" value="{{ csrf_token('commande_achat') }}">
+		{% else %}
+			<div class="ac-grille commande">
+		{% endif %}
+			<div>
+				<section class="ac-carte" aria-label="Articles">
+					<h2>Articles</h2>
+					<div class="ac-defile">
+						<table class="ac-table{{ modifiable ? ' ac-saisie' }}" data-ac-lignes>
+							<thead>
+								<tr><th>Article</th><th class="num">Qté</th><th class="num">{{ u }}</th><th class="num">Prix d'achat</th><th class="num">Total</th><th>Suggestion</th>{% if modifiable %}<th></th>{% endif %}</tr>
+							</thead>
+							<tbody>
+								{% for l in detail.lignes %}
+									{% set ligne = l.ligne %}
+									{% if modifiable %}
+										{{ moi.ligne_saisie(loop.index0, articles, fournisseur, l.article, ligne.quantite, ligne.prixUnitaire, l.quantiteStock, ligne.totalHt, suggestions[loop.index0]) }}
+									{% else %}
+										<tr>
+											<td><b>{{ l.article.designation|split(' · ')|first }}</b>{% if ' · ' in l.article.designation %} <small class="ac-muet">{{ l.article.designation|split(' · ')|slice(1)|join(' · ') }}</small>{% endif %}</td>
+											<td class="num">{{ ligne.quantite }} <small class="ac-muet">{{ l.article.uniteAchat ? (ligne.quantite > 1 and not (l.article.uniteAchat ends with 's') ? l.article.uniteAchat ~ (l.article.uniteAchat ends with 'eau' ? 'x' : 's') : l.article.uniteAchat) }}</small></td>
+											<td class="num">{{ m.q(l.quantiteStock) }}</td>
+											<td class="num">{{ m.f(ligne.prixUnitaire) }}</td>
+											<td class="num"><b>{{ m.f(ligne.totalHt) }}</b></td>
+											<td class="ac-suggestion">{{ suggestions[loop.index0] }}</td>
+										</tr>
+									{% endif %}
+								{% endfor %}
+							</tbody>
+							<tfoot>
+								<tr class="ac-total"><td>Sous-total marchandise</td><td></td><td class="num" data-ac-total-quantite>{{ detail.memeUnite ? m.q(detail.quantiteTotale) : '—' }}</td><td></td><td class="num" data-ac-total-marchandise>{{ m.f(achat.totalTtc) }}</td><td></td>{% if modifiable %}<td></td>{% endif %}</tr>
+							</tfoot>
+						</table>
+					</div>
+					{% if modifiable %}
+						<button type="button" class="ac-ajouter" data-ac-ajouter><i class="fas fa-plus me-1"></i>Ajouter un article</button>
+						<template data-ac-modele>{{ moi.ligne_saisie('__i__', articles, fournisseur, null, 1, null, 0, 0, '') }}</template>
+					{% endif %}
+				</section>
+
+				<section class="ac-carte" aria-label="Frais">
+					<h2>Frais pour amener la marchandise à Bamako</h2>
+					<div class="ac-defile">
+						<table class="ac-table">
+							<thead><tr><th>Frais</th><th>Base</th><th class="num">Montant</th><th class="num" data-ac-libelle-par>{{ detail.memeUnite ? 'Par ' ~ u : 'Répartition' }}</th></tr></thead>
+							<tbody>
+								{% for frais in [
+									{cle: 'transport', icone: 'fa-truck', defaut: 'Transport', libelle: achat.fraisTransportLibelle, base: achat.fraisTransportBase, montant: achat.fraisTransport, par: detail.transportParUnite, aide: 'Transport camion Dakar → Bamako'},
+									{cle: 'transit', icone: 'fa-passport', defaut: 'Transit et frontière', libelle: achat.fraisTransitLibelle, base: achat.fraisTransitBase, montant: achat.fraisTransit, par: detail.transitParUnite, aide: 'Transit et frontière'}
+								] %}
+									<tr>
+										{% if modifiable %}
+											<td><span class="d-flex align-items-center gap-2"><i class="fas {{ frais.icone }} ac-muet" aria-hidden="true"></i><input type="text" name="{{ frais.cle }}_libelle" value="{{ frais.libelle ?? frais.defaut }}" placeholder="{{ frais.aide }}" aria-label="Libellé {{ frais.defaut|lower }}"></span></td>
+											<td><input type="text" name="{{ frais.cle }}_base" value="{{ frais.base }}" placeholder="{{ frais.cle == 'transport' ? 'groupage, 2 colis' : 'transitaire Kayes' }}" aria-label="Base {{ frais.defaut|lower }}"></td>
+											<td class="num"><input type="text" inputmode="numeric" class="ac-montant" name="{{ frais.cle }}_montant" value="{{ frais.montant > 0 ? frais.montant|number_format(0, ',', ' ') }}" placeholder="0" data-ac-frais="{{ frais.cle }}" aria-label="Montant {{ frais.defaut|lower }}"></td>
+										{% else %}
+											<td><i class="fas {{ frais.icone }} ac-muet me-2" aria-hidden="true"></i><b>{{ frais.libelle ?? frais.defaut }}</b></td>
+											<td class="ac-muet">{{ frais.base ?? '—' }}</td>
+											<td class="num">{{ m.f(frais.montant) }}</td>
+										{% endif %}
+										<td class="num" data-ac-par="{{ frais.cle }}">{{ frais.par is not null ? m.f(frais.par) : (detail.memeUnite ? '—' : 'au prorata') }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					<p class="ac-note">Les frais sont répartis sur chaque {{ u }} acheté{{ detail.memeUnite ? '' : ' (au prorata du montant quand les unités diffèrent)' }} : ils entrent dans le coût de revient, donc dans la marge réelle.</p>
+				</section>
+
+				<section class="ac-carte" aria-label="Observation">
+					<h2>Note pour le fournisseur ou l'équipe</h2>
+					{% if modifiable %}
+						<textarea name="observation" class="form-control" rows="2" placeholder="Référence, couleur, consignes de livraison…">{{ achat.observation }}</textarea>
+					{% else %}
+						<p class="mb-0">{{ achat.observation ?? '—' }}</p>
+					{% endif %}
+				</section>
+
+				{% if not modifiable and not achat.estRecu and not achat.estAnnule %}
+					<div class="ac-actions-pied mb-3">
+						<form method="post" action="{{ path('app_achat_annuler', {id: achat.id}) }}" data-confirmer="Annuler la commande {{ achat.numero }} ?" data-confirmer-detail="Elle reste dans l'historique, marquée annulée." data-confirmer-bouton="Confirmer" data-confirmer-danger>
+							<input type="hidden" name="_token" value="{{ csrf_token('annuler_achat' ~ achat.id) }}">
+							<button type="submit" class="ac-bouton">Annuler la commande</button>
+						</form>
+					</div>
+				{% endif %}
+			</div>
+
+			<aside>
+				<section class="ac-carte ac-total-rendu" aria-label="Total rendu Bamako">
+					<h2>Total rendu Bamako</h2>
+					<b data-ac-total-rendu>{{ m.f(achat.totalRendu) }}</b>
+					<div class="ac-ligne"><span>Marchandise</span><span data-ac-r-marchandise>{{ m.f(achat.totalTtc) }}</span></div>
+					<div class="ac-ligne"><span>Transport</span><span data-ac-r-transport>{{ m.f(achat.fraisTransport) }}</span></div>
+					<div class="ac-ligne"><span>Transit</span><span data-ac-r-transit>{{ m.f(achat.fraisTransit) }}</span></div>
+					{% if achat.acomptePourcentage > 0 %}
+						<div class="ac-ligne"><span>Acompte {{ achat.acomptePourcentage }} % à la commande</span><span data-ac-r-acompte>{{ m.f(achat.montantAcompte) }}</span></div>
+					{% endif %}
+				</section>
+
+				<section class="ac-carte" aria-label="Coût de revient">
+					<h2>Coût de revient {{ detail.memeUnite ? 'au ' ~ u : 'par unité' }}</h2>
+					<div data-ac-couts>
+						{% for l in detail.lignes %}
+							<div class="ac-cout"><span><b class="fs-6">{{ l.article.designation|split(' · ')|first }}</b><small>achat + transport + transit</small></span><b>{{ l.coutRevient is not null ? l.coutRevient|number_format(0, ',', ' ') ~ ' F' : '—' }}{% if not detail.memeUnite %} <small class="d-inline">/{{ l.unite }}</small>{% endif %}</b></div>
+						{% else %}
+							<p class="ac-muet mb-0">Ajoutez un article.</p>
+						{% endfor %}
+					</div>
+				</section>
+
+				<section class="ac-carte ac-infos" aria-label="Livraison et validation">
+					{% if achat.dateReception %}
+						<p>Reçue : <b>{{ achat.dateReception|date('d/m') }}</b>{% if achat.datePromise %} (promis {{ achat.datePromise|date('d/m') }}){% endif %}</p>
+					{% else %}
+						<p>Livraison prévue : <b>{{ livraison.prevue|date('d/m') }}</b> (promis {{ livraison.promise|date('d/m') }}{{ livraison.retard > 0 ? ', +' ~ livraison.retard ~ ' j habituels' }}){% if not achat.datePromise %} <span class="ac-muet">si elle part aujourd'hui</span>{% endif %}</p>
+					{% endif %}
+					<p data-ac-validation>Validation :
+						{% if achat.validePar %}
+							<b>validée par {{ achat.validePar.employe ? achat.validePar.employe.prenom : achat.validePar.username }} le {{ achat.valideLe|date('d/m à H:i') }}</b>
+						{% elseif au_dessus %}
+							<b>Direction · au-dessus de {{ m.f(seuil) }}</b>
+						{% else %}
+							<b>aucune · sous {{ m.f(seuil) }}, elle part dès l'envoi</b>
+						{% endif %}
+					</p>
+					{% if achat.creePar %}<p>Préparée par <b>{{ achat.creePar.employe ? achat.creePar.employe.prenom : achat.creePar.username }}</b>{% if achat.dateCommande %} · commandée le {{ achat.dateCommande|date('d/m') }}{% endif %}</p>{% endif %}
+					{% if fournisseur.conditionsPaiement %}<p>Paiement : <b>{{ fournisseur.conditionsPaiement }}</b></p>{% endif %}
+				</section>
+			</aside>
+		{% if modifiable %}</form>{% else %}</div>{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{% if modifiable %}<script src="{{ asset('js/achats-commande.js') }}" defer></script>{% endif %}
+{% endblock %}
+
+{# Une ligne d'article modifiable ; « __i__ » dans le modèle pour les lignes ajoutées. #}
+{% macro ligne_saisie(i, articles, fournisseur, article, quantite, prix, quantite_stock, total, suggestion) %}
+	{% import 'achats/_macros.html.twig' as m %}
+	<tr data-ac-ligne>
+		<td class="ac-article">
+			<select name="lignes[{{ i }}][article]" data-ac-article aria-label="Article">
+				<option value="">Choisir un article…</option>
+				{% for groupe, libelle in {fournisseur: 'Chez ' ~ fournisseur.nomCourt, autres: 'Autres articles'} %}
+					{% if articles[groupe] is not empty %}
+						<optgroup label="{{ libelle }}">
+							{% for c in articles[groupe] %}
+								<option value="{{ c.article.id }}" data-facteur="{{ c.facteur }}" data-unite="{{ c.unite }}" data-unite-achat="{{ c.uniteAchat }}" data-prix="{{ c.prix }}" data-conso="{{ c.conso }}" data-nom="{{ c.nom }}" {{ article and article.id == c.article.id ? 'selected' }}>{{ c.article.designation }}</option>
+							{% endfor %}
+						</optgroup>
+					{% endif %}
+				{% endfor %}
+			</select>
+		</td>
+		<td class="num"><input type="text" inputmode="numeric" class="ac-qte" name="lignes[{{ i }}][quantite]" value="{{ quantite }}" data-ac-qte aria-label="Quantité"></td>
+		<td class="num" data-ac-m2>{{ m.q(quantite_stock) }}</td>
+		<td class="num"><input type="text" inputmode="numeric" class="ac-prix" name="lignes[{{ i }}][prix]" value="{{ prix is not null ? prix|number_format(0, ',', ' ') }}" data-ac-prix aria-label="Prix d'achat"></td>
+		<td class="num"><b data-ac-total>{{ m.f(total) }}</b></td>
+		<td class="ac-suggestion" data-ac-suggestion>{{ suggestion }}</td>
+		<td><button type="button" class="ac-retirer" data-ac-retirer title="Retirer la ligne" aria-label="Retirer la ligne"><i class="fas fa-times"></i></button></td>
+	</tr>
+{% endmacro %}

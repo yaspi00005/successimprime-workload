@@ -1,0 +1,21 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{% block title %}Nouvelle commande d'achat{% endblock %}
+
+{% block body %}
+	<div class="ac-page">
+		<section class="ac-carte">
+			<h2>Chez quel fournisseur ?{% if article %} <small>pour {{ article.designation }}, qui n'a pas de fournisseur habituel</small>{% endif %}</h2>
+			{% if fournisseurs is empty %}
+				<p class="mb-0">Aucun fournisseur actif. <a href="{{ path('app_fournisseur_new') }}">Ajouter un fournisseur</a>.</p>
+			{% else %}
+				<div class="ac-choix">
+					{% for f in fournisseurs %}
+						<a href="{{ path('app_achat_new', article ? {fournisseur: f.id, article: article.id} : {fournisseur: f.id}) }}">{{ m.avatar(f) }}<span><b>{{ f.nomCourt }}</b><small>{{ f.fournit ?? f.origine ?? '' }}</small></span></a>
+					{% endfor %}
+				</div>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

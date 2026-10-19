@@ -1,0 +1,146 @@
+/*
+ * Achats (maquettes SU01 à SU03, docs/achats.md) : liste des
+ * fournisseurs, fiche fournisseur, commande d'achat. Même allure que la
+ * facturation : cartes blanches arrondies, indicateurs, badges.
+ */
+.ac-page { --ac-bleu: #0F4590; --ac-rouge: #DE1028; --ac-vert: #1F9D55; --ac-orange: #E95B35; --ac-jaune: #E0A800; --ac-gris: #6B7280; --ac-bord: #E5E9F0; --ac-fond: #F5F7FB; color: #111827; }
+.ac-page .ac-carte { background: #fff; border: 1px solid var(--ac-bord); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+.ac-page .ac-carte > h2 { font-size: 15px; font-weight: 700; margin: 0 0 12px; color: #111827; }
+.ac-page .ac-carte > h2 small { font-weight: 500; color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-muet { color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-note { color: var(--ac-gris); font-size: 12px; margin: 10px 0 0; }
+.ac-page .ac-bleu { color: var(--ac-bleu); }
+.ac-page .ac-rouge { color: var(--ac-rouge); }
+.ac-page .ac-vert { color: var(--ac-vert); }
+.ac-page .ac-orange { color: var(--ac-orange); }
+.ac-page .ac-jaune { color: #A87400; }
+.ac-page .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Indicateurs (SU01) */
+.ac-page .ac-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
+.ac-page .ac-kpi { background: #fff; border: 1px solid var(--ac-bord); border-radius: 14px; padding: 14px 16px; color: inherit; text-decoration: none; display: block; }
+.ac-page a.ac-kpi:hover { border-color: #C9D3E3; }
+.ac-page .ac-kpi span { display: block; font-size: 13px; color: var(--ac-gris); }
+.ac-page .ac-kpi b { display: block; font-size: 24px; font-weight: 800; line-height: 1.3; }
+.ac-page .ac-kpi small { display: block; color: var(--ac-gris); font-size: 12px; }
+
+/* Tableaux */
+.ac-page .ac-defile { overflow-x: auto; }
+.ac-page .ac-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.ac-page .ac-table th { font-size: 12px; color: var(--ac-gris); font-weight: 600; text-align: left; padding: 8px; background: var(--ac-fond); white-space: nowrap; }
+.ac-page .ac-table td { padding: 10px 8px; border-bottom: 1px solid var(--ac-bord); vertical-align: middle; }
+.ac-page .ac-table tr:last-child td { border-bottom: 0; }
+.ac-page .ac-table tr.ac-inactif td { opacity: .55; }
+.ac-page .ac-table tr.ac-total td { font-weight: 700; border-top: 1px solid var(--ac-bord); }
+.ac-page .ac-table a.ac-lien { color: #111827; font-weight: 600; text-decoration: none; }
+.ac-page .ac-table a.ac-lien:hover { color: var(--ac-bleu); }
+
+/* Pastille aux initiales du fournisseur */
+.ac-avatar { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; border-radius: 9px; color: #fff; font-size: 12px; font-weight: 800; letter-spacing: .02em; }
+.ac-avatar.grand { width: 44px; height: 44px; border-radius: 11px; font-size: 15px; }
+.ac-page .ac-nom { display: flex; align-items: center; gap: 10px; }
+
+/* Ponctualité : barre et pourcentage */
+.ac-page .ac-ponctualite { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+.ac-page .ac-barre { flex: 1 1 auto; height: 6px; border-radius: 99px; background: #EEF1F6; overflow: hidden; min-width: 60px; }
+.ac-page .ac-barre i { display: block; height: 100%; border-radius: 99px; background: var(--ac-vert); }
+.ac-page .ac-barre.moyen i { background: #F2C230; }
+.ac-page .ac-barre.faible i { background: var(--ac-rouge); }
+
+/* Prochaine commande */
+.ac-page .ac-prochaine { font-weight: 700; font-size: 13px; }
+.ac-page .ac-prochaine.sous_minimum, .ac-page .ac-prochaine.maintenant { color: var(--ac-rouge); }
+.ac-page .ac-prochaine.bientot { color: var(--ac-orange); }
+.ac-page .ac-prochaine.plus_tard { color: var(--ac-vert); }
+
+/* Badges */
+.ac-badge { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; background: #EEF1F6; color: #374151; }
+.ac-badge.ok { background: #E7F6EE; color: #1F9D55; }
+.ac-badge.attente { background: #FFF6DB; color: #8A6100; }
+.ac-badge.jaune { background: #FFF6DB; color: #8A6100; }
+.ac-badge.retard { background: #FDE8EA; color: #DE1028; }
+.ac-badge.brouillon { background: #F1F3F8; color: #6B7280; }
+.ac-badge.bleu { background: #E6F0FB; color: #0F4590; }
+
+/* Fiche fournisseur (SU02) */
+.ac-page .ac-grille { display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 16px; align-items: start; }
+.ac-page .ac-identite { display: flex; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+.ac-page .ac-identite h2 { font-size: 17px; font-weight: 800; margin: 0; }
+.ac-page .ac-identite p { margin: 2px 0 0; color: var(--ac-gris); font-size: 13px; }
+.ac-page .ac-ligne { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; padding: 8px 0; border-bottom: 1px solid var(--ac-bord); }
+.ac-page .ac-ligne:last-child { border-bottom: 0; }
+.ac-page .ac-ligne > span:first-child { color: var(--ac-gris); white-space: nowrap; }
+.ac-page .ac-ligne > b, .ac-page .ac-ligne > span:last-child { text-align: right; }
+.ac-page .ac-perf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.ac-page .ac-perf div { background: var(--ac-fond); border-radius: 10px; padding: 10px 12px; }
+.ac-page .ac-perf b { display: block; font-size: 20px; font-weight: 800; }
+.ac-page .ac-perf small { color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-conseil { background: #FFF6DB; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #6B4E00; margin-bottom: 16px; }
+.ac-page .ac-courbe { display: block; width: 90px; height: 24px; }
+.ac-page .ac-courbe polyline { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+
+/* Commande d'achat (SU03) */
+.ac-page .ac-grille.commande { grid-template-columns: minmax(0, 1fr) 380px; }
+.ac-page .ac-banniere { display: flex; gap: 12px; align-items: flex-start; background: #E9F7EF; border: 1px solid #CDEBD9; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #1E4D33; margin-bottom: 16px; }
+.ac-page .ac-banniere i.fas { color: #E0A800; font-size: 18px; margin-top: 2px; }
+.ac-page .ac-banniere .ac-economie { margin-left: auto; font-weight: 800; color: var(--ac-vert); white-space: nowrap; }
+.ac-page .ac-banniere.attente { background: #FFF6DB; border-color: #F5E2A8; color: #6B4E00; }
+.ac-page .ac-table input, .ac-page .ac-table select { border: 1px solid var(--ac-bord); border-radius: 8px; padding: 5px 8px; font-size: 14px; background: #fff; width: 100%; }
+.ac-page .ac-table input:focus, .ac-page .ac-table select:focus { border-color: var(--ac-bleu); outline: none; box-shadow: 0 0 0 2px rgba(15, 69, 144, .15); }
+.ac-page .ac-table input.ac-qte { width: 70px; text-align: center; }
+.ac-page .ac-table input.ac-prix, .ac-page .ac-table input.ac-montant { width: 100px; text-align: right; }
+.ac-page .ac-table.ac-saisie td { padding: 8px 5px; }
+.ac-page .ac-table.ac-saisie input.ac-qte { width: 56px; }
+.ac-page .ac-table.ac-saisie td.ac-article { min-width: 170px; }
+.ac-page .ac-table .ac-suggestion { color: var(--ac-gris); font-size: 12px; min-width: 120px; line-height: 1.3; }
+.ac-page .ac-retirer { border: 0; background: none; color: var(--ac-gris); padding: 4px 6px; }
+.ac-page .ac-retirer:hover { color: var(--ac-rouge); }
+.ac-page .ac-ajouter { border: 1px dashed #C9D3E3; background: #fff; color: var(--ac-bleu); border-radius: 10px; padding: 6px 12px; font-size: 13px; font-weight: 600; margin-top: 10px; }
+.ac-page .ac-total-rendu b { display: block; font-size: 30px; font-weight: 800; color: var(--ac-bleu); line-height: 1.2; margin-bottom: 6px; }
+.ac-page .ac-cout { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--ac-bord); }
+.ac-page .ac-cout:last-child { border-bottom: 0; }
+.ac-page .ac-cout b { font-size: 16px; }
+.ac-page .ac-cout small { display: block; color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-infos p { margin: 0 0 6px; font-size: 13px; color: var(--ac-gris); }
+.ac-page .ac-infos p b { color: #111827; }
+.ac-page .ac-actions-pied { display: flex; flex-wrap: wrap; gap: 8px; }
+.ac-page .ac-bouton { background: #fff; border: 1px solid var(--ac-bord); color: #1F2937; border-radius: 10px; padding: 6px 14px; font-size: 13px; font-weight: 600; text-decoration: none; display: inline-block; }
+.ac-page .ac-bouton:hover { border-color: #C9D3E3; color: var(--ac-bleu); }
+.ac-page .ac-produit { min-width: 150px; }
+.ac-page .ac-unite { white-space: nowrap; }
+.ac-page textarea.form-control { font-size: 14px; }
+
+/* Choix du fournisseur d'une nouvelle commande */
+.ac-page .ac-choix { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ac-page .ac-choix a { display: flex; gap: 10px; align-items: center; background: #fff; border: 1px solid var(--ac-bord); border-radius: 12px; padding: 12px; color: inherit; text-decoration: none; }
+.ac-page .ac-choix a:hover { border-color: var(--ac-bleu); }
+.ac-page .ac-choix small { display: block; color: var(--ac-gris); }
+
+/* Onglets de la liste des commandes */
+.ac-page .ac-onglets { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.ac-page .ac-onglets a { border: 1px solid var(--ac-bord); background: #F1F3F8; color: #1F2937; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; text-decoration: none; }
+.ac-page .ac-onglets a.actif { background: #111827; border-color: #111827; color: #fff; }
+
+@media (max-width: 1199px) {
+	.ac-page .ac-grille, .ac-page .ac-grille.commande { grid-template-columns: minmax(0, 1fr); }
+}
+
+@media (max-width: 991px) {
+	.ac-page .ac-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+/* Téléphone : la liste des fournisseurs passe en cartes. */
+@media (max-width: 640px) {
+	.ac-page .ac-kpi b { font-size: 19px; }
+	.ac-page .ac-carte { padding: 12px; }
+	.ac-page .ac-liste thead { display: none; }
+	.ac-page .ac-liste, .ac-page .ac-liste tbody, .ac-page .ac-liste tr, .ac-page .ac-liste td { display: block; width: 100%; }
+	.ac-page .ac-liste tr { border-bottom: 1px solid var(--ac-bord); padding: 10px 0; display: grid; grid-template-columns: 1fr 1fr; gap: 4px 12px; }
+	.ac-page .ac-liste tr:last-child { border-bottom: 0; }
+	.ac-page .ac-liste td { border: 0; padding: 0; text-align: left; font-size: 13px; }
+	.ac-page .ac-liste td[data-libelle]::before { content: attr(data-libelle); display: block; color: var(--ac-gris); font-size: 11px; }
+	.ac-page .ac-liste td.ac-pleine { grid-column: 1 / -1; }
+	.ac-page .ac-liste td.num { text-align: left; }
+	.ac-page .ac-banniere { flex-wrap: wrap; }
+	.ac-page .ac-banniere .ac-economie { margin-left: 30px; }
+}

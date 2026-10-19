@@ -1,0 +1,10 @@
+{#
+	Gabarit des écrans Achats (maquettes SU01 à SU03, docs/achats.md) :
+	ajoute la feuille de style des écrans neufs.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/achats.css') }}" rel="stylesheet">
+{% endblock %}

@@ -11,7 +11,7 @@
 		<a href="{{ path('app_stock_articles_modifier', {id: article.id}) }}" class="btn btn-light btn-sm si-btn-entete">Modifier</a>
 	</li>
 	<li class="nav-item">
-		<a href="{{ path('app_achat_new') }}" class="btn btn-danger btn-sm si-btn-entete">Commander</a>
+		<a href="{{ path('app_achat_new', {article: article.id}) }}" class="btn btn-danger btn-sm si-btn-entete">Commander</a>
 	</li>
 {% endblock %}
 

@@ -2,6 +2,7 @@
 
 namespace App\Service;
 
+use App\Entity\Achats;
 use App\Entity\ActionCaisse;
 use App\Entity\Commandes;
 use App\Entity\DemandeConception;
@@ -63,6 +64,8 @@ final class PastillesMenu implements ResetInterface
         if ($this->security->isGranted('ROLE_ADMIN')) {
             // Paiements saisis en ligne ou au comptoir, à valider au local.
             $compteurs['app_a_valider_index'] = $this->compter(Paiements::class, 'p', 'p.statut = :s', ['s' => Paiements::STATUT_EN_ATTENTE]);
+            // Commandes d'achat au-dessus du seuil, à valider par la direction (docs/achats.md).
+            $compteurs['app_achat_index'] = $this->compter(Achats::class, 'a', 'a.statut = :s', ['s' => Achats::STATUT_A_VALIDER]);
         }
         if ($this->security->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
             $compteurs['app_actions_index'] = $this->compter(

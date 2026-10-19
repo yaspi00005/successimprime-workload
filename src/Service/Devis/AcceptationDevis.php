@@ -31,9 +31,12 @@ final class AcceptationDevis
     }
 
     /**
+     * @param array<string, mixed> $choix quantités choisies parmi les options (id public de ligne => quantité, DB02)
+     * @param ?string             $acompteMode Devis::ACOMPTE_ORANGE_MONEY ou ACOMPTE_IMPRIMERIE (DB03)
+     *
      * @throws \DomainException message à montrer au client
      */
-    public function accepter(Devis $devis, CompteClient $compte, \DateTimeImmutable $maintenant): Commandes
+    public function accepter(Devis $devis, CompteClient $compte, \DateTimeImmutable $maintenant, array $choix = [], bool $conditions = true, ?string $acompteMode = null): Commandes
     {
         if (!$devis->estEnAttente()) {
             throw new \DomainException('Ce devis ne peut plus être accepté.');
@@ -41,6 +44,12 @@ final class AcceptationDevis
         if (SuiviDevis::estAExpirer($devis, $maintenant)) {
             throw new \DomainException('Ce devis a expiré : demandez-nous une nouvelle version.');
         }
+        if (!$conditions) {
+            throw new \DomainException('Cochez « J\'accepte ce devis et les conditions de vente » pour accepter.');
+        }
+        // Quantités choisies : les montants sont refaits par les lignes, jamais reçus du navigateur.
+        OptionsDevis::appliquer($devis, $choix);
+        $devis->setConditionsAccepteesLe($maintenant)->setAcompteMode($devis->getMontantAcompte() > 0 ? $acompteMode : null);
         SuiviDevis::accepter($devis, $compte->getNomAffiche(), $maintenant);
         $this->em->flush();
         try {

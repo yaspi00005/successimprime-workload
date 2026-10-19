@@ -473,6 +473,8 @@ final class CatalogueSynchro
                     'conditionSolde', 'conditionFichier', 'conditionGarantie', 'canauxEnvoi', 'envoyeLe', 'envoyePar',
                     'nombreVues', 'premiereVueLe', 'derniereVueLe', 'vuPar', 'reponseLe', 'reponduPar', 'motifRefus',
                     'demandeModification', 'demandeModificationLe',
+                    // Espace client (maquettes DB02, DB03) : quantités choisies, conditions acceptées, mode de l'acompte.
+                    'optionsChoisies', 'conditionsAccepteesLe', 'acompteMode',
                 ],
                 'relations' => ['clients' => 'client', 'commande' => 'commande', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
                 /*
@@ -492,6 +494,8 @@ final class CatalogueSynchro
                     'reponseLe' => null, 'reponduPar' => null, 'motifRefus' => ['' => ['*']],
                     'demandeModification' => null, 'demandeModificationLe' => null,
                     'commande' => ['' => ['*']],
+                    // Le local refait les montants depuis ses propres options (OptionsDevis, Synchro::apresRemontee).
+                    'optionsChoisies' => null, 'conditionsAccepteesLe' => ['' => ['*']], 'acompteMode' => ['' => ['*']],
                 ],
             ],
             'devis_ligne' => [
@@ -502,6 +506,8 @@ final class CatalogueSynchro
                     'emballage', 'typeLigne', 'modeSaisie', 'batValide', 'etat', 'modeCalcul',
                     'libellePromotion', 'remisePromotion', 'montantPromotion', 'remiseCodePromo',
                     'espacementPiecesM2',
+                    // Quantités au choix du client (maquette DB02).
+                    'optionsQuantite',
                 ],
                 'relations' => ['devis' => 'devis', 'produit' => 'produit', 'produitConfiguration' => 'configuration', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
@@ -725,14 +731,18 @@ final class CatalogueSynchro
                 'remontees' => ['numero' => ['' => ['*']], 'commande' => null, 'nombreCommandes' => null, 'derniereCommandeLe' => null],
             ],
             'demande_devis' => [
-                'classe' => DemandeDevis::class, 'sens' => self::ASCENDANT, 'libelle' => 'Demande du site', 'titre' => ['numero'],
+                // Créée en ligne ; le local y relie la fiche client et le devis préparé, qui redescendent
+                // (« En préparation » et « Votre demande » de Mes devis, maquettes DB01 et DB02).
+                'classe' => DemandeDevis::class, 'sens' => self::DEUX, 'libelle' => 'Demande du site', 'titre' => ['numero'],
                 // quantiteM2 : surface donnée par le visiteur qui a compté en m² (pièces au m²).
                 // numeroCommande et rappelLe : page Contact (maquettes EC04 et EC06). La conversation ouverte au local, le rappel fait et son alerte restent au local.
                 'champs' => ['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'numeroCommande', 'rappelLe', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'message', 'creeLe', 'accuseEnvoyeLe'],
                 // Un produit retiré du catalogue entre-temps ne bloque pas la demande : la désignation reste.
-                'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'],
-                'facultatives' => ['configuration'],
+                'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation', 'client' => 'client', 'devis' => 'devis'],
+                'facultatives' => ['configuration', 'client', 'devis'],
                 'listes' => ['finitions' => 'finition'], 'numero' => 'numero',
+                // Une demande arrive toujours sans fiche ni devis : le local les relie.
+                'imposeAuLocal' => ['client' => null, 'devis' => null],
                 // Numéro et accusé de réception posés en ligne juste après la création.
                 'remontees' => ['numero' => ['' => ['*']], 'accuseEnvoyeLe' => ['' => ['*']]],
                 // Panier de devis (docs/site-vitrine.md) : une ligne par produit, avec son fichier, qui

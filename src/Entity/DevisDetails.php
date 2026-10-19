@@ -262,6 +262,30 @@ private string $modeSaisie = 'automatique';
         message: 'Le mode de calcul est invalide.'
     )]
     private string $modeCalcul = 'unite';
+
+    /**
+     * Autres quantités proposées au client, chacune avec son prix unitaire
+     * (maquette DB02 : 500, 1 000 ou 2 000 flyers) ; le client choisit dans
+     * son espace et le total change (OptionsDevis).
+     *
+     * @var list<array{quantite: int, prixUnitaire: string}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $optionsQuantite = null;
+
+    /** @return list<array{quantite: int, prixUnitaire: string}> */
+    public function getOptionsQuantite(): array
+    {
+        return $this->optionsQuantite ?? [];
+    }
+
+    /** @param list<array{quantite: int, prixUnitaire: string}> $options */
+    public function setOptionsQuantite(array $options): static
+    {
+        $this->optionsQuantite = [] === $options ? null : array_values($options);
+
+        return $this;
+    }
     public function __construct()
     {
         $this->initialiserPublicId();

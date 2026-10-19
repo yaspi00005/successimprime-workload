@@ -1,31 +1,34 @@
 {% extends 'espace/app/_app.html.twig' %}
 
 {#
-	Devis dans l'espace client (maquettes DT01, bureau, et DT04, téléphone ;
-	docs/devis.md) : lignes, version, validité, total, acompte et délai ;
-	« Suivi du devis » ; ce qui a changé depuis la version d'avant ; le
-	dernier message de la conversation ; accepter (la commande est créée,
-	puis l'acompte Orange Money pour qui paie), demander une modification,
-	refuser. Montants pour qui les voit (coque.montants) ; réponse pour qui
-	valide (peutValider). Jamais de coût ni de marge.
+	Devis dans l'espace client (maquettes DB02 et DB03, téléphone DB12 ;
+	docs/devis.md) : lignes avec les quantités au choix (le total, l'acompte
+	et le reste changent), remise, « Pour lancer la commande », la demande
+	d'origine, le commercial, la date « prêt le » si le client accepte
+	aujourd'hui. Accepter ouvre le récapitulatif : conditions de vente à
+	cocher, acompte par Orange Money ou à l'imprimerie. Montants pour qui
+	les voit (coque.montants) ; réponse pour qui valide (peutValider).
+	Jamais de coût ni de marge.
 #}
 {% set enAttente = devis.estEnAttente and not expire %}
 {% set montants = espace_coque().montants %}
-{% set statuts = {envoye: ['Envoyé', ''], vu: ['Envoyé', ''], accepte: ['Accepté', 'vert'], converti: ['Accepté', 'vert'], refuse: ['Refusé', 'rouge'], expire: ['Expiré', 'gris']} %}
-{% set statut = expire ? statuts.expire : statuts[devis.statut]|default(['', '']) %}
+{% set agir = enAttente and peutValider %}
 {% set acompte = devis.montantAcompte %}
+{% set badges = {accepter: ['À accepter', 'orange'], modifie: ['Modifié · v' ~ devis.version, 'violet'], preparation: ['Modification demandée', 'bleu'], accepte: ['Accepté', 'vert'], expire: ['Expiré', 'gris'], refuse: ['Refusé', 'gris']} %}
+{% set badge = badges[ligneListe.etat] %}
+{% set aOptions = options|filter(o => o is not empty)|length > 0 %}
 
 {% block title %}Devis {{ devis.numero }}{% endblock %}
-{% block page_classe %} ec-page-large{% endblock %}
+{% block page_classe %} ec-page-large db-page{% endblock %}
 {% block styles %}
-	<link href="{{ asset('css/espace-suivi.css') }}" rel="stylesheet">
 	<link href="{{ asset('css/espace-devis.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
 {% endblock %}
 {% block entete %}
 	<a class="ec-retour" href="{{ path('app_espace_devis') }}"><span class="fl">‹</span><span>Devis {{ devis.numero }}</span></a>
 	<div class="cs-entete-actions ec-bureau">
-		{% if montants %}<a class="cs-bouton-entete" href="{{ path('app_espace_devis_pdf', {id: devis.id}) }}" target="_blank">↓ PDF</a>{% endif %}
-		<a class="cs-bouton-entete" href="{{ conversation_url_client(devis) }}">Message</a>
+		{% if montants %}<a class="ec-bouton-blanc" href="{{ path('app_espace_devis_pdf', {id: devis.id}) }}" target="_blank">⬇ PDF</a>{% endif %}
+		<a class="ec-bouton-blanc" href="{{ conversation_url_client(devis) }}">💬 Question</a>
 	</div>
 {% endblock %}
 
@@ -37,60 +40,84 @@
 		<div class="ec-note">Ce devis a expiré le {{ devis.dateValidite|date_modify('+1 day')|date('d/m') }}. Demandez-nous une nouvelle version : le prix peut avoir changé.</div>
 	{% elseif devis.statut == 'refuse' %}
 		<div class="ec-note">Devis refusé{{ devis.motifRefus ? ' : ' ~ devis.motifRefus }}. Merci de nous avoir répondu.</div>
+	{% elseif devis.estAccepte %}
+		<div class="ec-flash ec-flash-ok">Devis accepté{{ devis.reponduPar ? ' par ' ~ devis.reponduPar }}{{ devis.reponseLe ? ' le ' ~ devis.reponseLe|date('d/m/Y') ~ ' à ' ~ devis.reponseLe|date('H:i') }}{{ devis.conditionsAccepteesLe ? ', conditions de vente acceptées' }}.</div>
 	{% endif %}
 
-	<div class="dv-grille">
-		<div class="dv-gauche">
-			<section class="ec-carte dv-devis" aria-label="Le devis">
-				<div class="dv-tete">
-					<div class="dv-tete-titre">
-						<h2>{{ devis.objet ?: (actuelle ? actuelle.resume : 'Votre devis') }}</h2>
-						<span class="ec-pastille {{ statut[1] }}">{{ statut[0] }}</span>
-						<span class="dv-version">v{{ devis.version }}{{ devis.envoyeLe ? ' · ' ~ devis.envoyeLe|date('d/m') }}</span>
-						{% if agent %}<span class="dv-agent">{{ ag.disque(agent) }}{{ agent.nom }}</span>{% endif %}
-					</div>
-					{% if devis.dateValidite and devis.estEnAttente %}<span class="dv-validite{{ expire ? ' passe' }}">Valable jusqu'au {{ devis.dateValidite|date('d/m') }}</span>{% endif %}
+	{# Téléphone (DB12) : l'état, le titre, le numéro et la validité. #}
+	<div class="db-tel-tete ec-telephone">
+		<small class="{{ badge[1] }}">{{ badge[0]|upper }}</small>
+		<h1>{{ ligneListe.titre }}</h1>
+		<p>{{ devis.numero }}{{ devis.dateValidite and devis.estEnAttente ? ' · valable jusqu\'au ' ~ devis.dateValidite|date('d/m') }}</p>
+	</div>
+
+	<div class="db-grille" data-db-devis data-calcul="{{ calcul|json_encode }}">
+		<div class="db-gauche">
+			<section class="ec-carte db-carte-devis" aria-label="Le devis">
+				<div class="db-devis-tete ec-bureau">
+					<h2>{{ ligneListe.titre }}</h2>
+					<span class="db-badge {{ badge[1] }}">{{ badge[0] }}</span>
+					{% if devis.envoyeLe %}<span class="db-envoye">envoyé le {{ devis.envoyeLe|date('d/m') }}{% if agent %} par {{ ag.disque(agent) }} <b>{{ agent.nom|split(' ')|first }}</b>{% endif %}</span>{% endif %}
+					{% if devis.dateValidite and devis.estEnAttente %}<span class="db-validite{{ ligneListe.urgent or expire ? ' urgent' }}">valable jusqu'au {{ devis.dateValidite|date('d/m') }}</span>{% endif %}
 				</div>
 
-				<table class="dv-lignes">
-					<thead><tr><th>Désignation</th><th class="n">Qté</th>{% if montants %}<th class="n">Prix unitaire</th><th class="n">Total</th>{% endif %}</tr></thead>
+				<table class="db-lignes">
+					<thead class="ec-bureau"><tr><th>Désignation</th><th>Quantité</th>{% if montants %}<th class="n">Total</th>{% endif %}</tr></thead>
 					<tbody>
 						{% for l in devis.devisDetails %}
-							{% set q = l.quantite|default(1) %}
-							<tr>
+							{% set pid = l.publicId|trim %}
+							{% set opts = options[pid] ?? [] %}
+							<tr data-ligne="{{ pid }}">
 								<td>
-									<b>{{ l|ligne_client('Travail') }}</b>
-									{% set options = [l.support ? l.support|texte_client : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
-									{% if options is not empty %}<small>{{ options|join(' · ') }}</small>{% endif %}
+									<b>{{ l|ligne_client('Travail') }}{% if not opts and l.quantite > 1 %}<span class="ec-telephone"> × {{ l.quantite|number_format(0, ',', ' ') }}</span>{% endif %}</b>
+									{% set details = [l.support ? l.support|texte_client : null, l.finitions|map(f => f.nomFinition)|filter(n => n)|join(', ') ?: null]|filter(o => o) %}
+									{% if details is not empty %}<small>{{ details|join(', ') }}</small>{% endif %}
 								</td>
-								<td class="n dv-q">{{ q|number_format(q == q|round ? 0 : 2, ',', ' ') }}</td>
-								{% if montants %}
-									<td class="n dv-pu">{% if l.totalTtc == 0 %}<span class="dv-offert">offert</span>{% else %}{{ (q > 0 ? l.totalTtc / q : 0)|number_format(0, ',', ' ') }} F{% endif %}</td>
-									<td class="n dv-total-ligne">{% if l.totalTtc == 0 %}<span class="dv-offert">offert</span>{% else %}{{ l.totalTtc|number_format(0, ',', ' ') }} F{% endif %}</td>
-								{% endif %}
+								<td class="db-q">
+									{% if opts and agir and montants %}
+										<div class="db-options" role="radiogroup" aria-label="Quantité de {{ l|ligne_client('Travail') }}">
+											{% for o in opts %}
+												<label class="db-option">
+													<input type="radio" form="db-form-accepter" id="opt-{{ pid }}-{{ o.quantite }}" name="options[{{ pid }}]" value="{{ o.quantite }}"{{ o.actuelle ? ' checked' }} data-option>
+													<span><b>{{ o.quantite|number_format(0, ',', ' ') }}</b><small>{{ o.ttc|number_format(0, ',', ' ') }} F</small></span>
+												</label>
+											{% endfor %}
+										</div>
+										<small class="db-options-note">À vous de choisir · le total change</small>
+									{% else %}
+										{{ l.quantite|number_format(0, ',', ' ') }}
+									{% endif %}
+								</td>
+								{% if montants %}<td class="n db-total-ligne" data-total-ligne>{% if l.totalTtc == 0 %}<span class="db-offert">offert</span>{% else %}{{ l.totalTtc|number_format(0, ',', ' ') }} F{% endif %}</td>{% endif %}
 							</tr>
 						{% endfor %}
+						{% if montants and devis.fraisLivraison > 0 %}
+							<tr><td><b>Livraison</b></td><td></td><td class="n">{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F</td></tr>
+						{% endif %}
+						{% if montants and devis.remise > 0 %}
+							<tr class="db-remise"><td><b>Remise{{ devis.devisDetails|length > 1 ? ' pack' }}</b></td><td></td><td class="n">− {{ devis.remise|number_format(0, ',', ' ') }} F</td></tr>
+						{% endif %}
 					</tbody>
 				</table>
 
-				<dl class="dv-totaux">
-					{% if montants %}
-						{% if devis.remise > 0 %}<div><dt>Remise</dt><dd>−{{ devis.remise|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
-						<div class="dv-total"><dt>Total</dt><dd>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
-						{% if acompte > 0 %}<div><dt>Acompte à l'acceptation · {{ devis.acomptePourcentage }} %</dt><dd>{{ acompte|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
-					{% else %}
-						<div><dt>Prix</dt><dd><small>vu par la personne qui valide pour votre entreprise</small></dd></div>
+				{% if montants %}
+					<dl class="db-totaux">
+						<div class="db-total"><dt>Total</dt><dd data-db-total>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
+						{% if acompte > 0 %}
+							<div><dt>Acompte à l'acceptation · {{ devis.acomptePourcentage }} %</dt><dd data-db-acompte>{{ acompte|number_format(0, ',', ' ') }} F</dd></div>
+							<div><dt>Reste à la livraison</dt><dd data-db-reste>{{ (devis.totalTtc - acompte)|number_format(0, ',', ' ') }} F</dd></div>
+						{% endif %}
+					</dl>
+					{% if aOptions and agir %}
+						<p class="db-choisir ec-telephone">
+							{% for l in devis.devisDetails|filter(l => options[l.publicId|trim] is not empty) %}
+								{{ (l|ligne_client('Travail'))|split(' ')|first }} : choisir {% for o in options[l.publicId|trim] %}<label for="opt-{{ l.publicId|trim }}-{{ o.quantite }}" data-choix-tel="opt-{{ l.publicId|trim }}-{{ o.quantite }}"{{ o.actuelle ? ' class="choisi"' }}>{{ o.quantite|number_format(0, ',', ' ') }}</label>{{ not loop.last ? ' · ' }}{% endfor %}{{ not loop.last ? ' — ' }}
+							{% endfor %}
+						</p>
 					{% endif %}
-					{% if devis.delaiRealisation %}<div><dt>Délai</dt><dd>{{ devis.delaiRealisation }}</dd></div>{% endif %}
-					{% if devis.conditionSolde %}<div><dt>Solde</dt><dd>{{ devis.conditionSolde }}</dd></div>{% endif %}
-					{% if devis.conditionFichier %}<div><dt>Fichier</dt><dd>{{ devis.conditionFichier }}</dd></div>{% endif %}
-					{% if devis.conditionGarantie %}<div><dt>Garantie</dt><dd>{{ devis.conditionGarantie }}</dd></div>{% endif %}
-				</dl>
-				{# Téléphone (DT04) : le total en grand, l'acompte et le délai dessous. #}
-				<div class="dv-total-mobile ec-telephone">
-					{% if montants %}<div class="dv-total-mobile-ligne"><span>Total</span><strong>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</strong></div>{% endif %}
-					<small>{{ [montants and acompte > 0 ? 'acompte ' ~ acompte|number_format(0, ',', ' ') ~ ' F' : null, devis.delaiRealisation ? 'délai ' ~ devis.delaiRealisation : null]|filter(x => x)|join(' · ') }}</small>
-				</div>
+				{% else %}
+					<p class="ec-petit db-sans-prix">Le prix est vu par la personne qui valide pour votre entreprise.</p>
+				{% endif %}
 			</section>
 
 			{% if precedente and actuelle %}
@@ -100,103 +127,159 @@
 						<div class="dv-v"><b>v{{ precedente.numero }} · {{ precedente.le|date('d/m') }}</b><small>{{ precedente.resume }}{{ montants ? ' · ' ~ precedente.total|number_format(0, ',', ' ') ~ ' F' }}</small></div>
 						<div class="dv-v actuelle"><b>v{{ actuelle.numero }} · {{ actuelle.le|date('d/m') }}</b><small>{{ actuelle.resume }}{{ montants ? ' · ' ~ actuelle.total|number_format(0, ',', ' ') ~ ' F' }}</small></div>
 					</div>
-					{% if changements is not empty %}
-						<ul class="dv-changements">{% for c in changements %}<li class="{{ c.sorte }}">{{ c.texte }}</li>{% endfor %}</ul>
-					{% endif %}
+					{% if changements is not empty %}<ul class="dv-changements">{% for c in changements %}<li class="{{ c.sorte }}">{{ c.texte }}</li>{% endfor %}</ul>{% endif %}
 				</section>
 			{% endif %}
 
-			{# Conversation du devis (docs/messagerie-clients.md) : montants masqués pour qui ne les voit pas. #}
-			{% set conv = conversation_resume(devis, not montants) %}
-			{% set dernierMessage = conv ? conv.dernier : null %}
-			{% if dernierMessage %}
-				<a class="ec-carte dv-message-mobile ec-telephone" href="{{ conversation_url_client(devis) }}">
-					{% if dernierMessage.deLAtelier %}{{ ag.disque({photo: dernierMessage.photo, initiales: dernierMessage.initiales, teinte: null}) }}{% endif %}
-					<p>{{ dernierMessage.texte }}</p>
-				</a>
-			{% endif %}
-
-			{# Réponse du client : accepter, demander une modification, refuser. #}
-			{% if enAttente %}
-				{% if peutValider %}
-					<div class="dv-actions">
-						<form method="post" action="{{ path('app_espace_devis_accepter', {id: devis.id}) }}" class="dv-accepter" data-confirmer="Accepter le devis {{ devis.numero }}{{ montants ? ' (' ~ devis.totalTtc|number_format(0, ',', ' ') ~ ' F)' }} ? La commande est créée avec ce prix." data-confirmer-bouton="Accepter">
-							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-							<button type="submit" class="ec-bouton orange">
-								{%- if peutPayer and acompte > 0 and montants -%}
-									<span class="ec-bureau">✓ Accepter et payer l'acompte · {{ acompte|number_format(0, ',', ' ') }} F</span><span class="ec-telephone">Accepter · payer {{ acompte|number_format(0, ',', ' ') }} F</span>
-								{%- else -%}
-									✓ Accepter le devis
-								{%- endif -%}
-							</button>
-						</form>
-						<details class="dv-repondre">
-							<summary class="ec-bouton clair"><span class="ec-bureau">Demander une modification</span><span class="ec-telephone">Modifier</span></summary>
-							<form method="post" action="{{ path('app_espace_devis_modification', {id: devis.id}) }}" class="dv-form">
-								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-								<label for="dv-texte">Que faut-il changer ?</label>
-								<textarea id="dv-texte" name="texte" class="ec-champ" maxlength="1200" required minlength="3" placeholder="Ex. : 4 kakémonos au lieu de 3, livraison avant samedi…"></textarea>
-								<button type="submit" class="ec-bouton bleu">Envoyer la demande</button>
-							</form>
-						</details>
-						<details class="dv-repondre">
-							<summary class="ec-bouton clair dv-refuser">Refuser</summary>
-							<form method="post" action="{{ path('app_espace_devis_refuser', {id: devis.id}) }}" class="dv-form">
-								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-								<label for="dv-motif">Pourquoi ? (cela nous aide)</label>
-								<select id="dv-motif" name="motif" class="ec-champ">
-									{% for cle, libelle in motifs %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}
-								</select>
-								<input type="text" name="precision" class="ec-champ" maxlength="200" placeholder="Précision (facultatif)">
-								<button type="submit" class="ec-bouton clair">Refuser le devis</button>
-							</form>
-						</details>
-					</div>
-					{% if acompte > 0 and not peutPayer %}<p class="ec-petit dv-note-acompte">Après l'acceptation, l'acompte est payé par la personne qui paie pour votre entreprise.</p>{% endif %}
-				{% else %}
-					<div class="ec-note">Ce devis est accepté par une personne qui valide pour votre entreprise. Vous pouvez demander une modification par <a class="ec-lien" href="{{ conversation_url_client(devis) }}">message</a>.</div>
-				{% endif %}
-			{% elseif devis.commande %}
-				<div class="ec-boutons"><a class="ec-bouton bleu" href="{{ path('app_espace_commande', {id: devis.commande.publicId}) }}">Voir la commande {{ devis.commande.numero }}</a></div>
-			{% elseif expire and peutValider %}
-				<form method="post" action="{{ path('app_espace_devis_modification', {id: devis.id}) }}" class="ec-carte dv-form">
-					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
-					<label for="dv-texte">Demander une nouvelle version</label>
-					<textarea id="dv-texte" name="texte" class="ec-champ" maxlength="1200" required minlength="3">Merci de m'envoyer une nouvelle version de ce devis.</textarea>
-					<button type="submit" class="ec-bouton bleu">Envoyer la demande</button>
-				</form>
-			{% endif %}
+			<section class="ec-carte db-infos" aria-label="Après l'acceptation">
+				<div class="db-info">
+					<span class="db-info-icone" aria-hidden="true">📅</span>
+					<p><b>{{ enAttente ? 'Prêt le ' ~ pret.jour : 'Délai' }}</b>
+					<small>{{ enAttente ? 'si vous acceptez aujourd\'hui · ' ~ pret.jours ~ ' jour' ~ (pret.jours > 1 ? 's') ~ ' après le BAT' : (devis.delaiRealisation ?: 'selon la date de la commande') }}</small></p>
+				</div>
+				<div class="db-info ec-bureau">
+					<span class="db-info-icone" aria-hidden="true">✅</span>
+					<p><b>BAT avant impression</b><small>vous validez chaque visuel ici</small></p>
+				</div>
+				<div class="db-info ec-bureau">
+					<span class="db-info-icone" aria-hidden="true">📦</span>
+					<p><b>Retrait ou livraison</b><small>retrait à l'imprimerie, ou livraison à Bamako{{ fraisLivraison > 0 ? ' ' ~ fraisLivraison|number_format(0, ',', ' ') ~ ' F' }}</small></p>
+				</div>
+			</section>
 		</div>
 
-		<aside class="dv-droite">
-			<section class="ec-carte" aria-labelledby="suivi-titre">
-				<h2 id="suivi-titre">Suivi du devis</h2>
-				<ol class="cs-frise">
-					{% for e in etapes %}
-						<li class="{{ e.etat == 'avenir' or e.etat == 'annulee' ? 'a_venir' : e.etat }}" style="--i: {{ loop.index0 }}"{% if e.etat == 'action' %} aria-current="step"{% endif %}>
-							<b>{{ e.libelle }}</b>{% if e.detail %}<small>{{ e.detail }}</small>{% endif %}
-						</li>
-					{% endfor %}
-				</ol>
-			</section>
-
-			<section class="ec-carte dv-dernier ec-bureau" aria-labelledby="message-titre">
-				<h2 id="message-titre">Dernier message</h2>
-				{% if dernierMessage %}
-					<div class="dv-bulle">
-						{% if dernierMessage.deLAtelier %}{{ ag.disque({photo: dernierMessage.photo, initiales: dernierMessage.initiales, teinte: null}) }}{% else %}<span class="ec-avatar">{{ coque.initiales }}</span>{% endif %}
-						<div><small class="ec-petit">{{ dernierMessage.deLAtelier ? dernierMessage.auteur : 'Vous' }} · {{ dernierMessage.le|date('d/m H:i') }}{{ conv.delaiTexte ? ' · ' ~ conv.delaiTexte }}</small>
-						<p>{{ dernierMessage.texte }}</p></div>
-					</div>
-				{% else %}
-					<p class="ec-petit">Une question sur ce devis ? Écrivez-nous, nous répondons dans la journée.</p>
-				{% endif %}
-				{% if not coque.lecture|default(false) %}<a class="ec-lien" href="{{ conversation_url_client(devis) }}">Ouvrir la conversation du devis →</a>{% endif %}
-			</section>
-
+		<aside class="db-droite">
 			{% if enAttente %}
-				<p class="ec-carte dv-info ec-petit">En acceptant, la commande est créée avec ce prix. La production commence après l'acompte et la validation du BAT.</p>
+				<section class="ec-carte db-lancer ec-bureau" aria-label="Pour lancer la commande">
+					{% if montants and acompte > 0 %}
+						<span class="ec-petit">Pour lancer la commande</span>
+						<b class="db-lancer-montant" data-db-acompte>{{ acompte|number_format(0, ',', ' ') }} F</b>
+						<small>acompte de {{ devis.acomptePourcentage }} % · le reste à la livraison</small>
+					{% elseif montants %}
+						<span class="ec-petit">Total du devis</span>
+						<b class="db-lancer-montant" data-db-total>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</b>
+						<small>sans acompte : vous payez à la livraison</small>
+					{% endif %}
+					{% if peutValider %}
+						<button type="button" class="ec-bouton vert" data-db-ouvrir="db-accepter">✓ Accepter le devis</button>
+						<button type="button" class="ec-bouton db-contour-violet" data-db-ouvrir="db-modifier">✎ Demander une modification</button>
+						<button type="button" class="db-lien-gris" data-db-ouvrir="db-refuser">Refuser ce devis</button>
+					{% else %}
+						<p class="ec-petit">Ce devis est accepté par une personne qui valide pour votre entreprise. Vous pouvez poser une question par <a class="ec-lien" href="{{ conversation_url_client(devis) }}">message</a>.</p>
+					{% endif %}
+				</section>
+			{% elseif devis.commande %}
+				<section class="ec-carte db-lancer">
+					<span class="ec-petit">Devis accepté</span>
+					<b class="db-lancer-montant">Commande {{ devis.commande.numero }}</b>
+					<a class="ec-bouton bleu" href="{{ path('app_espace_commande', {id: devis.commande.publicId}) }}">Voir la commande</a>
+				</section>
+			{% elseif expire and peutValider %}
+				<form method="post" action="{{ path('app_espace_devis_modification', {id: devis.id}) }}" class="ec-carte db-lancer">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<label for="db-redemander" class="ec-petit">Demander une nouvelle version</label>
+					<textarea id="db-redemander" name="texte" class="ec-champ" maxlength="1200" required minlength="3">Merci de m'envoyer une nouvelle version de ce devis.</textarea>
+					<button type="submit" class="ec-bouton bleu">Redemander</button>
+				</form>
+			{% endif %}
+
+			{% if demande and demande.message %}
+				<section class="ec-carte db-demande" aria-labelledby="db-demande-titre">
+					<h2 id="db-demande-titre">Votre demande</h2>
+					<p>« {{ demande.message|length > 220 ? demande.message|slice(0, 219) ~ '…' : demande.message }} »</p>
+					<small>envoyée le {{ demande.creeLe|date('d/m') }} à {{ demande.creeLe|date('H:i') }}{{ reponduEn ? ' · devis reçu en ' ~ reponduEn }}</small>
+				</section>
+			{% endif %}
+
+			{% if agent %}
+				<section class="ec-carte db-commercial">
+					{{ ag.disque(agent) }}
+					<p><b>{{ agent.nom }}</b><small>{{ agent.metier ?? 'votre commercial' }}</small></p>
+					{% if not coque.lecture|default(false) %}<a class="ec-lien" href="{{ conversation_url_client(devis) }}">Écrire</a>{% endif %}
+				</section>
 			{% endif %}
 		</aside>
 	</div>
+
+	{# Téléphone (DB12) : la réponse reste en bas de l'écran. #}
+	{% if agir %}
+		<div class="db-barre-tel ec-telephone">
+			<button type="button" class="ec-bouton vert" data-db-ouvrir="db-accepter">✓ Accepter{% if montants and acompte > 0 %} · acompte <span data-db-acompte>{{ acompte|number_format(0, ',', ' ') }} F</span>{% endif %}</button>
+			<div><button type="button" class="db-lien-violet" data-db-ouvrir="db-modifier">✎ Modifier</button><button type="button" class="db-lien-gris" data-db-ouvrir="db-refuser">Refuser</button></div>
+		</div>
+	{% endif %}
+
+	{% if agir %}
+		{# DB03 : récapitulatif, conditions de vente, acompte. #}
+		<dialog class="db-dialogue" id="db-accepter" aria-labelledby="db-accepter-titre">
+			<form method="post" action="{{ path('app_espace_devis_accepter', {id: devis.id}) }}" id="db-form-accepter">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<button type="button" class="db-fermer" data-db-fermer aria-label="Fermer">×</button>
+				<h2 id="db-accepter-titre">Accepter le devis {{ devis.numero }}</h2>
+				<p class="ec-petit">{{ ligneListe.titre }}{% if montants %} · <span data-db-total>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</span>{% endif %}</p>
+				{% if montants %}
+					<dl class="db-recap">
+						{% for l in devis.devisDetails %}
+							<div data-recap="{{ l.publicId|trim }}"><dt>{{ l|ligne_client('Travail') }}{% if l.quantite > 1 or options[l.publicId|trim] is not empty %} × <span data-recap-q>{{ l.quantite|number_format(0, ',', ' ') }}</span>{% endif %}</dt><dd data-recap-total>{{ l.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
+						{% endfor %}
+						{% if devis.fraisLivraison > 0 %}<div><dt>Livraison</dt><dd>{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
+						{% if devis.remise > 0 %}<div class="db-remise"><dt>Remise{{ devis.devisDetails|length > 1 ? ' pack' }}</dt><dd>− {{ devis.remise|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
+						<div class="db-recap-total"><dt>Total</dt><dd data-db-total>{{ devis.totalTtc|number_format(0, ',', ' ') }} F</dd></div>
+					</dl>
+				{% endif %}
+				<label class="db-conditions">
+					<input type="checkbox" name="conditions" value="1" required data-db-conditions>
+					<span>J'accepte ce devis et les <a href="#db-cgv" data-db-cgv>conditions de vente</a>. Les visuels me seront présentés en BAT avant impression.</span>
+				</label>
+				<details class="db-cgv" id="db-cgv">
+					<summary>Conditions de vente</summary>
+					<ul>
+						<li>Le devis est valable jusqu'au {{ devis.dateValidite ? devis.dateValidite|date('d/m/Y') : 'jour indiqué' }} ; le prix accepté ne change plus.</li>
+						{% if acompte > 0 %}<li>Acompte de {{ devis.acomptePourcentage }} % à l'acceptation : la production démarre à son paiement.</li>{% endif %}
+						<li>{{ devis.conditionSolde ?: 'Le solde se paie à la livraison ou au retrait.' }}</li>
+						<li>{{ devis.conditionFichier ?: 'Chaque visuel vous est présenté en BAT : rien n\'est imprimé sans votre validation.' }}</li>
+						{% if devis.conditionGarantie %}<li>{{ devis.conditionGarantie }}</li>{% endif %}
+					</ul>
+				</details>
+				{% if acompte > 0 and peutPayer and montants %}
+					<fieldset class="db-modes">
+						<legend>Payer l'acompte de <span data-db-acompte>{{ acompte|number_format(0, ',', ' ') }} F</span></legend>
+						<label class="db-mode om"><input type="radio" name="acompte" value="orange_money" checked data-db-mode><span><b>Orange Money</b><small>{{ compte.telephone|length >= 8 ? '+223 ' ~ compte.telephone|slice(-8, 2) ~ ' XX XX ' ~ compte.telephone|slice(-2) ~ ' · ' }}tout de suite</small></span></label>
+						<label class="db-mode"><input type="radio" name="acompte" value="imprimerie" data-db-mode><span><b>À l'imprimerie</b><small>la production démarre au paiement</small></span></label>
+					</fieldset>
+					<button type="submit" class="ec-bouton orange" data-db-valider data-texte-om="Accepter et payer" data-texte-imprimerie="Accepter le devis">Accepter et payer <span data-db-acompte>{{ acompte|number_format(0, ',', ' ') }} F</span></button>
+				{% else %}
+					{% if acompte > 0 and montants %}<p class="ec-petit">Après l'acceptation, l'acompte est payé par la personne qui paie pour votre entreprise.</p>{% endif %}
+					<button type="submit" class="ec-bouton vert">✓ Accepter le devis</button>
+				{% endif %}
+				<p class="db-trace">Acceptation enregistrée au nom de {{ compte.nomAffiche }} avec la date et l'heure.{% if acompte > 0 and peutPayer %} Vous confirmez le paiement sur votre téléphone : nous ne demandons jamais votre code secret.{% endif %}</p>
+			</form>
+		</dialog>
+
+		<dialog class="db-dialogue" id="db-modifier" aria-labelledby="db-modifier-titre">
+			<form method="post" action="{{ path('app_espace_devis_modification', {id: devis.id}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<button type="button" class="db-fermer" data-db-fermer aria-label="Fermer">×</button>
+				<h2 id="db-modifier-titre">Demander une modification</h2>
+				<label for="db-texte" class="ec-petit">Que faut-il changer ?</label>
+				<textarea id="db-texte" name="texte" class="ec-champ" maxlength="1200" required minlength="3" placeholder="Ex. : 3 kakémonos au lieu de 2, livraison avant samedi…"></textarea>
+				<button type="submit" class="ec-bouton violet">Envoyer la demande</button>
+				<p class="db-trace">Nous préparons une nouvelle version et vous prévenons.</p>
+			</form>
+		</dialog>
+
+		<dialog class="db-dialogue" id="db-refuser" aria-labelledby="db-refuser-titre">
+			<form method="post" action="{{ path('app_espace_devis_refuser', {id: devis.id}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<button type="button" class="db-fermer" data-db-fermer aria-label="Fermer">×</button>
+				<h2 id="db-refuser-titre">Refuser ce devis</h2>
+				<label for="db-motif" class="ec-petit">Pourquoi ? (cela nous aide)</label>
+				<select id="db-motif" name="motif" class="ec-champ">{% for cle, libelle in motifs %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}</select>
+				<input type="text" name="precision" class="ec-champ" maxlength="200" placeholder="Précision (facultatif)">
+				<button type="submit" class="ec-bouton clair">Refuser le devis</button>
+			</form>
+		</dialog>
+	{% endif %}
 {% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-devis.js') }}" defer></script>{% endblock %}

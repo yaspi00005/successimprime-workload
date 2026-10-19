@@ -89,6 +89,36 @@ final class DelaisCommande
     }
 
     /**
+     * « Prêt le jeu. 23/10 si vous acceptez aujourd'hui » (maquette DB02) :
+     * le délai écrit sur le devis (« 3 jours », « 48 h ») s'il se lit, sinon
+     * le délai standard.
+     *
+     * @return array{pret: \DateTimeImmutable, jours: int}
+     */
+    public function pretSiAccepte(?string $delaiDevis, \DateTimeImmutable $maintenant): array
+    {
+        $r = $this->reglages();
+        $heures = self::heuresDuTexte($delaiDevis) ?? $r['standard'];
+        $calcul = self::calculerPretLe($this->parametres->heuresTravail(), $heures, $r['limite'], $maintenant);
+
+        return ['pret' => $calcul['pret'], 'jours' => (int) ceil(max(1, $heures) / 24)];
+    }
+
+    /** « 3 jours ouvrés » : 72 ; « 48 h » : 48 ; illisible : null. */
+    public static function heuresDuTexte(?string $texte): ?int
+    {
+        if (null === $texte || !preg_match('/(\d+)\s*(j|h)/iu', $texte, $m)) {
+            return null;
+        }
+        $n = (int) $m[1];
+        if ($n <= 0) {
+            return null;
+        }
+
+        return 'h' === mb_strtolower($m[2]) ? $n : $n * 24;
+    }
+
+    /**
      * Le délai part aujourd'hui si c'est un jour ouvré et qu'il est avant
      * l'heure limite, sinon le jour ouvré suivant ; puis un jour ouvré par
      * tranche de 24 h commencée (48 h = 2 jours ouvrés).

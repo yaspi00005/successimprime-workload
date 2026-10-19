@@ -8,8 +8,12 @@ use App\Entity\MessageClient;
 use App\Repository\CompteClientRepository;
 use App\Entity\DemandeDevis;
 use App\Service\Devis\AcceptationDevis;
+use App\Service\Devis\OptionsDevis;
 use App\Service\Devis\SuiviDevis;
+use App\Service\EspaceClient\DelaisCommande;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\MesDevisClient;
+use App\Service\Parametres\ReglagesSaisie;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -17,7 +21,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * « Mes devis » de l'espace client (maquettes DT01 et DT04, docs/devis.md) :
+ * « Mes devis » de l'espace client (maquettes DB01 à DB03 et DB12, docs/devis.md) :
  * la liste, le devis avec ses lignes, ses versions et son suivi, et la
  * réponse du client.
  *
@@ -36,23 +40,48 @@ final class EspaceDevisController extends AbstractController
         private readonly EspaceClient $espace,
         private readonly AcceptationDevis $acceptation,
         private readonly EntityManagerInterface $em,
+        private readonly MesDevisClient $mesDevis,
+        private readonly DelaisCommande $delais,
+        private readonly ReglagesSaisie $reglagesSaisie,
     ) {
     }
 
+    /** Mes devis (maquette DB01) : chiffres, onglets, une ligne par devis ou demande avec son bouton. */
     #[Route('', name: '', methods: ['GET'])]
     public function liste(Request $request): Response
     {
         $filtre = (string) $request->query->get('filtre', 'tous');
-        $liste = $this->espace->devis($this->compte()->getClient());
-        $liste = match ($filtre) {
-            'a_accepter' => array_values(array_filter($liste, static fn (Devis $d): bool => $d->estEnAttente())),
-            'acceptes' => array_values(array_filter($liste, static fn (Devis $d): bool => $d->estAccepte())),
-            default => $liste,
-        };
+        $filtre = isset(MesDevisClient::ONGLETS[$filtre]) ? $filtre : 'tous';
+        $page = $this->mesDevis->page($this->compte(), new \DateTimeImmutable());
 
-        return $this->vue('espace/app/devis.html.twig', ['liste' => $liste, 'filtre' => $filtre]);
+        return $this->vue('espace/app/devis.html.twig', $page + [
+            'filtre' => $filtre,
+            'onglets' => MesDevisClient::ONGLETS,
+            'visibles' => 'tous' === $filtre ? $page['lignes'] : array_values(array_filter($page['lignes'], static fn (array $l): bool => $l['onglet'] === $filtre)),
+        ]);
     }
 
+    /** « Voir ma demande » : la demande envoyée, dont le devis se prépare. */
+    #[Route('/demande/{id}', name: '_demande', requirements: ['id' => '\d+'], methods: ['GET'])]
+    public function demande(int $id): Response
+    {
+        $demande = $this->mesDevis->demande($this->compte(), $id) ?? throw $this->createNotFoundException();
+        $devis = $demande->getDevis();
+        if (null !== $devis && \in_array($devis->getStatut(), EspaceClient::DEVIS_VISIBLES, true)) {
+            return $this->redirectToRoute('app_espace_devis_detail', ['id' => $devis->getId()]);
+        }
+
+        return $this->vue('espace/app/devis_demande.html.twig', [
+            'demande' => $demande,
+            'ligne' => MesDevisClient::ligneDemande($demande),
+        ]);
+    }
+
+    /**
+     * Devis (maquette DB02) : lignes avec les quantités au choix, remise,
+     * total, acompte et reste ; « Pour lancer la commande », la demande
+     * d'origine, le commercial, la date « prêt le » si accepté aujourd'hui.
+     */
     #[Route('/{id}', name: '_detail', requirements: ['id' => '\d+'], methods: ['GET'])]
     public function detail(int $id): Response
     {
@@ -63,12 +92,23 @@ final class EspaceDevisController extends AbstractController
             $this->em->flush();
         }
         $versions = $devis->getVersions();
-        $demande = $this->em->getRepository(DemandeDevis::class)->findOneBy(['devis' => $devis]);
+        $demande = $this->mesDevis->demandeDe($devis);
+        $options = [];
+        foreach ($devis->getDevisDetails() as $l) {
+            $options[(string) $l->getPublicId()] = OptionsDevis::options($l);
+        }
 
         return $this->vue('espace/app/devis_detail.html.twig', [
             'devis' => $devis,
             'compte' => $compte,
-            'etapes' => SuiviDevis::etapesClient($devis, $demande?->getCreeLe(), $maintenant),
+            'ligneListe' => MesDevisClient::ligneDevis($devis, $maintenant),
+            'demande' => $demande,
+            'reponduEn' => null !== $demande && null !== $devis->getEnvoyeLe() && $devis->getEnvoyeLe() > $demande->getCreeLe()
+                ? MesDevisClient::duree((int) (($devis->getEnvoyeLe()->getTimestamp() - $demande->getCreeLe()->getTimestamp()) / 60)) : null,
+            'options' => $options,
+            'calcul' => OptionsDevis::pourLaPage($devis),
+            'pret' => ($pret = $this->delais->pretSiAccepte($devis->getDelaiRealisation(), $maintenant)) + ['jour' => DelaisCommande::jour($pret['pret'])],
+            'fraisLivraison' => $this->reglagesSaisie->fraisEnLigne(),
             // « Ce qui a changé » : la version d'avant et celle-ci.
             'actuelle' => $versions[0] ?? null,
             'precedente' => $versions[1] ?? null,
@@ -94,14 +134,21 @@ final class EspaceDevisController extends AbstractController
         if (!$compte->peut(CompteClient::DROIT_VALIDEUR)) {
             throw $this->createAccessDeniedException();
         }
+        $choix = $request->request->all()['options'] ?? [];
+        $mode = $request->request->getString('acompte');
         try {
-            $commande = $this->acceptation->accepter($devis, $compte, new \DateTimeImmutable());
+            $commande = $this->acceptation->accepter($devis, $compte, new \DateTimeImmutable(), \is_array($choix) ? $choix : [], $request->request->getBoolean('conditions'), $compte->peut(CompteClient::DROIT_PAYEUR) ? $mode : null);
         } catch (\DomainException $e) {
             $this->addFlash('error', $e->getMessage());
 
             return $this->redirectToRoute('app_espace_devis_detail', ['id' => $id]);
         }
         $id = (string) $commande->getPublicId();
+        if ($compte->peut(CompteClient::DROIT_PAYEUR) && $devis->getMontantAcompte() > 0 && Devis::ACOMPTE_IMPRIMERIE === $devis->getAcompteMode()) {
+            $this->addFlash('succes', \sprintf('Devis %s accepté : votre commande %s est créée. Passez à l\'imprimerie payer l\'acompte de %s F : la production démarre au paiement.', $devis->getNumero(), $commande->getNumero(), number_format($devis->getMontantAcompte(), 0, ',', ' ')));
+
+            return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
+        }
         if ($compte->peut(CompteClient::DROIT_PAYEUR) && $devis->getMontantAcompte() > 0) {
             $this->addFlash('succes', \sprintf('Devis %s accepté : votre commande %s est créée. Il reste à payer l\'acompte.', $devis->getNumero(), $commande->getNumero()));
 

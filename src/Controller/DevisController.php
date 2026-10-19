@@ -9,6 +9,7 @@ use App\Entity\User;
 use App\Service\Caisse;
 use App\Service\Corbeille\Corbeille;
 use App\Service\Devis\EnvoiDevis;
+use App\Service\Devis\OptionsDevis;
 use App\Service\Devis\ListeDevis;
 use App\Service\Devis\PdfDevis;
 use App\Service\Devis\RentabiliteDevis;
@@ -331,6 +332,33 @@ class DevisController extends AbstractController
             return new RedirectResponse($resultat['lien']);
         }
         $this->addFlash(null === $resultat['note'] ? 'success' : 'warning', $resultat['note'] ?? \sprintf('Relance WhatsApp envoyée pour le devis %s.', $devi->getNumero()));
+
+        return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
+    }
+
+    /**
+     * Quantités au choix du client sur une ligne (maquette DB02) : 500,
+     * 1 000 ou 2 000 flyers, chacune avec son prix unitaire. Sans changer le
+     * prix du devis ; le client choisit dans son espace en acceptant.
+     */
+    #[Route('/{id}/options/{ligne}', name: 'options', requirements: ['id' => '\d+', 'ligne' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_DEVIS')]
+    public function options(Devis $devi, int $ligne, Request $request, EntityManagerInterface $em): Response
+    {
+        $this->jeton($request, 'devis-'.$devi->getId());
+        $detail = null;
+        foreach ($devi->getDevisDetails() as $l) {
+            $detail = $l->getId() === $ligne ? $l : $detail;
+        }
+        if (null === $detail || !(Devis::STATUT_BROUILLON === $devi->getStatut() || $devi->estEnAttente())) {
+            $this->addFlash('warning', 'Les quantités au choix se changent tant que le devis attend la réponse du client.');
+
+            return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
+        }
+        $saisies = $request->request->all()['options'] ?? [];
+        $detail->setOptionsQuantite(OptionsDevis::lire(\is_array($saisies) ? array_filter($saisies, 'is_array') : [], $detail->getQuantite()));
+        $em->flush();
+        $this->addFlash('success', [] === $detail->getOptionsQuantite() ? 'Plus de quantité au choix sur cette ligne.' : \sprintf('%d quantité(s) au choix enregistrée(s) : le client les voit dans son espace.', \count($detail->getOptionsQuantite())));
 
         return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
     }

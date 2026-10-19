@@ -92,6 +92,65 @@ trait SuiviDevisTrait
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $relances = null;
 
+    /**
+     * Quantités choisies par le client parmi les options d'une ligne
+     * (maquette DB02) : id public de la ligne => quantité. Remonte du site ;
+     * le local refait les montants depuis ses propres options (OptionsDevis).
+     *
+     * @var array<string, int>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $optionsChoisies = null;
+
+    /** « J'accepte ce devis et les conditions de vente » coché à l'acceptation (DB03). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $conditionsAccepteesLe = null;
+
+    /** Acompte choisi à l'acceptation : orange_money ou imprimerie. */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $acompteMode = null;
+
+    public const ACOMPTE_ORANGE_MONEY = 'orange_money';
+    public const ACOMPTE_IMPRIMERIE = 'imprimerie';
+
+    /** @return array<string, int> */
+    public function getOptionsChoisies(): array
+    {
+        return $this->optionsChoisies ?? [];
+    }
+
+    /** @param array<string, int> $choix */
+    public function setOptionsChoisies(array $choix): static
+    {
+        $this->optionsChoisies = [] === $choix ? null : $choix;
+
+        return $this;
+    }
+
+    public function getConditionsAccepteesLe(): ?\DateTimeImmutable
+    {
+        return $this->conditionsAccepteesLe;
+    }
+
+    public function setConditionsAccepteesLe(?\DateTimeImmutable $le): static
+    {
+        $this->conditionsAccepteesLe = $le;
+
+        return $this;
+    }
+
+    public function getAcompteMode(): ?string
+    {
+        return $this->acompteMode;
+    }
+
+    public function setAcompteMode(?string $mode): static
+    {
+        $this->acompteMode = \in_array($mode, [self::ACOMPTE_ORANGE_MONEY, self::ACOMPTE_IMPRIMERIE], true) ? $mode : null;
+
+        return $this;
+    }
+
     public function getVersion(): int
     {
         return $this->version;

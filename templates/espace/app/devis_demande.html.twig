@@ -1,0 +1,32 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	« Voir ma demande » (maquette DB01) : la demande de devis envoyée, dont
+	le devis se prépare encore. Jamais de prix : le devis brouillon reste à
+	l'imprimerie tant qu'il n'est pas envoyé.
+#}
+{% block title %}Ma demande de devis{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_devis', {filtre: 'preparation'}) }}"><span class="fl">‹</span>Ma demande {{ demande.numero }}</a>{% endblock %}
+
+{% block contenu %}
+	<section class="ec-carte db-demande-page">
+		<div class="db-devis-tete">
+			<h2>{{ ligne.titre }}</h2>
+			<span class="db-badge bleu">En préparation</span>
+		</div>
+		<p class="db-promesse">Nous préparons votre devis : {{ ligne.quand }}. Vous êtes prévenu dès qu'il est prêt.</p>
+		<dl class="db-recap">
+			<div><dt>Envoyée le</dt><dd>{{ demande.creeLe|date('d/m/Y') }} à {{ demande.creeLe|date('H:i') }}</dd></div>
+			{% if demande.estPanier %}
+				{% for l in demande.lignes %}
+					<div><dt>{{ l.designation ?: 'Produit' }}</dt><dd>{{ l.quantite ? l.quantite|number_format(0, ',', ' ') ~ ' ex.' }}{{ l.largeurCm and l.hauteurCm ? ' · ' ~ l.largeurCm ~ ' × ' ~ l.hauteurCm ~ ' cm' }}</dd></div>
+				{% endfor %}
+			{% elseif demande.designation %}
+				<div><dt>{{ demande.designation }}</dt><dd>{{ demande.quantite ? demande.quantite|number_format(0, ',', ' ') ~ ' ex.' }}{{ demande.largeurCm and demande.hauteurCm ? ' · ' ~ demande.largeurCm ~ ' × ' ~ demande.hauteurCm ~ ' cm' }}</dd></div>
+			{% endif %}
+		</dl>
+		{% if demande.message %}<blockquote class="db-citation">« {{ demande.message }} »</blockquote>{% endif %}
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_messages') }}">💬 Ajouter une précision</a>
+	</section>
+{% endblock %}

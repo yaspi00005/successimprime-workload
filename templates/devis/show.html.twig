@@ -128,6 +128,28 @@
 										<strong>{{ detail|ligne_interne('Ligne sans désignation') }}</strong>
 										{% if pieces_m2_ligne(detail) %}<small class="d-block text-muted">{{ pieces_m2_ligne(detail) }}</small>{% endif %}
 										{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'devis', peutDemander: is_granted('ROLE_DEVIS')}) }}
+										{# Quantités au choix du client (maquette DB02) : il choisit dans son espace, le total change. #}
+										{% set optionsLigne = devis_options_ligne(detail) %}
+										{% if optionsLigne is not empty %}
+											<small class="d-block si-dv-options">Au choix du client : {% for o in optionsLigne %}<b>{{ o.quantite|number_format(0, ',', ' ') }}</b> = {{ o.ttc|number_format(0, ',', ' ') }} F{{ o.actuelle ? ' (devis)' }}{{ not loop.last ? ' · ' }}{% endfor %}</small>
+										{% endif %}
+										{% if is_granted('ROLE_DEVIS') and (devis.statut == 'brouillon' or devis.estEnAttente) %}
+											<details class="si-dv-options-form">
+												<summary class="small">{{ optionsLigne is empty ? '+ Proposer d\'autres quantités' : 'Changer les quantités proposées' }}</summary>
+												<form method="post" action="{{ path('app_devis_options', {id: devis.id, ligne: detail.id}) }}" class="d-grid gap-1 mt-1">
+													<input type="hidden" name="_token" value="{{ csrf_token('devis-' ~ devis.id) }}">
+													{% set existantes = detail.optionsQuantite %}
+													{% for i in 0..3 %}
+														<div class="d-flex gap-1">
+															<input class="form-control form-control-sm" name="options[{{ i }}][quantite]" inputmode="numeric" placeholder="Quantité" value="{{ existantes[i].quantite ?? '' }}" aria-label="Quantité {{ i + 1 }}">
+															<input class="form-control form-control-sm" name="options[{{ i }}][prixUnitaire]" inputmode="decimal" placeholder="Prix unitaire HT" value="{{ existantes[i].prixUnitaire ?? '' }}" aria-label="Prix unitaire {{ i + 1 }}">
+														</div>
+													{% endfor %}
+													<small class="text-muted">Quantité du devis : {{ detail.quantite }}. Le client choisit dans son espace, les finitions et remises de la ligne suivent.</small>
+													<button type="submit" class="btn btn-sm btn-outline-primary">Enregistrer les quantités</button>
+												</form>
+											</details>
+										{% endif %}
 									</td>
 									<td class="text-end" data-label="Qté">{{ quantite|number_format(quantite == quantite|round ? 0 : 2, ',', ' ') }}</td>
 									<td class="text-end" data-label="Prix unitaire">{{ (quantite > 0 ? detail.totalTtc / quantite : 0)|number_format(0, ',', ' ') }} F</td>

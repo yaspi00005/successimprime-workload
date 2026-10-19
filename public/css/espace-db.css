@@ -1,0 +1,146 @@
+/*
+ * Espace client : devis, BAT et livraisons (maquettes DB01 à DB13).
+ * Couleurs et rayons de espace-app.css.
+ */
+:root { --violet: #7C3AED; --violet-clair: #F3EEFF; }
+.violet { color: var(--violet); }
+.ec-bouton.violet { background: var(--violet); box-shadow: 0 6px 14px rgba(124,58,237,.22); }
+.ec-bouton.db-contour-violet { background: #fff; color: var(--violet); border: 1.5px solid var(--violet); box-shadow: none; }
+.db-lien-gris, .db-lien-violet { display: block; margin: .5rem auto 0; border: 0; background: none; font: inherit; font-size: .86rem; font-weight: 700; color: var(--gris); cursor: pointer; }
+.db-lien-violet { color: var(--violet); }
+
+.db-badge { display: inline-block; margin-left: .35rem; padding: .12rem .5rem; border-radius: 99px; font-size: .72rem; font-weight: 800; vertical-align: middle; white-space: nowrap; }
+.db-badge.orange { background: #FFF1E5; color: #C2410C; }
+.db-badge.violet { background: var(--violet-clair); color: var(--violet); }
+.db-badge.bleu { background: #E8F0FC; color: var(--bleu); }
+.db-badge.vert { background: #E7F7EE; color: var(--vert); }
+.db-badge.gris { background: #EEF0F4; color: var(--gris); }
+.db-badge.rouge { background: #FDE8EB; color: var(--rouge); }
+.db-demander { width: auto; display: inline-block; padding: .6rem 1.1rem; text-decoration: none; }
+
+/* DB01 Mes devis */
+.db-onglets { margin-bottom: .6rem; }
+.db-devis { list-style: none; margin: 0; padding: 0; }
+.db-devis-ligne { display: grid; grid-template-columns: minmax(240px, 1.6fr) minmax(160px, 1fr) 120px 180px; align-items: center; gap: 1rem; padding: .85rem .8rem; border-top: 1px solid var(--trait); }
+.db-devis-ligne:first-child { border-top: 0; }
+.db-devis-ligne.db-accepter { background: #FFF7F0; border-radius: 12px; }
+.db-devis-nom { display: flex; flex-direction: column; min-width: 0; color: inherit; text-decoration: none; line-height: 1.35; }
+.db-devis-nom b { font-size: .97rem; }
+.db-devis-nom small { color: var(--gris); font-size: .8rem; }
+.db-devis-nom:hover b { color: var(--bleu); }
+.db-devis-quand { font-size: .83rem; color: var(--gris); }
+.db-devis-quand.urgent { color: var(--orange); font-weight: 700; }
+.db-devis-montant { text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+.db-devis-action .ec-bouton, .db-devis-action .ec-bouton-blanc { width: 100%; justify-content: center; padding: .6rem .8rem; font-size: .88rem; text-decoration: none; }
+.db-devis-action form { margin: 0; }
+
+/* DB02 Devis */
+.db-grille { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 1rem; align-items: start; }
+.db-gauche, .db-droite { display: grid; gap: 1rem; min-width: 0; }
+.db-devis-tete { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .7rem; margin-bottom: .6rem; }
+.db-devis-tete h2 { margin: 0; font-size: 1.15rem; }
+.db-envoye { display: inline-flex; align-items: center; gap: .3rem; font-size: .82rem; color: var(--gris); }
+.db-envoye .ec-avatar, .db-envoye .ag-disque { width: 22px; height: 22px; font-size: .6rem; }
+.db-validite { margin-left: auto; font-size: .82rem; font-weight: 700; color: var(--gris); }
+.db-validite.urgent { color: var(--orange); }
+.db-lignes { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.db-lignes th { text-align: left; font-size: .78rem; font-weight: 700; color: var(--gris); padding: .5rem .4rem; background: var(--fond); }
+.db-lignes td { padding: .7rem .4rem; border-top: 1px solid var(--trait); vertical-align: middle; }
+.db-lignes td small { display: block; color: var(--gris); font-size: .8rem; }
+.db-lignes .n { text-align: right; white-space: nowrap; font-weight: 800; font-variant-numeric: tabular-nums; }
+.db-remise td { color: var(--vert); }
+.db-offert { color: var(--vert); font-weight: 700; }
+.db-options { display: flex; flex-wrap: wrap; gap: .35rem; }
+.db-option { position: relative; cursor: pointer; }
+.db-option input { position: absolute; opacity: 0; pointer-events: none; }
+.db-option span { display: flex; flex-direction: column; align-items: center; min-width: 4.6rem; padding: .3rem .55rem; border-radius: 10px; background: #F1F4F9; line-height: 1.2; }
+.db-option span b { font-size: .85rem; }
+.db-option span small { font-size: .72rem; color: var(--gris); }
+.db-option input:checked + span { background: var(--bleu); color: #fff; }
+.db-option input:checked + span small { color: #DCE6F7; }
+.db-option input:focus-visible + span { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.db-options-note { margin-top: .3rem; color: var(--bleu) !important; font-weight: 700; }
+.db-totaux { margin: .6rem 0 0 auto; max-width: 320px; }
+.db-totaux > div { display: flex; justify-content: space-between; gap: 1rem; padding: .25rem .4rem; font-size: .88rem; color: var(--gris); }
+.db-totaux dd { margin: 0; font-weight: 800; color: var(--encre); font-variant-numeric: tabular-nums; }
+.db-totaux .db-total dt { color: var(--encre); }
+.db-totaux .db-total dd { font-size: 1.25rem; }
+.db-choisir { margin: .6rem 0 0; font-size: .82rem; font-weight: 700; color: var(--bleu); }
+.db-choisir label { cursor: pointer; padding: .1rem .2rem; }
+.db-choisir .choisi { text-decoration: underline; text-underline-offset: 3px; }
+.db-infos { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; }
+.db-info { display: flex; gap: .55rem; align-items: flex-start; }
+.db-info p { margin: 0; line-height: 1.3; }
+.db-info b { display: block; font-size: .92rem; }
+.db-info small { color: var(--gris); font-size: .8rem; }
+.db-info-icone { font-size: 1.3rem; line-height: 1; }
+.db-lancer { display: grid; gap: .5rem; }
+.db-lancer-montant { font-size: 1.8rem; color: var(--bleu); line-height: 1.1; }
+.db-lancer > small { color: var(--gris); font-size: .8rem; margin-bottom: .3rem; }
+.db-demande h2, .db-commercial h2 { font-size: .98rem; margin: 0 0 .4rem; }
+.db-demande p { margin: 0 0 .4rem; font-size: .88rem; }
+.db-demande small { color: var(--gris); font-size: .78rem; }
+.db-commercial { display: flex; align-items: center; gap: .7rem; }
+.db-commercial p { margin: 0; flex: 1; line-height: 1.3; }
+.db-commercial small { display: block; color: var(--gris); font-size: .8rem; }
+
+/* DB03 Fenêtres */
+.db-dialogue { width: min(520px, calc(100vw - 2rem)); border: 0; border-radius: 20px; padding: 1.4rem 1.5rem; box-shadow: 0 24px 60px rgba(18,33,58,.25); }
+.db-dialogue::backdrop { background: rgba(18,33,58,.45); }
+.db-dialogue h2 { margin: 0 2rem .15rem 0; font-size: 1.25rem; }
+.db-dialogue form { display: grid; gap: .7rem; position: relative; }
+.db-fermer { position: absolute; top: -.5rem; right: -.6rem; border: 0; background: none; font-size: 1.6rem; line-height: 1; color: var(--gris); cursor: pointer; }
+.db-recap { margin: 0; padding: .7rem .9rem; border-radius: 14px; background: var(--fond); }
+.db-recap > div { display: flex; justify-content: space-between; gap: 1rem; padding: .2rem 0; font-size: .88rem; }
+.db-recap dd { margin: 0; font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.db-recap .db-remise dd { color: var(--vert); }
+.db-recap .db-recap-total { margin-top: .3rem; padding-top: .45rem; border-top: 1px solid var(--trait); font-weight: 800; }
+.db-conditions { display: flex; gap: .55rem; align-items: flex-start; font-size: .88rem; }
+.db-conditions input { margin-top: .2rem; width: 1.1rem; height: 1.1rem; accent-color: var(--bleu); }
+.db-conditions a { color: var(--bleu); font-weight: 700; }
+.db-cgv { font-size: .82rem; color: var(--gris); }
+.db-cgv summary { display: none; }
+.db-cgv ul { margin: 0; padding-left: 1.1rem; }
+.db-modes { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; border: 0; margin: 0; padding: 0; }
+.db-modes legend { padding: 0; margin-bottom: .4rem; font-size: .82rem; font-weight: 700; color: var(--gris); }
+.db-mode { position: relative; cursor: pointer; }
+.db-mode input { position: absolute; opacity: 0; }
+.db-mode span { display: flex; flex-direction: column; height: 100%; padding: .6rem .8rem; border: 1.5px solid var(--trait); border-radius: 12px; line-height: 1.3; }
+.db-mode small { font-size: .76rem; color: var(--gris); }
+.db-mode.om b { color: var(--orange); }
+.db-mode input:checked + span { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(255,121,0,.12); }
+.db-mode:not(.om) input:checked + span { border-color: var(--bleu); box-shadow: 0 0 0 3px rgba(15,69,144,.12); }
+.db-trace { margin: 0; text-align: center; font-size: .76rem; color: var(--gris); }
+
+/* Ma demande */
+.db-demande-page { max-width: 720px; }
+.db-promesse { margin: 0 0 .8rem; font-weight: 700; color: var(--bleu); }
+.db-citation { margin: .8rem 0; padding: .7rem .9rem; border-left: 3px solid var(--bleu); background: var(--fond); border-radius: 0 10px 10px 0; font-size: .9rem; }
+
+/* Téléphone (DB12) */
+.db-tel-tete small { font-size: .72rem; font-weight: 800; letter-spacing: .06em; }
+.db-tel-tete small.orange { color: var(--orange); }
+.db-tel-tete h1 { margin: .1rem 0; font-size: 1.35rem; }
+.db-tel-tete p { margin: 0 0 .8rem; font-size: .82rem; color: var(--gris); }
+.db-barre-tel { position: sticky; bottom: 0; z-index: 5; margin: 1rem -1rem 0; padding: .8rem 1rem calc(.8rem + env(safe-area-inset-bottom)); background: #fff; box-shadow: 0 -8px 20px rgba(18,33,58,.08); border-radius: 18px 18px 0 0; }
+.db-barre-tel > div { display: flex; justify-content: space-around; }
+.db-barre-tel .db-lien-gris, .db-barre-tel .db-lien-violet { margin: .5rem 0 0; }
+
+@media (max-width: 900px) {
+	.db-grille { grid-template-columns: 1fr; }
+	.db-infos { grid-template-columns: 1fr; }
+	.db-devis-ligne { grid-template-columns: 1fr auto; gap: .35rem .8rem; }
+	.db-devis-quand { grid-column: 1; grid-row: 2; }
+	.db-devis-montant { grid-column: 2; grid-row: 1; }
+	.db-devis-action { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+	.db-lignes td { padding: .55rem .2rem; }
+	.db-lignes .db-q { display: none; }
+	.db-modes { grid-template-columns: 1fr; }
+	.db-totaux { max-width: none; }
+	.db-carte-devis .db-totaux > div:not(.db-total) { display: none; }
+}
+/* .orange, .rouge et .violet colorent aussi du texte (espace-commandes.css) : pas sur un bouton plein. */
+.ec-bouton.orange, .ec-bouton.rouge, .ec-bouton.violet, .ec-bouton.vert, .ec-bouton.bleu { color: #fff; }
+.db-dialogue h2 + p { margin: -.4rem 0 0; }

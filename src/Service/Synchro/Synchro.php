@@ -4,6 +4,7 @@ namespace App\Service\Synchro;
 
 use App\Entity\DepotSoldeClient;
 use App\Entity\BonLivraison;
+use App\Service\Devis\OptionsDevis;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
@@ -787,6 +788,10 @@ final class Synchro
         if ($entite instanceof CommandeDetailFichier && '0' === ($remontees['actif'][1] ?? null)) {
             // Le client l'a retiré de « Mes fichiers » : récupérable au local pendant la durée de la corbeille.
             $this->corbeille?->masquer($this->em, $entite, 'actif', true, null, 'Espace client (en ligne)');
+        }
+        if ($entite instanceof Devis && isset($remontees['optionsChoisies'])) {
+            // Quantités choisies dans l'espace client (maquette DB02) : montants refaits depuis les options du local.
+            OptionsDevis::appliquer($entite, $entite->getOptionsChoisies());
         }
         if ($entite instanceof Devis) {
             // Réponse du client dans son espace (docs/devis.md) ; une simple ouverture ne prévient personne.

@@ -11,6 +11,7 @@ use App\Entity\ControlePrePresse;
 use App\Entity\CreationAtelier;
 use App\Entity\DepotSoldeClient;
 use App\Entity\DemandeConception;
+use App\Entity\DemandeDevis;
 use App\Entity\Devis;
 use App\Entity\Factures;
 use App\Entity\FichierPublie;
@@ -73,6 +74,8 @@ final class RecetteEspaceClient
         'app_espace_nouvelle_commande_paiement' => 'commande',
         'app_espace_devis_pdf' => 'devis',
         'app_espace_devis_detail' => 'devis',
+        // Demande de devis dont le devis se prépare (« Voir ma demande », maquette DB01).
+        'app_espace_devis_demande' => 'demande_devis',
         'app_espace_facture_pdf' => 'facture',
         // Factures et paiements : détail d'une facture, reçu d'un paiement validé, retour d'Orange Money.
         'app_espace_facture_detail' => 'facture_uuid',
@@ -296,6 +299,7 @@ final class RecetteEspaceClient
             'paiement' => $this->paiementValide($client),
             'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
             'depot' => $this->premiere(DepotSoldeClient::class, $client, '1 = 1', 'reference'),
+            'demande_devis' => $this->premiere(DemandeDevis::class, $client, "e.nature = 'devis'"),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
             'bat_attente' => [] === $batsEnAttente ? null : $batsEnAttente[0]->getId(),

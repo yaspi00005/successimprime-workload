@@ -3,7 +3,7 @@
 namespace App\Tests\Unit\Service\MessagerieInterne;
 
 use App\Service\MessagerieInterne\ReglesMessagerieInterne;
-use App\Service\Parametres\Parametres;
+use App\Service\DossiersClients\ReglagesDossiers;
 use App\Service\ProduitsClient\ControleFichierLie;
 use App\Service\ProduitsClient\DossierClient;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
@@ -13,10 +13,10 @@ final class OutilsMessagerieInterne
 {
     public static function dossierClient(?string $racine): DossierClient
     {
-        $parametres = (new \ReflectionClass(Parametres::class))->newInstanceWithoutConstructor();
+        $reglages = (new \ReflectionClass(ReglagesDossiers::class))->newInstanceWithoutConstructor();
         $controle = (new \ReflectionClass(ControleFichierLie::class))->newInstanceWithoutConstructor();
 
-        return new DossierClient($parametres, $controle, new ArrayAdapter(), $racine ?? '');
+        return new DossierClient($reglages, $controle, new ArrayAdapter(), null, $racine ?? '');
     }
 
     public static function regles(int $tailleMaxMo = 50, bool $directionLitGroupes = true): ReglesMessagerieInterne

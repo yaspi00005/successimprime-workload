@@ -57,7 +57,7 @@
 			<h2>Encaissement</h2>
 			<form method="get" action="{{ path('app_caisse_index') }}" class="si-caisse-client">
 				<label class="form-label" for="caisse-client">Client</label>
-				<select class="form-select" id="caisse-client" name="client" onchange="this.form.submit()">
+				<select class="form-select" id="caisse-client" name="client" onchange="this.form.submit()" data-placeholder="Rechercher un client par son nom…">
 					<option value="">Choisir un client qui doit encore payer…</option>
 					{% for ligne in clients_avec_solde %}
 						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · reste dû {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
@@ -301,6 +301,20 @@
 {% block javascripts %}
 	{{ parent() }}
 	<script src="{{ asset('js/compte-client.js') }}" defer></script>
+	<script>
+		// Encaissement : recherche par nom dans la liste des clients (demande de Yaya du 19/10/2026).
+		document.addEventListener('DOMContentLoaded', function () {
+			var $ = window.jQuery, select = document.getElementById('caisse-client');
+			if (!$ || !$.fn.select2 || !select) return;
+			$(select).select2({
+				width: '100%',
+				placeholder: select.dataset.placeholder,
+				allowClear: true,
+				language: {noResults: function () { return 'Aucun client à ce nom'; }, searching: function () { return 'Recherche…'; }}
+			});
+			$(select).on('select2:open', function () { var champ = document.querySelector('.select2-container--open .select2-search__field'); if (champ) { champ.placeholder = 'Nom, prénom ou entreprise'; champ.focus(); } });
+		});
+	</script>
 	<script>
 		(function () {
 			var choisie = document.querySelector('.si-caisse-choisie');

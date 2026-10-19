@@ -14,7 +14,7 @@ use Doctrine\Migrations\AbstractMigration;
  * protégé par un droit, le report, la résolution, les rappels et la
  * remontée. Les notifications existantes deviennent des « info ».
  */
-final class Version20261019100000 extends AbstractMigration
+final class Version20261019130000 extends AbstractMigration
 {
     public function getDescription(): string
     {

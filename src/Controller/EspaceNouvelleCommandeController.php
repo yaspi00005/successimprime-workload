@@ -17,7 +17,9 @@ use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\DelaisCommande;
 use App\Service\EspaceClient\ElementAPayer;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\FacturesClient;
 use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\MesCommandesClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\EspaceClient\OptionsCommande;
@@ -25,6 +27,8 @@ use App\Service\EspaceClient\PageNouvelleCommande;
 use App\Service\EspaceClient\PaiementALaCommande;
 use App\Service\EspaceClient\RecommanderClient;
 use App\Service\Http\Entree;
+use App\Service\Messagerie\Conversations;
+use App\Entity\ConversationClient;
 use App\Service\Paiement\OrangeMoney;
 use App\Service\Paiement\ReglementsEnLigne;
 use App\Service\Parametres\ReglagesSaisie;
@@ -76,8 +80,14 @@ final class EspaceNouvelleCommandeController extends AbstractController
         private readonly PiecesParMetreCarre $piecesM2,
         /** Le bouton « Commander » du calculateur du site envoie des jetons (docs/site-vitrine.md). */
         private readonly JetonsSite $jetons,
+        /** Plafond de crédit (maquette CD04) : solde du compte et demande de hausse. */
+        private readonly FacturesClient $factures,
+        private readonly Conversations $conversations,
     ) {
     }
+
+    /** @var array{plafond: int, solde: int}|false|null */
+    private array|false|null $plafondCompte = null;
 
     #[Route('/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
     public function nouvelle(Request $request, FichiersClient $fichiers, CatalogueAtelier $atelier, EssaisCodePromo $essaisCode, RecommanderClient $recommander, MesProduits $mesProduits, ImagesIa $imagesIa, EntityManagerInterface $em): Response
@@ -129,6 +139,8 @@ final class EspaceNouvelleCommandeController extends AbstractController
                 if ($commande->attendValidationEntreprise()) {
                     $this->compteEntreprise->prevenirValideurs($commande, $compte);
                     $this->addFlash('succes', \sprintf('Demande %s envoyée. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
+                } elseif (null !== ($suite = $this->plafondDepasse($request, $compte, $commande, $paiement))) {
+                    return $suite;
                 } elseif (\in_array($paiement, ['acompte', 'tout'], true) && $this->peutPayerEnLigne($compte, $commande)) {
                     // Récapitulatif avec les frais Orange Money, puis la page d'Orange.
                     return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => (string) $commande->getPublicId(), 'part' => $paiement, 'envoyee' => 1]);
@@ -297,12 +309,19 @@ final class EspaceNouvelleCommandeController extends AbstractController
             // Confirmée entre-temps : « Factures et paiements » (nouveau total compris).
             return $this->redirectToRoute('app_espace_payer_selection', ['e' => [ElementAPayer::cleDe($commande)]]);
         }
-        $part = PaiementALaCommande::TOUT === ($request->request->getString('part') ?: $request->query->getString('part')) ? PaiementALaCommande::TOUT : PaiementALaCommande::ACOMPTE;
+        $part = $request->request->getString('part') ?: $request->query->getString('part');
+        $part = \in_array($part, [PaiementALaCommande::TOUT, PaiementALaCommande::DIFFERENCE], true) ? $part : PaiementALaCommande::ACOMPTE;
+        // Plafond dépassé (maquette CD04) : ce qui ramène le compte sous le plafond.
+        $plafond = $this->plafondCompte($compte);
+        $difference = null !== $plafond ? (MesCommandesClient::depassement($plafond['plafond'], $plafond['solde'], (int) $commande->getTotalTtc())['difference'] ?? 0) : 0;
+        if (PaiementALaCommande::DIFFERENCE === $part && $difference <= 0) {
+            $part = PaiementALaCommande::ACOMPTE;
+        }
         $maintenant = new \DateTimeImmutable();
         // Commande née d'un devis accepté (docs/devis.md) : l'acompte écrit sur le devis.
         $devis = $espace->devisDeLaCommande($commande);
         $pourcentage = null !== $devis ? $devis->getAcomptePourcentage() : $this->delais->pourcentageAcompte($compte->getClient());
-        $element = PaiementALaCommande::payable($commande, $compte) ? PaiementALaCommande::element($commande, $part, $pourcentage, $maintenant) : null;
+        $element = PaiementALaCommande::payable($commande, $compte) ? PaiementALaCommande::element($commande, $part, $pourcentage, $maintenant, $difference) : null;
         if (null === $element) {
             return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
         }
@@ -311,7 +330,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
 
             return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => $id, 'part' => $part]);
         }
-        $part = $element->estAcompte() ? PaiementALaCommande::ACOMPTE : PaiementALaCommande::TOUT;
+        $part = !$element->estAcompte() ? PaiementALaCommande::TOUT : (PaiementALaCommande::DIFFERENCE === $part ? $part : PaiementALaCommande::ACOMPTE);
         // Orange Money seul : l'avoir de l'imprimerie se règle dans « Factures et paiements ».
         $plan = $reglements->plan($compte, [$element], false, null, $maintenant);
 
@@ -354,6 +373,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
             'part' => $part,
             'pourcentage' => $pourcentage,
             'acompteDisponible' => null !== $acompte && $acompte->estAcompte(),
+            'difference' => $difference > 0 ? PaiementALaCommande::element($commande, PaiementALaCommande::DIFFERENCE, $pourcentage, $maintenant, $difference) : null,
             'element' => $element,
             'aPayer' => null !== $tout ? $tout->montant : 0,
             'frais' => $plan['frais'],
@@ -756,6 +776,10 @@ final class EspaceNouvelleCommandeController extends AbstractController
         $commande = NouvelleCommande::assembler($ligne, $options, $reglages['delaiExpress'], $autres);
         $payeur = $compte->peut(CompteClient::DROIT_PAYEUR);
         $sortie['recap'] = PageNouvelleCommande::recapitulatif($commande, $ligne, $config, $montants, $heures, $payeur ? $this->delais->pourcentageAcompte($client) : null, $autres);
+        if ($payeur && $montants && null !== ($plafond = $this->plafondCompte($compte))) {
+            // Plafond dépassé (maquette CD04) : la page compare solde + ce qui reste à crédit au plafond.
+            $sortie['plafond'] = $plafond;
+        }
         if ($payeur && $montants && $this->orangeMoney->estOuvert()) {
             // Frais Orange Money en plus de chaque somme payée (fonds de soutien, retrait) : annoncés avant de payer.
             $acompte = $sortie['recap']['acompte']['maintenant'] ?? null;
@@ -801,6 +825,75 @@ final class EspaceNouvelleCommandeController extends AbstractController
         }
 
         return new OptionsCommande($delai, $reglages['majoration'], true, $this->reglagesSaisie->fraisEnLigne(), null !== $adresse ? mb_substr($adresse, 0, 255) : null, $choisi['libelle'] ?? null, $choisi['jour'] ?? $pret);
+    }
+
+    /**
+     * Plafond de crédit du client et solde de son compte, pour le payeur
+     * d'un compte pro (MesCommandesClient::plafond) ; null sinon.
+     *
+     * @return array{plafond: int, solde: int}|null
+     */
+    private function plafondCompte(CompteClient $compte): ?array
+    {
+        if (null === $this->plafondCompte) {
+            $client = $compte->getClient();
+            $plafond = null !== $client && $compte->peut(CompteClient::DROIT_PAYEUR) && $compte->montantsVisibles() ? MesCommandesClient::plafond($client) : null;
+            $this->plafondCompte = null !== $plafond ? ['plafond' => $plafond, 'solde' => $this->factures->soldeCompte($client, new \DateTimeImmutable())] : false;
+        }
+
+        return $this->plafondCompte ?: null;
+    }
+
+    /**
+     * Commande envoyée qui fait passer le compte au-dessus du plafond
+     * (maquette CD04) : le choix du client, payer la différence, payer une
+     * partie du solde ou demander une hausse du plafond à la trésorerie.
+     * La commande reste « à confirmer » : l'imprimerie la lance une fois le
+     * compte sous le plafond ou le plafond relevé. Null sous le plafond.
+     */
+    private function plafondDepasse(Request $request, CompteClient $compte, Commandes $commande, string $paiement): ?Response
+    {
+        $plafond = $this->plafondCompte($compte);
+        if (null === $plafond) {
+            return null;
+        }
+        $total = (int) $commande->getTotalTtc();
+        $enLigne = $this->peutPayerEnLigne($compte, $commande);
+        $acompte = PaiementALaCommande::element($commande, PaiementALaCommande::ACOMPTE, $this->delais->pourcentageAcompte($compte->getClient()), new \DateTimeImmutable());
+        $payeMaintenant = !$enLigne ? 0 : match ($paiement) {
+            'tout' => $total,
+            'acompte' => null !== $acompte && $acompte->estAcompte() ? $acompte->montant : $total,
+            default => 0,
+        };
+        $depasse = MesCommandesClient::depassement($plafond['plafond'], $plafond['solde'], $total - $payeMaintenant);
+        if (null === $depasse) {
+            return null;
+        }
+        $id = (string) $commande->getPublicId();
+        $choix = $request->request->getString('plafond_choix');
+        if ('difference' === $choix && $enLigne) {
+            return $this->redirectToRoute('app_espace_nouvelle_commande_paiement', ['id' => $id, 'part' => PaiementALaCommande::DIFFERENCE, 'envoyee' => 1]);
+        }
+        if ('solde' === $choix) {
+            $cles = array_map(static fn (ElementAPayer $e): string => $e->cle(), $this->factures->aPayer($compte->getClient(), new \DateTimeImmutable())['elements']);
+            if ([] !== $cles) {
+                $this->addFlash('succes', \sprintf('Commande %s envoyée. Payez au moins %s F de votre solde pour repasser sous votre plafond : l\'imprimerie la lance ensuite.', $commande->getNumero(), number_format($depasse['difference'], 0, ',', ' ')));
+
+                return $this->redirectToRoute('app_espace_payer_selection', ['e' => $cles]);
+            }
+        }
+        // Demande de hausse (choix par défaut) : un message « Paiement » à l'imprimerie, lu par la trésorerie.
+        try {
+            $this->conversations->ouvrir($compte, $commande, null, 'Hausse du plafond de crédit', ConversationClient::SUJET_PAIEMENT, \sprintf(
+                "Bonjour, ma commande %s (%s F) fait passer mon compte à %s F pour un plafond de %s F. Je demande une hausse du plafond d'au moins %s F.",
+                $commande->getNumero(), number_format($total, 0, ',', ' '), number_format($depasse['apres'], 0, ',', ' '), number_format($depasse['plafond'], 0, ',', ' '), number_format($depasse['difference'], 0, ',', ' '),
+            ), new \DateTimeImmutable());
+        } catch (\DomainException) {
+            // Le message n'a pas pu partir (limite, texte) : la commande, elle, est enregistrée.
+        }
+        $this->addFlash('succes', \sprintf('Commande %s envoyée. Votre demande de hausse du plafond est partie à la trésorerie ; l\'imprimerie lance la commande après sa réponse.', $commande->getNumero()));
+
+        return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
     }
 
     /** Le payeur peut-il régler cette commande en ligne tout de suite ? */

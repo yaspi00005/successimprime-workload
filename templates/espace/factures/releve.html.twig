@@ -1,0 +1,191 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Relevé de compte (maquettes CD02 et CD03, téléphone CD05), pour qui
+	paie (EspaceFacturesController::releveCompte). Débit (↑) = une facture,
+	le solde augmente ; crédit (↓) = un paiement ou un avoir, le solde
+	baisse. Un paiement Orange Money reste « en validation » jusqu'à la
+	confirmation de l'imprimerie : l'ERP du local reste le maître.
+#}
+{% block title %}Relevé de compte{% endblock %}
+{% block page_classe %} ec-page-large cd-page{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Factures</a>{% endblock %}
+
+{% block contenu %}
+	{% set lignes = releve.lignes %}
+	{% set nb = {debit: lignes|filter(l => l.type == 'debit')|length, paiement: lignes|filter(l => l.type == 'paiement')|length, avoir: lignes|filter(l => l.type == 'avoir')|length} %}
+	{% set payerSolde = cles is not empty ? path('app_espace_payer_selection', {e: cles}) : null %}
+
+	<div class="cd-tete">
+		<h1><span class="ec-bureau">Mon compte · relevé</span><span class="ec-telephone">Mon compte</span><small class="ec-telephone rv-sous-titre">{{ moi.raisonSociale ?: moi.nomComplet }} · {{ mois|mois_francais|lower }}</small></h1>
+		<div class="cd-tete-actions">
+			<form method="get" class="cd-choix">
+				<select name="mois" aria-label="Mois" onchange="this.form.submit()">
+					{% for m in moisListe %}<option value="{{ m|date('Y-m') }}"{{ m|date('Y-m') == mois|date('Y-m') ? ' selected' }}>{{ m|mois_francais }}</option>{% endfor %}
+				</select>
+				<noscript><button class="ec-bouton-blanc" type="submit">Voir</button></noscript>
+			</form>
+			<a class="ec-bouton-blanc ec-bureau" href="{{ path('app_espace_facture_releve', {du: du|date('Y-m-d'), au: au|date('Y-m-d')}) }}" target="_blank">⬇ Relevé PDF</a>
+			{% if payerSolde %}<a class="rv-payer ec-bureau" href="{{ payerSolde }}">Payer mon solde</a>{% endif %}
+		</div>
+	</div>
+
+	<div class="rv-haut">
+		<div class="rv-solde">
+			<span>Solde à payer</span>
+			<b>{{ solde|number_format(0, ',', ' ') }} F</b>
+			<small>{{ enValidation > 0 ? 'après ' ~ enValidation|number_format(0, ',', ' ') ~ ' F de paiement en cours de validation' : (solde > 0 ? 'factures émises moins vos paiements' : 'rien à payer, merci') }}</small>
+			{% if plafond %}
+				<div class="rv-jauge{{ plafond.utilise >= 90 ? ' haute' }}" role="img" aria-label="Plafond utilisé à {{ plafond.utilise }} %"><span style="width: {{ plafond.utilise }}%"></span></div>
+				<div class="rv-jauge-legende"><span><span class="ec-bureau">Utilisé {{ plafond.utilise }} %</span><span class="ec-telephone">Disponible {{ plafond.disponible|number_format(0, ',', ' ') }} F</span></span><span>Plafond {{ plafond.montant|number_format(0, ',', ' ') }} F</span></div>
+			{% endif %}
+		</div>
+		{% if plafond %}
+			<div class="ec-carte cd-chiffre ec-bureau">
+				<span>Encore disponible à crédit</span>
+				<b class="{{ plafond.disponible > 0 ? 'vert' : 'rouge' }}">{{ plafond.disponible|number_format(0, ',', ' ') }} F</b>
+				<small>{{ plafond.disponible > 0 ? 'pour vos prochaines commandes' : 'plafond atteint : payez une facture ou demandez une hausse' }}</small>
+			</div>
+		{% endif %}
+		<div class="ec-carte cd-chiffre ec-bureau">
+			<span>Prochaine échéance</span>
+			{% if prochaine %}
+				<b>{{ prochaine.echeance|date('d/m') }}</b>
+				<small>{{ prochaine.montant|number_format(0, ',', ' ') }} F · {{ prochaine.facture.numero }}</small>
+			{% else %}
+				<b>—</b>
+				<small>aucune facture à venir</small>
+			{% endif %}
+		</div>
+	</div>
+
+	<section class="ec-carte cd-liste rv-liste">
+		<div class="cd-barre">
+			<nav class="cd-onglets" aria-label="Type d'opération" data-rv-onglets>
+				<button type="button" class="cd-onglet actif" data-rv-type="">Tout · {{ lignes|length }}</button>
+				<button type="button" class="cd-onglet" data-rv-type="debit">Débits · {{ nb.debit }}</button>
+				<button type="button" class="cd-onglet" data-rv-type="paiement">Paiements · {{ nb.paiement }}</button>
+				<button type="button" class="cd-onglet" data-rv-type="avoir">Avoirs · {{ nb.avoir }}</button>
+			</nav>
+			<small class="rv-periode">Du {{ du|date('d/m') }} au {{ au|date('d/m/Y') }}</small>
+		</div>
+		<table class="rv-table">
+			<thead><tr><th>Date</th><th>Opération</th><th class="ec-bureau">Référence</th><th class="num ec-bureau">Débit</th><th class="num ec-bureau">Crédit</th><th class="num ec-bureau">Solde</th><th class="ec-bureau"><span class="cd-masque">Voir</span></th></tr></thead>
+			<tbody>
+				<tr class="rv-report"><td>{{ du|date('d/m') }}</td><td><b>Solde reporté</b></td><td class="ec-bureau"></td><td class="ec-bureau"></td><td class="ec-bureau"></td><td class="num ec-bureau"><b>{{ releve.ouverture|number_format(0, ',', ' ') }} F</b></td><td class="ec-bureau"></td></tr>
+				{% for i, l in lignes %}
+					<tr class="rv-ligne {{ l.type }}{{ l.enValidation|default(false) ? ' en-validation' }}" data-rv-ligne="{{ l.type }}"{% if details[i] is defined %} data-rv-ouvrir="rv-debit-{{ i }}" tabindex="0"{% endif %}>
+						<td>{{ l.date|date('d/m') }}</td>
+						<td>
+							<span class="rv-op">
+								<span class="rv-fleche {{ l.type }}" aria-hidden="true">{{ l.type == 'debit' ? '↑' : '↓' }}</span>
+								<span><b>{{ l.libelle }}</b>{% if l.enValidation|default(false) %} <em class="rv-validation">en validation</em>{% endif %}
+									<small class="ec-telephone">{{ l.facture is defined ? l.facture.numero : (l.paiement is defined and l.paiement|numero_recu ? 'Reçu ' ~ l.paiement|numero_recu : (l.commande ? l.commande.numero : '')) }}</small></span>
+								<b class="rv-montant-tel ec-telephone {{ l.debit > 0 ? 'rouge' : 'vert' }}">{{ l.debit > 0 ? '+ ' ~ l.debit|number_format(0, ',', ' ') : '− ' ~ l.credit|number_format(0, ',', ' ') }} F</b>
+							</span>
+						</td>
+						<td class="ec-bureau rv-ref">{{ l.facture is defined ? l.facture.numero ~ (l.commande ? ' · ' ~ l.commande.numero) : (l.paiement is defined ? (l.paiement|numero_recu ? 'Reçu ' ~ l.paiement|numero_recu : 'commande ' ~ l.commande.numero) : (l.commande ? l.commande.numero : '')) }}</td>
+						<td class="num ec-bureau rouge">{{ l.debit > 0 ? l.debit|number_format(0, ',', ' ') ~ ' F' }}</td>
+						<td class="num ec-bureau vert">{{ l.credit > 0 ? l.credit|number_format(0, ',', ' ') ~ ' F' }}</td>
+						<td class="num ec-bureau"><b>{{ l.solde|number_format(0, ',', ' ') }} F</b></td>
+						<td class="ec-bureau rv-lien">
+							{% if details[i] is defined %}<button type="button" class="ec-lien" data-rv-ouvrir="rv-debit-{{ i }}">Voir ›</button>
+							{% elseif l.paiement is defined and l.paiement.estValide %}<a class="ec-lien" href="{{ path('app_espace_facture_recu', {id: l.paiement.publicId}) }}">{{ l.type == 'avoir' ? 'Avoir' : 'Reçu' }}</a>{% endif %}
+						</td>
+					</tr>
+				{% else %}
+					<tr><td colspan="7" class="cd-vide">Aucune opération ce mois-ci.</td></tr>
+				{% endfor %}
+			</tbody>
+			{% if lignes is not empty %}
+				<tfoot class="ec-bureau"><tr><td></td><td><b>Totaux du mois</b></td><td></td><td class="num rouge"><b>{{ releve.debits|number_format(0, ',', ' ') }} F</b></td><td class="num vert"><b>{{ releve.credits|number_format(0, ',', ' ') }} F</b></td><td class="num"><b>{{ releve.cloture|number_format(0, ',', ' ') }} F</b></td><td></td></tr></tfoot>
+			{% endif %}
+		</table>
+		<p class="ec-petit rv-legende">↑ Débit = une commande facturée, votre solde augmente. ↓ Crédit = un paiement ou un avoir, votre solde baisse. Un paiement Orange Money reste « en validation » jusqu'à la confirmation de l'imprimerie.</p>
+	</section>
+
+	{# Détail d'un débit (maquette CD03) : la commande, les lignes facturées, la remise, les preuves. #}
+	{% for i, d in details %}
+		{% set f = d.facture %}
+		{% set c = d.commande %}
+		<dialog class="rv-tiroir" id="rv-debit-{{ i }}" aria-labelledby="rv-debit-{{ i }}-titre">
+			<div class="rv-tiroir-corps">
+				<button type="button" class="rv-fermer" data-rv-fermer aria-label="Fermer">×</button>
+				<p class="rv-surtitre">Débit du {{ f.dateFacture|date('d/m/Y') }}</p>
+				<h2 id="rv-debit-{{ i }}-titre">Facture {{ f.numero }}</h2>
+				<p class="rv-ajoute"><b>+ {{ f.totalTtc|number_format(0, ',', ' ') }} F</b> ajoutés à votre solde</p>
+				{% if c %}
+					<a class="rv-commande" href="{{ path('app_espace_commande', {id: c.publicId}) }}">
+						<b>Commande {{ c.numero }}</b>
+						<small>commandée le {{ c.dateCommande|date('d/m') }}{% if c.demandeePar|default(null) %} par {{ c.demandeePar }}{% endif %}{% if d.livraison and d.livraison.livreLe %} · {{ c.estALivrer ? 'livrée' : 'retirée' }} le {{ d.livraison.livreLe|date('d/m') }}{% endif %}</small>
+					</a>
+					<table class="rv-lignes">
+						<thead><tr><th>Ligne</th><th class="num">Qté</th><th class="num">Prix</th><th class="num">Total</th></tr></thead>
+						<tbody>
+							{% for l in c.commandesDetails %}
+								<tr><td>{{ l.designation ? l|ligne_client : l|espace_titre_ligne }}</td><td class="num">{{ l.quantite|default(1) }}</td><td class="num">{{ l.prixUnitaire|default(0) > 0 ? l.prixUnitaire|number_format(0, ',', ' ') ~ ' F' : '—' }}</td><td class="num">{{ (l.totalTtc|default(0))|number_format(0, ',', ' ') }} F</td></tr>
+							{% endfor %}
+							{% if f.fraisLivraison|default(0) > 0 %}<tr><td>Livraison</td><td class="num">1</td><td class="num">{{ f.fraisLivraison|number_format(0, ',', ' ') }} F</td><td class="num">{{ f.fraisLivraison|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+							{% if f.remise > 0 %}<tr class="rv-remise"><td colspan="3">Remise</td><td class="num">− {{ f.remise|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+							{% if c.remiseCodePromo|default(0) > 0 %}<tr class="rv-remise"><td colspan="3">Code promo {{ c.libelleCodePromo }}</td><td class="num">− {{ c.remiseCodePromo|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+						</tbody>
+						<tfoot><tr><td colspan="3">Total facturé</td><td class="num">{{ f.totalTtc|number_format(0, ',', ' ') }} F</td></tr></tfoot>
+					</table>
+				{% endif %}
+				<h3>Preuves</h3>
+				<ul class="rv-preuves">
+					{% if d.livraison %}
+						<li><span class="rv-icone" aria-hidden="true">📦</span><span><b>Bon de livraison {{ d.livraison.numero }}</b><small>{{ d.livraison.livreLe ? (c.estALivrer ? 'livré' : 'remis') ~ ' le ' ~ d.livraison.livreLe|date('d/m à H:i') : 'livraison à venir' }}</small></span><a class="ec-lien" href="{{ path('app_espace_livraisons') }}">Voir</a></li>
+					{% endif %}
+					{% if d.bat %}
+						<li><span class="rv-icone" aria-hidden="true">✅</span><span><b>BAT validé</b><small>le {{ d.bat.valideLe|date('d/m à H:i') }}</small></span><a class="ec-lien" href="{{ path('app_espace_bat', {id: d.bat.id}) }}">Voir</a></li>
+					{% endif %}
+					<li><span class="rv-icone" aria-hidden="true">🧾</span><span><b>Facture PDF</b><small>émise le {{ f.dateFacture|date('d/m') }}{% if f.dateEcheance %} · échéance {{ f.dateEcheance|date('d/m') }}{% endif %}</small></span><a class="ec-lien" href="{{ path('app_espace_facture_detail', {id: f.publicId}) }}">Voir</a></li>
+				</ul>
+				<div class="rv-tiroir-bas">
+					{% if d.element and d.element.montant > 0 %}<a class="rv-payer" href="{{ path('app_espace_payer_selection', {e: [d.element.cle]}) }}">Payer {{ d.element.montant|number_format(0, ',', ' ') }} F</a>
+					{% elseif f.resteAPayer|default(0) > 0 %}<p class="rv-attente">Votre paiement est en cours de validation par l'imprimerie.</p>{% endif %}
+					<a class="ec-bouton-blanc" href="{{ path('app_espace_facture_pdf', {id: f.id}) }}" target="_blank">⬇ PDF</a>
+					<a class="ec-bouton-blanc" href="{{ path('app_espace_reclamation_nouvelle', {commande: c ? c.publicId : null, objet: 'Contestation de la facture ' ~ f.numero}|filter(v => v is not null)) }}">Contester</a>
+				</div>
+			</div>
+		</dialog>
+	{% endfor %}
+
+	{% if payerSolde %}
+		<div class="rv-barre ec-telephone"><a class="rv-payer" href="{{ payerSolde }}">Payer mon solde</a></div>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	// Onglets Tout / Débits / Paiements / Avoirs sans recharger ; un débit s'ouvre dans un tiroir.
+	(function () {
+		var onglets = document.querySelector('[data-rv-onglets]');
+		if (onglets) {
+			onglets.addEventListener('click', function (e) {
+				var b = e.target.closest('[data-rv-type]');
+				if (!b) return;
+				onglets.querySelectorAll('[data-rv-type]').forEach(function (x) { x.classList.toggle('actif', x === b); });
+				document.querySelectorAll('[data-rv-ligne]').forEach(function (tr) { tr.hidden = b.dataset.rvType !== '' && tr.dataset.rvLigne !== b.dataset.rvType; });
+			});
+		}
+		function ouvrir(id) {
+			var d = document.getElementById(id);
+			if (d && d.showModal) d.showModal();
+		}
+		document.addEventListener('click', function (e) {
+			if (e.target.closest('a')) return;
+			var o = e.target.closest('[data-rv-ouvrir]');
+			if (o) { ouvrir(o.dataset.rvOuvrir); return; }
+			if (e.target.closest('[data-rv-fermer]')) { e.target.closest('dialog').close(); return; }
+			if (e.target.tagName === 'DIALOG') e.target.close(); // clic à côté du tiroir
+		});
+		document.addEventListener('keydown', function (e) {
+			var o = e.target.closest && e.target.closest('tr[data-rv-ouvrir]');
+			if (o && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); ouvrir(o.dataset.rvOuvrir); }
+		});
+	})();
+	</script>
+{% endblock %}

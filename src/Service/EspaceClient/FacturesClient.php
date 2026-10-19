@@ -543,6 +543,57 @@ final class FacturesClient
     }
 
     /**
+     * Relevé de compte à l'écran (maquette CD02) : comme releve(), avec le
+     * type de chaque ligne (débit = facture, paiement, avoir) et ce qu'elle
+     * montre (facture et commande, reçu). Un paiement encore en validation
+     * est une ligne « en validation » qui baisse déjà le solde : l'ERP de
+     * l'imprimerie le confirme ou le refuse.
+     *
+     * @return array{ouverture: int, lignes: list<array<string, mixed>>, cloture: int, debits: int, credits: int, enValidation: int}
+     */
+    public function releveCompte(Clients $client, \DateTimeImmutable $du, \DateTimeImmutable $au): array
+    {
+        $mouvements = [];
+        foreach ($this->factures($client) as $f) {
+            if (!$f->estProforma() && null !== $f->getDateFacture()) {
+                $mouvements[] = ['date' => \DateTimeImmutable::createFromInterface($f->getDateFacture()), 'type' => 'debit', 'libelle' => 'Facture · '.EspaceClient::titre($f->getCommande()), 'debit' => $f->getTotalTtc(), 'credit' => 0, 'facture' => $f, 'commande' => $f->getCommande()];
+            }
+        }
+        foreach ($this->espace->commandes($client, 300, true) as $c) {
+            if ($c->estSoldeOuverture() && null !== $c->getDateCommande()) {
+                $mouvements[] = ['date' => \DateTimeImmutable::createFromInterface($c->getDateCommande()), 'type' => 'debit', 'libelle' => 'Solde d\'ouverture du compte', 'debit' => $c->getTotalTtc(), 'credit' => 0, 'commande' => $c];
+            }
+        }
+        $enValidation = 0;
+        foreach ($this->paiements($client) as $p) {
+            if (null === $p->getDate() || !($p->estValide() || $p->estEnAttente())) {
+                continue;
+            }
+            $avoir = \in_array($p->getMode(), Paiements::MODES_SANS_ENCAISSEMENT, true);
+            if ($p->estEnAttente()) {
+                $enValidation += $p->getMontant();
+            }
+            $mouvements[] = [
+                'date' => \DateTimeImmutable::createFromInterface($p->getDate()), 'type' => $avoir ? 'avoir' : 'paiement',
+                'libelle' => ($avoir ? self::moyen($p) : 'Paiement '.self::moyen($p)), 'debit' => 0, 'credit' => $p->getMontant(),
+                'paiement' => $p, 'commande' => $p->getCommande(), 'enValidation' => $p->estEnAttente(),
+            ];
+        }
+
+        return self::calculerReleve($mouvements, $du, $au) + ['enValidation' => $enValidation];
+    }
+
+    /**
+     * Solde du compte aujourd'hui (factures moins paiements et avoirs, les
+     * paiements en validation déduits), jamais négatif : c'est lui qui se
+     * compare au plafond (relevé CD02, plafond dépassé CD04).
+     */
+    public function soldeCompte(Clients $client, \DateTimeImmutable $maintenant): int
+    {
+        return max(0, $this->releveCompte($client, new \DateTimeImmutable('2000-01-01'), $maintenant)['cloture']);
+    }
+
+    /**
      * @param list<array{date: \DateTimeImmutable, libelle: string, debit: int, credit: int}> $mouvements
      *
      * @return array{ouverture: int, lignes: list<array{date: \DateTimeImmutable, libelle: string, debit: int, credit: int, solde: int}>, cloture: int, debits: int, credits: int}

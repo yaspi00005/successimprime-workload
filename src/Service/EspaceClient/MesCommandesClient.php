@@ -240,4 +240,21 @@ final class MesCommandesClient
 
         return $pro && (int) $client->getPlafondCredit() > 0 ? (int) $client->getPlafondCredit() : null;
     }
+
+    /**
+     * Plafond dépassé (maquette CD04) : le solde du compte plus ce que la
+     * nouvelle commande laisse à crédit passe au-dessus du plafond. Null
+     * sans plafond, sous le plafond, ou quand la commande est payée en entier.
+     *
+     * @return array{plafond: int, solde: int, apres: int, difference: int}|null
+     */
+    public static function depassement(?int $plafond, int $solde, int $aCredit): ?array
+    {
+        $apres = $solde + max(0, $aCredit);
+        if (null === $plafond || $aCredit <= 0 || $apres <= $plafond) {
+            return null;
+        }
+
+        return ['plafond' => $plafond, 'solde' => $solde, 'apres' => $apres, 'difference' => $apres - $plafond];
+    }
 }

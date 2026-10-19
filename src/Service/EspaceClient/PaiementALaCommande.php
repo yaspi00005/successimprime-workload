@@ -22,6 +22,8 @@ final class PaiementALaCommande
 {
     public const ACOMPTE = 'acompte';
     public const TOUT = 'tout';
+    /** Plafond dépassé (maquette CD04) : ce qui ramène le compte sous le plafond, acompte compris. */
+    public const DIFFERENCE = 'difference';
 
     /**
      * Commande encore « à confirmer » qui se paie déjà en ligne : passée en
@@ -46,13 +48,23 @@ final class PaiementALaCommande
      * supérieur, moins ce qui est déjà payé ou en validation) ou tout ce qui
      * reste. Null quand il n'y a rien à payer.
      */
-    public static function element(Commandes $commande, string $part, int $pourcentage, \DateTimeImmutable $maintenant): ?ElementAPayer
+    public static function element(Commandes $commande, string $part, int $pourcentage, \DateTimeImmutable $maintenant, int $difference = 0): ?ElementAPayer
     {
         $aPayer = OrangeMoney::aPayer($commande);
         if ($aPayer <= 0) {
             return null;
         }
         $jour = $maintenant->setTime(0, 0);
+        if (self::DIFFERENCE === $part && $difference > 0) {
+            // Au moins l'acompte : c'est lui qui lance la production.
+            $acompte = self::element($commande, self::ACOMPTE, $pourcentage, $maintenant);
+            $montant = min($aPayer, max($difference, null !== $acompte && $acompte->estAcompte() ? $acompte->montant : 0));
+            if ($montant < $aPayer) {
+                $total = max(1, (int) $commande->getTotalTtc());
+
+                return new ElementAPayer($commande, null, ElementAPayer::ACOMPTE, $montant, $aPayer, $jour, ElementAPayer::A_PAYER, (int) ceil(100 * $montant / $total));
+            }
+        }
         $pourcentage = max(0, min(100, $pourcentage));
         if (self::ACOMPTE === $part && $pourcentage > 0 && $pourcentage < 100) {
             $total = (int) $commande->getTotalTtc();

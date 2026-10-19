@@ -69,4 +69,13 @@ final class EspaceFacturesExtension
     {
         return FacturesClient::etatAvoir($r);
     }
+
+    /** « Octobre 2026 » : le mois du relevé, en français. */
+    #[AsTwigFilter('mois_francais')]
+    public function moisFrancais(\DateTimeInterface $d): string
+    {
+        $mois = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
+
+        return $mois[(int) $d->format('n') - 1].' '.$d->format('Y');
+    }
 }

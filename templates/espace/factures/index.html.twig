@@ -19,8 +19,9 @@
 
 	<div class="ef-titre ec-bureau">
 		<h1>Factures et paiements</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_releve') }}">Relevé de compte</a>
 		<a class="ec-bouton-blanc" href="{{ path('app_espace_facture_releve') }}" data-ef-ouvrir="ef-releve">
-			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>Relevé de compte
+			<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>PDF sur une période
 		</a>
 	</div>
 
@@ -239,7 +240,7 @@
 				</div>
 			</section>
 
-			<a class="ec-bouton clair ec-telephone" href="{{ path('app_espace_facture_releve') }}" data-ef-ouvrir="ef-releve" style="margin-bottom:.85rem">Relevé de compte (PDF)</a>
+			<a class="ec-bouton clair ec-telephone" href="{{ path('app_espace_releve') }}" style="margin-bottom:.85rem">Relevé de compte</a>
 		</div>
 
 		<aside class="ef-colonne">

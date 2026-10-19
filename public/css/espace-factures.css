@@ -5,7 +5,7 @@
  */
 
 .ef-titre { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem; }
-.ef-titre h1 { margin: 0; }
+.ef-titre h1 { margin: 0 auto 0 0; }
 .ef-titre .ec-bouton-blanc svg { width: 16px; height: 16px; }
 
 /* Tuiles */
@@ -131,7 +131,7 @@
 .ef-om-a-payer { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin: .5rem 0 .7rem; }
 .ef-om-a-payer span { font-weight: 700; }
 .ef-om-a-payer b { font-size: 1.9rem; font-weight: 900; white-space: nowrap; }
-.ef-om-modes { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.ef-om-modes { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: .6rem; }
 .ef-om-mode { position: relative; display: block; padding: .7rem .85rem; border: 2px solid var(--trait); border-radius: 14px; cursor: pointer; }
 .ef-om-mode input { position: absolute; opacity: 0; pointer-events: none; }
 .ef-om-mode b { display: block; font-size: .92rem; }

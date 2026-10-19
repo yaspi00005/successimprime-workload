@@ -50,6 +50,8 @@ final class DroitsEspace
         'app_espace_facture_detail',
         'app_espace_facture_recu',
         'app_espace_facture_releve',
+        // Relevé de compte à l'écran (maquettes CD02 et CD03).
+        'app_espace_releve',
         'app_espace_payer_selection',
         'app_espace_payer_recu',
         // Mon solde (docs/espace-client.md) : dépôt Orange Money et retour d'Orange.

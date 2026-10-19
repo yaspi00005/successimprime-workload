@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\CompteClient;
 use App\Entity\Paiements;
 use App\Service\EspaceClient\ElementAPayer;
+use App\Service\EspaceClient\MesCommandesClient;
 use App\Service\EspaceClient\PaiementALaCommande;
 use PHPUnit\Framework\TestCase;
 
@@ -67,6 +68,27 @@ final class PaiementALaCommandeTest extends TestCase
 
         $commande->addPaiement((new Paiements())->setMontant(11500)->setMode(Paiements::MODE_ORANGE_MONEY)->setDate($maintenant));
         self::assertNull(PaiementALaCommande::element($commande, PaiementALaCommande::TOUT, 50, $maintenant), 'plus rien à payer');
+    }
+
+    /** Plafond dépassé (maquette CD04) : solde + ce qui reste à crédit, comparé au plafond. */
+    public function testPlafondDepasseEtDifference(): void
+    {
+        $maintenant = new \DateTimeImmutable('2026-10-19 10:00');
+        self::assertNull(MesCommandesClient::depassement(null, 800000, 500000), 'sans plafond');
+        self::assertNull(MesCommandesClient::depassement(900000, 800000, 100000), 'juste au plafond');
+        self::assertNull(MesCommandesClient::depassement(900000, 950000, 0), 'commande payée en entier : rien à crédit');
+        self::assertSame(['plafond' => 900000, 'solde' => 836850, 'apres' => 2036850, 'difference' => 1136850], MesCommandesClient::depassement(900000, 836850, 1200000));
+
+        $commande = $this->commande(7, 1200000);
+        $difference = PaiementALaCommande::element($commande, PaiementALaCommande::DIFFERENCE, 50, $maintenant, 1136850);
+        self::assertSame(ElementAPayer::ACOMPTE, $difference?->nature);
+        self::assertSame(1136850, $difference->montant);
+        self::assertSame(95, $difference->pourcentage);
+
+        // Petit dépassement : au moins l'acompte, qui lance la production.
+        self::assertSame(600000, PaiementALaCommande::element($commande, PaiementALaCommande::DIFFERENCE, 50, $maintenant, 5000)?->montant);
+        // Plus que la commande : tout, jamais plus.
+        self::assertSame(ElementAPayer::COMMANDE, PaiementALaCommande::element($commande, PaiementALaCommande::DIFFERENCE, 50, $maintenant, 2000000)?->nature);
     }
 
     private function commande(int $client, int $total = 10000): Commandes

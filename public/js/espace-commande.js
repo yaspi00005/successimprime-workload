@@ -259,6 +259,7 @@
 	}
 
 	function libelleEnvoyer() {
+		majPlafond();
 		const bouton = $('[data-co-envoyer]');
 		if (!bouton || !D.paiementEnLigne) return;
 		const p = coche('paiement');
@@ -269,6 +270,33 @@
 		bouton.classList.toggle('orange', p !== 'boutique');
 		const barre = $('[data-co-suivant]');
 		if (barre && etape === 4) barre.textContent = bouton.textContent;
+	}
+
+	/*
+	 * Plafond dépassé (maquette CD04) : solde du compte + ce que la commande
+	 * laisse à crédit (moins l'acompte ou le tout payé maintenant) comparé
+	 * au plafond. Le serveur refait le calcul à l'envoi.
+	 */
+	function majPlafond() {
+		const zone = $('[data-co-plafond]', document);
+		const p = (derniere && derniere.plafond) || D.plafond;
+		const r = derniere && derniere.recap;
+		if (!zone || !p || !r || !r.total) return;
+		const mode = D.paiementEnLigne ? coche('paiement') : 'boutique';
+		const paye = mode === 'tout' ? r.total : (mode === 'acompte' && r.acompte ? r.acompte.maintenant : 0);
+		const apres = p.solde + r.total - paye;
+		const depasse = apres > p.plafond && r.total - paye > 0;
+		zone.hidden = !depasse;
+		$$('[data-co-plafond-requis]', zone).forEach(function (i) { i.required = depasse; });
+		if (!depasse) return;
+		const difference = apres - p.plafond;
+		$$('[data-co-p]', zone).forEach(function (el) {
+			const cle = el.dataset.coP;
+			if (cle === 'apres') el.textContent = f(apres) + ' F';
+			if (cle === 'difference') el.textContent = f(difference) + ' F';
+			if (cle === 'differenceOm') el.textContent = f(Math.min(r.total, Math.max(difference + paye, r.acompte ? r.acompte.maintenant : 0))) + ' F';
+			if (cle === 'jauge') el.style.width = Math.min(100, Math.round(100 * apres / p.plafond)) + '%';
+		});
 	}
 
 	/* ---------- Étape 2 : matière, taille, aperçu ---------- */

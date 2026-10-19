@@ -15,6 +15,7 @@ use App\Service\EspaceClient\CoqueEspace;
 use App\Service\EspaceClient\ElementAPayer;
 use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FacturesClient;
+use App\Service\EspaceClient\MesCommandesClient;
 use App\Service\Http\Entree;
 use App\Service\Paiement\AvoirClient;
 use App\Service\Paiement\OrangeMoney;
@@ -115,6 +116,86 @@ final class EspaceFacturesController extends AbstractController
             'moyens' => $this->moyens(),
             'omActif' => $orangeMoney->estOuvert(),
         ]);
+    }
+
+    /**
+     * Relevé de compte (maquettes CD02, CD03, téléphone CD05) : débits
+     * (factures), crédits (paiements, avoirs), solde après chaque ligne et
+     * totaux du mois ; en haut le solde, le plafond et ce qui reste à crédit,
+     * la prochaine échéance. Un débit s'ouvre sur ses lignes, sa remise et
+     * ses preuves (BAT validé, bon de livraison, facture PDF).
+     */
+    #[Route('/releve', name: 'releve', methods: ['GET'])]
+    public function releveCompte(Request $request): Response
+    {
+        $compte = $this->payeur();
+        $client = $compte->getClient();
+        $maintenant = new \DateTimeImmutable();
+        $mois = 1 === preg_match('/^(20\d\d)-(0[1-9]|1[0-2])$/', $request->query->getString('mois'), $m) ? $maintenant->setDate((int) $m[1], (int) $m[2], 1) : $maintenant->modify('first day of this month');
+        if ($mois > $maintenant) {
+            $mois = $maintenant->modify('first day of this month');
+        }
+        $du = $mois->setTime(0, 0);
+        $au = $mois->modify('last day of this month')->setTime(23, 59, 59);
+        $releve = $this->factures->releveCompte($client, $du, $au);
+        $enValidation = $this->factures->releveCompte($client, new \DateTimeImmutable('2000-01-01'), $maintenant)['enValidation'];
+        $aPayer = $this->factures->aPayer($client, $maintenant);
+        $plafond = MesCommandesClient::plafond($client);
+        $solde = $this->factures->soldeCompte($client, $maintenant);
+        $elements = [];
+        foreach ($aPayer['elements'] as $e) {
+            $elements[(int) $e->commande->getId()] = $e;
+        }
+        // Détail de chaque débit (fenêtre CD03) : lignes, preuves, ce qui reste à payer.
+        $details = [];
+        foreach ($releve['lignes'] as $i => $l) {
+            if ('debit' === $l['type'] && isset($l['facture'])) {
+                $details[$i] = $this->detailDebit($l['facture'], $elements[(int) $l['commande']?->getId()] ?? null);
+            }
+        }
+        $moisListe = [];
+        for ($k = 0; $k < 12; ++$k) {
+            $moisListe[] = $maintenant->modify('first day of this month')->modify(\sprintf('-%d month', $k));
+        }
+
+        return $this->vue('espace/factures/releve.html.twig', $compte, [
+            'onglet' => 'factures',
+            'releve' => $releve,
+            'details' => $details,
+            'mois' => $mois,
+            'moisListe' => $moisListe,
+            'du' => $du,
+            'au' => min($au, $maintenant),
+            'solde' => $solde,
+            'enValidation' => $enValidation,
+            'plafond' => null !== $plafond ? ['montant' => $plafond, 'utilise' => (int) min(100, round(100 * $solde / $plafond)), 'disponible' => max(0, $plafond - $solde)] : null,
+            'prochaine' => FacturesClient::prochaineEcheance($aPayer['elements']),
+            'cles' => array_map(static fn (ElementAPayer $e): string => $e->cle(), $aPayer['elements']),
+            'aPayerTotal' => $aPayer['total'],
+        ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function detailDebit(Factures $facture, ?ElementAPayer $element): array
+    {
+        $commande = $facture->getCommande();
+        $bats = [];
+        foreach ($commande?->getCommandesDetails() ?? [] as $ligne) {
+            foreach ($ligne->getControlesPrePresse() as $ctl) {
+                if (null !== $ctl->getValideLe()) {
+                    $bats[] = $ctl;
+                }
+            }
+        }
+        usort($bats, static fn ($a, $b): int => $b->getValideLe() <=> $a->getValideLe());
+
+        return [
+            'facture' => $facture,
+            'commande' => $commande,
+            'livraison' => null !== $commande ? $this->espace->livraison($commande) : null,
+            'bat' => $bats[0] ?? null,
+            'element' => $element,
+        ];
     }
 
     /**

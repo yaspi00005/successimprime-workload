@@ -101,7 +101,7 @@ final class RecetteEspaceClient
     /** Pages réservées à qui paie (factures, solde, paiement). */
     public const PAGES_PAYEUR = [
         'app_espace_factures', 'app_espace_facture_pdf', 'app_espace_payer', 'app_espace_conception_credit',
-        'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
+        'app_espace_facture_detail', 'app_espace_facture_recu', 'app_espace_facture_releve', 'app_espace_releve', 'app_espace_payer_selection', 'app_espace_payer_recu',
         'app_espace_nouvelle_commande_paiement',
         'app_espace_solde', 'app_espace_solde_retour',
     ];

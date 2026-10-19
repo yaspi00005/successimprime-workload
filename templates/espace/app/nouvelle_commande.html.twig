@@ -476,6 +476,22 @@
 						</div>
 					{% endif %}
 
+					{% if peutPayer and montants and not demandeValidation and estimation.plafond is defined %}
+						{# Plafond dépassé (maquette CD04) : montré par espace-commande.js quand solde + ce qui reste à crédit passe le plafond. #}
+						<div class="ec-carte co-plafond" data-co-plafond hidden>
+							<p class="co-plafond-titre"><span aria-hidden="true">!</span><span><b>Cette commande dépasse votre plafond de crédit</b><small>Solde actuel <b data-co-p="solde">{{ estimation.plafond.solde|number_format(0, ',', ' ') }} F</b> · avec cette commande <b data-co-p="apres"></b> · plafond <b>{{ estimation.plafond.plafond|number_format(0, ',', ' ') }} F</b></small></span></p>
+							<div class="co-plafond-jauge" aria-hidden="true"><span data-co-p="jauge"></span></div>
+							<p class="ec-petit">Dépassement : <b data-co-p="difference"></b>. Choisissez comment continuer ; l'imprimerie lance la commande une fois le compte sous le plafond.</p>
+							<div class="co-plafond-choix" role="radiogroup" aria-label="Plafond dépassé">
+								{% if omActif %}
+									<label class="co-option"><input type="radio" name="plafond_choix" value="difference" data-co-plafond-requis><span><b>Payer la différence</b><em data-co-p="differenceOm"></em><small>par Orange Money, acompte compris ; le reste à crédit</small></span></label>
+								{% endif %}
+								<label class="co-option"><input type="radio" name="plafond_choix" value="solde" data-co-plafond-requis><span><b>Payer une partie de mon solde</b><em>au choix</em><small>vos factures dues, puis la commande part</small></span></label>
+								<label class="co-option"><input type="radio" name="plafond_choix" value="hausse" data-co-plafond-requis><span><b>Demander une hausse</b><em>à la trésorerie</em><small>un message part avec la commande ; réponse dans vos messages</small></span></label>
+							</div>
+						</div>
+					{% endif %}
+
 					{% if champCodePromo %}
 						<details class="ec-carte co-code"{{ choix.code_promo|default('') != '' ? ' open' }}>
 							<summary>Un code promo ?</summary>
@@ -560,6 +576,7 @@
 		jeton: csrf_token('espace'),
 		voitMontants: montants,
 		paiementEnLigne: peutPayer and montants and omActif and not demandeValidation,
+		plafond: peutPayer and montants and not demandeValidation ? estimation.plafond|default(null) : null,
 		etape: etape,
 		nomProduit: nomProduit,
 		nomEtape4: etape4|lower,

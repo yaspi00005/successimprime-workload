@@ -37,15 +37,16 @@
 			</div>
 			<div class="ef-om-corps">
 				<ul class="ef-om-lignes">
-					<li><span>{{ titre }} · {{ element.estAcompte ? 'acompte ' ~ pourcentage ~ ' % ' : 'commande ' }}{{ commande.numero }}</span><b>{{ element.montant|francs }}</b></li>
+					<li><span>{{ titre }} · {{ part == 'difference' ? 'retour sous le plafond, ' : (element.estAcompte ? 'acompte ' ~ pourcentage ~ ' % ' : 'commande ') }}{{ commande.numero }}</span><b>{{ element.montant|francs }}</b></li>
 				</ul>
 
 				<div class="ef-om-a-payer"><span>À payer maintenant</span><b>{{ element.montant|francs }}</b></div>
 
-				{% if acompteDisponible %}
+				{% if acompteDisponible or difference %}
 					{# Liens : sans JavaScript, le choix recharge la page avec le bon montant. #}
 					<div class="ef-om-modes" role="group" aria-label="Montant">
-						<a class="ef-om-mode{{ part == 'acompte' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'acompte'}) }}"{{ part == 'acompte' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Acompte {{ pourcentage }} %</b><small>le reste {{ commande.estALivrer ? 'à la livraison' : 'au retrait' }}</small></a>
+						{% if difference %}<a class="ef-om-mode{{ part == 'difference' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'difference'}) }}"{{ part == 'difference' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Sous le plafond</b><small>{{ difference.montant|francs }}, le reste à crédit</small></a>{% endif %}
+						{% if acompteDisponible %}<a class="ef-om-mode{{ part == 'acompte' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'acompte'}) }}"{{ part == 'acompte' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Acompte {{ pourcentage }} %</b><small>le reste {{ commande.estALivrer ? 'à la livraison' : 'au retrait' }}</small></a>{% endif %}
 						<a class="ef-om-mode{{ part == 'tout' ? ' choisi' }}" href="{{ path('app_espace_nouvelle_commande_paiement', {id: commande.publicId, part: 'tout'}) }}"{{ part == 'tout' ? ' aria-current="true"' }} style="color:inherit;text-decoration:none"><b>Tout payer</b><small>{{ aPayer|francs }}</small></a>
 					</div>
 				{% endif %}

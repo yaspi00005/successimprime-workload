@@ -87,24 +87,23 @@
 					{% elseif modifiable %}
 						{# Saisie dans la fiche (docs/produits.md) : envoyée avec « Enregistrer », historisée comme la grille tarifaire. #}
 						<input type="hidden" name="configurations_envoyees" value="1">
-						<div class="table-responsive">
-							<table class="si-pd-mini si-pd-configs" data-sans-filtres>
-								<thead><tr><th>Configuration</th><th class="si-pd-num">Prix (F)</th><th class="si-pd-num">Revendeur (F)</th><th class="si-pd-num">Minimum</th><th class="text-center">En vente</th>{% if avec_couts %}<th class="si-pd-num">Marge</th>{% endif %}<th></th></tr></thead>
-								<tbody>
-									{% for c in configurations %}
-										{% set cid = c.configuration.id %}
-										<tr{% if not c.configuration.active %} class="si-pd-gris"{% endif %}>
-											<td>{{ c.libelle }}<small class="d-block si-pd-gris">par {{ c.unite }}{{ not c.configuration.active ? ' · désactivée' }}</small></td>
-											<td class="si-pd-num"><input name="configurations[{{ cid }}][prixBase]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixBase }}" aria-label="Prix {{ c.libelle }}"></td>
-											<td class="si-pd-num"><input name="configurations[{{ cid }}][prixB2B]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixB2B }}" placeholder="—" aria-label="Prix revendeur {{ c.libelle }}"></td>
-											<td class="si-pd-num"><input name="configurations[{{ cid }}][quantiteMinimale]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.quantiteMinimale }}" aria-label="Minimum {{ c.libelle }}"></td>
-											<td class="text-center"><input type="checkbox" class="form-check-input" name="configurations[{{ cid }}][active]" value="1"{{ c.configuration.active ? ' checked' }} aria-label="{{ c.libelle }} en vente"></td>
-											{% if avec_couts %}<td class="si-pd-num">{{ c.marge is null ? '—' : c.marge ~ ' %' }}{% if c.margeRevendeur is not null %}<small class="d-block si-pd-gris">rev. {{ c.margeRevendeur }} %</small>{% endif %}</td>{% endif %}
-											<td>{% if c.supprimable %}<button type="submit" form="pd-config-suppr-{{ cid }}" class="btn btn-link btn-sm text-danger p-0" title="Supprimer (jamais utilisée)" aria-label="Supprimer {{ c.libelle }}">×</button>{% endif %}</td>
-										</tr>
-									{% endfor %}
-								</tbody>
-							</table>
+						{# Une ligne par configuration : libellé en entier, puis les champs côte à côte (la carte est étroite). #}
+						<div class="si-pd-configs">
+							{% for c in configurations %}
+								{% set cid = c.configuration.id %}
+								<div class="si-pd-config{{ not c.configuration.active ? ' si-pd-gris' }}">
+									<div class="si-pd-config-tete">
+										<span>{{ c.libelle }}<small class="d-block si-pd-gris">par {{ c.unite }}{{ not c.configuration.active ? ' · désactivée' }}{% if avec_couts and c.marge is not null %} · marge {{ c.marge }} %{{ c.margeRevendeur is not null ? ' (revendeur ' ~ c.margeRevendeur ~ ' %)' }}{% endif %}</small></span>
+										{% if c.supprimable %}<button type="submit" form="pd-config-suppr-{{ cid }}" class="btn btn-link btn-sm text-danger p-0" title="Supprimer (jamais utilisée)" aria-label="Supprimer {{ c.libelle }}">×</button>{% endif %}
+									</div>
+									<div class="si-pd-config-champs">
+										<label>Prix (F)<input name="configurations[{{ cid }}][prixBase]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixBase }}"></label>
+										<label>Revendeur (F)<input name="configurations[{{ cid }}][prixB2B]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixB2B }}" placeholder="—"></label>
+										<label>Minimum<input name="configurations[{{ cid }}][quantiteMinimale]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.quantiteMinimale }}"></label>
+										<label class="si-pd-config-vente"><input type="checkbox" class="form-check-input" name="configurations[{{ cid }}][active]" value="1"{{ c.configuration.active ? ' checked' }}>En vente</label>
+									</div>
+								</div>
+							{% endfor %}
 						</div>
 						<p class="si-pd-note">Décochez « En vente » pour arrêter une configuration : elle reste dans les commandes et devis passés. Seule une configuration jamais utilisée peut se supprimer (×).</p>
 					{% else %}

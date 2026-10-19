@@ -692,3 +692,13 @@ span.si-pd-bascule { cursor: default; }
   .si-pd-palier-saisie { grid-template-columns: 1fr 1fr; }
   .si-pd-palier-saisie > :first-child { grid-column: 1 / -1; }
 }
+
+/* Prix par configuration, saisis dans la fiche : une ligne par configuration, champs côte à côte. */
+.si-pd-configs { display: grid; gap: 10px; }
+.si-pd-config { border: 1px solid #e6e9f0; border-radius: 10px; padding: 10px 12px; }
+.si-pd-config-tete { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 13px; }
+.si-pd-config-tete small { font-weight: 400; }
+.si-pd-config-champs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 8px; align-items: end; margin-top: 8px; }
+.si-pd-config-champs label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #6b7280; margin: 0; }
+.si-pd-config-champs label.si-pd-config-vente { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px; white-space: nowrap; }
+@media (max-width: 480px) { .si-pd-config-champs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

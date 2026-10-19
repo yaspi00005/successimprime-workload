@@ -34,8 +34,11 @@ final class AgentsMessagerie
         $nom = null !== $employe && '' !== trim($employe->getNomComplet()) ? $employe->getNomComplet() : (string) $u->getUsername();
         $metier = $employe?->getFonction();
         $photo = null;
-        if (null !== $employe && null !== $employe->getPhotos()) {
-            $photo = self::vignette((string) @file_get_contents((string) $this->fichiers->cheminDans('employes', $employe->getPhotos())));
+        // Photo absente du disque (cheminDans() rend null) : pas de vignette,
+        // sans quoi file_get_contents('') lève une erreur et la réponse échoue.
+        $chemin = null !== $employe ? $this->fichiers->cheminDans('employes', $employe->getPhotos()) : null;
+        if (null !== $chemin && is_file($chemin)) {
+            $photo = self::vignette((string) @file_get_contents($chemin));
         }
         $agent->mettreAJour($nom, $metier, $photo, $maintenant);
 

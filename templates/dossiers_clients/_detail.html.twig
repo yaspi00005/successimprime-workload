@@ -1,0 +1,100 @@
+{#
+	Volet de détail d'un fichier (maquette DS01, colonne de droite) :
+	aperçu, dimensions, qui l'a ajouté, commande, produit, versions avec
+	les BAT de la commande, et les boutons. Variables : d
+	(ExplorateurDossier::detail), client, base.
+#}
+{% set f = d.fichier %}
+{% set jeton = csrf_token('dossiers-clients') %}
+{% set logiciels = {ai: 'Illustrator', eps: 'Illustrator', psd: 'Photoshop', psb: 'Photoshop', indd: 'InDesign', idml: 'InDesign', cdr: 'CorelDRAW', pdf: 'Acrobat', afdesign: 'Affinity'} %}
+{% set logiciel = logiciels[f.extension|lower] ?? null %}
+{% set retour_url = base ~ '?' ~ {sd: f.sousDossier, f: f.id}|url_encode ~ '#fichiers' %}
+<div class="dc-detail" data-dc-detail-id="{{ f.id }}">
+	<button type="button" class="dc-fermer" data-dc-fermer aria-label="Fermer le détail"><i class="fas fa-times"></i></button>
+	<div class="dc-apercu"><img src="{{ path('app_dossiers_clients_miniature', {id: f.id}) }}{{ f.miniature ? '?v=' ~ f.miniature|slice(0, 8) }}" alt="Aperçu de {{ f.nom }}"></div>
+	<h3 class="dc-titre" title="{{ f.nom }}">{{ f.nom }}</h3>
+	<p class="dc-sous-titre">{{ [logiciel, f.dimensions, f.resume and f.resume != 'fichier de travail' ? f.resume : null, f.octets|taille_octets]|filter(v => v)|join(' · ') }}</p>
+
+	<dl class="dc-infos">
+		<dt>Modifié</dt>
+		<dd>{{ f.modifieLe|date('d/m H:i') }}{{ f.ajoutePar ? ' · ' ~ f.ajoutePar }}</dd>
+		<dt>Commande</dt>
+		<dd>
+			{% if d.commande %}
+				{% set lignes = d.commande.commandesDetails|slice(0, 2) %}
+				{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_show', {id: d.commande.id}) }}">{{ d.commande.numero }}</a>{% else %}<b>{{ d.commande.numero }}</b>{% endif %}
+				{%- for l in lignes %} · {{ l.designation ?: (l.produit ? l.produit.nom) }}{{ l.quantite > 1 ? ' × ' ~ l.quantite }}{% endfor %}
+				{% if f.commande is null %}<small>(par une autre version)</small>{% endif %}
+			{% else %}<span class="dc-gris">aucune</span>{% endif %}
+		</dd>
+		{% if d.produit %}<dt>Produit client</dt><dd>{{ d.produit }}</dd>{% endif %}
+		<dt>Dossier</dt>
+		<dd><code class="dc-chemin-court">{{ f.chemin }}</code></dd>
+	</dl>
+
+	{% if d.versions|length > 1 or d.versions[0].bat|default(null) %}
+		<h4>Versions dans le dossier</h4>
+		<ul class="dc-versions">
+			{% for l in d.versions %}
+				{% set v = l.fichier %}
+				<li class="{{ v.id == f.id ? 'actif' }}">
+					<b>v{{ v.version ?: loop.revindex }}</b>
+					<span>{{ v.modifieLe|date('d/m') }}</span>
+					<span class="dc-v-texte">
+						{% if l.bat %}{{ l.bat.titre }} · {{ {envoye: 'envoyé', valide: 'validé', refuse: 'refusé'}[l.bat.etat] }}{% elseif loop.last %}première version{% else %}<a href="{{ base }}?{{ {sd: v.sousDossier, f: v.id}|url_encode }}#fichiers" data-dc-fichier="{{ v.id }}">{{ v.nom }}</a>{% endif %}
+					</span>
+					{% if l.bat and l.bat.etat == 'valide' %}<i class="fas fa-check dc-ok" aria-label="validé"></i>{% elseif l.bat and l.bat.etat == 'refuse' %}<i class="fas fa-undo dc-gris" aria-label="refusé"></i>{% endif %}
+				</li>
+			{% endfor %}
+		</ul>
+	{% endif %}
+
+	{% if d.publications is not empty %}
+		<h4>Publié pour le client</h4>
+		{% include 'dossiers_clients/_publies.html.twig' with {publies: d.publications, retirer: d.peut_supprimer, base: base} %}
+	{% endif %}
+
+	<div class="dc-boutons">
+		{% if d.chemin %}
+			{% if f.extension|lower not in constant('App\\Service\\DossiersClients\\NommageFichier::PROGRAMMES') %}<a class="btn btn-sm dc-btn-principal" href="{{ path('app_dossiers_clients_ouvrir', {id: f.id, action: 'ouvrir'}) }}" data-dc-protocole>Ouvrir{{ logiciel ? ' avec ' ~ logiciel }}</a>{% endif %}
+			<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_ouvrir', {id: f.id, action: 'afficher'}) }}" data-dc-protocole>Afficher dans le dossier</a>
+		{% endif %}
+		{% if d.peut_lier %}<button type="button" class="btn btn-sm dc-btn" data-dc-basculer="dc-lier-{{ f.id }}">Lier à une commande</button>{% endif %}
+		{% if d.peut_publier %}<button type="button" class="btn btn-sm dc-btn" data-dc-basculer="dc-publier-{{ f.id }}">Envoyer au client</button>{% endif %}
+		<a class="btn btn-sm dc-btn-discret" href="{{ path('app_dossiers_clients_telecharger', {id: f.id}) }}"><i class="fas fa-download"></i> Télécharger</a>
+		{% if d.chemin %}<button type="button" class="btn btn-sm dc-btn-discret" data-dc-copier="{{ d.chemin }}"><i class="far fa-copy"></i> Chemin</button>{% endif %}
+	</div>
+	{% if d.chemin %}<p class="dc-aide-poste">« Ouvrir » et « Afficher » demandent le petit programme <b>succes-fichier</b> sur ce poste (une fois par poste, voir l'aide). Sans lui, « Chemin » copie l'adresse à coller dans l'Explorateur.</p>{% endif %}
+
+	{% if d.peut_lier %}
+		<form class="dc-volet" id="dc-lier-{{ f.id }}" method="post" action="{{ path('app_dossiers_clients_lier_commande', {id: f.id}) }}" hidden>
+			<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="base" value="{{ base }}">
+			<label for="dc-cmd-{{ f.id }}">Commande de {{ client.nomComplet }}</label>
+			<select id="dc-cmd-{{ f.id }}" name="commande" class="form-select form-select-sm" required>
+				<option value="">Choisir…</option>
+				{% for c in d.commandes %}<option value="{{ c.id }}" {{ f.commande and f.commande.id == c.id ? 'selected' }}>{{ c.numero }} · {{ c.dateCommande ? c.dateCommande|date('d/m/Y') }}</option>{% endfor %}
+			</select>
+			<div class="dc-volet-boutons">
+				<button class="btn btn-sm dc-btn-principal">Lier</button>
+				{% if f.commande and d.peut_supprimer %}<button class="btn btn-sm dc-btn" name="commande" value="0" formnovalidate data-confirmer="Retirer le lien avec la commande {{ f.commande.numero }} ?" data-confirmer-detail="Le fichier reste dans le dossier, seul le lien est retiré de l'ERP." data-confirmer-bouton="Retirer">Retirer le lien</button>{% endif %}
+			</div>
+			<small>Le lien est gardé dans l'ERP : le fichier n'est ni déplacé ni renommé.</small>
+		</form>
+	{% endif %}
+	{% if d.peut_publier %}
+		<form class="dc-volet" id="dc-publier-{{ f.id }}" method="post" action="{{ path('app_dossiers_clients_publier', {id: f.id}) }}" hidden>
+			<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="base" value="{{ base }}">
+			<label for="dc-cat-{{ f.id }}">Le client le verra dans son espace en ligne comme</label>
+			<select id="dc-cat-{{ f.id }}" name="categorie" class="form-select form-select-sm">
+				{% for k, l in constant('App\\Entity\\FichierPublie::CATEGORIES') %}
+					{% if k != 'source' or f.estSource %}<option value="{{ k }}" {{ d.categorie == k ? 'selected' }}>{{ l }}</option>{% endif %}
+				{% endfor %}
+			</select>
+			{% if f.estSource %}
+				<label class="dc-coche dc-attention"><input type="checkbox" name="source" value="1"> Envoyer quand même le fichier source ({{ f.extension|upper }}) : d'habitude il reste à l'atelier</label>
+			{% endif %}
+			<div class="dc-volet-boutons"><button class="btn btn-sm dc-btn-principal">Publier pour le client</button></div>
+			<small>Une copie part au site à la prochaine synchronisation. L'original ne bouge pas.</small>
+		</form>
+	{% endif %}
+</div>

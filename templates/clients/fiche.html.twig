@@ -26,6 +26,7 @@
 {% block stylesheets %}
 	{{ parent() }}
 	<link href="{{ asset('css/fiche-client.css') }}" rel="stylesheet">
+	{% if dossier_fichiers|default(null) %}<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">{% endif %}
 	{% if compte %}<link href="{{ asset('css/compte-client.css') }}" rel="stylesheet">{% endif %}
 {% endblock %}
 
@@ -646,6 +647,10 @@
 
 		{# ===================== FICHIERS ===================== #}
 		<section role="tabpanel" id="panneau-fichiers" aria-labelledby="tab-fichiers" class="fc-panneau" hidden>
+			{% if dossier_fichiers|default(null) %}
+				{% include 'dossiers_clients/_explorateur.html.twig' with {client: client, dossier: dossier_fichiers, base: path('app_clients_show', {publicId: client.publicId})} %}
+				<h2 class="fc-sous-titre-fichiers">Fichiers reçus avec les commandes</h2>
+			{% endif %}
 			<div class="fc-carte">
 				{% if fichiers is empty %}<p class="fc-vide">Aucun fichier reçu pour ce client.</p>{% else %}
 					<ul class="fc-fichiers">
@@ -769,4 +774,5 @@
 	{{ parent() }}
 	{% if compte %}<script src="{{ asset('js/compte-client.js') }}" defer></script>{% endif %}
 	<script src="{{ asset('js/fiche-client.js') }}" defer></script>
+	{% if dossier_fichiers|default(null) %}<script src="{{ asset('js/dossiers-clients.js') }}" defer></script>{% endif %}
 {% endblock %}

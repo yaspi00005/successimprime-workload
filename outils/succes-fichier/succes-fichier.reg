@@ -1,0 +1,13 @@
+Windows Registry Editor Version 5.00
+
+; Enregistre le lien "succes-fichier://" pour l'utilisateur connecte
+; (equivalent de ce que fait installer.ps1). A utiliser seulement si
+; installer.ps1 ne peut pas etre lance. Copier d'abord succes-fichier.ps1
+; et config.json dans C:\ProgramData\SuccesFichier\ (voir config.exemple.json).
+
+[HKEY_CURRENT_USER\Software\Classes\succes-fichier]
+@="URL:Succes Imprim fichiers"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\succes-fichier\shell\open\command]
+@="powershell.exe -NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File \"C:\\ProgramData\\SuccesFichier\\succes-fichier.ps1\" \"%1\""

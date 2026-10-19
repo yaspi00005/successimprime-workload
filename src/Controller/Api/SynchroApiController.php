@@ -92,6 +92,13 @@ final class SynchroApiController
         return $this->traiter($request, fn (array $donnees): array => $fichiers->recevoirVocale($donnees));
     }
 
+    /** Morceau d'une copie publiée pour un client depuis son dossier (docs/dossiers-clients.md). */
+    #[Route('/fichier-publie', name: 'fichier_publie')]
+    public function fichierPublie(Request $request, FichiersSynchro $fichiers): Response
+    {
+        return $this->traiter($request, fn (array $donnees): array => $fichiers->recevoirPublie($donnees));
+    }
+
     /** Le local rapatrie une note vocale enregistrée par un client dans son espace. */
     #[Route('/vocale-client', name: 'vocale_client')]
     public function vocaleClient(Request $request, FichiersSynchro $fichiers): Response

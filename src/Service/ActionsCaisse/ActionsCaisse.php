@@ -507,6 +507,8 @@ final class ActionsCaisse
             'facture' => ($f = $this->em->find(Factures::class, $id)) === null || $f->getStatutPaiement() === Factures::STATUT_PAYEE || $f->getEtat() === Factures::ETAT_ANNULEE,
             'devis' => ($d = $this->em->find(Devis::class, $id)) === null || !$d->estEnAttente(),
             'commande' => $a->getType() === 'commande' && (($c = $this->em->find(Commandes::class, $id)) === null || $c->isRecupereParClient()),
+            // Fichier à classer : classé ou retiré de la liste, la ligne n'a plus d'objet.
+            'fichier_a_classer' => ($f = $this->em->find(\App\Entity\FichierAClasser::class, $id)) === null || !$f->estAClasser(),
             default => false,
         };
     }

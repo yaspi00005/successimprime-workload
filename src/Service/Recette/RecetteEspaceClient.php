@@ -13,6 +13,7 @@ use App\Entity\DepotSoldeClient;
 use App\Entity\DemandeConception;
 use App\Entity\Devis;
 use App\Entity\Factures;
+use App\Entity\FichierPublie;
 use App\Entity\ImageIa;
 use App\Entity\ConversationClient;
 use App\Entity\MessageClient;
@@ -93,6 +94,8 @@ final class RecetteEspaceClient
         'app_espace_creation_fichier' => 'creation',
         // Note vocale de la messagerie (docs/messagerie-clients.md) : la conversation et le message.
         'app_espace_message_vocale_ecouter' => 'vocale',
+        // Fichier publié par l'atelier depuis le dossier du client (docs/dossiers-clients.md).
+        'app_espace_fichier_publie' => 'fichier_publie',
     ];
 
     /** Pages réservées à qui paie (factures, solde, paiement). */
@@ -305,6 +308,7 @@ final class RecetteEspaceClient
             'adresse' => $this->premiere(AdresseLivraison::class, $client, 'e.actif = true'),
             'produit' => $this->premiere(ProduitClient::class, $client, '1 = 1', 'publicId'),
             'creation' => $this->premiere(CreationAtelier::class, $client, '1 = 1', 'publicId'),
+            'fichier_publie' => $this->premiere(FichierPublie::class, $client, 'e.retireLe IS NULL', 'publicId'),
             'vocale' => $vocale['conversation'] ?? null,
             'vocale_message' => $vocale['message'] ?? null,
         ];
@@ -548,6 +552,8 @@ final class RecetteEspaceClient
                 $parametres['taille'] = 'v';
             } elseif ('creation' === $sorte) {
                 $parametres['quoi'] = 'rendu-devant';
+            } elseif ('fichier_publie' === $sorte) {
+                $parametres = ['publicId' => $valeur];
             } elseif ('vocale' === $sorte) {
                 $parametres['message'] = $fichesB['vocale_message'] ?? '';
             }

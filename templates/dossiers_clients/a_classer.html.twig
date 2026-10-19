@@ -1,0 +1,127 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Fichiers à classer (maquette DS03) : fichiers déposés en vrac dans le
+	dossier « À classer » (photos WhatsApp, scans, téléchargements). L'outil
+	propose le client, la commande et le sous-dossier ; « Classer » range
+	une COPIE renommée dans le dossier du client, l'original reste.
+#}
+
+{% set jeton = csrf_token('dossiers-clients') %}
+{% set pastilles = {ai: ['AI', '#F97316'], psd: ['PSD', '#2563EB'], indd: ['INDD', '#DB2777'], pdf: ['PDF', '#DC2626'], jpg: ['JPG', '#0F766E'], jpeg: ['JPG', '#0F766E'], png: ['PNG', '#0F766E'], heic: ['HEIC', '#0F766E'], eps: ['EPS', '#EA580C'], svg: ['SVG', '#7C3AED'], cdr: ['CDR', '#16A34A']} %}
+{% macro pastille(ext, pastilles) %}{% set p = pastilles[ext|lower] ?? [ext|upper|slice(0, 4) ?: '?', '#64748B'] %}<span class="dc-ext" style="--dc-ext: {{ p[1] }}">{{ p[0] }}</span>{% endmacro %}
+{% macro initiales(nom) %}{{ nom|split(' ')|filter(m => m)|slice(0, 2)|map(m => m|first|upper)|join('') }}{% endmacro %}
+
+{% block title %}Fichiers à classer · {{ fichiers|length }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="dc-page">
+		<header class="dc-entete dc-entete-actions">
+			<div>
+				<p class="dc-fil">Fichiers › À classer</p>
+				<h1>Fichiers à classer · {{ fichiers|length }}</h1>
+				<p class="dc-chapeau">Fichiers déposés dans <b>{{ dossier ?: '(dossier « À classer » pas réglé)' }}</b>{{ dossier ? ' : photos WhatsApp, scans, téléchargements' }}. L'outil propose le client, la commande et le sous-dossier.</p>
+			</div>
+			<div class="dc-entete-boutons">
+				<button type="button" class="btn btn-sm dc-btn" data-dc-basculer="dc-regles">Règles de nommage</button>
+				<form method="post" action="{{ path('app_dossiers_clients_analyser_a_classer') }}"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn" title="Relire le dossier « À classer » maintenant"><i class="fas fa-sync-alt"></i><span class="si-masque-mobile"> Relire</span></button></form>
+				<form method="post" action="{{ path('app_dossiers_clients_classer_suggestions') }}"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn-principal" {{ sures == 0 ? 'disabled' }} title="Propositions sûres à {{ confiance_masse }} % ou plus">Classer les {{ sures }} suggestion{{ sures > 1 ? 's' }}</button></form>
+			</div>
+		</header>
+
+		<section class="dc-carte dc-regles" id="dc-regles" hidden>
+			<h2>Règles de nommage</h2>
+			<p>Au classement, la copie prend un nom propre : <code>numéro de commande (ou code client)_description_date.extension</code>, par exemple <code>{{ exemple }}</code>. La date est celle du nom d'origine (photo WhatsApp « IMG-20261019 ») ou du fichier. Les accents et les espaces sont retirés, rien n'est jamais écrasé : un fichier du même nom prend « -2 ».</p>
+			<p>Le sous-dossier est proposé d'après le fichier : photo du téléphone → Photos de pose ; scan, PDF signé, facture → Documents ; « FINAL », « HD », « imprimer » → Prêts à imprimer ; « BAT » → BAT envoyés ; AI, PSD, INDD → Conceptions ; le reste → Fichiers reçus. Vous pouvez tout changer avant de classer.</p>
+		</section>
+
+		{% if fichiers is empty %}
+			<div class="dc-carte dc-vide">
+				<i class="fas fa-check-circle"></i>
+				<p><b>Rien à classer.</b>{% if not dossier %}<br>Réglez le dossier « À classer » dans Réglages › Dossiers clients.{% else %}<br>Les nouveaux fichiers du dossier apparaissent ici après la prochaine analyse (toutes les 5 minutes).{% endif %}</p>
+			</div>
+		{% else %}
+			<div class="dc-carte dc-tableau-carte">
+				<table class="dc-tableau dc-ac">
+					<thead><tr><th>Fichier</th><th>Venu de</th><th>Client proposé</th><th>Lié à</th><th>Ranger dans</th><th>Confiance</th><th><span class="visually-hidden">Action</span></th></tr></thead>
+					<tbody>
+						{% for f in fichiers %}
+							{% set peut = f.sousDossier and (droits.ajouter is same as(true) or f.sousDossier in droits.ajouter) %}
+							{% set pret = f.client and f.sousDossier and f.nomPropose and peut %}
+							<tr id="fichier-{{ f.id }}" class="{{ not f.client ? 'dc-ligne-alerte' }}">
+								<td data-label="Fichier"><span class="dc-ac-fichier">{{ _self.pastille(f.extension, pastilles) }}<b title="{{ f.chemin }}">{{ f.nom }}</b></span>{% if f.apparuLe < date('-24 hours') %}<small class="dc-retard">depuis {{ f.apparuLe|temps_ecoule(true)|replace({'il y a ': ''}) }}</small>{% endif %}</td>
+								<td data-label="Venu de">{{ f.origine }}</td>
+								<td data-label="Client proposé">
+									{% if f.client %}<span class="dc-client"><span class="dc-avatar">{{ _self.initiales(f.client.nomComplet) }}</span>{{ f.client.nomComplet }}</span>{% else %}<button type="button" class="dc-a-choisir" data-dc-basculer="dc-edition-{{ f.id }}">à choisir <i class="fas fa-caret-down"></i></button>{% endif %}
+								</td>
+								<td data-label="Lié à" title="{{ f.raison }}">{% if f.commande %}{% set ligne = f.commande.commandesDetails|first %}<b>{{ f.commande.numero }}</b>{{ ligne and ligne.designation ? ' · ' ~ ligne.designation|raccourcir(30) }}{% else %}{{ f.raison ?: '—' }}{% endif %}{% if f.raison and f.commande %}<small class="dc-raison">{{ f.raison|split(' · ')|first }}</small>{% endif %}</td>
+								<td data-label="Ranger dans"><code class="dc-nowrap">{{ f.sousDossier ? (modele.entree(f.sousDossier).dossier ?? f.sousDossier) : '—' }}</code></td>
+								<td data-label="Confiance">{% if f.client %}<span class="dc-confiance {{ f.confiance >= confiance_masse ? 'dc-c-ok' : (f.confiance >= 50 ? 'dc-c-moyen' : 'dc-c-bas') }}">{{ f.confiance }} %</span>{% else %}—{% endif %}</td>
+								<td class="dc-ac-action">
+									{% if pret %}
+										<form method="post" action="{{ path('app_dossiers_clients_classer', {id: f.id}) }}">
+											<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="nom" value="{{ f.nomPropose }}">
+											<button class="dc-lien" title="Classer sous le nom « {{ f.nomPropose }} »"><i class="fas fa-check"></i> Classer</button>
+										</form>
+									{% endif %}
+									<button type="button" class="dc-lien" data-dc-basculer="dc-edition-{{ f.id }}">{{ pret ? 'Modifier' : 'Ouvrir' }}</button>
+								</td>
+							</tr>
+							<tr class="dc-ac-edition" id="dc-edition-{{ f.id }}" hidden>
+								<td colspan="7">
+									<form method="post" action="{{ path('app_dossiers_clients_classer', {id: f.id}) }}" class="dc-ac-form">
+										<input type="hidden" name="_token" value="{{ jeton }}">
+										<img src="{{ path('app_dossiers_clients_a_classer_miniature', {id: f.id}) }}" alt="" loading="lazy" class="dc-ac-vignette">
+										<div class="dc-ac-champs">
+											<label>Client
+												<input name="client_texte" class="form-control form-control-sm" list="dc-clients" data-dc-chercher-client autocomplete="off" value="{{ f.client ? (f.client.code ? f.client.code ~ ' · ') ~ f.client.nomComplet }}" placeholder="Code ou nom du client" required>
+											</label>
+											<label>Commande
+												<select name="commande" class="form-select form-select-sm">
+													<option value="0">aucune</option>
+													{% for c in commandes[f.client.id ?? 0] ?? [] %}<option value="{{ c.id }}" {{ f.commande and f.commande.id == c.id ? 'selected' }}>{{ c.numero }} · {{ c.dateCommande ? c.dateCommande|date('d/m') }}</option>{% endfor %}
+												</select>
+											</label>
+											<label>Ranger dans
+												<select name="sd" class="form-select form-select-sm">
+													{% for e in modele.entrees %}
+														{% if droits.ajouter is same as(true) or e.cle in droits.ajouter %}<option value="{{ e.cle }}" {{ f.sousDossier == e.cle ? 'selected' }}>{{ e.dossier }}</option>{% endif %}
+													{% endfor %}
+												</select>
+											</label>
+											<label class="dc-ac-nom">Nom de la copie
+												<input name="nom" class="form-control form-control-sm" maxlength="150" value="{{ f.nomPropose }}" placeholder="laissé vide : nom automatique">
+											</label>
+										</div>
+										<div class="dc-volet-boutons">
+											<button class="btn btn-sm dc-btn-principal">Classer</button>
+											{% if peut_retirer %}<button class="btn btn-sm dc-btn" formaction="{{ path('app_dossiers_clients_retirer_a_classer', {id: f.id}) }}" formnovalidate title="Le fichier reste dans « À classer », il sort seulement de la liste" data-confirmer="Retirer « {{ f.nom }} » de la liste ?" data-confirmer-detail="Le fichier reste dans le dossier « À classer » ; il sort seulement de cette liste." data-confirmer-bouton="Retirer">Retirer de la liste</button>{% endif %}
+											<small>Une copie renommée va dans le dossier du client ; l'original reste dans « À classer ». Si le client n'a pas encore de dossier, il est créé avec les sous-dossiers du modèle.</small>
+										</div>
+									</form>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<datalist id="dc-clients" data-dc-url="{{ path('app_dossiers_clients_chercher_client') }}"></datalist>
+			</div>
+		{% endif %}
+
+		<div class="dc-trois">
+			<section class="dc-carte"><h2>Comment l'outil devine</h2><p>Numéro de client, de commande ou de devis dans le nom du fichier ou du dossier, nom du client dans le fichier, dossier d'origine (WhatsApp, scanner, téléchargements). Aucun accès à WhatsApp : seuls les fichiers enregistrés dans le dossier sont lus.</p></section>
+			<section class="dc-carte"><h2>Nom automatique</h2><code class="dc-exemple">{{ exemple }}</code><p class="dc-legende">renommé au classement, l'original est gardé</p></section>
+			<section class="dc-carte"><h2>Qui classe</h2><p>Le graphiste ou la caisse. Un fichier non classé depuis 24 h apparaît dans « Mes actions » de la caisse.</p></section>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/dossiers-clients.js') }}" defer></script>
+{% endblock %}

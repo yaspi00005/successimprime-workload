@@ -33,7 +33,7 @@ Prépresse › Produits clients à préparer (`/pre-presse/produits-clients`, r�
 
 ### Le dossier des clients
 
-Réglage **Paramètres › Atelier › Dossier des clients** : le dossier racine, tel que le voit le serveur de l'ERP (`D:\Clients`, `/srv/clients`). Dans ce dossier :
+Réglage **Réglages › Dossiers clients** (écran DS04, docs/dossiers-clients.md) : le dossier racine, tel que le voit le serveur de l'ERP (`D:\Clients`, `/srv/clients`). Dans ce dossier :
 
 - un dossier par client, dont le nom **commence par son code** (« DEMO-0195 Amadou Sow », « C-0231_Awa ») ;
 - dans ce dossier, un sous-dossier « Produits » pour les fichiers traités (sinon le dossier du client lui-même) ;

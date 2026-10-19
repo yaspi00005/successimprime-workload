@@ -23,6 +23,7 @@
 			{% if a.cibleType and a.cibleId %}
 				{% set routes = {facture: 'app_factures_show', devis: 'app_devis_show', commande: 'app_commandes_show'} %}
 				{% if routes[a.cibleType] is defined %}<a href="{{ path(routes[a.cibleType], {id: a.cibleId}) }}" class="si-ac-piece">Ouvrir la pièce</a>{% endif %}
+				{% if a.cibleType == 'fichier_a_classer' %}<a href="{{ path('app_dossiers_clients_a_classer') }}#fichier-{{ a.cibleId }}" class="si-ac-piece">Ouvrir les fichiers à classer</a>{% endif %}
 			{% endif %}
 		</section>
 

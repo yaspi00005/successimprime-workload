@@ -298,7 +298,7 @@ final class EspaceClientController extends AbstractController
     // Mes devis, le devis et la réponse du client : EspaceDevisController (maquettes DT01, DT04).
 
     #[Route('/fichiers', name: 'fichiers', methods: ['GET'])]
-    public function fichiers(EspaceClient $espace, FichiersClient $fichiers): Response
+    public function fichiers(EspaceClient $espace, FichiersClient $fichiers, \App\Service\DossiersClients\PublicationFichiers $publications): Response
     {
         $client = $this->compte()->getClient();
         $bats = $espace->bats($client);
@@ -311,7 +311,24 @@ final class EspaceClientController extends AbstractController
             'logos' => $fichiers->liste($client, true),
             'extensions' => FichiersClient::extensions(),
             'morceau' => FichiersClient::MORCEAU,
+            // Fichiers que l'atelier a publiés pour le client (BAT, factures, visuels validés, docs/dossiers-clients.md).
+            'publies' => $publications->pourClient($client),
         ]);
+    }
+
+    /** Un fichier que l'atelier a publié pour ce client (copie arrivée par la synchronisation). */
+    #[Route('/fichiers/atelier/{publicId}', name: 'fichier_publie', requirements: ['publicId' => '[0-9a-f-]{36}'], methods: ['GET'])]
+    public function fichierPublie(string $publicId, \App\Service\DossiersClients\PublicationFichiers $publications, \Doctrine\ORM\EntityManagerInterface $em): Response
+    {
+        $p = \Symfony\Component\Uid\Uuid::isValid($publicId) ? $em->getRepository(\App\Entity\FichierPublie::class)->findOneBy(['publicId' => \Symfony\Component\Uid\Uuid::fromString($publicId), 'client' => $this->compte()->getClient(), 'retireLe' => null]) : null;
+        $chemin = null === $p ? null : $publications->chemin($p);
+        if (null === $chemin) {
+            throw $this->createNotFoundException('Ce fichier n\'est pas (encore) disponible.');
+        }
+        $reponse = new BinaryFileResponse($chemin, 200, ['Content-Type' => 'application/octet-stream', 'X-Content-Type-Options' => 'nosniff', 'Cache-Control' => 'private, no-store']);
+        $reponse->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, $p->getNom(), 'fichier');
+
+        return $reponse;
     }
 
     /** Commence l'envoi d'un fichier (les morceaux suivent). */

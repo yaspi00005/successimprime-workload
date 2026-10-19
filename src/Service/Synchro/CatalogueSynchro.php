@@ -24,6 +24,7 @@ use App\Entity\DevisDetailFinition;
 use App\Entity\DevisDetails;
 use App\Entity\Entreprise;
 use App\Entity\Factures;
+use App\Entity\FichierPublie;
 use App\Entity\Paiements;
 use App\Entity\Finition;
 use App\Entity\Format;
@@ -643,6 +644,14 @@ final class CatalogueSynchro
             ],
             // Sondages (docs/sondages.md) : créés au local, les clients y répondent en ligne.
             // Le créateur et le nombre de destinataires restent au local.
+            // Fichiers publiés pour le client depuis son dossier (docs/dossiers-clients.md, « Envoyer au client ») :
+            // la fiche et la copie (FichiersSynchro::envoyerPublies). Le fichier d'origine sur le serveur de
+            // l'atelier et la personne qui a publié restent au local ; le site ne voit jamais le serveur.
+            'fichier_publie' => [
+                'classe' => FichierPublie::class, 'sens' => self::DESCENDANT, 'libelle' => 'Fichier publié pour le client', 'titre' => ['nom'],
+                'champs' => ['nom', 'type', 'taille', 'empreinte', 'nomStockage', 'categorie', 'publieLe', 'retireLe'],
+                'relations' => ['client' => 'client', 'commande' => 'commande'], 'listes' => [], 'facultatives' => ['commande'],
+            ],
             'sondage' => [
                 'classe' => Sondage::class, 'sens' => self::DESCENDANT, 'libelle' => 'Sondage', 'titre' => ['titre'],
                 'champs' => ['type', 'titre', 'introduction', 'statut', 'segment', 'anonymeAutorise', 'jeton', 'questions', 'ouvertLe', 'closLe', 'creeLe'],

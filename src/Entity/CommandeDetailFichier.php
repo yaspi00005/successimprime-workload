@@ -769,4 +769,26 @@ class CommandeDetailFichier
 
         return $this;
     }
+
+
+    /**
+     * Le même fichier sur la ligne d'une commande dupliquée : une nouvelle
+     * fiche qui pointe vers les mêmes octets (rien n'est recopié sur le
+     * disque ; ConservationFichiers ne les efface qu'une fois toutes les
+     * fiches effacées).
+     */
+    public function copiePourLigne(CommandesDetails $ligne, ?User $par): self
+    {
+        $copie = clone $this;
+        $copie->id = null;
+        $copie->initialiserPublicId();
+        $copie->jetonUpload = bin2hex(random_bytes(32));
+        $copie->fichierSource = $this;
+        $copie->creeLe = new \DateTimeImmutable();
+        $copie->ajoutePar = $par ?? $this->ajoutePar;
+        $copie->annulerGarde();
+        $ligne->addFichier($copie);
+
+        return $copie;
+    }
 }

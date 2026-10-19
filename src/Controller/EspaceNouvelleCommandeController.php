@@ -26,6 +26,7 @@ use App\Service\EspaceClient\OptionsCommande;
 use App\Service\EspaceClient\PageNouvelleCommande;
 use App\Service\EspaceClient\PaiementALaCommande;
 use App\Service\EspaceClient\RecommanderClient;
+use App\Service\Commandes\DuplicationCommande;
 use App\Service\Http\Entree;
 use App\Service\Messagerie\Conversations;
 use App\Entity\ConversationClient;
@@ -88,6 +89,39 @@ final class EspaceNouvelleCommandeController extends AbstractController
 
     /** @var array{plafond: int, solde: int}|false|null */
     private array|false|null $plafondCompte = null;
+
+    /**
+     * « Commander à nouveau » sur une ancienne commande (DuplicationCommande) :
+     * la même commande, aux mêmes prix, « à confirmer » par l'imprimerie.
+     */
+    #[Route('/{id}/a-nouveau', name: 'commande_a_nouveau', requirements: ['id' => self::UUID], methods: ['POST'])]
+    public function commanderANouveau(string $id, Request $request, EspaceClient $espace, DuplicationCommande $duplication): Response
+    {
+        $this->jeton($request);
+        $compte = $this->compte();
+        $client = $compte->getClient();
+        $source = $espace->commande($client, $id) ?? throw $this->createNotFoundException();
+        if ($compte->estLectureSeule()) {
+            throw $this->createAccessDeniedException();
+        }
+        try {
+            $commande = $duplication->commanderANouveau($source, $client, new \DateTimeImmutable());
+            $this->compteEntreprise->preparerCommande($compte, $commande, $source->getBonCommande(), null);
+            $this->service->enregistrer();
+            if ($commande->attendValidationEntreprise()) {
+                $this->compteEntreprise->prevenirValideurs($commande, $compte);
+                $this->addFlash('succes', \sprintf('Demande %s envoyée : la même commande, aux mêmes prix. Elle part à l\'atelier dès qu\'une personne qui valide pour votre entreprise l\'accepte.', $commande->getNumero()));
+            } else {
+                $this->addFlash('succes', \sprintf('Commande %s envoyée : la même que %s, aux mêmes prix. L\'imprimerie la confirme puis vous prévient.', $commande->getNumero(), $source->getNumero()));
+            }
+
+            return $this->redirectToRoute('app_espace_commande', ['id' => (string) $commande->getPublicId()]);
+        } catch (\DomainException $e) {
+            $this->addFlash('error', $e->getMessage());
+
+            return $this->redirectToRoute('app_espace_commande', ['id' => $id]);
+        }
+    }
 
     #[Route('/nouvelle', name: 'nouvelle_commande', methods: ['GET', 'POST'])]
     public function nouvelle(Request $request, FichiersClient $fichiers, CatalogueAtelier $atelier, EssaisCodePromo $essaisCode, RecommanderClient $recommander, MesProduits $mesProduits, ImagesIa $imagesIa, EntityManagerInterface $em): Response

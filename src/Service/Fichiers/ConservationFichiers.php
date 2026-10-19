@@ -4,7 +4,7 @@ namespace App\Service\Fichiers;
 
 use App\Entity\CommandeDetailFichier;
 use App\Entity\ProduitClient;
-use App\Service\EspaceClient\FichiersClient;
+use App\Service\EspaceClient\EspaceClient;
 use App\Service\Parametres\Parametres;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -35,7 +35,7 @@ final class ConservationFichiers
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly Parametres $parametres,
-        private readonly FichiersClient $fichiers,
+        private readonly EspaceClient $espace,
     ) {
     }
 
@@ -108,7 +108,8 @@ final class ConservationFichiers
                 $bilan['gardes'] += null !== $f->getGardeDemandeeLe() ? 1 : 0;
                 continue;
             }
-            $chemin = $this->fichiers->chemin($f);
+            // Fichier traité en prépresse (var/<chemin>) ou envoyé à plat (var/uploads/commandes).
+            $chemin = $this->espace->cheminSurDisque($f);
             // Un autre fichier encore gardé (commande dupliquée) partage les mêmes octets : ils restent.
             $partage = null !== $chemin && $this->partage($f);
             if (!$essai) {
@@ -130,8 +131,8 @@ final class ConservationFichiers
     private function partage(CommandeDetailFichier $f): bool
     {
         return (int) $this->em->createQueryBuilder()->select('COUNT(o.id)')->from(CommandeDetailFichier::class, 'o')
-            ->where('o.nomStockage = :nom')->andWhere('o.id != :id')->andWhere('o.effaceLe IS NULL')
-            ->setParameter('nom', $f->getNomStockage())->setParameter('id', $f->getId())
+            ->where('o.nomStockage = :nom OR (o.chemin IS NOT NULL AND o.chemin = :chemin)')->andWhere('o.id != :id')->andWhere('o.effaceLe IS NULL')
+            ->setParameter('nom', $f->getNomStockage())->setParameter('chemin', (string) $f->getChemin())->setParameter('id', $f->getId())
             ->getQuery()->getSingleScalarResult() > 0;
     }
 

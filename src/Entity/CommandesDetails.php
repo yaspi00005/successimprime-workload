@@ -2676,4 +2676,47 @@ public function validerModeCommande(
 
         return $this;
     }
+
+    /**
+     * Même ligne pour une nouvelle commande (« Dupliquer », « Commander à
+     * nouveau ») : même produit, mêmes mesures, mêmes prix, remises et
+     * finitions, sans rien de la fabrication, des contrôles ni des fichiers
+     * (DuplicationCommande les reprend à part).
+     */
+    public function copiePourNouvelleCommande(): self
+    {
+        $copie = clone $this;
+        $copie->id = null;
+        $copie->commande = null;
+        $copie->initialiserPublicId();
+        $copie->finitions = new ArrayCollection();
+        $copie->fichiers = new ArrayCollection();
+        $copie->productions = new ArrayCollection();
+        $copie->stockSorties = new ArrayCollection();
+        $copie->controlesPrePresse = new ArrayCollection();
+        $copie->etiquettes = new ArrayCollection();
+        foreach ($this->finitions as $finition) {
+            $copie->addFinition($finition->copiePourNouvelleLigne());
+        }
+        $copie->jetonsFichiers = null;
+        $copie->batValide = false;
+        $copie->etat = true;
+        $copie->tempsReel = null;
+        $copie->statutProduction = self::PRODUCTION_NON_REQUISE === $this->statutProduction ? self::PRODUCTION_NON_REQUISE : self::PRODUCTION_A_PRODUIRE;
+        $copie->statutProductionAvantAnnulation = null;
+        $copie->productionDebuteLe = null;
+        $copie->productionTermineeLe = null;
+        $copie->productionDebuteePar = null;
+        $copie->productionTermineePar = null;
+        $copie->quantiteProduite = 0;
+        $copie->quantiteRebut = 0;
+        $copie->observationProduction = null;
+        $copie->quantiteLivree = 0;
+        // Une ligne au total gardé (bascule) garde aussi son total dans la copie.
+        if ($this->isTotalFige()) {
+            $copie->figerTotal();
+        }
+
+        return $copie;
+    }
 }

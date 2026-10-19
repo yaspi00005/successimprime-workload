@@ -132,6 +132,12 @@
 					{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
 						<a class="dropdown-item" href="{{ path('app_commandes_edit', {id: commande.id}) }}"><i class="fas fa-pen me-2"></i>Modifier</a>
 					{% endif %}
+					{% if is_granted('ROLE_COMMANDE') and commande.clients and not commande.isSoldeOuverture() %}
+						<form method="post" action="{{ path('app_commandes_dupliquer', {id: commande.id}) }}" data-confirmer="Dupliquer la commande {{ commande.numero }} ? Une nouvelle commande est créée avec le même client, les mêmes lignes, les mêmes prix et les mêmes fichiers (sans les paiements).">
+							<input type="hidden" name="_token" value="{{ csrf_token('dupliquer-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-clone me-2"></i>Dupliquer</button>
+						</form>
+					{% endif %}
 					{% if facture and peutFacturer %}
 						<a class="dropdown-item" href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank"><i class="fas fa-file-pdf me-2"></i>Facture PDF</a>
 					{% elseif peutFacturer and not annulee %}

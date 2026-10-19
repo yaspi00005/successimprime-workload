@@ -236,6 +236,13 @@
 
 			{% if whatsapp or (c.isStatut and not lecture) %}
 				<div class="cs-fin" id="recommander">
+					{% if c.isStatut and not lecture and not c.isSoldeOuverture() %}
+						{# DuplicationCommande : la même commande, aux mêmes prix, « à confirmer » par l'imprimerie. #}
+						<form method="post" action="{{ path('app_espace_commande_a_nouveau', {id: c.publicId}) }}" data-confirmer="Commander à nouveau la même chose, aux mêmes prix ? L'imprimerie confirme la commande puis vous prévient.">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<button type="submit" class="ec-bouton">Commander à nouveau, au même prix</button>
+						</form>
+					{% endif %}
 					{% if whatsapp %}<a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Contacter l'atelier sur WhatsApp</a>{% endif %}
 					{% if c.isStatut and not lecture %}<a class="ec-lien" href="{{ path('app_espace_reclamation_nouvelle', {commande: c.publicId}) }}">Un problème avec cette commande ?</a>{% endif %}
 				</div>

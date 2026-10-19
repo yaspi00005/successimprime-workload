@@ -394,4 +394,15 @@ class CommandeDetailFinition
             )
         );
     }
+
+
+    /** Même finition, même prix, pour une ligne copiée (CommandesDetails::copiePourNouvelleCommande). */
+    public function copiePourNouvelleLigne(): self
+    {
+        $copie = clone $this;
+        $copie->id = null;
+        $copie->commandeDetail = null;
+
+        return $copie;
+    }
 }

@@ -2,15 +2,33 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\NoteVocaleTrait;
 use App\Repository\MessageRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
+/**
+ * Message de la messagerie de l'équipe (docs/messagerie-interne.md) :
+ * texte avec @mentions et commandes citées (« CM-0182 » devient une
+ * carte), fichiers et photos (PieceJointeMessage), note vocale, réponse
+ * à un autre message, épingle, réactions.
+ */
 #[ORM\Entity(repositoryClass: MessageRepository::class)]
 #[ORM\Table(name: 'messages_chat')]
+#[ORM\Index(name: 'idx_message_chat_conversation', columns: ['conversation_id', 'id'])]
 #[ORM\HasLifecycleCallbacks]
 class Message
 {
+    use NoteVocaleTrait;
+
+    public const TEXTE = 'texte';
+    public const SYSTEME = 'systeme';
+
+    /** Longueur d'un message écrit. */
+    public const LONGUEUR_MAX = 4000;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -30,21 +48,44 @@ class Message
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $dateEnvoi = null;
 
-    /**
-     * Nom du fichier tel que stocké sur le disque (var/uploads/chat,
-     * hors de public/ : servi par ChatController::fichier).
-     */
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $pieceJointeFichier = null;
+    /** « texte » (écrit, fichiers, note vocale) ou « systeme » (groupe créé, membre ajouté, groupe fermé). */
+    #[ORM\Column(length: 10, options: ['default' => self::TEXTE])]
+    private string $genre = self::TEXTE;
 
-    /**
-     * Nom du fichier tel qu'envoyé par l'utilisateur, pour l'affichage
-     * et le téléchargement.
-     */
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $pieceJointeNomOriginal = null;
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Message $reponseA = null;
 
-    private const EXTENSIONS_IMAGE = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp'];
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $epingleLe = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $epinglePar = null;
+
+    /** @var list<int> personnes citées (@Oumar), prévenues par une notification */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $mentions = [];
+
+    /** @var list<int> commandes citées (« CM-0182 »), montrées en carte */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $commandes = [];
+
+    /** @var Collection<int, PieceJointeMessage> */
+    #[ORM\OneToMany(mappedBy: 'message', targetEntity: PieceJointeMessage::class, cascade: ['persist'])]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $pieces;
+
+    /** @var Collection<int, ReactionMessage> */
+    #[ORM\OneToMany(mappedBy: 'message', targetEntity: ReactionMessage::class)]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $reactions;
+
+    public function __construct()
+    {
+        $this->pieces = new ArrayCollection();
+        $this->reactions = new ArrayCollection();
+    }
 
     #[ORM\PrePersist]
     public function initialiserDateEnvoi(): void
@@ -86,9 +127,15 @@ class Message
         return $this->contenu;
     }
 
+    /** Pour NoteVocaleTrait (libellé automatique d'une note vocale sans texte). */
+    public function getTexte(): string
+    {
+        return $this->contenu;
+    }
+
     public function setContenu(string $contenu): static
     {
-        $this->contenu = trim($contenu);
+        $this->contenu = mb_substr(trim($contenu), 0, self::LONGUEUR_MAX);
 
         return $this;
     }
@@ -98,37 +145,149 @@ class Message
         return $this->dateEnvoi;
     }
 
-    public function getPieceJointeFichier(): ?string
+    public function setDateEnvoi(\DateTimeImmutable $le): static
     {
-        return $this->pieceJointeFichier;
-    }
-
-    public function getPieceJointeNomOriginal(): ?string
-    {
-        return $this->pieceJointeNomOriginal;
-    }
-
-    public function definirPieceJointe(string $fichier, string $nomOriginal): static
-    {
-        $this->pieceJointeFichier = $fichier;
-        $this->pieceJointeNomOriginal = $nomOriginal;
+        $this->dateEnvoi = $le;
 
         return $this;
     }
 
-    public function aUnePieceJointe(): bool
+    public function getGenre(): string
     {
-        return $this->pieceJointeFichier !== null;
+        return $this->genre;
     }
 
-    public function pieceJointeEstUneImage(): bool
+    public function estSysteme(): bool
     {
-        if ($this->pieceJointeFichier === null) {
-            return false;
+        return self::SYSTEME === $this->genre;
+    }
+
+    public function setGenre(string $genre): static
+    {
+        $this->genre = self::SYSTEME === $genre ? self::SYSTEME : self::TEXTE;
+
+        return $this;
+    }
+
+    public function getReponseA(): ?Message
+    {
+        return $this->reponseA;
+    }
+
+    public function setReponseA(?Message $reponseA): static
+    {
+        $this->reponseA = $reponseA;
+
+        return $this;
+    }
+
+    public function estEpingle(): bool
+    {
+        return null !== $this->epingleLe;
+    }
+
+    public function getEpingleLe(): ?\DateTimeImmutable
+    {
+        return $this->epingleLe;
+    }
+
+    public function getEpinglePar(): ?User
+    {
+        return $this->epinglePar;
+    }
+
+    public function epingler(?User $par, ?\DateTimeImmutable $le): static
+    {
+        $this->epinglePar = null === $le ? null : $par;
+        $this->epingleLe = $le;
+
+        return $this;
+    }
+
+    /** @return list<int> */
+    public function getMentions(): array
+    {
+        return array_values(array_unique(array_map('intval', $this->mentions)));
+    }
+
+    /** @param list<int> $ids */
+    public function setMentions(array $ids): static
+    {
+        $this->mentions = array_values(array_unique(array_map('intval', $ids)));
+
+        return $this;
+    }
+
+    /** @return list<int> */
+    public function getCommandes(): array
+    {
+        return array_values(array_unique(array_map('intval', $this->commandes)));
+    }
+
+    /** @param list<int> $ids */
+    public function setCommandes(array $ids): static
+    {
+        $this->commandes = \array_slice(array_values(array_unique(array_map('intval', $ids))), 0, 5);
+
+        return $this;
+    }
+
+    /** @return Collection<int, PieceJointeMessage> */
+    public function getPieces(): Collection
+    {
+        return $this->pieces;
+    }
+
+    public function ajouterPiece(PieceJointeMessage $piece): static
+    {
+        if (!$this->pieces->contains($piece)) {
+            $this->pieces->add($piece);
+            $piece->setMessage($this);
         }
 
-        $extension = strtolower(pathinfo($this->pieceJointeFichier, PATHINFO_EXTENSION));
+        return $this;
+    }
 
-        return in_array($extension, self::EXTENSIONS_IMAGE, true);
+    /** @return Collection<int, ReactionMessage> */
+    public function getReactions(): Collection
+    {
+        return $this->reactions;
+    }
+
+    /**
+     * Réactions regroupées : emoji => [nombre, noms, moi].
+     *
+     * @return array<string, array{nombre: int, noms: list<string>, moi: bool}>
+     */
+    public function reactionsPour(?User $moi): array
+    {
+        $groupes = [];
+        foreach ($this->reactions as $r) {
+            $e = $r->getEmoji();
+            $groupes[$e] ??= ['nombre' => 0, 'noms' => [], 'moi' => false];
+            ++$groupes[$e]['nombre'];
+            $groupes[$e]['noms'][] = Conversation::nomDe($r->getUtilisateur());
+            if (null !== $moi && $r->getUtilisateur()?->getId() === $moi->getId()) {
+                $groupes[$e]['moi'] = true;
+            }
+        }
+
+        return $groupes;
+    }
+
+    /** Aperçu d'une ligne (liste des fils, notification, citation). */
+    public function apercu(int $longueur = 80): string
+    {
+        $texte = trim((string) preg_replace('/\s+/u', ' ', $this->contenu));
+        if ('' === $texte && $this->aUneNoteVocale()) {
+            $texte = self::libelleVocale((int) $this->getVocaleDuree());
+        }
+        if ('' === $texte && !$this->pieces->isEmpty()) {
+            $n = $this->pieces->count();
+            $premiere = $this->pieces->first();
+            $texte = 1 === $n && false !== $premiere ? ($premiere->estPhoto() ? 'Photo' : $premiere->getNom()) : $n.' fichiers';
+        }
+
+        return mb_strlen($texte) > $longueur ? rtrim(mb_substr($texte, 0, $longueur - 1)).'…' : $texte;
     }
 }

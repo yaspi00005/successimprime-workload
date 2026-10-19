@@ -1,0 +1,18 @@
+{# Une pièce jointe dans un message : photo (vignette), fichier ou lien vers le dossier du client (sans copie). Variables : p, c. #}
+{% set url = path('app_messagerie_interne_fichier', {jeton: c.jeton, id: p.id}) %}
+{% if p.estPhoto %}
+	<a class="mi-photo" href="{{ url }}" target="_blank" rel="noopener">
+		<img src="{{ url }}?mini=1" alt="{{ p.nom }}" loading="lazy">
+		<span>{{ p.nom }} · {{ p.octets|taille_fichier }}</span>
+	</a>
+{% else %}
+	<div class="mi-fichier {{ p.estLien ? 'lien' }}">
+		<span class="mi-ext ext-{{ p.etiquette|lower }}">{{ p.etiquette }}</span>
+		<span class="mi-fichier-corps">
+			<b title="{{ p.nom }}">{{ p.nom }}</b>
+			<small>{{ p.octets|taille_fichier }} · {% if p.estLien %}lien vers le serveur, pas de copie{% if p.client %} · {{ p.client.code }}{% endif %}{% else %}{{ p.creeLe ? p.creeLe|date('d/m H:i') }}{% endif %}{% if p.rangeDans %} · rangé dans le dossier du client{% endif %}</small>
+		</span>
+		<a href="{{ url }}" target="_blank" rel="noopener" class="mi-ouvrir">Ouvrir</a>
+		{% if not p.estLien %}<a href="{{ url }}?telecharger=1" class="mi-telecharger" title="Télécharger" aria-label="Télécharger {{ p.nom }}">⬇</a>{% endif %}
+	</div>
+{% endif %}

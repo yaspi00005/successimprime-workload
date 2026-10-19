@@ -134,6 +134,8 @@ security:
             - ROLE_CREDITS_MESSAGES
             - ROLE_CORBEILLE
             - ROLE_ALERTES_SYSTEME
+            - ROLE_MESSAGERIE_INTERNE
+            - ROLE_MESSAGERIE_GROUPES
             
 
 

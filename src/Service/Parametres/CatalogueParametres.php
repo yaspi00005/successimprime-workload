@@ -518,6 +518,17 @@ final class CatalogueParametres
                 'motsCles' => ['Délai de réponse aux clients · 30 min', 'Retard imputé à l\'agent assigné', 'Clôture automatique des conversations', 'Pénalité de points par réponse en retard'],
                 'note' => 'Le chronomètre ne tourne que pendant les heures ouvrées (tuile Horaires, pause comprise) ; il s\'arrête à la première réponse envoyée, les notes internes ne comptent pas.',
             ],
+            // Messagerie de l'équipe (docs/messagerie-interne.md, maquettes MI01 à MI05), demande de Yaya du 19/10/2026.
+            'messagerie_interne' => [
+                'famille' => 'clients', 'libelle' => 'Messagerie de l\'équipe', 'icone' => 'fa-comments',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_messagerie_interne_index',
+                'champs' => [
+                    ['cle' => 'direction_lit_groupes', 'type' => 'interrupteur', 'libelle' => 'La direction peut lire tous les groupes', 'aide' => 'Sans en être membre, en lecture seule. Les messages privés ne sont jamais lisibles par la direction.', 'defaut' => true],
+                    ['cle' => 'taille_max_mo', 'type' => 'nombre', 'libelle' => 'Taille d\'un fichier envoyé', 'aide' => 'Au-delà, on partage un lien vers le fichier du serveur (dossier du client) : pas de copie', 'suffixe' => 'Mo', 'min' => 1, 'max' => 200, 'defaut' => 50],
+                ],
+                'motsCles' => ['Groupes Général, Atelier, Prépresse, Caisse et finances', 'Messages privés entre collègues', 'La direction lit les groupes, pas les messages privés', 'Fichiers jusqu\'à 50 Mo · gros fichiers en lien'],
+                'note' => 'L\'équipe voit cette règle écrite dans la messagerie. Les clients ne voient jamais la messagerie de l\'équipe.',
+            ],
             'ecran_tv' => [
                 'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],

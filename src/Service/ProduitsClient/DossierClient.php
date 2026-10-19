@@ -114,6 +114,16 @@ final class DossierClient
         return $prets ?? $dossierClient;
     }
 
+    /**
+     * Le dossier du client lui-même (« D:\Clients\C-0231 Awa Diarra »), ou
+     * null (réglage vide, dossier absent). Sert aussi à la messagerie de
+     * l'équipe (fichiers partagés en lien, docs/messagerie-interne.md).
+     */
+    public function dossierDuClient(Clients $client): ?string
+    {
+        return $this->dossierClient($client);
+    }
+
     /** Chemin à montrer quand le dossier manque : « D:\Clients\DEMO-0195 Amadou Sow\Produits ». */
     public function cheminAttendu(Clients $client): string
     {

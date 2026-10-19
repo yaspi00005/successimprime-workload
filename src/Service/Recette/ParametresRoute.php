@@ -5,14 +5,17 @@ namespace App\Service\Recette;
 use App\Entity\AssistantConversation;
 use App\Entity\Campagne;
 use App\Entity\Clients;
+use App\Entity\Conversation;
 use App\Entity\ConversationClient;
 use App\Entity\DemandeConception;
 use App\Entity\DemandeDevis;
 use App\Entity\JournalActivite;
+use App\Entity\Message;
 use App\Entity\MessageClient;
 use App\Entity\MouvementSoldeClient;
 use App\Entity\NoteConversation;
 use App\Entity\PageSite;
+use App\Entity\PieceJointeMessage;
 use App\Service\Guide\CatalogueGuide;
 use App\Service\Parametres\CatalogueParametres;
 use Doctrine\ORM\EntityManagerInterface;
@@ -99,6 +102,14 @@ final class ParametresRoute
             }
 
             return [] === $jeux ? 'aucune note vocale dans les conversations' : $jeux;
+        }
+
+        // Messagerie de l'équipe (docs/messagerie-interne.md) : un groupe et un message privé, chacun jugé avec ses membres.
+        if (str_starts_with($nom, 'app_messagerie_interne_')) {
+            $jeux = $this->messagerieInterne($nom, $variables);
+            if (null !== $jeux) {
+                return $jeux;
+            }
         }
 
         $arguments = self::argumentsDuControleur($route);
@@ -226,6 +237,41 @@ final class ParametresRoute
     /**
      * @return array<string, \ReflectionParameter>
      */
+    /**
+     * @param list<string> $variables
+     *
+     * @return list<array<string, string|int>>|string|null null : les règles ordinaires
+     */
+    private function messagerieInterne(string $nom, array $variables): array|string|null
+    {
+        if ('app_messagerie_interne_fichier' === $nom) {
+            $ligne = $this->em->createQuery('SELECT p.id, c.jeton FROM '.PieceJointeMessage::class.' p JOIN p.conversation c ORDER BY p.id ASC')->setMaxResults(1)->getOneOrNullResult();
+
+            return null === $ligne ? 'aucun fichier dans la messagerie de l\'équipe' : [['jeton' => (string) $ligne['jeton'], 'id' => (int) $ligne['id']]];
+        }
+        if ('app_messagerie_interne_vocale_ecouter' === $nom) {
+            $ligne = $this->em->createQuery('SELECT m.id, c.jeton FROM '.Message::class.' m JOIN m.conversation c WHERE m.vocaleNom IS NOT NULL ORDER BY m.id ASC')->setMaxResults(1)->getOneOrNullResult();
+
+            return null === $ligne ? 'aucune note vocale dans la messagerie de l\'équipe' : [['jeton' => (string) $ligne['jeton'], 'id' => (int) $ligne['id']]];
+        }
+        if (\in_array('jeton', $variables, true) && 1 === \count($variables)) {
+            if (str_starts_with($nom, 'app_messagerie_interne_envoi_')) {
+                return [['jeton' => str_repeat('0', 40)]];
+            }
+            $jeux = [];
+            foreach ([Conversation::PERMANENT, Conversation::PRIVE] as $type) {
+                $jeton = $this->em->createQuery('SELECT c.jeton FROM '.Conversation::class.' c WHERE c.type = :t ORDER BY c.id ASC')->setParameter('t', $type)->setMaxResults(1)->getOneOrNullResult();
+                if (null !== $jeton) {
+                    $jeux[] = ['jeton' => (string) $jeton['jeton']];
+                }
+            }
+
+            return [] === $jeux ? 'aucune conversation de l\'équipe' : $jeux;
+        }
+
+        return null;
+    }
+
     private static function argumentsDuControleur(Route $route): array
     {
         $controleur = $route->getDefault('_controller');

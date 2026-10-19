@@ -59,7 +59,7 @@ final class LivreurSeulTest extends TestCase
         }
         foreach (['app_livraisons_index', 'app_livraisons_a_retirer', 'app_livraisons_planning', 'app_livraisons_bl', 'app_livraisons_suivi', 'app_bons_livraison_index',
             'app_clients_index', 'app_commandes_show', 'app_ventes_index', 'app_statistiques_index', 'app_mes_statistiques', 'app_rapport_semaine', 'app_recherche',
-            'app_chat_index', 'app_planning_index', 'app_reclamation_index', 'app_user_index', 'app_verification_x', null, ''] as $route) {
+            'app_messages_clients_index', 'app_planning_index', 'app_reclamation_index', 'app_user_index', 'app_verification_x', null, ''] as $route) {
             self::assertFalse(LivreurSeul::routePermise($route), (string) $route);
         }
         foreach (LivreurSeul::MENU as $route) {

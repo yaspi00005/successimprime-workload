@@ -1,0 +1,99 @@
+{#
+	Fenêtres « Nouveau groupe » (MI02) et « Nouveau message privé ».
+	Variables : peutCreerGroupe, collegues, roles, moi, dossiersDisponibles.
+#}
+{% if peutCreerGroupe %}
+	<dialog class="mi-dialogue large" id="mi-dlg-groupe" aria-labelledby="mi-dlg-groupe-titre">
+		<form method="post" action="{{ path('app_messagerie_interne_groupe_creer') }}" class="mi-form-groupe">
+			<input type="hidden" name="_token" value="{{ csrf_token('mi_groupe') }}">
+			<div class="mi-dlg-tete">
+				<h2 id="mi-dlg-groupe-titre">Nouveau groupe</h2>
+				<button type="button" class="mi-fermer" data-fermer aria-label="Fermer">×</button>
+			</div>
+			<div class="mi-dlg-corps">
+				<label class="mi-champ">
+					<span>Nom du groupe</span>
+					<input type="text" name="nom" maxlength="80" required placeholder="ex. Projet Signalétique Hôtel Niger">
+				</label>
+				<fieldset class="mi-types">
+					<legend>Type</legend>
+					{% for type, t in constant('App\\Entity\\Conversation::TYPES_GROUPE') %}
+						<label class="mi-type">
+							<input type="radio" name="type" value="{{ type }}"{{ loop.first ? ' checked' }}>
+							<span><b>{{ t.libelle }}</b><small>{{ t.aide }}</small></span>
+						</label>
+					{% endfor %}
+				</fieldset>
+				<div class="mi-projet" data-si-type="projet" hidden>
+					<label class="mi-champ">
+						<span>Lié à</span>
+						<input type="search" class="mi-liaison-q" placeholder="Client, devis ou commande (nom, DV-…, CMD-…)" autocomplete="off" aria-describedby="mi-liaison-aide">
+						<input type="hidden" name="lie" class="mi-liaison-valeur">
+					</label>
+					<ul class="mi-propositions" hidden></ul>
+					<p class="mi-liaison-choisie" hidden></p>
+					<small id="mi-liaison-aide" class="mi-aide">Les fichiers du groupe sont reliés à la commande ; ils se retrouvent depuis la fiche du client.</small>
+					<label class="mi-interrupteur"><input type="checkbox" name="fermeture_auto" value="1" checked> <span>Fermeture automatique : à la livraison de la commande</span></label>
+				</div>
+				<label class="mi-champ">
+					<span>Description <small>(facultatif)</small></span>
+					<input type="text" name="description" maxlength="160" placeholder="ex. plaques et totems de l'hôtel">
+				</label>
+				<div class="mi-champ">
+					<span>Membres</span>
+					<div class="mi-puces-membres">
+						<span class="mi-puce-membre moi">{{ moi|nom_equipe }} · responsable</span>
+					</div>
+					<div class="mi-ajout-roles">
+						{% for r in roles|filter(r => r.code in ['ROLE_PRODUCTION', 'ROLE_CAISSE_COMMANDE', 'ROLE_ADMIN', 'ROLE_GRAPHISTE', 'ROLE_LIVREUR']) %}
+							<label class="mi-role"><input type="checkbox" name="roles[]" value="{{ r.code }}"> + {{ {ROLE_PRODUCTION: 'Tout l\'atelier', ROLE_CAISSE_COMMANDE: 'Toute la caisse', ROLE_ADMIN: 'Direction', ROLE_GRAPHISTE: 'Tout le prépresse', ROLE_LIVREUR: 'Tous les livreurs'}[r.code] ?? r.nom }}</label>
+						{% endfor %}
+					</div>
+					<details class="mi-choix-membres">
+						<summary>Choisir des personnes ({{ collegues|length }})</summary>
+						<div class="mi-grille-membres">
+							{% for u in collegues %}
+								<label><input type="checkbox" name="membres[]" value="{{ u.id }}"> {{ u|nom_equipe }}{% if u.employe and u.employe.fonction %} <small>{{ u.employe.fonction }}</small>{% endif %}</label>
+							{% endfor %}
+						</div>
+					</details>
+					<small class="mi-aide">Une personne d'un rôle ajouté entre aussi dans le groupe quand elle arrive plus tard.</small>
+				</div>
+				<label class="mi-interrupteur"><input type="checkbox" name="fichiers_pour_tous" value="1" checked> <span>Tout le monde peut envoyer des fichiers <small>(sinon : seulement les responsables)</small></span></label>
+				<label class="mi-interrupteur {{ dossiersDisponibles ? '' : 'grise' }}" data-si-type="projet" hidden>
+					<input type="checkbox" name="ranger_dossier_client" value="1"{{ dossiersDisponibles ? '' : ' disabled' }}>
+					<span>Les fichiers vont aussi dans le dossier du client
+						<small>{{ dossiersDisponibles ? 'copie dans « 02 Fichiers reçus », jamais d\'écrasement' : 'Indisponible : le dossier racine des clients n\'est pas réglé (Paramètres › Atelier › Dossier des clients).' }}</small>
+					</span>
+				</label>
+			</div>
+			<div class="mi-dlg-pied">
+				<button type="button" class="mi-btn" data-fermer>Annuler</button>
+				<button class="mi-btn bleu">Créer le groupe</button>
+			</div>
+		</form>
+	</dialog>
+{% endif %}
+<dialog class="mi-dialogue" id="mi-dlg-prive" aria-labelledby="mi-dlg-prive-titre">
+	<form method="post" action="{{ path('app_messagerie_interne_prive') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('mi_prive') }}">
+		<div class="mi-dlg-tete">
+			<h2 id="mi-dlg-prive-titre">Nouveau message privé</h2>
+			<button type="button" class="mi-fermer" data-fermer aria-label="Fermer">×</button>
+		</div>
+		<div class="mi-dlg-corps">
+			<label class="mi-champ">
+				<span>Avec</span>
+				<select name="personne" required>
+					<option value="">Choisir un collègue…</option>
+					{% for u in collegues %}<option value="{{ u.id }}">{{ u|nom_equipe }}{{ u.employe and u.employe.fonction ? ' · ' ~ u.employe.fonction }}</option>{% endfor %}
+				</select>
+			</label>
+			<p class="mi-aide">Un message privé n'est lu que par vous deux. La direction ne le lit pas.</p>
+		</div>
+		<div class="mi-dlg-pied">
+			<button type="button" class="mi-btn" data-fermer>Annuler</button>
+			<button class="mi-btn bleu">Écrire</button>
+		</div>
+	</form>
+</dialog>

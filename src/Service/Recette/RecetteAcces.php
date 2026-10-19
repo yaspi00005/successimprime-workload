@@ -104,7 +104,7 @@ final class RecetteAcces
      */
     public const REFUSEES_AU_LIVREUR = [
         'app_clients_index', 'app_commandes_index', 'app_ventes_index', 'app_statistiques_index', 'app_mes_statistiques',
-        'app_recherche', 'app_chat_index', 'app_planning_index', 'app_livraisons_index', 'app_bons_livraison_index',
+        'app_recherche', 'app_messages_clients_index', 'app_planning_index', 'app_livraisons_index', 'app_bons_livraison_index',
         'app_livraisons_a_retirer', 'app_livraisons_planning', 'app_livraisons_suivi', 'app_reclamation_index',
     ];
 
@@ -439,7 +439,7 @@ final class RecetteAcces
             }
         }
         $essayees = \count(array_intersect(self::REFUSEES_AU_LIVREUR, array_keys($etats)));
-        $bilan->controler(\sprintf('%s : tableau de bord, clients, commandes, statistiques, recherche, messagerie, listes des livraisons et suivi refusés', $identifiant), [] === $ouvertes, [] === $ouvertes ? \sprintf('%d pages refusées', $essayees) : implode(', ', $ouvertes));
+        $bilan->controler(\sprintf('%s : tableau de bord, clients, commandes, statistiques, recherche, messages des clients, listes des livraisons et suivi refusés', $identifiant), [] === $ouvertes, [] === $ouvertes ? \sprintf('%d pages refusées', $essayees) : implode(', ', $ouvertes));
 
         // L'accueil (« / », hors de la liste des pages de l'admin) le renvoie sur sa tournée.
         $reponse = $this->navigateur->get($this->routeur->generate('app_home'), $session);

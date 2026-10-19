@@ -168,6 +168,16 @@
 					if (!res.ok || !res.j.url) {
 						throw new Error(res.j.erreur || res.j.detail || ('Envoi refusé par le serveur (erreur ' + res.statut + ') : rechargez la page, puis réessayez.'));
 					}
+					// Messagerie de l'équipe (data-evenement) : la page ajoute le message elle-même, sans recharger.
+					if (el.dataset.evenement) {
+						envoi = false;
+						envoyer.disabled = false;
+						remettre();
+						panneau.hidden = true;
+						ouvrir.setAttribute('aria-expanded', 'false');
+						el.dispatchEvent(new CustomEvent(el.dataset.evenement, {bubbles: true, detail: res.j}));
+						return;
+					}
 					var cible = new URL(res.j.url, window.location.href);
 					if (cible.pathname + cible.search === window.location.pathname + window.location.search) {
 						window.location.hash = cible.hash;

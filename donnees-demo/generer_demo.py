@@ -1514,17 +1514,14 @@ for row in ROWS['employes']:
         row['responsable_id'] = U['seydou']
 
 # ------------------------------------- messagerie, notifications et journal
-paires = [('aminata', 'seydou'), ('aminata', 'oumar'), ('kadiatou', 'fanta'), ('mariam', 'aissata'), ('moussa', 'bakary'), ('seydou', 'oumar')]
-PHRASES = ['Le BAT de la pharmacie est parti ?', 'Oui, envoyé ce matin.', 'Le client passe à 15 h pour la bâche.', 'La machine est libre après 11 h.', 'Il manque le logo en vectoriel.',
-           'Je l\'ai demandé au client par WhatsApp.', 'C\'est livré, signature reçue.', 'Merci !', 'On a assez de bâche 510 g pour demain ?', 'Oui, 2 rouleaux en stock.']
-for a, b in paires:
-    d0 = R.randint(1, 40)
-    conv = add('conversations', {'date_creation': T(d0 + 5, 9), 'date_dernier_message': T(d0, 16), 'jeton': hexa(32)})
-    add('conversation_participants', {'date_derniere_lecture': T(d0, 16), 'conversation_id': conv, 'utilisateur_id': U[a]})
-    add('conversation_participants', {'date_derniere_lecture': T(d0 + 1, 10), 'conversation_id': conv, 'utilisateur_id': U[b]})
+# Messagerie de l'équipe : créée par app:messagerie-interne:demo (docs/messagerie-interne.md), pas ici.
+# Les tirages de l'ancienne messagerie restent, pour que la suite du fichier ne change pas.
+for _ in range(6):
+    R.randint(1, 40)
+    hexa(32)
     for n in range(R.randint(6, 14)):
-        add('messages_chat', {'contenu': R.choice(PHRASES), 'date_envoi': T(d0 + 5 - n // 3, 9 + n % 8, R.randint(0, 59)), 'piece_jointe_fichier': None, 'piece_jointe_nom_original': None,
-                              'conversation_id': conv, 'auteur_id': U[a] if n % 2 == 0 else U[b]})
+        R.choice(range(10))
+        R.randint(0, 59)
 for k in COMMANDES[-150:]:
     add('notifications', {'message': f'Nouvelle commande {k["numero"]} · {nom_client(k["c"])}', 'route': None, 'route_parametres': None, 'lue': int(k['d'] > 2), 'date_creation': T(k['d'], k['h'], k['m'] + 1),
                           'destinataire_id': R.choice([U['kadiatou'], U['seydou'], U['aissata']])})

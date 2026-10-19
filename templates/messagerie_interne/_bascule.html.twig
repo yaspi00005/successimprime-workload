@@ -1,0 +1,8 @@
+{# Onglets « Clients · 2 | Équipe · 6 » en haut des deux messageries (maquettes MI01, MI05). Variable : actif ('clients' ou 'equipe'). #}
+{% set b = bascule_messagerie(site_en_ligne()) %}
+{% if b.clients is not null and b.equipe is not null %}
+	<nav class="mi-bascule" aria-label="Messagerie">
+		<a href="{{ path('app_messages_clients_index') }}" class="{{ actif == 'clients' ? 'actif' }}"{{ actif == 'clients' ? ' aria-current="page"' }}>Clients · {{ b.clients }}</a>
+		<a href="{{ path('app_messagerie_interne_index') }}" class="{{ actif == 'equipe' ? 'actif' }}"{{ actif == 'equipe' ? ' aria-current="page"' }}>Équipe · {{ b.equipe }}</a>
+	</nav>
+{% endif %}

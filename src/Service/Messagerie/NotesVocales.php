@@ -4,6 +4,7 @@ namespace App\Service\Messagerie;
 
 use App\Entity\CompteClient;
 use App\Entity\ConversationClient;
+use App\Entity\Message;
 use App\Entity\MessageClient;
 use App\Entity\NoteConversation;
 use App\Security\EntetesSecurite;
@@ -145,7 +146,7 @@ final class NotesVocales
     }
 
     /** Le fichier sur le disque, ou null (nom refusé, absent, pas encore arrivé par la synchronisation). */
-    public function chemin(MessageClient|NoteConversation $element): ?string
+    public function chemin(MessageClient|NoteConversation|Message $element): ?string
     {
         $nom = (string) $element->getVocaleNom();
         if (!preg_match(self::NOM, $nom)) {
@@ -161,7 +162,7 @@ final class NotesVocales
      * type lu dans le contenu, rien ne s'exécute, cache privé, lecture par
      * morceaux (Safari en a besoin).
      */
-    public function reponse(MessageClient|NoteConversation $element): BinaryFileResponse
+    public function reponse(MessageClient|NoteConversation|Message $element): BinaryFileResponse
     {
         $chemin = $this->chemin($element) ?? throw new \RuntimeException('Note vocale absente.');
         try {

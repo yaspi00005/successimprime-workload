@@ -32,7 +32,7 @@ final class DemandeDevisSynchroTest extends TestCase
         foreach (['client', 'prospect', 'devis', 'prepareeLe', 'traiteeLe', 'traiteePar'] as $local) {
             self::assertNotContains($local, $voyagent, $local);
         }
-        self::assertSame(['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'message', 'creeLe', 'accuseEnvoyeLe'], $type['champs']);
+        self::assertSame(['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'numeroCommande', 'rappelLe', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'message', 'creeLe', 'accuseEnvoyeLe'], $type['champs']);
         self::assertSame(['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'], $type['relations']);
         self::assertSame(['finitions' => 'finition'], $type['listes']);
     }

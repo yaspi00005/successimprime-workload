@@ -149,7 +149,8 @@ final class CalculateurTest extends TestCase
         // 3 m² × 2 à 8 000 F + œillets 3 000 F par exemplaire.
         self::assertSame(54000, $resultat['total']);
         self::assertSame("54\u{A0}000\u{A0}FCFA", $resultat['totalTexte']);
-        self::assertSame(['produit', 'nom', 'total', 'totalTexte', 'lignes', 'detail', 'erreur', 'liens'], array_keys($resultat));
+        self::assertSame(['produit', 'nom', 'total', 'totalTexte', 'lignes', 'detail', 'erreur', 'pret', 'liens'], array_keys($resultat));
+        self::assertNull($resultat['pret'], 'Sans délais réglés, pas de date annoncée.');
         self::assertSame(['commander', 'devis', 'whatsapp'], array_keys($resultat['liens']));
         self::assertSame([
             ['libelle' => 'Surface', 'valeur' => "3,00\u{A0}m² × 2 = 6,00\u{A0}m²"],

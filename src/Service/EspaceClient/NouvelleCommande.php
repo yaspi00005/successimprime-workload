@@ -100,8 +100,10 @@ final class NouvelleCommande
             ->leftJoin('pc.configurationFinitions', 'cf')
             ->leftJoin('cf.finition', 'fi')
             ->where('pc.active = true')->andWhere('p.actif = true')->andWhere('p.publie = true')
-            // Masqué en ligne depuis sa fiche (docs/produits.md) : toujours vendu au comptoir.
-            ->andWhere('p.visibleEnLigne = true')
+            // Interrupteur « Espace client » de la fiche (maquette PR02) ; un produit masqué en ligne
+            // pour un motif (presse en panne) l'est aussi ici : Produits::estEnEspaceClient().
+            ->andWhere('p.visibleEspaceClient = true')
+            ->andWhere('p.visibleEnLigne = true OR p.motifHorsLigne IS NULL')
             ->andWhere('cat.id IS NULL OR cat.publie = true')
             ->andWhere('pc.prixBase > 0')
             ->orderBy('cat.ordre', 'ASC')->addOrderBy('p.ordre', 'ASC')->addOrderBy('p.nom', 'ASC')->addOrderBy('pc.ordre', 'ASC')

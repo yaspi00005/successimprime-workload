@@ -33,7 +33,7 @@
         return borne((prixBase - p.prix) / prixBase * 100);
     }
 
-    /* cfg : {prixBase, mode, quantite: [{de, prix, remise}], surface: [{m2, remise}]} */
+    /* cfg : {prixBase, mode, quantite: [{de, prix, remise}], surface: [{m2, prix, remise}]} */
     function volume(cfg, pieces, surfaceTotale) {
         const r = {taux: 0, source: null, seuil: null, prochain: null};
         if (!cfg) {
@@ -52,10 +52,10 @@
             const liste = cfg.surface || [];
             for (let i = 0; i < liste.length; i++) {
                 if (surfaceTotale + 0.0005 >= liste[i].m2) {
-                    tauxS = liste[i].remise;
+                    tauxS = tauxPalier(liste[i], cfg.prixBase);
                     seuilS = liste[i].m2;
                 } else {
-                    r.prochain = {source: 'surface', seuil: liste[i].m2, taux: liste[i].remise};
+                    r.prochain = {source: 'surface', seuil: liste[i].m2, taux: Math.round(tauxPalier(liste[i], cfg.prixBase) * 10) / 10};
                     break;
                 }
             }
@@ -185,6 +185,7 @@
         libelle: libelle,
         prochain: prochain,
         trouver: trouver,
+        tauxPalier: tauxPalier,
         ligneComptoir: ligneComptoir,
         oublier: oublier
     };

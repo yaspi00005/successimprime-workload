@@ -13,9 +13,10 @@ use App\Entity\ProduitConfiguration;
  * - Paliers par quantité : « à partir de N pièces », un prix unitaire
  *   (ex. 120 F au lieu de 150 F) ou une remise en %. En dessous du
  *   premier palier, le prix de la configuration.
- * - Remises par surface (produits au m² seulement) : « à partir de N m²
+ * - Paliers par surface (produits au m² seulement) : « à partir de N m²
  *   de la ligne » (surface × quantité, ou surface des pièces au m²),
- *   une remise en %.
+ *   un prix au m² (ex. 3 200 F au lieu de 3 500 F) ou une remise en %.
+ *   Le prix de base ne change pas : le palier devient une remise.
  *
  * Règle de cumul : le meilleur des deux paliers (quantité ou surface),
  * jamais les deux (une seule remise « par volume ») ; puis la remise de
@@ -73,10 +74,11 @@ final class PaliersPrix
     }
 
     /**
-     * Remises par surface propres : surface > 0 (en m², deux décimales),
-     * remise entre 0 et 90 %, triées, au plus MAX.
+     * Paliers par surface propres : surface > 0 (en m², deux décimales),
+     * un prix au m² entier ≥ 0 ou une remise entre 0 et 90 %, triés, au
+     * plus MAX.
      *
-     * @return list<array{m2: float, remise: float}>
+     * @return list<array{m2: float, prix: ?int, remise: ?float}>
      */
     public static function normaliserSurface(mixed $brut): array
     {
@@ -86,12 +88,17 @@ final class PaliersPrix
                 continue;
             }
             $m2 = self::decimal($p['m2'] ?? null);
-            $remise = self::decimal($p['remise'] ?? null);
-            if (null === $m2 || $m2 <= 0 || null === $remise || $remise <= 0) {
+            if (null === $m2 || $m2 <= 0) {
                 continue;
             }
             $m2 = round($m2, 2);
-            $propres[(string) $m2] = ['m2' => $m2, 'remise' => min(self::TAUX_MAX, round($remise, 1))];
+            $prix = self::entier($p['prix'] ?? null);
+            $remise = self::decimal($p['remise'] ?? null);
+            if (null !== $prix && $prix >= 0) {
+                $propres[(string) $m2] = ['m2' => $m2, 'prix' => $prix, 'remise' => null];
+            } elseif (null !== $remise && $remise > 0) {
+                $propres[(string) $m2] = ['m2' => $m2, 'prix' => null, 'remise' => min(self::TAUX_MAX, round($remise, 1))];
+            }
         }
         uasort($propres, static fn (array $a, array $b): int => $a['m2'] <=> $b['m2']);
 
@@ -99,8 +106,9 @@ final class PaliersPrix
     }
 
     /**
-     * Remise d'un palier par quantité en % du prix de la configuration :
-     * la remise saisie, ou l'écart entre le prix du palier et ce prix.
+     * Remise d'un palier (quantité ou surface) en % du prix de la
+     * configuration : la remise saisie, ou l'écart entre le prix du palier
+     * et ce prix.
      */
     public static function tauxPalier(array $palier, int $prixBase): float
     {
@@ -119,7 +127,7 @@ final class PaliersPrix
      * quantité et la remise de surface (jamais les deux).
      *
      * @param list<array{de: int, prix: ?int, remise: ?float}> $quantite
-     * @param list<array{m2: float, remise: float}>            $surface
+     * @param list<array{m2: float, prix: ?int, remise: ?float}> $surface
      *
      * @return array{taux: float, source: ?string, seuil: int|float|null, prochain: ?array{source: string, seuil: int|float, taux: float}}
      */
@@ -142,11 +150,11 @@ final class PaliersPrix
             foreach ($surface as $r) {
                 // Petite tolérance : 9,999 m² comptent pour 10 m².
                 if ($surfaceTotale + 0.0005 >= $r['m2']) {
-                    $tauxS = $r['remise'];
+                    $tauxS = self::tauxPalier($r, $prixBase);
                     $seuilS = $r['m2'];
                 } else {
                     // Au m², la prochaine remise de surface parle mieux que le prochain palier de pièces.
-                    $prochain = ['source' => self::SOURCE_SURFACE, 'seuil' => $r['m2'], 'taux' => $r['remise']];
+                    $prochain = ['source' => self::SOURCE_SURFACE, 'seuil' => $r['m2'], 'taux' => round(self::tauxPalier($r, $prixBase), 1)];
                     break;
                 }
             }
@@ -218,7 +226,7 @@ final class PaliersPrix
      *
      * @param list<array{de: int, prix: ?int, remise: ?float}> $paliers
      *
-     * @return list<array{de: int, a: ?int, prix: int, taux: float}>
+     * @return list<array{de: int, a: ?int, prix: int, taux: float, remise: int}>
      */
     public static function tranches(array $paliers, int $prixBase, int $minimum = 1): array
     {
@@ -230,20 +238,57 @@ final class PaliersPrix
                 $taux = self::tauxPalier($p, $prixBase);
                 continue;
             }
-            $tranches[] = ['de' => $debut, 'a' => $p['de'] - 1, 'prix' => self::net($prixBase, $taux, 0), 'taux' => round($taux, 1)];
+            $tranches[] = ['de' => $debut, 'a' => $p['de'] - 1] + self::prixTranche($prixBase, $taux);
             $debut = $p['de'];
             $taux = self::tauxPalier($p, $prixBase);
         }
-        $tranches[] = ['de' => $debut, 'a' => null, 'prix' => self::net($prixBase, $taux, 0), 'taux' => round($taux, 1)];
+        $tranches[] = ['de' => $debut, 'a' => null] + self::prixTranche($prixBase, $taux);
 
         return $tranches;
+    }
+
+    /**
+     * Tranches de surface à montrer, comme sur la fiche : « 1 à 9 m² :
+     * 3 500 F », « 10 à 49 m² : 3 200 F (−8,6 %) », « 50 m² et plus :
+     * 2 900 F (−17,1 %) ». Seuils entiers : la tranche s'arrête au m²
+     * d'avant ; sinon « moins de N m² ». Vide sans palier.
+     *
+     * @param list<array{m2: float, prix: ?int, remise: ?float}> $paliers
+     *
+     * @return list<array{de: ?float, a: ?float, avant: ?float, prix: int, taux: float, remise: int}>
+     */
+    public static function tranchesSurface(array $paliers, int $prixBase): array
+    {
+        if ([] === $paliers) {
+            return [];
+        }
+        $tranches = [];
+        $debut = null;
+        $taux = 0.0;
+        foreach ($paliers as $p) {
+            $entier = floor($p['m2']) === $p['m2'] && $p['m2'] > 1 && (null === $debut || floor($debut) === $debut);
+            $tranches[] = ['de' => $debut, 'a' => $entier ? $p['m2'] - 1 : null, 'avant' => $entier ? null : $p['m2']] + self::prixTranche($prixBase, $taux);
+            $debut = $p['m2'];
+            $taux = self::tauxPalier($p, $prixBase);
+        }
+        $tranches[] = ['de' => $debut, 'a' => null, 'avant' => null] + self::prixTranche($prixBase, $taux);
+
+        return $tranches;
+    }
+
+    /** @return array{prix: int, taux: float, remise: int} */
+    private static function prixTranche(int $prixBase, float $taux): array
+    {
+        $net = self::net($prixBase, $taux, 0);
+
+        return ['prix' => $net, 'taux' => round($taux, 1), 'remise' => max(0, $prixBase - $net)];
     }
 
     /**
      * Ce que les pages reçoivent d'une configuration pour refaire le
      * calcul en JavaScript (aucun coût).
      *
-     * @return array{prixBase: int, mode: string, quantite: list<array{de: int, prix: ?int, remise: ?float}>, surface: list<array{m2: float, remise: float}>}
+     * @return array{prixBase: int, mode: string, quantite: list<array{de: int, prix: ?int, remise: ?float}>, surface: list<array{m2: float, prix: ?int, remise: ?float}>}
      */
     public static function pourLaPage(ProduitConfiguration $c): array
     {

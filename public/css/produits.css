@@ -682,7 +682,19 @@ span.si-pd-bascule { cursor: default; }
 .si-pd-tranches li b { margin-left: 0.25rem; }
 .si-pd-tranches li.surface { background: #ECFDF5; color: #14532D; }
 .si-pd-palier-saisie { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.35rem; margin-bottom: 0.3rem; }
-.si-pd-palier-saisie.surface { grid-template-columns: 1fr 1fr; }
+.si-pd-palier-effet { grid-column: 1 / -1; margin: 0; font-size: 0.72rem; color: #6B7280; min-height: 0; }
+.si-pd-palier-effet:empty { display: none; }
+.si-pd-palier-effet b.faible { color: #DC2626; }
+/* Paliers en tableau, comme la maquette PR02 : tranche, prix, remise au client, marge qui reste. */
+.si-pd-paliers-table { width: 100%; margin: 0.35rem 0 0.5rem; font-size: 0.8rem; border-collapse: collapse; }
+.si-pd-paliers-table th { font-size: 0.7rem; font-weight: 600; color: #6B7280; text-align: left; padding: 0.25rem 0.4rem; background: #F8FAFC; }
+.si-pd-paliers-table td { padding: 0.35rem 0.4rem; border-top: 1px solid #EEF1F5; }
+.si-pd-paliers-table td:nth-child(n+2), .si-pd-paliers-table th:nth-child(n+2) { text-align: right; }
+.si-pd-paliers-table small { color: #6B7280; }
+.si-pd-paliers-sous th { background: transparent; padding-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.si-pd-pm { font-weight: 700; color: #15803D; }
+.si-pd-pm.moyenne { color: #B45309; }
+.si-pd-pm.faible { color: #DC2626; }
 .si-pd-palier-saisie label { display: block; font-size: 0.7rem; color: #6B7280; margin: 0; }
 .si-pd-palier-saisie input { display: block; width: 100%; min-width: 0; }
 .si-pd-paliers h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin: 0.5rem 0 0.25rem; }

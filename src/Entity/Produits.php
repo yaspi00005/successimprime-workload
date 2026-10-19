@@ -184,11 +184,19 @@ private Collection $articlesStock;
     private ?int $coutRevientSaisi = null;
 
     /**
-     * Visible en ligne : site public, calculateur, espace client. Décoché,
-     * le produit reste vendu au comptoir.
+     * Visible sur le site public (catalogue, calculateur). Décoché, le
+     * produit reste vendu au comptoir.
      */
     #[ORM\Column(options: ['default' => true])]
     private bool $visibleEnLigne = true;
+
+    /**
+     * Commandable dans l'espace client (maquette PR02 : interrupteur à
+     * part du site public). Un motif « hors ligne » (presse en panne) le
+     * masque aussi : voir estEnEspaceClient().
+     */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $visibleEspaceClient = true;
 
     /** Pourquoi le produit est masqué en ligne (« presse en réparation »). Reste à l'atelier. */
     #[ORM\Column(length: 160, nullable: true)]
@@ -737,5 +745,27 @@ public function removeArticlesStock(
     public function estEnLigne(): bool
     {
         return $this->actif && $this->publie && $this->visibleEnLigne;
+    }
+
+    public function isVisibleEspaceClient(): bool
+    {
+        return $this->visibleEspaceClient;
+    }
+
+    public function setVisibleEspaceClient(bool $visible): static
+    {
+        $this->visibleEspaceClient = $visible;
+
+        return $this;
+    }
+
+    /**
+     * Commandable dans l'espace client : actif, publié, interrupteur
+     * Espace client, et pas masqué en ligne pour un motif (presse en
+     * panne, rupture) : même règle que NouvelleCommande::produits().
+     */
+    public function estEnEspaceClient(): bool
+    {
+        return $this->actif && $this->publie && $this->visibleEspaceClient && ($this->visibleEnLigne || null === $this->motifHorsLigne);
     }
 }

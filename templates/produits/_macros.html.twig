@@ -37,3 +37,18 @@
 		<a href="{{ path('app_produits_options_index') }}" class="si-pd-puce{{ actif == 'options' ? ' actif' }}">Options partagées</a>
 	</nav>
 {% endmacro %}
+
+{# Tranche de surface (PaliersPrix::tranchesSurface) : « 1 à 9 m² », « 10 à 49 m² », « 50 m² et plus », « moins de 2,5 m² ». #}
+{% macro m2(v) %}{{ v|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }}{% endmacro %}
+
+{% macro tranche_m2(t) -%}
+	{%- if t.de is null -%}
+		{{ t.a is not null ? '1 à ' ~ _self.m2(t.a) ~ ' m²' : 'moins de ' ~ _self.m2(t.avant) ~ ' m²' }}
+	{%- elseif t.a is not null -%}
+		{{ _self.m2(t.de) }} à {{ _self.m2(t.a) }} m²
+	{%- elseif t.avant is not null -%}
+		{{ _self.m2(t.de) }} à moins de {{ _self.m2(t.avant) }} m²
+	{%- else -%}
+		{{ _self.m2(t.de) }} m² et plus
+	{%- endif -%}
+{%- endmacro %}

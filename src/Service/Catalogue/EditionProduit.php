@@ -119,9 +119,10 @@ final class EditionProduit
             ->setMachine($this->machine($d['machine'] ?? null))
             ->setMachineSecours($this->machine($d['machine_secours'] ?? null))
             ->setActif(!empty($d['actif']))
-            ->setVisibleEnLigne(!empty($d['en_ligne']));
+            ->setVisibleEnLigne(!empty($d['en_ligne']))
+            ->setVisibleEspaceClient(!empty($d['espace_client']));
         $p->setNomCommercial(NomCommercial::nettoyer((string) ($d['nom_commercial'] ?? '')));
-        if (!$p->isVisibleEnLigne()) {
+        if (!$p->isVisibleEnLigne() || !$p->isVisibleEspaceClient()) {
             $p->setMotifHorsLigne((string) ($d['motif'] ?? ''));
         }
         if ($avecCouts) {
@@ -405,7 +406,7 @@ final class EditionProduit
             }
             foreach ($lignesS as $l) {
                 if (\is_array($l) && self::rempli($l) && [] === PaliersPrix::normaliserSurface([$l])) {
-                    $erreurs[] = \sprintf('%s : chaque remise de surface donne une surface en m² et une remise en %%.', $libelle);
+                    $erreurs[] = \sprintf('%s : chaque palier de surface donne une surface en m² et un prix au m² ou une remise en %%.', $libelle);
                     break;
                 }
             }
@@ -424,10 +425,14 @@ final class EditionProduit
             }
             $avant = -1.0;
             foreach ($surface as $r) {
-                if ($r['remise'] <= $avant) {
-                    $erreurs[] = \sprintf('%s : la remise dès %s m² doit être plus forte que la précédente.', $libelle, self::nombre($r['m2']));
+                if (null !== $r['prix'] && $r['prix'] >= $prixBase) {
+                    $erreurs[] = \sprintf('%s : le prix dès %s m² (%s F) doit être sous le prix de la configuration (%s F).', $libelle, self::nombre($r['m2']), number_format($r['prix'], 0, ',', ' '), number_format($prixBase, 0, ',', ' '));
                 }
-                $avant = $r['remise'];
+                $taux = PaliersPrix::tauxPalier($r, $prixBase);
+                if ($taux <= $avant) {
+                    $erreurs[] = \sprintf('%s : le palier dès %s m² doit être plus avantageux que le précédent.', $libelle, self::nombre($r['m2']));
+                }
+                $avant = $taux;
             }
             $plan[(int) $c->getId()] = ['config' => $c, 'quantite' => $quantite, 'surface' => $surface];
 
@@ -447,7 +452,7 @@ final class EditionProduit
                 $taux[] = ['taux' => PaliersPrix::tauxPalier($q, $prixBase), 'quoi' => \sprintf('dès %d pièces', $q['de'])];
             }
             foreach ($surface as $r) {
-                $taux[] = ['taux' => $r['remise'], 'quoi' => \sprintf('dès %s m²', self::nombre($r['m2']))];
+                $taux[] = ['taux' => PaliersPrix::tauxPalier($r, $prixBase), 'quoi' => \sprintf('dès %s m²', self::nombre($r['m2']))];
             }
             foreach ($taux as $t) {
                 $prix = PaliersPrix::net($prixBase, $t['taux'], $grille);
@@ -501,7 +506,7 @@ final class EditionProduit
             $morceaux[] = $q['de'].':'.(null !== $q['prix'] ? $q['prix'].'F' : self::nombre($q['remise']).'%');
         }
         foreach ($surface as $r) {
-            $morceaux[] = self::nombre($r['m2']).'m²:'.self::nombre($r['remise']).'%';
+            $morceaux[] = self::nombre($r['m2']).'m²:'.(null !== $r['prix'] ? $r['prix'].'F' : self::nombre($r['remise']).'%');
         }
 
         return mb_substr(implode(' ', $morceaux), 0, 30);
@@ -545,6 +550,7 @@ final class EditionProduit
             ->setCoutRevientSaisi($source->getCoutRevientSaisi())
             ->setGestionStock($source->isGestionStock())
             ->setVisibleEnLigne(false)
+            ->setVisibleEspaceClient(false)
             ->setMotifHorsLigne('copie à relire');
         $copie->setNomCommercial($source->getNomCommercial());
         foreach ($source->getTypesImpressions() as $t) {

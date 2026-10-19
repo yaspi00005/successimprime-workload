@@ -54,7 +54,7 @@ final class PaliersPrixTest extends TestCase
             ['de' => 400, 'prix' => null, 'remise' => 90.0],
         ], $p);
 
-        self::assertSame([['m2' => 10.0, 'remise' => 5.0], ['m2' => 20.0, 'remise' => 12.0]], $this->bache()->getRemisesSurface());
+        self::assertSame([['m2' => 10.0, 'prix' => null, 'remise' => 5.0], ['m2' => 20.0, 'prix' => null, 'remise' => 12.0]], $this->bache()->getRemisesSurface());
         self::assertSame([], PaliersPrix::normaliserSurface([['m2' => 0, 'remise' => 5], ['m2' => 10, 'remise' => 0]]));
     }
 
@@ -70,10 +70,34 @@ final class PaliersPrixTest extends TestCase
         self::assertSame(['source' => 'quantite', 'seuil' => 201, 'taux' => 30.0], $v['prochain']);
 
         self::assertSame([
-            ['de' => 1, 'a' => 100, 'prix' => 150, 'taux' => 0.0],
-            ['de' => 101, 'a' => 200, 'prix' => 120, 'taux' => 20.0],
-            ['de' => 201, 'a' => null, 'prix' => 105, 'taux' => 30.0],
+            ['de' => 1, 'a' => 100, 'prix' => 150, 'taux' => 0.0, 'remise' => 0],
+            ['de' => 101, 'a' => 200, 'prix' => 120, 'taux' => 20.0, 'remise' => 30],
+            ['de' => 201, 'a' => null, 'prix' => 105, 'taux' => 30.0, 'remise' => 45],
         ], PaliersPrix::tranches($c->getPaliersQuantite(), 150));
+    }
+
+    /** Maquette PR02 : bâche 440 g à 3 500 F le m², paliers tapés en prix au m² ; le prix de base ne bouge pas. */
+    public function testLePalierDeSurfaceAuPrixDuM2DevientUneRemise(): void
+    {
+        $surface = PaliersPrix::normaliserSurface([['m2' => '50', 'prix' => '2 900'], ['m2' => 10, 'prix' => 3200], ['m2' => 30, 'remise' => '']]);
+        self::assertSame([['m2' => 10.0, 'prix' => 3200, 'remise' => null], ['m2' => 50.0, 'prix' => 2900, 'remise' => null]], $surface);
+
+        // 130 bâches de 150 × 200 cm : 390 m² sur la ligne, palier « 50 m² et plus ».
+        $v = PaliersPrix::volume([], $surface, 3500, 130, 390.0, 'metre_carre');
+        self::assertSame(PaliersPrix::SOURCE_SURFACE, $v['source']);
+        self::assertSame(2900, PaliersPrix::net(3500, $v['taux'], 0));
+        self::assertSame(600, PaliersPrix::remiseParUnite(3500, $v['taux'], 0));
+        // 6 m² : pas encore de palier, le prochain est à 10 m² (−8,6 %).
+        $v = PaliersPrix::volume([], $surface, 3500, 2, 6.0, 'metre_carre');
+        self::assertSame(0.0, $v['taux']);
+        self::assertSame(['source' => 'surface', 'seuil' => 10.0, 'taux' => 8.6], $v['prochain']);
+
+        self::assertSame([
+            ['de' => null, 'a' => 9.0, 'avant' => null, 'prix' => 3500, 'taux' => 0.0, 'remise' => 0],
+            ['de' => 10.0, 'a' => 49.0, 'avant' => null, 'prix' => 3200, 'taux' => 8.6, 'remise' => 300],
+            ['de' => 50.0, 'a' => null, 'avant' => null, 'prix' => 2900, 'taux' => 17.1, 'remise' => 600],
+        ], PaliersPrix::tranchesSurface($surface, 3500));
+        self::assertSame(2.5, PaliersPrix::tranchesSurface([['m2' => 2.5, 'prix' => null, 'remise' => 5.0]], 1000)[0]['avant']);
     }
 
     public function testLaLigneEnLigneSuitLePalier(): void

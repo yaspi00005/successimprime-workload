@@ -262,7 +262,7 @@ final class CatalogueSynchro
                 // nomCommercial : « Autocollant » pour « Vinyle adhésif » (docs/noms-commerciaux.md), montré et cherché en ligne.
                 // visibleEnLigne et delaiHeures (fiche produit, docs/produits.md) : le site masque le produit et montre son délai.
                 // Le coût saisi, les machines et le motif « masqué en ligne » restent au local.
-                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul', 'nomCommercial', 'visibleEnLigne', 'delaiHeures'],
+                'champs' => ['nom', 'description', 'publie', 'ordre', 'code', 'prixBase', 'prixB2B', 'personnalisable', 'actif', 'modeCalcul', 'nomCommercial', 'visibleEnLigne', 'visibleEspaceClient', 'delaiHeures'],
                 'relations' => ['categorieProduit' => 'categorie'],
                 'listes' => ['typesImpressions' => 'type_impression', 'supports' => 'support', 'formats' => 'format', 'finitions' => 'finition'],
             ],

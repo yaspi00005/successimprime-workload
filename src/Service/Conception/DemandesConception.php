@@ -246,7 +246,7 @@ final class DemandesConception
         $produit = $c->getProduit();
         $categorie = $produit?->getCategorieProduit();
 
-        return $c->isActive() && null !== $produit && $produit->isActif() && $produit->isPublie()
+        return $c->isActive() && null !== $produit && $produit->estEnEspaceClient()
             && (null === $categorie || true === $categorie->isPublie()) && ($c->getPrixBase() ?? 0) > 0;
     }
 

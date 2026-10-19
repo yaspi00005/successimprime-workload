@@ -185,7 +185,8 @@ final class ProduitsController extends AbstractController
     }
 
     /**
-     * Interrupteur « En ligne » de la liste.
+     * Interrupteur « En ligne » de la liste : site public et espace client
+     * ensemble (la fiche les règle un par un).
      */
     #[Route('/{id}/en-ligne', name: 'en_ligne', requirements: ['id' => '\d+'], methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
@@ -194,7 +195,7 @@ final class ProduitsController extends AbstractController
         $this->refuserEnLigne();
         $this->verifierJeton($request, 'produit-en-ligne-'.$produit->getId());
         $visible = !$produit->isVisibleEnLigne();
-        $produit->setVisibleEnLigne($visible);
+        $produit->setVisibleEnLigne($visible)->setVisibleEspaceClient($visible);
         if (!$visible) {
             $produit->setMotifHorsLigne($request->request->getString('motif'));
         }
@@ -305,22 +306,34 @@ final class ProduitsController extends AbstractController
         $paliers = [];
         foreach ($produit->getConfigurations() as $c) {
             $quantite = $c->getPaliersQuantite();
-            $surface = $c->getRemisesSurface();
+            $m2 = 'metre_carre' === $c->getModeCalcul();
+            $surface = $m2 ? $c->getRemisesSurface() : [];
+            // Coût par unité vendue, pour la marge de chaque palier (droit coût et marge seulement).
+            $coutPalier = $avecCouts ? CoutProduit::detail($produit, $c->getModeCalcul())['total'] : null;
+            $marges = static function (array $tranches) use ($coutPalier): array {
+                foreach ($tranches as $i => $t) {
+                    $tranches[$i]['marge'] = CoutProduit::marge($t['prix'], $coutPalier);
+                }
+
+                return $tranches;
+            };
             $paliers[] = [
                 'configuration' => $c,
                 'libelle' => GrilleTarifaire::libelle($c),
                 'unite' => CoutProduit::unite($c->getModeCalcul()),
-                'm2' => 'metre_carre' === $c->getModeCalcul(),
+                'm2' => $m2,
                 'quantite' => $quantite,
                 'surface' => $surface,
-                'tranches' => [] === $quantite ? [] : PaliersPrix::tranches($quantite, (int) $c->getPrixBase(), $c->getQuantiteMinimale()),
+                'cout' => $coutPalier,
+                'tranches' => [] === $quantite ? [] : $marges(PaliersPrix::tranches($quantite, (int) $c->getPrixBase(), $c->getQuantiteMinimale())),
+                'tranchesSurface' => $marges(PaliersPrix::tranchesSurface($surface, (int) $c->getPrixBase())),
                 'lignesQuantite' => array_pad($quantite, min(PaliersPrix::MAX, \count($quantite) + 2), null),
                 'lignesSurface' => array_pad($surface, min(PaliersPrix::MAX, \count($surface) + 2), null),
             ];
         }
         $paliersBase = null !== $base && $base->aDesPaliers() ? [
             'quantite' => PaliersPrix::tranches($base->getPaliersQuantite(), (int) $base->getPrixBase(), $base->getQuantiteMinimale()),
-            'surface' => 'metre_carre' === $base->getModeCalcul() ? $base->getRemisesSurface() : [],
+            'surface' => 'metre_carre' === $base->getModeCalcul() ? PaliersPrix::tranchesSurface($base->getRemisesSurface(), (int) $base->getPrixBase()) : [],
         ] : null;
 
         return $this->render('produits/fiche.html.twig', [

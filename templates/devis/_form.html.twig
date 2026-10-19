@@ -562,6 +562,7 @@
 					<small class="form-text text-muted js-remise-totale-detail">
 						Remise totale : —
 					</small>
+					<small class="form-text text-success d-block js-palier-info" hidden></small>
 
 				</div>
 
@@ -1161,6 +1162,8 @@
 {# Pièces au m² des lignes (docs/saisie-devis-commandes.md). #}
 {{ site_styles('css/pieces-m2.css') }}
 <script src="{{ asset('js/pieces-m2.js') }}"></script>
+{# Paliers de prix, grille du client et prix négocié (docs/produits.md) : aperçu, le serveur refait le calcul. #}
+<script src="{{ asset('js/paliers-prix.js') }}"></script>
 <link href="{{ asset('css/devis.css') }}" rel="stylesheet">
 
 
@@ -1186,6 +1189,36 @@
 console.log('✅ JavaScript Devis chargé');
 
 const form = document.getElementById('devis-form');
+
+// Client du devis et remise de chaque grille de prix, en % (Paramètres › Grille tarifaire, docs/produits.md).
+const clientSaisie = form ? form.querySelector('.js-client-saisie') : null;
+const remisesGrilles = {{ remises_grilles()|json_encode|raw }};
+function optionClientSaisie() {
+return clientSaisie && clientSaisie.value ? clientSaisie.options[clientSaisie.selectedIndex] : null;
+}
+function remiseGrilleClient() {
+const option = optionClientSaisie();
+return option ? (Number(remisesGrilles[String(option.dataset.grille || 'B2C')]) || 0) : 0;
+}
+function clientDevisB2B() {
+const option = optionClientSaisie();
+return option ? String(option.dataset.typeClient || '').toUpperCase() === 'B2B' : false;
+}
+/* Paliers et prix négocié des configurations du produit de la ligne, pour le client choisi. */
+async function chargerPaliers(detail) {
+const produit = champDetail(detail, 'produit');
+if (! produit || ! produit.value) {
+return;
+}
+try {
+const reponse = await fetch(construireUrl(optionsManuellesUrl, produit.value) + (clientSaisie && clientSaisie.value ? '?client=' + encodeURIComponent(clientSaisie.value) : ''));
+const json = await reponse.json();
+detail.dataset.paliers = JSON.stringify(json.paliers || []);
+calculerDetail(detail);
+} catch (e) {
+console.error(e);
+}
+}
 const collection = document.getElementById('collection-details');
 const addButton = document.getElementById('add-detail');
 
@@ -1573,7 +1606,7 @@ const quantite = Math.max(1, nombreDepuisChamp(champDetail(detail, 'quantite'), 
 
 const prix = Math.max(0, nombreDepuisChamp(champDetail(detail, 'prixUnitaire')));
 
-const remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+let remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
 
 const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
 
@@ -1615,6 +1648,24 @@ default: facteur = quantite; montant = prix * facteur;
 break;
 }
 
+
+// Palier de volume, grille du client, prix négocié (public/js/paliers-prix.js) : la remise due, tant que l'agent ne l'a pas changée.
+if (window.SiPaliers && valeurTypeLigne(detail) === 'produit' && champDetail(detail, 'produit') && champDetail(detail, 'produit').value) {
+window.SiPaliers.ligneComptoir({
+detail: detail,
+champRemise: champDetail(detail, 'remise'),
+info: detail.querySelector('.js-palier-info'),
+prix: prix,
+pieces: quantite,
+surfaceTotale: mode === 'metre_carre' ? facteur : 0,
+b2b: clientDevisB2B(),
+grille: remiseGrilleClient(),
+type: champDetail(detail, 'typeImpression') ? champDetail(detail, 'typeImpression').value : '',
+support: champDetail(detail, 'support') ? champDetail(detail, 'support').value : '',
+format: champDetail(detail, 'format') ? champDetail(detail, 'format').value : ''
+});
+remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+}
 
 /*
          * Les finitions appartiennent uniquement
@@ -2190,6 +2241,12 @@ throw new Error(json.message || 'Impossible de charger le produit.');
 }
 
 const infosProduit = json.produit || {};
+
+// Nouveau produit : la remise automatique repart de zéro (paliers rechargés pour le client choisi).
+if (window.SiPaliers) {
+window.SiPaliers.oublier(detail);
+}
+chargerPaliers(detail);
 
 definirValeurChamp(detail, 'prixUnitaire', infosProduit.prixBase || 0, false);
 
@@ -3174,6 +3231,23 @@ bindSuppressionDetail(wrapper);
 
 initialiserDetail(wrapper);
 });
+
+// Paliers des lignes déjà là, et de nouveau quand le client change (docs/produits.md).
+function rechargerPaliersLignes(oublier) {
+collection.querySelectorAll('.js-devis-detail').forEach(function (detail) {
+if (oublier && window.SiPaliers) {
+window.SiPaliers.oublier(detail);
+}
+chargerPaliers(detail);
+});
+}
+rechargerPaliersLignes(false);
+if (clientSaisie) {
+clientSaisie.addEventListener('change', function () { rechargerPaliersLignes(true); });
+if (window.jQuery) {
+window.jQuery(clientSaisie).on('select2:select select2:clear', function () { rechargerPaliersLignes(true); });
+}
+}
 
 
 addButton.addEventListener('click', function (event) {

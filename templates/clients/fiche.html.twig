@@ -222,7 +222,7 @@
 							<dt>Paiement</dt><dd>{{ client.delaiPaiementLabel ?: '—' }}{{ client.moyenPrefereLabel ? ' · ' ~ client.moyenPrefereLabel }}</dd>
 							<dt>Acompte</dt><dd>{{ client.sansAcompte ? 'dispensé d\'acompte' : (client.acompte is not null ? client.acompte ~ ' % à la commande' : 'selon le réglage de l\'atelier') }}</dd>
 							{% if voir_paiements %}<dt>Plafond de crédit</dt><dd>{{ client.plafondCredit ? m.f(client.plafondCredit) : 'aucun' }}</dd>{% endif %}
-							<dt>Tarif</dt><dd>grille {{ constant('App\\Service\\Clients\\EditionClient::GRILLES')[client.typeClient]|default(client.typeClient) }}{% if client.remiseHabituelle %} (−{{ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') }} %){% endif %}</dd>
+							<dt>Tarif</dt><dd>grille {{ constant('App\\Service\\Clients\\EditionClient::GRILLES')[client.grille]|default(client.typeClient) }}{% set rg = remises_grilles() %}{% if rg[client.grille]|default(0) > 0 %} (−{{ rg[client.grille]|number_format(0, ',') }} % sur le prix du palier){% endif %}{% if client.remiseHabituelle %} (−{{ client.remiseHabituelle|number_format(client.remiseHabituelle == client.remiseHabituelle|round ? 0 : 1, ',') }} %){% endif %}</dd>
 							<dt>Factures envoyées à</dt><dd>{{ contact_factures ? contact_factures.nom : '—' }}{{ client.facturesCanauxLabel ? ' · ' ~ client.facturesCanauxLabel }}</dd>
 						</dl>
 					</section>

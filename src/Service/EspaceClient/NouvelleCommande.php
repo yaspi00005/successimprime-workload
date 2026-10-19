@@ -2,7 +2,9 @@
 
 namespace App\Service\EspaceClient;
 
+use App\Service\Catalogue\PaliersPrix;
 use App\Service\Catalogue\PrixSpeciaux;
+use App\Service\Catalogue\TarifClient;
 
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
@@ -45,15 +47,24 @@ final class NouvelleCommande
         #[AutowireServiceClosure(Parametres::class)] private readonly ?\Closure $reglages = null,
         /** Prix négociés par client (docs/produits.md) ; absent des tests : prix du catalogue. */
         private readonly ?PrixSpeciaux $prixSpeciaux = null,
+        /** Grille du client et prix négocié réunis (docs/produits.md) ; absent des tests : PrixSpeciaux seul. */
+        private readonly ?TarifClient $tarifClient = null,
     ) {
     }
 
     /**
-     * Prix négocié du client pour cette configuration (docs/produits.md),
-     * posé en remise sur la ligne : le client le voit déjà appliqué.
+     * Prix du client pour cette ligne (docs/produits.md) : remise de sa
+     * grille (Partenaire, Association) sur le prix du palier, puis prix
+     * négocié s'il est plus bas, posés en remise sur la ligne : le client
+     * le voit déjà appliqué.
      */
     public function appliquerPrixSpecial(CommandesDetails $ligne, Clients $client, \DateTimeInterface $jour): void
     {
+        if (null !== $this->tarifClient) {
+            $this->tarifClient->appliquerALigne($ligne, $client, $jour);
+
+            return;
+        }
         $this->prixSpeciaux?->appliquerALigne($ligne, $client, $jour);
     }
 
@@ -208,6 +219,10 @@ final class NouvelleCommande
         if (null !== $m2) {
             $ligne->setDemande($m2, 'm2');
         }
+        // La surface facturée change : la remise de surface se recalcule (PaliersPrix).
+        if (null !== $ligne->getProduitConfiguration()) {
+            return PaliersPrix::appliquerVolume($ligne, $ligne->getProduitConfiguration(), $b2b);
+        }
 
         return $ligne->calculerTotaux($b2b);
     }
@@ -269,7 +284,8 @@ final class NouvelleCommande
                 ->setMontant($cf->calculerMontant($quantite, $surface, $longueur, max(1, $ligne->getNombreFaces()))));
         }
 
-        return $ligne->calculerTotaux($b2b);
+        // Palier de quantité ou remise de surface (docs/produits.md), en remise par unité.
+        return PaliersPrix::appliquerVolume($ligne, $config, $b2b);
     }
 
     /**
@@ -338,6 +354,11 @@ final class NouvelleCommande
         $detail = [['libelle' => 'Impression', 'montant' => $ligne->calculerMontantImpression()]];
         foreach ($ligne->getFinitions() as $f) {
             $detail[] = ['libelle' => (string) $f->getNomFinition(), 'montant' => (int) $f->getMontant()];
+        }
+        // Palier de quantité ou remise de surface (docs/produits.md) : montré, en moins.
+        if ($ligne->getMontantRemise() > 0) {
+            [$pieces, $surface] = PaliersPrix::mesures($ligne);
+            $detail[] = ['libelle' => PaliersPrix::libelle(PaliersPrix::volumeConfiguration($config, $pieces, $surface)) ?? 'Remise', 'montant' => -$ligne->getMontantRemise()];
         }
         foreach ($commande->getCommandesDetails() as $l) {
             if ($l !== $ligne) {

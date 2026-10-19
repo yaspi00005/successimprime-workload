@@ -12,6 +12,8 @@ use App\Repository\PrixSpecialRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Catalogue\CoutProduit;
 use App\Service\Catalogue\GardeFousPrix;
+use App\Service\Catalogue\PaliersPrix;
+use App\Service\Catalogue\TarifClient;
 use App\Service\GrilleTarifaire;
 use App\Service\NotificationService;
 use Doctrine\ORM\EntityManagerInterface;
@@ -41,7 +43,18 @@ final class PrixSpeciauxController extends AbstractController
         private readonly PrixSpecialRepository $depot,
         private readonly GardeFousPrix $gardeFous,
         private readonly AccesEnLigne $acces,
+        private readonly TarifClient $tarif,
     ) {
+    }
+
+    /** Prix de la grille du client, sans palier : prix revendeur, ou prix de base moins la remise Partenaire ou Association. */
+    private function prixGrille(\App\Entity\ProduitConfiguration $config, Clients $client): int
+    {
+        if ($client->isB2B()) {
+            return $config->getPrixApplicable(true);
+        }
+
+        return PaliersPrix::net((float) $config->getPrixApplicable(false), 0.0, $this->tarif->remiseGrille($client));
     }
 
     #[Route('', name: 'index', methods: ['GET'])]
@@ -54,7 +67,7 @@ final class PrixSpeciauxController extends AbstractController
         $prix = [];
         foreach ($this->depot->pourEcran() as $ps) {
             $config = $ps->getConfiguration();
-            $normal = $config->getPrixApplicable($ps->getClient()->isB2B());
+            $normal = $this->prixGrille($config, $ps->getClient());
             $cout = $avecCouts ? CoutProduit::detail($config->getProduit(), $config->getModeCalcul())['total'] : null;
             $prix[] = [
                 'prix' => $ps,
@@ -66,7 +79,7 @@ final class PrixSpeciauxController extends AbstractController
             ];
         }
 
-        // Grilles : Standard (prix public) et Revendeur (prix B2B), avec leur remise moyenne.
+        // Grilles : Standard (prix public), Partenaire et Association (remise réglée), Revendeur (prix B2B, remise moyenne).
         $remises = [];
         $alertes = [];
         foreach ($this->configurations() as $c) {
@@ -81,9 +94,14 @@ final class PrixSpeciauxController extends AbstractController
                 }
             }
         }
-        $clients = $this->em->createQueryBuilder()->select('c.typeClient AS grille', 'COUNT(c.id) AS nombre')->from(Clients::class, 'c')
-            ->where('c.statut = true OR c.statut IS NULL')->groupBy('c.typeClient')->getQuery()->getArrayResult();
-        $parGrille = array_column($clients, 'nombre', 'grille');
+        $clients = $this->em->createQueryBuilder()->select('c.typeClient AS type', 'c.grilleTarifaire AS remise', 'COUNT(c.id) AS nombre')->from(Clients::class, 'c')
+            ->where('c.statut = true OR c.statut IS NULL')->groupBy('c.typeClient')->addGroupBy('c.grilleTarifaire')->getQuery()->getArrayResult();
+        $parGrille = [];
+        foreach ($clients as $l) {
+            $cle = 'B2B' === $l['type'] ? 'B2B' : (null !== $l['remise'] ? strtoupper($l['remise']) : 'B2C');
+            $parGrille[$cle] = ($parGrille[$cle] ?? 0) + (int) $l['nombre'];
+        }
+        $remisesGrilles = $this->tarif->remises();
 
         $promotions = $this->em->createQueryBuilder()->select('p')->from(Promotion::class, 'p')
             ->where('p.fin >= :jour')->setParameter('jour', $jour)
@@ -96,8 +114,10 @@ final class PrixSpeciauxController extends AbstractController
         return $this->render('produits/prix_speciaux.html.twig', [
             'prix' => $prix,
             'grilles' => [
-                ['nom' => 'Standard', 'detail' => 'prix public, tous les clients', 'remise' => null, 'clients' => (int) ($parGrille['B2C'] ?? 0)],
-                ['nom' => 'Revendeur', 'detail' => 'imprimeurs et agences (B2B)', 'remise' => [] === $remises ? null : round(array_sum($remises) / \count($remises)), 'clients' => (int) ($parGrille['B2B'] ?? 0)],
+                ['nom' => 'Standard', 'detail' => 'prix public, avec les paliers', 'remise' => null, 'clients' => (int) ($parGrille['B2C'] ?? 0)],
+                ['nom' => 'Partenaire', 'detail' => 'clients fidèles, sur le prix du palier', 'remise' => $remisesGrilles['PARTENAIRE'], 'clients' => (int) ($parGrille['PARTENAIRE'] ?? 0)],
+                ['nom' => 'Association', 'detail' => 'ONG, associations, écoles, sur le prix du palier', 'remise' => $remisesGrilles['ASSOCIATION'], 'clients' => (int) ($parGrille['ASSOCIATION'] ?? 0)],
+                ['nom' => 'Revendeur', 'detail' => 'imprimeurs et agences (B2B), prix revendeur sans palier', 'remise' => [] === $remises ? null : round(array_sum($remises) / \count($remises)), 'clients' => (int) ($parGrille['B2B'] ?? 0)],
             ],
             'promotions' => $promotions,
             'utilisations' => $utilisations,
@@ -135,7 +155,7 @@ final class PrixSpeciauxController extends AbstractController
         }
 
         $g = $this->gardeFous->valeurs();
-        $normal = $config->getPrixApplicable($client->isB2B());
+        $normal = $this->prixGrille($config, $client);
         $cout = CoutProduit::detail($config->getProduit(), $config->getModeCalcul())['total'];
         $raisons = GardeFousPrix::controler($normal, $montant, $cout, $g['remise'], $g['minimum']);
         $direction = $this->isGranted('ROLE_ADMIN');

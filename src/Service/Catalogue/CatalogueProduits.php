@@ -98,7 +98,9 @@ final class CatalogueProduits
             if ($avecCouts) {
                 $cout = CoutProduit::detail($p, $mode);
                 $marge = CoutProduit::marge($prix, $cout['total']);
-                $ligne += ['cout' => $cout['total'], 'coutSource' => $cout['source'], 'marge' => $marge, 'niveau' => CoutProduit::niveau($marge, $cible, $minimum)];
+                // Coût incomplet (prix d'achat manquant…) : la marge n'est qu'un plafond, signalée comme telle.
+                $ligne += ['cout' => $cout['total'], 'coutSource' => $cout['source'], 'marge' => $marge, 'niveau' => CoutProduit::niveau($marge, $cible, $minimum),
+                    'coutComplet' => $cout['complet'], 'manquants' => $cout['manquants'], 'prixAchatManquants' => $cout['prixAchatManquants']];
             }
             $lignes[] = $ligne;
         }
@@ -123,7 +125,8 @@ final class CatalogueProduits
             }
         }
         $moyenne = $avecCouts
-            ? CoutProduit::margeMoyenne(array_map(static fn (array $l): array => ['marge' => $l['marge'], 'ventes' => $l['ventes']['ca']], $actives))
+            // Une marge sur un coût incomplet n'entre pas dans la moyenne : elle serait trop haute.
+            ? CoutProduit::margeMoyenne(array_map(static fn (array $l): array => ['marge' => ($l['coutComplet'] ?? true) ? $l['marge'] : null, 'ventes' => $l['ventes']['ca']], $actives))
             : ['marge' => null, 'ponderee' => false];
 
         return [
@@ -190,7 +193,7 @@ final class CatalogueProduits
     {
         $entete = ['Code', 'Produit', 'Nom commercial', 'Catégorie', 'Unité', 'Prix de base (F)', 'Prix revendeur (F)'];
         if ($avecCouts) {
-            array_push($entete, 'Coût de revient (F)', 'Marge (%)');
+            array_push($entete, 'Coût de revient (F)', 'Marge (%)', 'Coût complet');
         }
         array_push($entete, 'Délai (h)', 'Machine', 'En vente', 'En ligne');
 
@@ -209,7 +212,8 @@ final class CatalogueProduits
                 $l['configuration']?->getPrixB2B() ?? '',
             ];
             if ($avecCouts) {
-                array_push($ligne, $l['cout'] ?? '', $l['marge'] ?? '');
+                // « Non » : un prix d'achat manque dans le stock, la marge est trop haute.
+                array_push($ligne, $l['cout'] ?? '', $l['marge'] ?? '', null === ($l['cout'] ?? null) ? '' : (($l['coutComplet'] ?? true) ? 'Oui' : 'Non'));
             }
             array_push($ligne, $l['delai'] ?? '', (string) $l['machine'], $p->isActif() ? 'oui' : 'non', $l['enLigne'] ? 'oui' : 'non');
             fputcsv($sortie, array_map(static fn (mixed $v): string => self::cellule((string) $v), $ligne), ';', '"', '');

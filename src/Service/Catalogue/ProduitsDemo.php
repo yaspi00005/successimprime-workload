@@ -11,7 +11,10 @@ use Symfony\Component\Uid\Uuid;
  * masqué en ligne avec son motif, des quantités de matière réalistes pour
  * les petits formats (une feuille SRA3 donne 21 cartes ou 8 flyers A5),
  * et cinq prix négociés (dont un en attente de l'accord de la direction,
- * un échu). Ni Salon Espoir (DEMO-0002) ni Amadou Sow, que la recette de
+ * un échu). Paliers de prix (flyers et cartes par quantité, bâche et
+ * vinyle par surface) et grilles Partenaire (Cabinet Faso) et
+ * Association (ONG Eau pour Tous, de Bamako et de Kati). Le kakémono a
+ * une matière sans prix d'achat : son coût est « incomplet ». Ni Salon Espoir (DEMO-0002) ni Amadou Sow, que la recette de
  * l'espace client chiffre, n'ont de prix négocié.
  *
  * Écrit par la connexion de app:demo, dans sa transaction.
@@ -20,6 +23,9 @@ final class ProduitsDemo
 {
     public const PURGE = [
         'DELETE FROM prix_special WHERE id >= 900000',
+        // Matière sans prix d'achat (coût incomplet du kakémono), recréée par charger().
+        'DELETE FROM produit_article_stock WHERE id = 900090',
+        'DELETE FROM articles WHERE id = 900090',
     ];
 
     /** Code produit => [délai en heures, machine, machine de secours]. */
@@ -52,8 +58,40 @@ final class ProduitsDemo
         ['DEMO-0015', 'D-FLYER', 65, -5, 'actif', 'Démo : promotion du ramadan, terminée'],
     ];
 
+    /**
+     * Paliers de la première configuration de ces produits : par quantité
+     * (dès N pièces : prix ou remise) et par surface de la ligne (dès N m²).
+     */
+    private const PALIERS = [
+        // Flyers A5 à 75 F : de 1 à 100 pièces 75 F, de 101 à 200 68 F, de 201 à 500 62 F, dès 501 −22 %.
+        'D-FLYER' => [[['de' => 101, 'prix' => 68, 'remise' => null], ['de' => 201, 'prix' => 62, 'remise' => null], ['de' => 501, 'prix' => null, 'remise' => 22.0]], []],
+        'D-CARTE' => [[['de' => 201, 'prix' => 45, 'remise' => null], ['de' => 501, 'prix' => null, 'remise' => 15.0]], []],
+        // Bâche à 3 500 F le m² : −5 % dès 20 pièces ; −5 % dès 10 m², −10 % dès 20 m², −15 % dès 50 m².
+        'D-BACHE' => [[['de' => 20, 'prix' => null, 'remise' => 5.0]], [['m2' => 10.0, 'remise' => 5.0], ['m2' => 20.0, 'remise' => 10.0], ['m2' => 50.0, 'remise' => 15.0]]],
+        'D-VINYLE' => [[], [['m2' => 10.0, 'remise' => 5.0], ['m2' => 20.0, 'remise' => 10.0]]],
+    ];
+
+    /** Code client => grille à remise (Paramètres › Grille tarifaire : Partenaire 5 %, Association 10 %). */
+    private const GRILLES = ['DEMO-0019' => 'partenaire', 'DEMO-0009' => 'association', 'DEMO-0024' => 'association'];
+
     public static function charger(Connection $c, \DateTimeImmutable $aujourdhui = new \DateTimeImmutable('today')): void
     {
+        foreach (self::PALIERS as $code => [$quantite, $surface]) {
+            $configId = $c->fetchOne('SELECT pc.id FROM produit_configuration pc JOIN produits p ON p.id = pc.produit_id WHERE p.code = ? AND p.id >= 900000 ORDER BY pc.ordre, pc.id LIMIT 1', [$code]);
+            if (false !== $configId) {
+                $c->executeStatement('UPDATE produit_configuration SET paliers_quantite = ?, remises_surface = ? WHERE id = ?', [[] === $quantite ? null : json_encode($quantite), [] === $surface ? null : json_encode($surface), $configId]);
+            }
+        }
+        // Coût incomplet (docs/produits.md) : les barres du kakémono n'ont pas encore de prix d'achat dans le stock.
+        $kakemono = $c->fetchOne("SELECT id FROM produits WHERE code = 'D-KAKEMONO' AND id >= 900000");
+        if (false !== $kakemono) {
+            $c->executeStatement("INSERT INTO articles (id, reference, designation, categorie, unite, stock, stock_min, prix_achat, cout_moyen, actif, vendable, consommable_production, unite_achat, quantite_par_unite_achat, unite_vente, emplacement) VALUES (900090, 'D-FIN-090', 'Barres aluminium de kakémono (paire)', 'Finition', 'unite', 12, 4, NULL, NULL, 1, 0, 1, 'unite', 1.0, 'unite', 'Atelier')");
+            $c->executeStatement("INSERT INTO produit_article_stock (id, coefficient, mode_calcul, actif, obligatoire, ordre, produit_id, article_id) VALUES (900090, 1, 'quantite', 1, 1, 20, ?, 900090)", [$kakemono]);
+        }
+        foreach (self::GRILLES as $code => $grille) {
+            $c->executeStatement("UPDATE clients SET grille_tarifaire = ? WHERE code = ? AND type_client = 'B2C'", [$grille, $code]);
+        }
+
         $machines = array_column($c->fetchAllAssociative('SELECT id, nom FROM machines WHERE id >= 900000'), 'id', 'nom');
         foreach (self::PRODUCTION as $code => [$delai, $machine, $secours]) {
             $c->executeStatement(

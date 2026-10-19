@@ -651,3 +651,44 @@ span.si-pd-bascule { cursor: default; }
   .si-pd-mini.si-pd-empile td.si-pd-actions:empty { display: none; }
   .si-pd-masque-mobile { display: none; }
 }
+
+/* Coût incomplet (docs/produits.md) : un prix d'achat manque, la marge n'est qu'un plafond. */
+.si-pd-marge.incertaine { color: #6B7280; font-style: italic; }
+.si-pd-marge.incertaine .si-pd-barre i { background: repeating-linear-gradient(45deg, #9CA3AF 0 4px, #D1D5DB 4px 8px); }
+.si-pd-incomplet { display: block; margin-top: 0.15rem; text-align: left; font-style: normal; }
+.si-pd-incomplet > summary {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.si-pd-incomplet > summary::-webkit-details-marker { display: none; }
+.si-pd-incomplet ul { margin: 0.3rem 0 0; padding-left: 1rem; font-size: 0.75rem; color: #78350F; white-space: normal; min-width: 12rem; }
+.si-pd-badge-incomplet { display: inline-block; background: #FEF3C7; color: #92400E; border-radius: 999px; padding: 0.05rem 0.55rem; font-size: 0.72rem; font-weight: 700; vertical-align: middle; }
+
+/* Paliers de prix (fiche produit) */
+.si-pd-paliers details { border-top: 1px solid #E5E7EB; padding: 0.45rem 0; }
+.si-pd-paliers details:first-of-type { border-top: 0; }
+.si-pd-paliers summary { cursor: pointer; font-weight: 600; font-size: 0.86rem; }
+.si-pd-paliers summary small { font-weight: 400; color: #6B7280; }
+.si-pd-tranches { list-style: none; margin: 0.35rem 0 0.5rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.si-pd-tranches li { background: #EFF6FF; color: #1E3A8A; border-radius: 0.5rem; padding: 0.2rem 0.55rem; font-size: 0.78rem; }
+.si-pd-tranches li b { margin-left: 0.25rem; }
+.si-pd-tranches li.surface { background: #ECFDF5; color: #14532D; }
+.si-pd-palier-saisie { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.35rem; margin-bottom: 0.3rem; }
+.si-pd-palier-saisie.surface { grid-template-columns: 1fr 1fr; }
+.si-pd-palier-saisie label { display: block; font-size: 0.7rem; color: #6B7280; margin: 0; }
+.si-pd-palier-saisie input { display: block; width: 100%; min-width: 0; }
+.si-pd-paliers h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin: 0.5rem 0 0.25rem; }
+.si-pd-sim-palier { font-size: 0.78rem; color: #A7F3D0; margin-top: 0.4rem; min-height: 1em; }
+.si-pd-sim-palier small { display: block; color: #CBD5E1; }
+@media (max-width: 575.98px) {
+  .si-pd-palier-saisie { grid-template-columns: 1fr 1fr; }
+  .si-pd-palier-saisie > :first-child { grid-column: 1 / -1; }
+}

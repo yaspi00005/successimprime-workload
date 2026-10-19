@@ -470,7 +470,9 @@
             carte.querySelector('.js-client-initiales').textContent = initiales(nom);
             carte.querySelector('.js-client-nom').textContent = nom;
             carte.querySelector('.js-client-compte').textContent = d.compte || '';
-            carte.querySelector('.js-client-tarif').textContent = (d.typeClient || 'B2C').toUpperCase() === 'B2B' ? 'Tarif B2B' : 'Prix public';
+            // Grille de prix du client (docs/produits.md) : Revendeur, Partenaire, Association ou prix public.
+            const grilles = {B2B: 'Tarif B2B', PARTENAIRE: 'Grille Partenaire', ASSOCIATION: 'Grille Association'};
+            carte.querySelector('.js-client-tarif').textContent = grilles[(d.grille || ((d.typeClient || 'B2C').toUpperCase() === 'B2B' ? 'B2B' : '')).toUpperCase()] || 'Prix public';
             const contact = [d.telephone];
             if (d.credit !== undefined && Number(d.credit) > 0) {
                 contact.push('crédit autorisé ' + montant(Number(d.credit)) + ' F');

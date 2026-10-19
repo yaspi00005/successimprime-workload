@@ -201,9 +201,11 @@ final class Calculateur
             $resultat['total'] = $estimation['total'];
             $resultat['totalTexte'] = self::fcfa($estimation['total']);
             foreach ($estimation['detail'] as $ligne) {
-                $resultat['detail'][] = ['libelle' => $ligne['libelle'], 'montant' => $ligne['montant'], 'texte' => $ligne['montant'] > 0 ? self::fcfa($ligne['montant']) : 'Inclus'];
+                // Une remise de palier (montant négatif) s'écrit en moins.
+                $resultat['detail'][] = ['libelle' => $ligne['libelle'], 'montant' => $ligne['montant'], 'texte' => $ligne['montant'] > 0 ? self::fcfa($ligne['montant']) : ($ligne['montant'] < 0 ? '−'.self::fcfa(-$ligne['montant']) : 'Inclus')];
             }
-            $resultat['lignes'] = self::lignes($c, $valeurs, \array_slice(array_column($estimation['detail'], 'libelle'), 1));
+            $suite = \array_slice($estimation['detail'], 1);
+            $resultat['lignes'] = self::lignes($c, $valeurs, array_column(array_filter($suite, static fn (array $l): bool => $l['montant'] >= 0), 'libelle'), array_column(array_filter($suite, static fn (array $l): bool => $l['montant'] < 0), 'libelle'));
         } catch (\DomainException $e) {
             $resultat['erreur'] = $e->getMessage();
         }
@@ -233,7 +235,7 @@ final class Calculateur
      *
      * @return list<array{libelle: string, valeur: string}>
      */
-    private static function lignes(ProduitConfiguration $c, array $valeurs, array $finitions): array
+    private static function lignes(ProduitConfiguration $c, array $valeurs, array $finitions, array $paliers = []): array
     {
         $q = $valeurs['quantite'];
         if (null !== $valeurs['largeur'] && null !== $valeurs['hauteur']) {
@@ -246,6 +248,10 @@ final class Calculateur
             $lignes = [['libelle' => 'Quantité', 'valeur' => self::nombre($q)]];
         }
         $lignes[] = ['libelle' => 'Prix unitaire', 'valeur' => self::fcfa($c->getPrixApplicable(false)).' '.CatalogueSite::unite($c->getModeCalcul())];
+        // Palier atteint (docs/produits.md) : « Palier dès 101 pièces : −20 % ».
+        foreach ($paliers as $p) {
+            $lignes[] = ['libelle' => 'Prix dégressif', 'valeur' => $p];
+        }
         $machine = $c->getTypeImpression();
         if (null !== $machine && $machine->isPublie() && '' !== trim((string) $machine->getNom())) {
             $lignes[] = ['libelle' => 'Machine', 'valeur' => CatalogueSite::nomAffiche((string) $machine->getNom())];
@@ -264,7 +270,7 @@ final class Calculateur
             $choix[] = str_replace('.', ',', self::cm($valeurs['largeur'])).' × '.str_replace('.', ',', self::cm($valeurs['hauteur'])).' cm';
         }
         $choix[] = 'quantité '.$valeurs['quantite'];
-        $finitions = array_column(\array_slice($resultat['detail'], 1), 'libelle');
+        $finitions = array_column(array_filter(\array_slice($resultat['detail'], 1), static fn (array $l): bool => $l['montant'] >= 0), 'libelle');
         if ([] !== $finitions) {
             $choix[] = 'finitions : '.implode(', ', $finitions);
         }

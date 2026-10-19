@@ -141,8 +141,11 @@ final class CatalogueParametres
                     ['cle' => 'marge_cible_pct', 'type' => 'nombre', 'libelle' => 'Marge à viser', 'aide' => 'En dessous, le produit est « à revoir » dans Produits et services', 'suffixe' => '%', 'min' => 0, 'max' => 95, 'defaut' => 30],
                     ['cle' => 'marge_min_pct', 'type' => 'nombre', 'libelle' => 'Marge minimale après remise', 'aide' => 'Un prix négocié plus bas attend l\'accord de la direction', 'suffixe' => '%', 'min' => 0, 'max' => 95, 'defaut' => 25],
                     ['cle' => 'remise_max_pct', 'type' => 'nombre', 'libelle' => 'Remise maximale sans accord de la direction', 'aide' => 'Prix négocié comparé au prix de la grille du client', 'suffixe' => '%', 'min' => 0, 'max' => 90, 'defaut' => 10],
+                    // Grilles à remise (docs/produits.md, TarifClient) : sur le prix du palier ; le revendeur garde son prix revendeur.
+                    ['cle' => 'remise_partenaire_pct', 'type' => 'nombre', 'libelle' => 'Remise de la grille Partenaire', 'aide' => 'Choisie sur la fiche client ; s\'ajoute au palier de quantité ou de surface', 'suffixe' => '%', 'min' => 0, 'max' => 50, 'defaut' => 5],
+                    ['cle' => 'remise_association_pct', 'type' => 'nombre', 'libelle' => 'Remise de la grille Association', 'aide' => 'ONG, associations, écoles : choisie sur la fiche client', 'suffixe' => '%', 'min' => 0, 'max' => 50, 'defaut' => 10],
                 ],
-                'motsCles' => ['Prix au m² · prix par pièce', 'Prix négociés par client', 'Historique des prix', 'Garde-fous · marge minimale · remise maximale'],
+                'motsCles' => ['Prix au m² · prix par pièce', 'Prix négociés par client', 'Historique des prix', 'Garde-fous · marge minimale · remise maximale', 'Grilles Standard · Partenaire · Revendeur · Association', 'Paliers de prix par quantité et par surface'],
             ],
             'produits' => [
                 'famille' => 'ventes', 'libelle' => 'Produits et options', 'icone' => 'fa-sliders-h',

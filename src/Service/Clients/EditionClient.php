@@ -17,7 +17,7 @@ use Doctrine\ORM\EntityManagerInterface;
  * Toutes les saisies passent par appliquer() : la fiche, ses contacts et
  * le journal des modifications (K04) restent cohérents, quel que soit
  * l'écran. Une remise au-delà de 10 %, un plafond au-delà de 500 000 F
- * ou la grille Revendeur demandés par quelqu'un qui n'est pas de la
+ * ou une grille Revendeur, Partenaire ou Association demandés par quelqu'un qui n'est pas de la
  * direction ne sont pas appliqués : la fiche garde sa valeur et la
  * direction reçoit une demande.
  */
@@ -31,7 +31,7 @@ final class EditionClient
      * démarchés et qui connaissent les prix ; une entreprise qui n'est pas
      * dans ce cas paie le prix standard et garde fidélité et promotions.
      */
-    public const GRILLES = ['B2C' => 'Standard', 'B2B' => 'Revendeur (B2B)'];
+    public const GRILLES = ['B2C' => 'Standard', 'PARTENAIRE' => 'Partenaire', 'ASSOCIATION' => 'Association', 'B2B' => 'Revendeur (B2B)'];
 
     /** Champs suivis par le journal : libellé, catégorie. */
     public const CHAMPS = [
@@ -112,7 +112,7 @@ final class EditionClient
             'repere' => $c->getRepere(),
             'latitude' => $c->getLatitude(),
             'longitude' => $c->getLongitude(),
-            'grille' => $c->getTypeClient(),
+            'grille' => $c->getGrille(),
             'remise' => $c->getRemiseHabituelle(),
             'delai' => $c->getDelaiPaiement(),
             'plafond' => $c->getPlafondCredit(),
@@ -198,11 +198,13 @@ final class EditionClient
 
         // Conditions commerciales : au-delà des seuils, demande à la direction.
         if ($a('grille')) {
-            $grille = 'B2B' === $d['grille'] ? 'B2B' : 'B2C';
-            if ('B2B' === $grille && !$c->isB2B() && !$direction) {
-                $demandes[] = 'grille Revendeur (B2B)';
+            // Standard, Partenaire, Association ou Revendeur : une grille à remise ou le Revendeur demandés hors direction attendent son accord.
+            $grille = \is_string($d['grille']) && isset(self::GRILLES[strtoupper($d['grille'])]) ? strtoupper($d['grille']) : 'B2C';
+            if ('B2C' !== $grille && $grille !== $c->getGrille() && !$direction) {
+                $demandes[] = 'grille '.self::GRILLES[$grille];
             } else {
-                $c->setTypeClient($grille);
+                $c->setTypeClient('B2B' === $grille ? 'B2B' : 'B2C')
+                    ->setGrilleTarifaire(\in_array($grille, ['PARTENAIRE', 'ASSOCIATION'], true) ? strtolower($grille) : null);
             }
         }
         if ($a('remise')) {
@@ -454,7 +456,7 @@ final class EditionClient
             'observation' => $c->getObservation(),
             'etiquettes' => [] !== $c->getEtiquettes() ? implode(', ', $c->getEtiquettes()) : null,
             'besoin' => $c->getBesoin(),
-            'typeClient' => self::GRILLES[$c->getTypeClient()] ?? $c->getTypeClient(),
+            'typeClient' => self::GRILLES[$c->getGrille()] ?? $c->getTypeClient(),
             'remiseHabituelle' => null !== $c->getRemiseHabituelle() ? self::pourcent($c->getRemiseHabituelle()) : null,
             'delaiPaiement' => $c->getDelaiPaiementLabel(),
             'plafondCredit' => null !== $c->getPlafondCredit() ? self::francs($c->getPlafondCredit()) : null,

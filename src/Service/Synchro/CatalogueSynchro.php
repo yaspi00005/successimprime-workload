@@ -122,6 +122,8 @@ final class CatalogueSynchro
         'atelier_3d' => ['palier1_quantite', 'palier1_remise', 'palier2_quantite', 'palier2_remise', 'face_en_plus', 'paliers_b2b'],
         // Pièces au m² : le site compte les pièces avec le même espacement (docs/saisie-devis-commandes.md).
         'pieces_m2' => ['espacement_mm'],
+        // Remises des grilles Partenaire et Association : la commande en ligne les applique (docs/produits.md). Les garde-fous restent au local.
+        'grille' => ['remise_partenaire_pct', 'remise_association_pct'],
         // Corbeille : le site en ligne garde les suppressions de l'espace client aussi longtemps que le local.
         'corbeille' => ['duree'],
         // L'assistant tourne en ligne : tous ses réglages y servent (docs/assistant-client.md).
@@ -260,7 +262,8 @@ final class CatalogueSynchro
             ],
             'configuration' => [
                 'classe' => ProduitConfiguration::class, 'sens' => self::DESCENDANT, 'libelle' => 'Configuration produit', 'titre' => ['description'],
-                'champs' => ['active', 'ordre', 'description', 'prixBase', 'modeCalcul', 'modeDimension', 'largeurDefaut', 'longueurDefaut', 'quantiteMinimale', 'quantiteMaximale', 'prixB2B'],
+                // Paliers de prix (docs/produits.md) : le site applique les mêmes paliers de quantité et remises de surface.
+                'champs' => ['active', 'ordre', 'description', 'prixBase', 'modeCalcul', 'modeDimension', 'largeurDefaut', 'longueurDefaut', 'quantiteMinimale', 'quantiteMaximale', 'prixB2B', 'paliersQuantite', 'remisesSurface'],
                 'relations' => ['produit' => 'produit', 'typeImpression' => 'type_impression', 'support' => 'support', 'format' => 'format'],
                 'listes' => [],
                 // Finitions proposées avec leur prix de vente : le client commande en ligne avec les mêmes.
@@ -287,6 +290,8 @@ final class CatalogueSynchro
                     'moyenPrefere', 'entiteFacturation', 'conseiller',
                     // Client dispensé d'acompte (docs/clients.md) : le panier et la commande en ligne ne demandent rien d'avance.
                     'sansAcompte',
+                    // Grille Partenaire ou Association (docs/produits.md) : l'espace client applique sa remise.
+                    'grilleTarifaire',
                 ],
                 'relations' => [], 'listes' => [], 'numero' => 'code',
                 // E-mail donné par le titulaire dans son espace : pris seulement si la fiche du local n'en a pas.

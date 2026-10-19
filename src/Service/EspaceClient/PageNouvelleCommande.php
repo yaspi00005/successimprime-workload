@@ -189,6 +189,15 @@ final class PageNouvelleCommande
             // Sans montants (demandeur), une finition payante choisie est seulement « choisie ».
             $lignes[] = ['libelle' => (string) $f->getNomFinition(), 'valeur' => (int) $f->getMontant() <= 0 ? 'inclus' : ($montants ? self::f((int) $f->getMontant()).' F' : 'choisie')];
         }
+        // Palier, grille ou prix négocié (docs/produits.md) : la remise déjà comptée dans le total.
+        $remise = $ligne->getMontantRemise() - $ligne->getRemiseCodePromo();
+        if ($montants && $remise > 0) {
+            [$pieces, $surfaceLigne] = \App\Service\Catalogue\PaliersPrix::mesures($ligne);
+            $volume = \App\Service\Catalogue\PaliersPrix::volumeConfiguration($config, $pieces, $surfaceLigne);
+            // Le libellé du palier seulement quand c'est bien lui qui fait la remise (pas une grille, un prix négocié, un revendeur).
+            $palier = $ligne->getRemise() === \App\Service\Catalogue\PaliersPrix::remiseParUnite($ligne->getPrixUnitaire(), $volume['taux'], 0.0) ? \App\Service\Catalogue\PaliersPrix::libelle($volume) : null;
+            $lignes[] = ['libelle' => $palier ?? 'Votre remise', 'valeur' => '−'.self::f($remise).' F'];
+        }
         $express = null;
         foreach ($commande->getCommandesDetails() as $l) {
             if ($l !== $ligne) {

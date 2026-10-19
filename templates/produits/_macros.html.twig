@@ -2,9 +2,25 @@
 
 {% macro f(montant) %}{% if montant is null %}—{% else %}{{ montant|number_format(0, ',', ' ') }} F{% endif %}{% endmacro %}
 
-{% macro marge(taux, niveau) %}
+{% macro marge(taux, niveau, complet = true) %}
 	{%- if taux is null -%}<span class="si-pd-gris" title="Coût inconnu : liez les matières ou saisissez un coût sur la fiche">—</span>
+	{%- elseif not complet -%}<span class="si-pd-marge incertaine" title="Coût incomplet : un prix d'achat manque, la vraie marge est plus basse"><span class="si-pd-barre" aria-hidden="true"><i style="width: {{ max(4, min(100, taux)) }}%"></i></span>au plus {{ taux }} %</span>
 	{%- else -%}<span class="si-pd-marge {{ niveau }}"><span class="si-pd-barre" aria-hidden="true"><i style="width: {{ max(4, min(100, taux)) }}%"></i></span>{{ taux }} %</span>{%- endif -%}
+{% endmacro %}
+
+{# Coût incomplet (docs/produits.md) : badge et prix d'achat manquants, avec le lien vers l'article du stock pour qui peut l'ouvrir. #}
+{% macro incomplet(cout) %}
+	{%- if cout.complet is defined and not cout.complet -%}
+		<details class="si-pd-incomplet">
+			<summary title="Le total ne compte pas ce qui manque : la marge est trop haute">Coût incomplet</summary>
+			<ul>
+				{%- for a in cout.prixAchatManquants -%}
+					<li>Prix d'achat manquant : {% if is_granted('ROLE_ADMIN') and a.id %}<a href="{{ path('app_stock_articles_fiche', {id: a.id}) }}">{{ a.designation }}</a>{% else %}{{ a.designation }}{% endif %}</li>
+				{%- endfor -%}
+				{%- for m in cout.manquants|filter(m => not (m starts with 'prix d\'achat')) -%}<li>Manque : {{ m }}</li>{%- endfor -%}
+			</ul>
+		</details>
+	{%- endif -%}
 {% endmacro %}
 
 {% macro pastille(produit) %}

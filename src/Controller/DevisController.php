@@ -41,6 +41,11 @@ use Symfony\Component\Form\FormInterface;
 #[Route('/devis', name: 'app_devis_')]
 class DevisController extends AbstractController
 {
+    /** Paliers de prix, grille du client et prix négocié (docs/produits.md), posés à l'enregistrement. */
+    public function __construct(private readonly \App\Service\Catalogue\TarifClient $tarifClient)
+    {
+    }
+
     /** Clé de session du lien wa.me à ouvrir après un envoi (bandeau de la fiche). */
     private const SESSION_WHATSAPP = 'devis_whatsapp_';
 
@@ -967,6 +972,8 @@ class DevisController extends AbstractController
     {
         try {
             $this->synchroniserDetailsEtFinitions($devi, $form, $em);
+            // Palier, grille du client et prix négocié (docs/produits.md), avant la promotion qui s'y compare.
+            $this->tarifClient->appliquerDevis($devi, new \DateTimeImmutable());
             // Promotions des lignes (docs/promotions.md).
             $promotionsSaisie->appliquerDevis($devi, $form->get('codePromo')->getData(), new \DateTimeImmutable());
             $devi->recalculerTotaux();

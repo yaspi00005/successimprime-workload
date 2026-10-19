@@ -34,8 +34,12 @@ final class EditionProduit
         ProduitArticleStock::MODE_FORFAIT => 'forfait par ligne',
     ];
 
-    public function __construct(private readonly EntityManagerInterface $em)
-    {
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        /** Garde-fous des paliers de prix ; absents des tests : pas de contrôle de marge. */
+        private readonly ?GardeFousPrix $gardeFous = null,
+        private readonly ?TarifClient $tarif = null,
+    ) {
     }
 
     /**
@@ -80,9 +84,15 @@ final class EditionProduit
         if (false === $cout) {
             $erreurs[] = 'Le coût saisi est un nombre entier.';
         }
+        // Paliers de prix des configurations (docs/produits.md) : contrôlés avant tout changement.
+        $paliers = !empty($d['paliers_envoyes']) && null !== $p->getId()
+            ? $this->lirePaliers($p, \is_array($d['paliers'] ?? null) ? $d['paliers'] : [], !empty($d['paliers_accord']), $avecCouts)
+            : ['erreurs' => [], 'plan' => [], 'alertes' => []];
+        array_push($erreurs, ...$paliers['erreurs']);
         if ([] !== $erreurs) {
             return $erreurs;
         }
+        $this->appliquerPaliers($p, $paliers['plan'], $paliers['alertes'], $par);
 
         $this->tracer($p, 'prixBase', null === $p->getPrixBase() ? null : (int) round($p->getPrixBase()), $prixBase, $par);
         $this->tracer($p, 'prixB2B', null === $p->getPrixB2B() ? null : (int) round($p->getPrixB2B()), $prixB2B, $par);
@@ -118,6 +128,160 @@ final class EditionProduit
         $this->em->flush();
 
         return [];
+    }
+
+    /**
+     * Paliers postés pour chaque configuration du produit, normalisés et
+     * contrôlés : un prix de palier sous le prix de la configuration, des
+     * paliers de plus en plus avantageux, et les garde-fous de
+     * GardeFousPrix (marge minimale) au pire cas : palier puis la plus
+     * forte grille à remise (Partenaire ou Association). Un palier sous la
+     * marge minimale, ou sous le coût de revient, n'est gardé qu'avec
+     * l'accord de la direction (case cochée).
+     *
+     * @param array<mixed> $postes paliers[id de configuration][quantite|surface][]
+     *
+     * @return array{erreurs: list<string>, plan: array<int, array{config: ProduitConfiguration, quantite: list<array>, surface: list<array>}>, alertes: list<string>}
+     */
+    private function lirePaliers(Produits $p, array $postes, bool $accord, bool $avecCouts): array
+    {
+        $erreurs = [];
+        $plan = [];
+        $alertes = [];
+        $g = $this->gardeFous?->valeurs();
+        $grille = $this->tarif?->remiseGrilleMax() ?? 0.0;
+        foreach ($p->getConfigurations() as $c) {
+            $brut = $postes[(int) $c->getId()] ?? null;
+            if (!\is_array($brut)) {
+                continue;
+            }
+            $libelle = \App\Service\GrilleTarifaire::libelle($c);
+            $prixBase = (int) $c->getPrixBase();
+            $lignesQ = \is_array($brut['quantite'] ?? null) ? $brut['quantite'] : [];
+            $lignesS = 'metre_carre' === $c->getModeCalcul() && \is_array($brut['surface'] ?? null) ? $brut['surface'] : [];
+            foreach ($lignesQ as $l) {
+                if (\is_array($l) && self::rempli($l) && [] === PaliersPrix::normaliserQuantite([$l])) {
+                    $erreurs[] = \sprintf('%s : chaque palier donne un nombre de pièces (2 ou plus) et un prix ou une remise.', $libelle);
+                    break;
+                }
+            }
+            foreach ($lignesS as $l) {
+                if (\is_array($l) && self::rempli($l) && [] === PaliersPrix::normaliserSurface([$l])) {
+                    $erreurs[] = \sprintf('%s : chaque remise de surface donne une surface en m² et une remise en %%.', $libelle);
+                    break;
+                }
+            }
+            $quantite = PaliersPrix::normaliserQuantite($lignesQ);
+            $surface = PaliersPrix::normaliserSurface($lignesS);
+            $avant = -1.0;
+            foreach ($quantite as $q) {
+                if (null !== $q['prix'] && $q['prix'] >= $prixBase) {
+                    $erreurs[] = \sprintf('%s : le prix du palier dès %d pièces (%s F) doit être sous le prix de la configuration (%s F).', $libelle, $q['de'], number_format($q['prix'], 0, ',', ' '), number_format($prixBase, 0, ',', ' '));
+                }
+                $taux = PaliersPrix::tauxPalier($q, $prixBase);
+                if ($taux <= $avant) {
+                    $erreurs[] = \sprintf('%s : le palier dès %d pièces doit être plus avantageux que le précédent.', $libelle, $q['de']);
+                }
+                $avant = $taux;
+            }
+            $avant = -1.0;
+            foreach ($surface as $r) {
+                if ($r['remise'] <= $avant) {
+                    $erreurs[] = \sprintf('%s : la remise dès %s m² doit être plus forte que la précédente.', $libelle, self::nombre($r['m2']));
+                }
+                $avant = $r['remise'];
+            }
+            $plan[(int) $c->getId()] = ['config' => $c, 'quantite' => $quantite, 'surface' => $surface];
+
+            // Garde-fous au pire cas : le palier le plus fort, puis la plus forte grille à remise.
+            // Seulement pour des paliers changés : une fiche réenregistrée ne redemande pas l'accord.
+            $inchanges = $quantite === $c->getPaliersQuantite() && $surface === $c->getRemisesSurface();
+            if (null === $g || $prixBase <= 0 || $inchanges) {
+                continue;
+            }
+            $detailCout = CoutProduit::detail($p, $c->getModeCalcul());
+            $cout = $detailCout['total'];
+            // Coût inconnu ou incomplet : la marge ne se vérifie pas, la remise maximale sans accord sert de garde-fou.
+            $remiseLimite = null === $cout || !$detailCout['complet'] ? $g['remise'] : 100;
+            $taux = [];
+            foreach ($quantite as $q) {
+                $taux[] = ['taux' => PaliersPrix::tauxPalier($q, $prixBase), 'quoi' => \sprintf('dès %d pièces', $q['de'])];
+            }
+            foreach ($surface as $r) {
+                $taux[] = ['taux' => $r['remise'], 'quoi' => \sprintf('dès %s m²', self::nombre($r['m2']))];
+            }
+            foreach ($taux as $t) {
+                $prix = PaliersPrix::net($prixBase, $t['taux'], $grille);
+                // Coût connu : seule la marge compte (le palier est voulu plus bas que la grille).
+                $raisons = GardeFousPrix::controler($prixBase, $prix, $cout, $remiseLimite, $g['minimum']);
+                if ([] !== $raisons) {
+                    $marge = CoutProduit::marge($prix, $cout);
+                    $pourquoi = \in_array(GardeFousPrix::RAISON_MARGE, $raisons, true)
+                        ? ($avecCouts ? \sprintf(' : marge %d %%, minimum %d %%', $marge, $g['minimum']) : ' : sous la marge minimale')
+                        : \sprintf(' : remise de plus de %d %% sans coût de revient sûr', $g['remise']);
+                    $alertes[] = \sprintf('%s %s (%s F%s)%s', $libelle, $t['quoi'], number_format($prix, 0, ',', ' '), $grille > 0 ? ' avec la grille à −'.self::nombre($grille).' %' : '', $pourquoi);
+                }
+            }
+        }
+        if ([] !== $alertes && !$accord) {
+            $erreurs[] = 'Paliers hors garde-fous : '.implode(' ; ', $alertes).'. Cochez « Accord de la direction » pour les garder, ou changez-les.';
+        }
+
+        return ['erreurs' => array_values(array_unique($erreurs)), 'plan' => $plan, 'alertes' => $alertes];
+    }
+
+    /**
+     * @param array<int, array{config: ProduitConfiguration, quantite: list<array>, surface: list<array>}> $plan
+     * @param list<string> $alertes paliers gardés avec l'accord de la direction
+     */
+    private function appliquerPaliers(Produits $p, array $plan, array $alertes, ?User $par): void
+    {
+        foreach ($plan as $l) {
+            $c = $l['config'];
+            $avant = self::resumePaliers($c->getPaliersQuantite(), $c->getRemisesSurface());
+            $c->setPaliersQuantite($l['quantite'])->setRemisesSurface($l['surface']);
+            $apres = self::resumePaliers($c->getPaliersQuantite(), $c->getRemisesSurface());
+            if ($avant !== $apres) {
+                $this->em->persist(new PrixHistorique('configuration', (int) $c->getId(), \App\Service\GrilleTarifaire::libelle($c), 'paliers', $avant, $apres, $par));
+            }
+        }
+        if ([] !== $alertes && null !== $p->getId()) {
+            // L'accord donné reste dans l'historique des prix.
+            $this->em->persist(new PrixHistorique('produit', (int) $p->getId(), (string) $p->getNom(), 'accordPaliers', null, mb_substr(\sprintf('accord : %d palier%s', \count($alertes), \count($alertes) > 1 ? 's' : ''), 0, 30), $par));
+        }
+    }
+
+    /** Résumé court pour l'historique des prix (30 caractères au plus). */
+    public static function resumePaliers(array $quantite, array $surface): ?string
+    {
+        if ([] === $quantite && [] === $surface) {
+            return null;
+        }
+        $morceaux = [];
+        foreach ($quantite as $q) {
+            $morceaux[] = $q['de'].':'.(null !== $q['prix'] ? $q['prix'].'F' : self::nombre($q['remise']).'%');
+        }
+        foreach ($surface as $r) {
+            $morceaux[] = self::nombre($r['m2']).'m²:'.self::nombre($r['remise']).'%';
+        }
+
+        return mb_substr(implode(' ', $morceaux), 0, 30);
+    }
+
+    private static function rempli(array $ligne): bool
+    {
+        foreach ($ligne as $v) {
+            if (\is_scalar($v) && '' !== trim((string) $v)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static function nombre(float|int|null $n): string
+    {
+        return rtrim(rtrim(number_format((float) $n, 2, ',', ''), '0'), ',');
     }
 
     /**

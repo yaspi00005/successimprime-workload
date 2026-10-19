@@ -180,7 +180,7 @@ security:
         }
 
         - {
-            path: '^/(site|nos-produits|calculateur|studio-textile|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|contact|conseils|demander-un-devis)(/|$)',
+            path: '^/(site|nos-produits|calculateur|studio-textile|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|suivre-ma-reclamation|comment-venir|contact|conseils|demander-un-devis)(/|$)',
             roles: PUBLIC_ACCESS
         }
 

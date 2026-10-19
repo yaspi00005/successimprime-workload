@@ -49,6 +49,75 @@ final class ReclamationsClients
     }
 
     /**
+     * « Un engagement non tenu ? » de la page Nos engagements (maquette
+     * EC02) : la commande a été retrouvée par son numéro et le téléphone du
+     * visiteur (SuiviSansCompte), la réclamation est ouverte au nom de son
+     * client, comme depuis l'espace client, et monte au local.
+     *
+     * @throws \DomainException
+     */
+    public function creerDepuisSite(Commandes $commande, string $engagement, string $description, string $nom, \DateTimeImmutable $le): ReclamationClient
+    {
+        $client = $commande->getClients() ?? throw new \DomainException('Commande inconnue.');
+        if (mb_strlen(trim($description)) < 5) {
+            throw new \DomainException('Expliquez ce qui s\'est passé.');
+        }
+        $ouvertes = array_filter($this->duClient($client), static fn (ReclamationClient $r): bool => !$r->estClose());
+        if (\count($ouvertes) >= self::OUVERTES_MAX) {
+            throw new \DomainException('Vous avez déjà plusieurs réclamations en cours : nous y répondons d\'abord.');
+        }
+        $objet = '' === trim($engagement) ? 'Engagement non tenu' : 'Engagement non tenu : '.$engagement;
+        $reclamation = ReclamationClient::nouvelle($client, mb_substr($objet, 0, 120), $description, $le)
+            ->setMotif(self::motifPour($engagement))
+            ->setCommande($commande)
+            ->setAuteur(mb_substr('Site · '.trim($nom), 0, 80));
+        $this->em->persist($reclamation);
+        $this->em->flush();
+        $reclamation->setNumero(\sprintf('R-%04d', $reclamation->getId()));
+        $this->em->flush();
+
+        return $reclamation;
+    }
+
+    /** Motif de la réclamation d'après l'engagement cité (« Date annoncée, date tenue » → retard). */
+    public static function motifPour(string $engagement): string
+    {
+        $e = mb_strtolower($engagement);
+
+        return match (true) {
+            str_contains($e, 'date') || str_contains($e, 'délai') => 'retard',
+            str_contains($e, 'couleur') || str_contains($e, 'bat') => 'couleur',
+            default => 'autre',
+        };
+    }
+
+    /**
+     * Suivi public d'une réclamation (maquette EC03) : numéro et téléphone
+     * du client, comme le suivi de commande sans compte ; même réponse si
+     * la réclamation n'existe pas ou n'est pas à ce numéro.
+     */
+    public function duTelephone(?Clients $client, string $numero): ?ReclamationClient
+    {
+        if (null === $client) {
+            return null;
+        }
+        $numero = strtoupper((string) preg_replace('/\s+/', '', $numero));
+        $chiffres = preg_match('/(\d+)\s*$/', $numero, $m) ? (int) $m[1] : 0;
+        $liste = $this->duClient($client);
+        // Le numéro exact d'abord (R-0012 et W-R-0012 sont deux réclamations), sinon ses chiffres.
+        foreach ([true, false] as $exact) {
+            foreach ($liste as $r) {
+                $n = strtoupper((string) $r->getNumero());
+                if ('' !== $numero && ($exact ? $n === $numero : ($chiffres > 0 && preg_match('/(\d+)$/', $n, $mm) && (int) $mm[1] === $chiffres))) {
+                    return $r;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * @param list<UploadedFile> $photos
      *
      * @throws \DomainException message à montrer

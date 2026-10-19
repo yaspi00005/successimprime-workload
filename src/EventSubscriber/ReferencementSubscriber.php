@@ -28,7 +28,7 @@ final class ReferencementSubscriber implements EventSubscriberInterface
     public const INDEXABLES = [
         'app_home', 'app_site_produits', 'app_site_calculateur', 'app_site_atelier', 'app_site_realisations',
         'app_site_equipements', 'app_site_guide', 'app_site_a_propos', 'app_site_engagements', 'app_site_faq',
-        'app_site_conseils', 'app_site_conseil', 'app_site_contact', 'app_site_devis',
+        'app_site_conseils', 'app_site_conseil', 'app_site_contact', 'app_site_devis', 'app_site_venir',
         // Introuvable tant qu'aucune action n'est montrée (ActionsSociales).
         'app_site_actions_sociales',
         // Fichiers pour les robots eux-mêmes.

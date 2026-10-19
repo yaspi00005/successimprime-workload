@@ -119,6 +119,8 @@
 							<span>Total TTC indicatif</span>
 							<strong data-champ="total" data-montant="{{ resultat.total ?? '' }}">{{ resultat.totalTexte ?? '—' }}</strong>
 						</div>
+						{# Date de fabrication de la fiche produit, comptée comme la commande en ligne (heures de travail, heure limite). #}
+						<p class="si-calc-pret" data-champ="pret"{% if not resultat.pret %} hidden{% endif %}>{{ include('site/_icone.svg.twig', {nom: 'date', taille: 18}) }} <span>Prête <strong>{{ resultat.pret }}</strong> si vous commandez maintenant</span></p>
 						<div class="si-calc-actions">
 							<a{% if resultat.liens.commander %} href="{{ resultat.liens.commander }}"{% else %} hidden{% endif %} class="si-bouton si-bouton-rouge si-bouton-grand" data-lien="commander">Commander</a>
 							{% if resultat.liens.devis %}<a href="{{ resultat.liens.devis }}" class="si-bouton si-bouton-contour si-bouton-grand" data-lien="devis">Demander un devis</a>{% endif %}
@@ -235,6 +237,8 @@
 				li.append(element('span', l.libelle), element('span', l.texte));
 				return li;
 			});
+			var pret = champ('pret');
+			if (pret) { pret.hidden = !d.pret; if (d.pret) { pret.querySelector('strong').textContent = d.pret; } }
 			champ('erreur').textContent = d.erreur || '';
 			champ('erreur').hidden = !d.erreur;
 			form.parentNode.querySelectorAll('[data-champ="total"]').forEach(function (t) { compter(t, d); });

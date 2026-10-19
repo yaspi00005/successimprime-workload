@@ -1,92 +1,148 @@
 {#
-	Nos engagements (maquette 08), page « nos-engagements » : les cartes
-	de couleur (un engagement par « ### »), deux photos livrées avec le site
-	(le BAT validé sur le téléphone, la livraison : PhotosSite), la frise
-	des étapes de la commande (liste numérotée « 1. »), puis les autres
-	sections.
+	Nos engagements (maquettes EC01 et EC02), page « nos-engagements » :
+	en-tête avec les chiffres publiés par la direction (tableau des
+	engagements de l'ERP, rien tant qu'ils ne sont pas validés), les six
+	promesses avec « Si on ne tient pas → » (tuile « Site : engagements »),
+	le rappel Orange Money, la frise des étapes enregistrées, ce que nous ne
+	promettons pas et « Un engagement non tenu ? ». Titre, accroche et
+	description viennent de la page (Réglages › Site vitrine) ou de son
+	repli (ContenuInitial) ; l'introduction écrite y est montrée aussi.
 #}
 {% extends 'site/_site.html.twig' %}
 
 {% set menu_actif = 'app_site_engagements' %}
-{# Sans page de devis ni de contact, la demande part sur WhatsApp (« devis » est déjà pris par le gabarit). #}
-{% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
-{% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
-
-{# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, un engagement n\'a pas été tenu sur ma commande : ') %}
+{% set calcul = site_catalogue().calculateur ? site_lien('app_site_calculateur') : null %}
 {% set image_partage = site_image(page.image) %}
-
-{# Les deux photos, juste avant la frise des étapes (à la fin s'il n'y a pas de frise). #}
-{% set frise = contenu.sections|filter(s => s.blocs|filter(b => b.type == 'etapes') is not empty)|first %}
-{% set photo_bat = site_photo('bat-valide-sur-telephone') %}
-{% set photo_livraison = site_photo('livraison-moto-bamako') %}
-{% set duo %}
-	{% if photo_bat or photo_livraison %}
-		<div class="sc-duo">
-			{% for p in [{photo: photo_bat, legende: 'Le BAT se valide aussi sur le téléphone, dans l\'espace client'}, {photo: photo_livraison, legende: 'Livraison à Bamako'}]|filter(p => p.photo) %}
-				<figure class="sc-duo-photo">
-					{{ include('site/_photo.html.twig', {photo: p.photo, sizes: '(max-width: 559px) calc(100vw - 32px), (max-width: 1180px) calc(50vw - 24px), 566px'}) }}
-					<figcaption>{{ p.legende }}</figcaption>
-				</figure>
-			{% endfor %}
-		</div>
-	{% endif %}
-{% endset %}
+{% set teintes = ['bleu', 'rouge', 'vert', 'turquoise', 'violet', 'or'] %}
 
 {% block title %}{{ page.titre|site_titre }}{% endblock %}
-{% block description %}{{ (page.description ?? page.accroche ?? 'BAT avant impression, réimpression si le défaut vient de nous, délai annoncé, prix sans surprise : les engagements de Succès Imprim.')|site_description }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'BAT avant impression, prix annoncé = prix payé, date tenue, fichier vérifié : les engagements écrits de Succès Imprim et ce que vous obtenez s\'ils ne sont pas tenus.')|site_description }}{% endblock %}
 
 {% block entete %}
-	{{ site_styles('css/site-contenu.css') }}
+	{{ site_styles('css/site-formulaires.css', 'css/site-engagements.css') }}
 {% endblock %}
 
 {% block contenu %}
-	{{ include('site/_bandeau.html.twig', {titre: page.titre, accroche: page.accroche, ariane: definition.libelle}) }}
-
-	<section class="sc-section">
-		<div class="si-cadre">
-			{% if contenu.intro %}<div class="sc-prose sc-intro">{{ site_blocs(contenu.intro) }}</div>{% endif %}
-
-			{% for s in contenu.sections %}
-				{% set etapes = s.blocs|filter(b => b.type == 'etapes') %}
-				{% if s.cartes is not empty %}
-					{% set niveau = s.titre ? 'h3' : 'h2' %}
-					<section class="sc-bloc-section"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
-						{% if s.titre %}<h2 id="{{ s.ancre }}" class="sc-titre-section">{{ s.html|raw }}</h2>{% endif %}
-						{% if s.blocs %}<div class="sc-prose">{{ site_blocs(s.blocs) }}</div>{% endif %}
-						<div class="sc-engagements">
-							{% for c in s.cartes %}
-								<article class="sc-engagement sc-teinte-{{ loop.index0 % 4 }}" id="{{ c.ancre }}">
-									<span class="sc-engagement-icone" aria-hidden="true">{{ include('site/_icone_contenu.svg.twig', {icone: site_icone(c.titre)}) }}</span>
-									<{{ niveau }} class="sc-carte-titre">{{ c.html|raw }}</{{ niveau }}>
-									{% if c.blocs %}<div class="sc-prose">{{ site_blocs(c.blocs) }}</div>{% endif %}
-								</article>
-							{% endfor %}
-						</div>
-					</section>
-				{% elseif etapes is not empty %}
-					{% if s is same as(frise) %}{{ duo }}{% endif %}
-					<section class="sc-frise-cadre"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
-						{% if s.titre %}<h2 id="{{ s.ancre }}">{{ s.html|raw }}</h2>{% endif %}
-						{% for b in s.blocs %}
-							{% if b.type == 'etapes' %}
-								<ol class="sc-frise">
-									{% for e in b.elements %}<li><span class="sc-frise-numero" aria-hidden="true">{{ loop.index }}</span><span class="sc-frise-texte">{{ e|raw }}</span></li>{% endfor %}
-								</ol>
-							{% else %}
-								<div class="sc-prose">{{ site_blocs([b]) }}</div>
-							{% endif %}
+	<section class="se-tete">
+		<div class="si-cadre se-tete-cadre{{ chiffres ? "" : " se-seul" }}">
+			<div class="se-tete-texte">
+				<nav class="si-ariane" aria-label="Fil d'Ariane"><a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">{{ definition.libelle }}</span></nav>
+				<h1>Des promesses écrites.<br><span>Et ce qu'on fait si on les rate.</span></h1>
+				<p>{{ page.accroche and page.accroche != 'Ce que nous vous garantissons, par écrit.' ? page.accroche : 'Tout le monde promet la qualité. Nous, on écrit à côté de chaque engagement ce que vous obtenez s\'il n\'est pas tenu.' }}</p>
+			</div>
+			{% if chiffres %}
+				<aside class="se-mesures" aria-label="Chiffres mesurés">
+					<p class="se-mesures-titre"><span class="si-point-direct" aria-hidden="true"></span>Mesuré par notre logiciel d'atelier</p>
+					<ul>
+						{% for c in chiffres.chiffres %}
+							<li><b><span data-compte="{{ c.valeur }}">{{ c.valeur }}</span>&nbsp;%</b><span>{{ c.libelle }}</span></li>
 						{% endfor %}
-					</section>
-				{% else %}
-					{{ include('site/_section.html.twig', {s: s}) }}
-				{% endif %}
-			{% endfor %}
+					</ul>
+					{% if chiffres.periode %}<p class="se-mesures-note">{{ chiffres.periode|capitalize }}{% if chiffres.publieLe %} · validé par la direction le {{ chiffres.publieLe|date('d/m/Y') }}{% endif %}</p>{% endif %}
+				</aside>
+			{% endif %}
+		</div>
+		{{ site_fil_ariane([{nom: definition.libelle}]) }}
+	</section>
 
-			{% if not frise %}{{ duo }}{% endif %}
+	{% if contenu.intro %}
+		<section class="si-section se-intro"><div class="si-cadre sc-prose">{{ site_blocs(contenu.intro) }}</div></section>
+	{% endif %}
 
-			{% if lien_devis %}
-				<p class="sc-appel"><a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge si-bouton-grand"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis</a></p>
+	<section class="si-section se-promesses-section" aria-labelledby="se-promesses">
+		<div class="si-cadre">
+			<h2 id="se-promesses" class="si-invisible">Nos {{ promesses|length }} engagements</h2>
+			<ul class="se-promesses">
+				{% for p in promesses %}
+					<li class="se-promesse se-teinte-{{ teintes[loop.index0 % 6] }} si-revele">
+						<h3><span class="se-promesse-icone" aria-hidden="true">{{ include('site/_icone.svg.twig', {nom: p.icone, taille: 24}) }}</span>{{ p.titre }}</h3>
+						{% if p.promesse %}<p>{{ p.promesse }}</p>{% endif %}
+						{% if p.sinon %}<p class="se-sinon"><strong>Si on ne tient pas →</strong> {{ p.sinon }}</p>{% endif %}
+					</li>
+				{% endfor %}
+			</ul>
+			{% if orangeMoney %}
+				<p class="se-orange si-revele">{{ include('site/_icone.svg.twig', {nom: 'orange', taille: 26}) }}<span><strong>Paiement Orange Money&nbsp;:</strong> nous ne vous demanderons jamais votre code secret, ni par téléphone, ni par WhatsApp, ni au comptoir.</span></p>
 			{% endif %}
 		</div>
 	</section>
+
+	<section class="si-section se-tenir" aria-labelledby="se-tenir">
+		<div class="si-cadre">
+			<p class="si-sur-titre">Comment on les tient</p>
+			<h2 id="se-tenir">Chaque étape est enregistrée. Vous la suivez en direct.</h2>
+			<ol class="se-frise si-revele">
+				{% for e in [
+					{nom: 'Devis ou calculateur', detail: 'Le prix est écrit avant de commencer', icone: 'calculette'},
+					{nom: 'Fichier vérifié', detail: 'Contrôle PAO gratuit', icone: 'oeil'},
+					{nom: 'BAT validé', detail: 'Votre accord écrit', icone: 'bat'},
+					{nom: 'Impression contrôlée', detail: 'Couleurs comparées au BAT', icone: 'fichier'},
+					{nom: 'Prêt ou livré', detail: 'À la date annoncée', icone: 'livraison'},
+				] %}
+					<li class="se-frise-etape" style="--i: {{ loop.index0 }}">
+						<span class="se-frise-rond" aria-hidden="true">{{ include('site/_icone.svg.twig', {nom: e.icone, taille: 24}) }}</span>
+						<strong>{{ e.nom }}</strong>
+						<span>{{ e.detail }}</span>
+					</li>
+				{% endfor %}
+			</ol>
+
+			<div class="se-trois">
+				<div class="se-carte se-horodate si-revele">
+					<h3>{{ include('site/_icone.svg.twig', {nom: 'date', taille: 20}) }} Ce que vous voyez dans votre suivi</h3>
+					<ul>
+						<li>Devis accepté, <em>avec la date et l'heure</em></li>
+						<li>Fichier vérifié, <em>et par qui</em></li>
+						<li>BAT validé, <em>par vous</em></li>
+						<li>Impression démarrée, <em>sur quelle machine</em></li>
+						<li>Commande prête, <em>comparée à la date annoncée</em></li>
+					</ul>
+					{% if site_lien('app_site_suivi') %}<p><a href="{{ site_lien('app_site_suivi') }}" class="si-lien-fleche">Suivre ma commande</a></p>{% endif %}
+				</div>
+
+				{% if nePromettonsPas %}
+					<div class="se-carte se-pas si-revele">
+						<h3>Ce que nous ne promettons pas</h3>
+						<p class="se-pas-sous">Parce qu'une promesse honnête vaut mieux qu'une belle promesse.</p>
+						<ul>{% for point in nePromettonsPas %}<li>{{ point }}</li>{% endfor %}</ul>
+					</div>
+				{% endif %}
+
+				<form method="post" action="{{ path('app_site_engagements_signaler') }}" class="se-carte se-signaler si-revele" id="signaler" novalidate>
+					<h3>Un engagement non tenu&nbsp;?</h3>
+					<p class="se-signaler-sous">Dites-le-nous. Réponse de la direction sous {{ delaiReclamation }}&nbsp;h, et la solution appliquée.</p>
+					<input type="hidden" name="_t" value="{{ jeton }}">
+					<div class="si-piege" aria-hidden="true"><label for="se-site">Site web (laissez ce champ vide)</label><input type="text" id="se-site" name="{{ constant('App\\Service\\Site\\FormulaireDemande::PIEGE') }}" tabindex="-1" autocomplete="off"></div>
+					<div class="se-champs">
+						<label class="si-invisible" for="se-nom">Nom</label><input id="se-nom" name="nom" placeholder="Votre nom *" autocomplete="name" maxlength="120" required>
+						<label class="si-invisible" for="se-tel">Téléphone</label><input id="se-tel" name="telephone" type="tel" inputmode="tel" placeholder="Téléphone *" autocomplete="tel-national" maxlength="20" required>
+						<label class="si-invisible" for="se-num">N° de commande</label><input id="se-num" name="numero_commande" placeholder="N° de commande (CMD-…)" maxlength="40" autocomplete="off">
+						<label class="si-invisible" for="se-eng">Engagement concerné</label>
+						<select id="se-eng" name="engagement"><option value="">Engagement concerné…</option>{% for p in promesses %}<option>{{ p.titre }}</option>{% endfor %}</select>
+						<label class="si-invisible" for="se-msg">Ce qui s'est passé</label><textarea id="se-msg" name="message" rows="3" placeholder="Ce qui s'est passé… *" maxlength="{{ constant('App\\Entity\\DemandeDevis::MESSAGE_MAX') }}" required></textarea>
+					</div>
+					<div class="se-signaler-actions">
+						<button type="submit" class="si-bouton si-bouton-jaune">Envoyer</button>
+						{% if wa %}<a href="{{ wa }}" class="si-bouton si-bouton-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} WhatsApp</a>{% endif %}
+					</div>
+					{% if site_lien('app_site_reclamation_suivi') %}<p class="se-signaler-suivi"><a href="{{ site_lien('app_site_reclamation_suivi') }}">Suivre une réclamation déjà envoyée</a></p>{% endif %}
+				</form>
+			</div>
+		</div>
+	</section>
+
+	<section class="si-section se-fin">
+		<div class="si-cadre">
+			<div class="se-bandeau si-revele">
+				<p>{{ calcul ? 'Convaincu ? Votre prix en 10 secondes.' : 'Convaincu ? Parlons de votre projet.' }}</p>
+				<div class="si-accroche-actions">
+					{% if calcul %}<a href="{{ calcul }}" class="si-bouton si-bouton-rouge si-bouton-grand">Calculer mon prix</a>{% elseif site_lien('app_site_devis') %}<a href="{{ site_lien('app_site_devis') }}" class="si-bouton si-bouton-rouge si-bouton-grand">Demander un devis</a>{% endif %}
+					{% if site_lien('app_site_realisations') %}<a href="{{ site_lien('app_site_realisations') }}" class="si-bouton si-bouton-contour-clair si-bouton-grand">Voir nos réalisations</a>{% endif %}
+				</div>
+			</div>
+		</div>
+	</section>
 {% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

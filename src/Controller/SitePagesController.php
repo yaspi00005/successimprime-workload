@@ -15,7 +15,12 @@ use App\Service\Site\ContenuInitial;
 use App\Service\Site\MarkdownSite;
 use App\Twig\SiteContenuExtension;
 use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Parametres\Parametres;
+use App\Service\Site\ContactSite;
+use App\Service\Site\EngagementsSite;
+use App\Service\Site\FormulaireDemande;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -95,9 +100,31 @@ final class SitePagesController extends AbstractController
     }
 
     #[Route('/nos-engagements', name: 'app_site_engagements', methods: ['GET'])]
-    public function engagements(Request $request): Response
+    public function engagements(Request $request, EngagementsSite $engagements, Parametres $parametres, #[Autowire('%kernel.secret%')] string $secret): Response
     {
-        return $this->page('nos-engagements', 'site/engagements.html.twig', $request);
+        // Promesses, chiffres publiés par la direction et formulaire « Un engagement non tenu ? » (maquettes EC01 et EC02) ;
+        // titre, accroche et description de la page (ou son repli, ContenuInitial) restent ceux de Réglages › Site vitrine.
+        return $this->page('nos-engagements', 'site/engagements.html.twig', $request, [
+            'promesses' => $engagements->promesses(),
+            'chiffres' => $engagements->chiffresPublies(),
+            'nePromettonsPas' => $engagements->nePromettonsPas(),
+            'delaiReclamation' => $engagements->delaiReclamation(),
+            'orangeMoney' => (bool) $parametres->valeur('paiements', 'orange_money'),
+            'jeton' => FormulaireDemande::jetonDelai(time(), $secret),
+        ]);
+    }
+
+    /** Comment venir (maquette EC07) : l'itinéraire en vraies photos du local, les accès et la livraison réglés. */
+    #[Route('/comment-venir', name: 'app_site_venir', methods: ['GET'])]
+    public function venir(Request $request, ContactSite $contact): Response
+    {
+        return $this->site->cache($this->render('site/comment_venir.html.twig', [
+            'acces' => $contact->acces(),
+            'repere' => $contact->repereAdresse(),
+            'lienPlan' => $contact->lienPlan(),
+            'positionPlan' => $contact->position(),
+            'horaires' => $contact->horaires(new \DateTimeImmutable()),
+        ]), $request);
     }
 
     #[Route('/faq', name: 'app_site_faq', methods: ['GET'])]

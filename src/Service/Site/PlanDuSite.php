@@ -22,7 +22,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 final class PlanDuSite
 {
     /** Pages fixes hors menu et pied de page. */
-    public const AUTRES_PAGES = ['app_site_devis'];
+    public const AUTRES_PAGES = ['app_site_devis', 'app_site_venir'];
 
     /** Jamais dans le plan : « Suivre ma commande » (recherche par numéro et téléphone, noindex) et l'aperçu /site. */
     public const EXCLUES = ['app_site_accueil', 'app_site_suivi'];

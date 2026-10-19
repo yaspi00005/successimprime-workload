@@ -128,7 +128,7 @@ final class NettoyageAlerte
             str_starts_with($chemin, '/api/synchro') => 'Synchronisation',
             str_starts_with($chemin, '/api') => 'API',
             str_starts_with($chemin, '/om/') => 'Retour Orange Money',
-            1 === preg_match('#^/($|site|nos-produits|calculateur|studio-textile|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|contact|conseils|demander-un-devis|nos-actions-sociales|nous-soutenir|avis/|f/)#', $chemin) => 'Site public',
+            1 === preg_match('#^/($|site|nos-produits|calculateur|studio-textile|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|suivre-ma-reclamation|comment-venir|contact|conseils|demander-un-devis|nos-actions-sociales|nous-soutenir|avis/|f/)#', $chemin) => 'Site public',
             default => 'Administration',
         };
     }

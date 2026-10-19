@@ -91,7 +91,8 @@ final class VerificationsSysteme
 
             return [];
         }
-        $this->alertes->signaler(AlerteSysteme::SYNCHRO, 'Synchronisation avec le site en panne', NettoyageAlerte::texte($texte, 1500)."\nVoir Réglages › Sécurité › Synchronisation.", ['local'], AlerteSysteme::CRITIQUE, $maintenant);
+        $panne = $this->synchro->panne($maintenant);
+        $this->alertes->signaler(AlerteSysteme::SYNCHRO, 'Synchronisation : '.($panne['titre'] ?? 'en panne'), NettoyageAlerte::texte($texte, 1500)."\n".($panne['conseil'] ?? '')."\nVoir Réglages › Sécurité › Synchronisation.", ['local'], AlerteSysteme::CRITIQUE, $maintenant);
 
         return [$texte];
     }

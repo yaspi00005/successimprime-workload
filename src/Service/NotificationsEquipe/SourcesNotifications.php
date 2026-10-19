@@ -257,13 +257,15 @@ final class SourcesNotifications
         }
         $attente = $this->synchro->enAttente();
         $depuis = null === $reussite ? '' : ' depuis '.($reussite->format('Y-m-d') === $maintenant->format('Y-m-d') ? $reussite->format('H:i') : 'le '.$reussite->format('d/m à H:i'));
+        // La vraie cause (agent arrêté, adresse, certificat, opération refusée…), pas toujours « internet coupé ».
+        $panne = $this->synchro->panne($maintenant);
 
         return ['synchro_coupee' => [new Alerte(
             'synchro_coupee',
             'synchro:'.($reussite?->getTimestamp() ?? 0),
-            'Connexion internet coupée'.$depuis,
+            ($panne['titre'] ?? 'Synchronisation en panne').$depuis,
             ['ROLE_USER'],
-            'L\'ERP local continue de fonctionner · '.(0 === $attente ? 'aucune opération en attente' : \sprintf('%d opération%s attend%s d\'être envoyée%s au site', $attente, $attente > 1 ? 's' : '', $attente > 1 ? 'ent' : '', $attente > 1 ? 's' : '')),
+            'L\'ERP local continue de fonctionner · '.(0 === $attente ? 'aucune opération en attente' : \sprintf('%d opération%s attend%s d\'être envoyée%s au site', $attente, $attente > 1 ? 's' : '', $attente > 1 ? 'ent' : '', $attente > 1 ? 's' : '')).(null !== $panne ? ' · '.$panne['conseil'] : ''),
             'Détails',
             'app_synchronisation_index',
         )]];

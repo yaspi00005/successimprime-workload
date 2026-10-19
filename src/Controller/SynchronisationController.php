@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\SynchroEchange;
 use App\Service\Sauvegarde\Sauvegardes;
 use App\Service\Synchro\AgentSynchro;
+use App\Service\Synchro\CauseSynchro;
 use App\Service\Synchro\Synchro;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -54,6 +55,8 @@ final class SynchronisationController extends AbstractController
             'bloques' => $this->synchro->bloques(),
             'sauvegarde' => $sauvegarde,
             'schema_site' => $this->synchro->etat(AgentSynchro::ETAT_SCHEMA),
+            'panne' => $this->synchro->panne($maintenant),
+            'taille_lot' => AgentSynchro::tailleLot($this->synchro->etat(AgentSynchro::ETAT_TAILLE_LOT)),
         ]);
     }
 
@@ -78,10 +81,11 @@ final class SynchronisationController extends AbstractController
         }
         set_time_limit(300);
         $r = $agent->cycle();
+        $reste = $this->synchro->enAttente();
         match ($r['statut']) {
-            'ok' => $this->addFlash('success', \sprintf('Synchronisé : %d envoyée%s, %d reçue%s%s.', $r['envoyes'], $r['envoyes'] > 1 ? 's' : '', $r['recus'], $r['recus'] > 1 ? 's' : '', $r['conflits'] > 0 ? ', '.$r['conflits'].' conflit(s) à regarder' : '')),
+            'ok' => $this->addFlash($reste > 0 && 0 === $r['envoyes'] ? 'warning' : 'success', \sprintf('Synchronisé : %d envoyée%s, %d reçue%s%s.', $r['envoyes'], $r['envoyes'] > 1 ? 's' : '', $r['recus'], $r['recus'] > 1 ? 's' : '', $r['conflits'] > 0 ? ', '.$r['conflits'].' conflit(s) à regarder' : '').CauseSynchro::pourquoiRienNePart($reste, $r['envoyes'], \count($this->synchro->bloques()), $r['attente'] ?? null)),
             'occupe' => $this->addFlash('info', 'Une synchronisation est déjà en cours.'),
-            default => $this->addFlash('danger', 'Synchronisation impossible : '.$r['message']),
+            default => $this->addFlash('danger', 'Synchronisation impossible : '.$r['message'].(isset($r['cause']) ? ' '.CauseSynchro::conseil($r['cause'], (string) parse_url($this->synchro->url(), \PHP_URL_HOST)) : '')),
         };
 
         return $this->redirectToRoute('app_synchronisation_index');

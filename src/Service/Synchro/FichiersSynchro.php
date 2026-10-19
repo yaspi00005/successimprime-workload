@@ -118,7 +118,17 @@ final class FichiersSynchro
         }
 
         $entete = ['id' => $id, 'empreinte' => $empreinte, 'taille' => $taille];
-        $recu = (int) ($appeler($route, $entete)['recu'] ?? 0);
+        try {
+            $recu = (int) ($appeler($route, $entete)['recu'] ?? 0);
+        } catch (ErreurSite $e) {
+            if (400 !== $e->codeHttp) {
+                throw $e;
+            }
+            // Refusé par le site (sa fiche n'y est pas encore, souvent) : les autres fichiers et le cycle continuent ; il repartira au cycle suivant.
+            $bilan['refuses'][] = $libelle.' : '.$e->getMessage();
+
+            return;
+        }
         $flux = fopen($chemin, 'rb');
         if ($flux === false) {
             ++$bilan['manquants'];

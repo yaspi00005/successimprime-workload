@@ -20,7 +20,10 @@
 			La synchronisation n'est pas encore réglée. Elle se met en route avec le serveur en ligne : une clé commune dans <code>.env.local</code> des deux machines, et l'adresse du site sur l'ERP local (guide <code>docs/synchronisation.md</code>).
 		</div>
 	{% elseif alerte %}
-		<div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-2"></i>{{ alerte }}</div>
+		<div class="alert alert-danger">
+			<i class="fas fa-exclamation-triangle me-2"></i><strong>{{ panne ? panne.titre : 'Synchronisation en panne' }}</strong> · {{ alerte }}
+			{% if panne %}<div class="mt-1">{{ panne.conseil }}</div>{% endif %}
+		</div>
 	{% endif %}
 
 	<div class="row si-kpis">
@@ -107,12 +110,20 @@
 				</div>
 				{% if not en_ligne %}
 					<div class="si-sy-liaison">
-						<div><strong>Site {{ site ?: 'en ligne' }}</strong><span>{{ not configuree ? 'pas réglé' : (erreur ? 'Injoignable' : 'Joignable' ~ (latence ? ' · ' ~ latence ~ ' ms')) }}</span></div>
-						<i class="si-sy-point {{ not configuree ? 'gris' : (erreur ? 'rouge' : 'vert') }}"></i>
+						{% set site_ko = panne and panne.cause not in ['agent_arrete', 'operation'] %}
+						<div><strong>Site {{ site ?: 'en ligne' }}</strong><span>{{ not configuree ? 'pas réglé' : (site_ko ? panne.titre : 'Joignable' ~ (latence ? ' · ' ~ latence ~ ' ms')) }}</span></div>
+						<i class="si-sy-point {{ not configuree ? 'gris' : (site_ko ? 'rouge' : 'vert') }}"></i>
 					</div>
 					<div class="si-sy-liaison">
-						<div><strong>Connexion internet de l'imprimerie</strong><span>{{ not configuree ? '—' : (erreur ? 'Coupée ?' : 'Stable') }}</span></div>
-						<i class="si-sy-point {{ not configuree ? 'gris' : (erreur ? 'orange' : 'vert') }}"></i>
+						{% set internet_ko = panne and panne.cause == 'internet' %}
+						{% set agent_arrete = panne and panne.cause == 'agent_arrete' %}
+						<div><strong>Connexion internet de l'imprimerie</strong><span>{{ not configuree ? '—' : (internet_ko ? 'Coupée' : (agent_arrete ? 'Non vérifiée (agent arrêté)' : 'Fonctionne')) }}</span></div>
+						<i class="si-sy-point {{ not configuree ? 'gris' : (internet_ko ? 'rouge' : (agent_arrete ? 'orange' : 'vert')) }}"></i>
+					</div>
+					<div class="si-sy-liaison">
+						{% set lot_max = constant('App\\Service\\Synchro\\Synchro::LOT') %}
+						<div><strong>Taille des envois</strong><span>{{ taille_lot }} opération{{ taille_lot > 1 ? 's' }} par lot{{ taille_lot < lot_max ? ' · réduite, le site ne suivait pas' }}</span></div>
+						<i class="si-sy-point {{ taille_lot < lot_max ? 'orange' : 'vert' }}"></i>
 					</div>
 				{% endif %}
 				<div class="si-sy-liaison">

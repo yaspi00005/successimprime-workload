@@ -137,6 +137,8 @@ final class Synchro
         $contenus = [];
         $lot = [];
         $octets = 0;
+        // Lot réduit (le site ne suivait pas) : son volume l'est aussi.
+        $plafond = max(256 * 1024, intdiv(self::LOT_OCTETS * min($max, self::LOT), self::LOT));
         foreach ($lignes as $l) {
             $cle = $l->getType().$l->getPublicId();
             if ($l->getOperation() === SynchroJournal::ACTION) {
@@ -147,7 +149,7 @@ final class Synchro
             }
             // Des images (site vitrine, photos de réclamation) : le lot reste sous la taille d'un envoi signé.
             $octets += \strlen((string) json_encode($contenus[$cle]));
-            if ($lot !== [] && $octets > self::LOT_OCTETS) {
+            if ($lot !== [] && $octets > $plafond) {
                 break;
             }
             $lot[] = [
@@ -927,6 +929,44 @@ final class Synchro
             ->orderBy('j.id', 'ASC')->getQuery()->getResult();
     }
 
+    /** Les éléments bloqués repartent avec 10 nouveaux essais (après avoir réglé la cause). */
+    public function relancerBloques(): int
+    {
+        return $this->em->createQueryBuilder()
+            ->update(SynchroJournal::class, 'j')
+            ->set('j.tentatives', 0)->set('j.erreur', 'NULL')
+            ->where('j.envoyeLe IS NULL')->andWhere('j.ignore = false')
+            ->andWhere('j.tentatives >= :max')->setParameter('max', SynchroJournal::TENTATIVES_MAX)
+            ->getQuery()->execute();
+    }
+
+    /**
+     * La tête de la file : la prochaine opération à partir, avec ses essais et sa dernière erreur.
+     *
+     * @return array{id: int, type: string, operation: string, creeLe: \DateTimeImmutable, tentatives: int, erreur: ?string}|null
+     */
+    public function teteDeFile(): ?array
+    {
+        $ligne = $this->em->createQueryBuilder()
+            ->select('j')->from(SynchroJournal::class, 'j')
+            ->andWhere('j.envoyeLe IS NULL')->andWhere('j.ignore = false')
+            ->andWhere('j.tentatives < :max')->setParameter('max', SynchroJournal::TENTATIVES_MAX)
+            ->orderBy('j.id', 'ASC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+
+        return $ligne instanceof SynchroJournal ? ['id' => (int) $ligne->getId(), 'type' => $ligne->getType(), 'operation' => $ligne->getOperation(), 'creeLe' => $ligne->getCreeLe(), 'tentatives' => $ligne->getTentatives(), 'erreur' => $ligne->getErreur()] : null;
+    }
+
+    /** @return array<string, int> opérations en file par type, les plus nombreuses d'abord */
+    public function enAttenteParType(): array
+    {
+        $lignes = $this->em->createQueryBuilder()
+            ->select('j.type AS type, COUNT(j.id) AS n')->from(SynchroJournal::class, 'j')
+            ->andWhere('j.envoyeLe IS NULL')->andWhere('j.ignore = false')
+            ->groupBy('j.type')->orderBy('n', 'DESC')->getQuery()->getArrayResult();
+
+        return array_column(array_map(static fn (array $l): array => [$l['type'], (int) $l['n']], $lignes), 1, 0);
+    }
+
     public function ignorer(int $id): bool
     {
         $ligne = $this->em->find(SynchroJournal::class, $id);
@@ -977,6 +1017,38 @@ final class Synchro
 
         return ($derniereReussite === null ? 'La synchronisation n\'a jamais réussi' : 'Pas de synchronisation réussie depuis '.$duree)
             .($derniereErreur ? ' : '.$derniereErreur : '.');
+    }
+
+    /**
+     * Cause de la panne en cours, côté local : l'agent arrêté passe avant la
+     * dernière erreur notée (CauseSynchro). null quand rien n'est en panne.
+     *
+     * @return array{cause: string, titre: string, conseil: string, erreur: ?string}|null
+     */
+    public function panne(\DateTimeImmutable $maintenant): ?array
+    {
+        if ($this->enLigne || !$this->estConfiguree()) {
+            return null;
+        }
+        $erreur = $this->etat(AgentSynchro::ETAT_ERREUR);
+        // Erreur notée par une version d'avant les causes : « Site injoignable » était une erreur de transport.
+        $notee = $this->etat(AgentSynchro::ETAT_CAUSE) ?? (null === $erreur ? null : (str_starts_with($erreur, 'Site injoignable') ? CauseSynchro::SITE : CauseSynchro::ERREUR_SITE));
+        $cause = CauseSynchro::actuelle($notee, $this->dateEtat(AgentSynchro::ETAT_CYCLE), $maintenant);
+        if (null === $cause) {
+            return null;
+        }
+
+        return ['cause' => $cause, 'titre' => CauseSynchro::titre($cause), 'conseil' => CauseSynchro::conseil($cause, (string) parse_url($this->url, \PHP_URL_HOST)), 'erreur' => $erreur];
+    }
+
+    /** Dernière migration passée sur cette machine (comparée à celle du site, vue au ping). */
+    public function schemaLocal(): ?string
+    {
+        try {
+            return (string) $this->em->getConnection()->fetchOne('SELECT MAX(version) FROM doctrine_migration_versions') ?: null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /** Purge des historiques (une fois par jour). */

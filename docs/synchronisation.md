@@ -142,6 +142,32 @@ Les deux installations doivent avoir le même code et les mêmes migrations. L'�
 
 **Alerte** : si aucune synchro ne réussit pendant 15 minutes, chaque administrateur reçoit une notification (« Synchronisation : … », lien vers cet écran), une seule fois par panne, avec l'envoi sur son téléphone si les notifications sont activées. L'alerte s'affiche aussi sur le tableau de bord. Au retour de la liaison, une ligne « Liaison rétablie » est notée et les alertes de panne encore non lues sont marquées lues : la cloche ne garde pas les pannes finies (une connexion qui coupe souvent en donnait une quinzaine par jour). Si une alerte non lue est encore là quand une nouvelle panne commence, elle est remise à jour (texte, heure) au lieu d'en ajouter une, et repart sur le téléphone, où elle remplace la précédente. Une fois par jour, quand la liaison marche, les alertes restées non lues (celles d'avant cette version comprises) sont aussi marquées lues.
 
+## File qui n'avance pas : la vraie cause
+
+Le bandeau et la cloche ne disent plus toujours « Connexion internet coupée ». L'agent note la cause de son dernier échec (`CauseSynchro`) :
+
+| Titre affiché | Cause | Que faire |
+|---|---|---|
+| Synchronisation arrêtée sur cet ordinateur | aucun cycle depuis 5 min (tâche planifiée arrêtée, ordinateur en veille) | relancer `php bin/console app:synchro` ou la tâche planifiée |
+| Connexion internet coupée | ni le site ni 1.1.1.1 / 8.8.8.8 ne répondent | box, câble ; tout part au retour |
+| Adresse du site introuvable | internet marche, le nom du site ne se résout pas | `SYNC_URL=https://succesimprim.com` (sans www), domaine chez l'hébergeur |
+| Certificat du site refusé | SSL absent, expiré ou à un autre nom | refaire le certificat chez LWS |
+| Le site répond trop lentement | délai dépassé | rien : l'agent réduit les lots tout seul |
+| Site injoignable (internet fonctionne) | le site ne répond pas | ouvrir le site dans un navigateur, voir l'hébergeur |
+| Le site refuse la synchronisation | signature (clé, heure) | `--empreinte` sur les deux machines |
+| Le site renvoie une erreur | 500, 404… | même code et mêmes migrations des deux côtés |
+| Une opération bloque la synchronisation | le site refuse une opération précise | 10 essais puis « Bloqués », la file repart |
+
+**Lots adaptés** : un lot que le site n'arrive pas à recevoir (délai, connexion coupée en route, 413, 500, 502 à 504) repart aussitôt en plus petit (100 → 25 → 6 → 1 opérations, volume réduit d'autant), puis la taille remonte quand le site suit. Une seule opération qui ne passe toujours pas (et internet qui marche) compte un essai : après 10, elle va dans « Bloqués » au lieu de retenir toute la file. L'écran montre la taille des envois en cours.
+
+**« 0 envoyée » avec une file** : le message dit pourquoi (opération qui attend une autre donnée, opérations bloquées).
+
+**Commandes** (sur l'ERP local) :
+
+- `php bin/console app:synchro --diagnostic` : adresse (www, https), internet, DNS, agent (dernier passage, cycle bloqué), dernière erreur et sa cause, file par type, prochaine opération et ses essais, puis un cycle d'essai et la comparaison des versions (migrations) local / site ;
+- `php bin/console app:synchro --relancer-bloques` : redonne 10 essais aux opérations bloquées, puis fait un cycle (après avoir réglé la cause) ;
+- `php bin/console app:synchro` : un cycle (chaque cycle envoie jusqu'à 80 lots ; relancer pour vider une grosse file plus vite).
+
 ## Testé le 12/10/2026
 
 Deux installations sur la même machine (local et copie « en ligne ») :

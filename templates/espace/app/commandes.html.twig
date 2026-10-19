@@ -45,13 +45,12 @@
 				<small>{{ resume.echu > 0 ? 'dont ' ~ resume.echu|number_format(0, ',', ' ') ~ ' F échus' : (resume.reste > 0 ? 'rien d\'échu' : 'tout est réglé') }}</small>
 			</div>
 		{% endif %}
-		{% if resume.montantCommande is not null %}
-			<div class="ec-carte cd-chiffre">
-				<span>Commandé {{ annee ? 'en ' ~ annee : 'au total' }}</span>
-				<b>{{ resume.montantCommande|number_format(0, ',', ' ') }} F</b>
-				<small>{{ resume.commandees }} commande{{ resume.commandees > 1 ? 's' }}</small>
-			</div>
-		{% endif %}
+		{# Yaya 19/10 : le nombre de commandes seulement, jamais le total dépensé à l'imprimerie. #}
+		<div class="ec-carte cd-chiffre">
+			<span>Commandes {{ annee ? 'en ' ~ annee : 'au total' }}</span>
+			<b>{{ resume.commandees }}</b>
+			<small>commande{{ resume.commandees > 1 ? 's' }} passée{{ resume.commandees > 1 ? 's' }}</small>
+		</div>
 	</div>
 
 	<section class="ec-carte cd-liste">

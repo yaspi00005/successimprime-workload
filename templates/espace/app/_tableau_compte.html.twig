@@ -34,7 +34,8 @@
 			<a class="ec-tuile ec-bureau" href="{{ path('app_espace_commandes') }}">
 				<small>Commandes {{ apercu.annee }}</small>
 				<b>{{ apercu.commandesAnnee }}</b>
-				<small>{{ apercu.montantAnnee|number_format(0, ',', ' ') }} F</small>
+				{# Yaya 19/10 : le nombre de commandes seulement, jamais le total dépensé. #}
+				<small>commande{{ apercu.commandesAnnee > 1 ? 's' }} passée{{ apercu.commandesAnnee > 1 ? 's' }}</small>
 			</a>
 			{% if fi and not fi.exclu %}
 				<a class="ec-tuile" href="{{ path('app_espace_fidelite') }}">

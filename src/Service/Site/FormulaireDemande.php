@@ -4,6 +4,7 @@ namespace App\Service\Site;
 
 use App\Entity\CompteClient;
 use App\Entity\DemandeDevis;
+use App\Entity\DemandeDevisLigne;
 use App\Entity\ProduitConfiguration;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\PiecesParMetreCarre;
@@ -130,6 +131,34 @@ final class FormulaireDemande
             return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
         }
 
+        ['valeurs' => $ligne, 'erreurs' => $erreursLigne] = self::validerLigne($saisie, $produits, $espacementPiecesM2);
+        $valeurs = $ligne + $valeurs;
+        $erreurs += $erreursLigne;
+        $produit = $ligne['produit'];
+        $id = $texte('produit');
+
+        if (null === $produit && '' === $id && mb_strlen($message) < 5 && !isset($erreurs['message'])) {
+            $erreurs['message'] = 'Choisissez un produit ou décrivez votre projet.';
+        }
+
+        return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+    }
+
+    /**
+     * Un produit demandé : produit du catalogue, taille, quantité (pièces
+     * ou m²) et finitions. Les erreurs ont le nom du champ de la ligne.
+     *
+     * @param array<string, mixed>       $saisie
+     * @param list<ProduitConfiguration> $produits
+     *
+     * @return array{valeurs: array{produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, quantiteM2: ?float, finitions: list<int>}, erreurs: array<string, string>}
+     */
+    public static function validerLigne(array $saisie, array $produits, float $espacementPiecesM2 = PiecesParMetreCarre::ESPACEMENT_DEFAUT): array
+    {
+        $erreurs = [];
+        $texte = static fn (string $cle): string => trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', \is_scalar($saisie[$cle] ?? null) ? (string) $saisie[$cle] : ''));
+        $valeurs = ['produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'quantiteM2' => null, 'finitions' => []];
+
         $id = $texte('produit');
         $produit = '' === $id ? null : self::produit($produits, $id);
         if ('' !== $id && null === $produit) {
@@ -175,7 +204,101 @@ final class FormulaireDemande
             }
         }
 
-        if (null === $produit && '' === $id && mb_strlen($message) < 5 && !isset($erreurs['message'])) {
+        return ['valeurs' => $valeurs, 'erreurs' => $erreurs];
+    }
+
+    /**
+     * Lignes du panier de devis telles qu'envoyées (lignes[i][produit]...),
+     * ou l'ancien formulaire à un produit (produit, quantite... au premier
+     * niveau) vu comme une seule ligne. Les clés d'origine sont gardées :
+     * elles nomment les champs en erreur et les fichiers (lignes[i][fichier]).
+     * Au plus PanierDevis::LIGNES_LUES lignes sont lues.
+     *
+     * @param array<string, mixed> $saisie
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public static function lignes(array $saisie): array
+    {
+        if (!\is_array($saisie['lignes'] ?? null)) {
+            $ancienne = array_intersect_key($saisie, array_flip(['produit', 'largeur', 'hauteur', 'quantite', 'unite_quantite', 'quantite_m2', 'finitions', 'description']));
+
+            return [0 => $ancienne];
+        }
+        $lignes = [];
+        foreach (\array_slice($saisie['lignes'], 0, PanierDevis::LIGNES_LUES, true) as $cle => $ligne) {
+            if (\is_array($ligne) && \is_int($cle) && $cle >= 0 && $cle < 1000) {
+                $lignes[$cle] = $ligne;
+            }
+        }
+
+        return [] === $lignes ? [0 => []] : $lignes;
+    }
+
+    /**
+     * Panier de devis (docs/site-vitrine.md) : coordonnées, message et
+     * jusqu'à PanierDevis::LIGNES_MAX lignes, chacune un produit du
+     * catalogue ou un « Autre projet » décrit. Une ligne laissée vide est
+     * ignorée ; sans aucune ligne, le message doit décrire le projet
+     * (comme l'ancien formulaire). Les erreurs d'une ligne sont rangées
+     * sous « lignes.<clé>.<champ> ».
+     *
+     * @param array<string, mixed>       $saisie
+     * @param list<ProduitConfiguration> $produits
+     * @param list<int>                  $clesAvecFichier lignes qui ont un fichier (une ligne avec un fichier n'est pas vide)
+     *
+     * @return array{valeurs: array{nom: string, telephone: ?string, email: ?string, message: ?string, lignes: list<array{cle: int, produit: ?ProduitConfiguration, largeur: ?float, hauteur: ?float, quantite: ?int, quantiteM2: ?float, finitions: list<int>, description: ?string}>}, erreurs: array<string, string>}
+     */
+    public static function validerPanier(array $saisie, array $produits, float $espacementPiecesM2 = PiecesParMetreCarre::ESPACEMENT_DEFAUT, array $clesAvecFichier = []): array
+    {
+        $erreurs = [];
+        $nettoyer = static fn (mixed $v): string => trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/u', '', \is_scalar($v) ? (string) $v : ''));
+        $coordonnees = self::valider(DemandeDevis::NATURE_CONTACT, ['message' => 'xxxxx'] + array_intersect_key($saisie, array_flip(['nom', 'telephone', 'email'])), []);
+        $erreurs += array_intersect_key($coordonnees['erreurs'], array_flip(['nom', 'telephone', 'email']));
+        $message = $nettoyer($saisie['message'] ?? '');
+        if (mb_strlen($message) > DemandeDevis::MESSAGE_MAX) {
+            $erreurs['message'] = \sprintf('%d caractères au plus.', DemandeDevis::MESSAGE_MAX);
+        }
+        $valeurs = [
+            'nom' => $coordonnees['valeurs']['nom'], 'telephone' => $coordonnees['valeurs']['telephone'], 'email' => $coordonnees['valeurs']['email'],
+            'message' => '' === $message ? null : $message, 'lignes' => [],
+        ];
+
+        $saisies = self::lignes($saisie);
+        $remplies = array_filter($saisies, static fn (array $l, int $cle): bool => '' !== $nettoyer($l['produit'] ?? '') || '' !== $nettoyer($l['description'] ?? '') || '' !== $nettoyer($l['quantite'] ?? '') || \in_array($cle, $clesAvecFichier, true), \ARRAY_FILTER_USE_BOTH);
+        if (\count($remplies) > PanierDevis::LIGNES_MAX) {
+            $erreurs['lignes'] = \sprintf('%d produits au plus par demande : envoyez les autres dans une seconde demande.', PanierDevis::LIGNES_MAX);
+            $remplies = \array_slice($remplies, 0, PanierDevis::LIGNES_MAX, true);
+        }
+
+        foreach ($remplies as $cle => $l) {
+            $description = $nettoyer($l['description'] ?? '');
+            if ('' !== $nettoyer($l['produit'] ?? '')) {
+                ['valeurs' => $v, 'erreurs' => $e] = self::validerLigne($l, $produits, $espacementPiecesM2);
+                foreach ($e as $champ => $texte) {
+                    $erreurs['lignes.'.$cle.'.'.$champ] = $texte;
+                }
+                $valeurs['lignes'][] = ['cle' => $cle] + $v + ['description' => null];
+                continue;
+            }
+
+            // « Autre projet » : quelques mots suffisent ; seul dans la demande, le message peut tenir lieu de description.
+            $v = ['cle' => $cle, 'produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'quantiteM2' => null, 'finitions' => [], 'description' => '' === $description ? null : $description];
+            $quantite = $nettoyer($l['quantite'] ?? '');
+            if ('' !== $quantite && (!ctype_digit($quantite) || (int) $quantite < 1 || (int) $quantite > self::QUANTITE_MAX)) {
+                $erreurs['lignes.'.$cle.'.quantite'] = 'Quantité entre 1 et 100 000.';
+            } elseif ('' !== $quantite) {
+                $v['quantite'] = (int) $quantite;
+            }
+            if (mb_strlen($description) > DemandeDevisLigne::DESCRIPTION_MAX) {
+                $erreurs['lignes.'.$cle.'.description'] = \sprintf('%d caractères au plus.', DemandeDevisLigne::DESCRIPTION_MAX);
+            } elseif (mb_strlen($description) < 5 && !(1 === \count($remplies) && mb_strlen($message) >= 5)) {
+                $erreurs['lignes.'.$cle.'.description'] = 'Décrivez ce projet en quelques mots (support, taille, quantité…).';
+            }
+            $valeurs['lignes'][] = $v;
+        }
+
+        if ([] === $valeurs['lignes'] && mb_strlen($message) < 5 && !isset($erreurs['message'])) {
             $erreurs['message'] = 'Choisissez un produit ou décrivez votre projet.';
         }
 

@@ -29,9 +29,9 @@
 								<span class="si-rc-num">{{ d.numero }}<small>{{ d.creeLe|date(d.creeLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m') }}</small></span>
 								<span class="si-rc-texte">
 									<b>{{ d.estDevis ? (d.resume ?: 'Projet décrit dans le message') : d.libelleObjet }}</b>
-									<small>{{ d.nom }} · {{ d.telephoneLocal }}{{ d.devis ? ' · devis ' ~ d.devis.numero }}{{ d.client and not d.prospect ? ' · client ' ~ d.client.code }}{{ d.fichier ? ' · fichier joint' }}</small>
+									<small>{{ d.nom }} · {{ d.telephoneLocal }}{{ d.devis ? ' · devis ' ~ d.devis.numero }}{{ d.client and not d.prospect ? ' · client ' ~ d.client.code }}{{ d.nombreFichiers == 1 ? ' · fichier joint' : (d.nombreFichiers > 1 ? ' · ' ~ d.nombreFichiers ~ ' fichiers joints') }}</small>
 								</span>
-								<span class="si-pastille si-pastille-{{ d.estDevis ? 'bleu' : 'gris' }}">{{ d.estDevis ? 'Devis' : 'Message' }}</span>
+								<span class="si-pastille si-pastille-{{ d.estDevis ? 'bleu' : 'gris' }}">{{ d.estDevis ? (d.estPanier ? 'Devis · ' ~ d.lignes|length ~ ' lignes' : 'Devis') : 'Message' }}</span>
 								<span class="si-pastille si-pastille-{{ d.estTraitee ? 'vert' : (d.prepareeLe ? 'orange' : 'rouge') }}">{{ d.estTraitee ? 'Traitée' ~ (d.traiteePar ? ' par ' ~ d.traiteePar) : (d.prepareeLe ? 'À traiter' : 'À préparer') }}</span>
 							</a>
 						</li>

@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\DemandeDevisLigne;
 use App\Entity\Devis;
 use App\Entity\DevisDetails;
 use App\Entity\User;
@@ -275,11 +276,20 @@ class DevisController extends AbstractController
 
     /** « Envoyer au client » depuis la fiche d'un brouillon, par les canaux enregistrés. */
     #[Route('/{id}/envoyer', name: 'envoyer', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function envoyer(Devis $devi, Request $request, EnvoiDevis $envoi): Response
+    public function envoyer(Devis $devi, Request $request, EnvoiDevis $envoi, EntityManagerInterface $em): Response
     {
         $this->jeton($request, 'devis-'.$devi->getId());
         if (Devis::STATUT_BROUILLON !== $devi->getStatut() || $devi->getDevisDetails()->isEmpty()) {
             $this->addFlash('warning', 'Seul un brouillon avec au moins une ligne s\'envoie.');
+
+            return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
+        }
+        // Ligne venue du panier de devis du site (« Autre projet », produit non chiffrable) restée à 0 F : la chiffrer avant d'envoyer.
+        $aChiffrer = (int) $em->createQueryBuilder()->select('COUNT(l.id)')->from(DemandeDevisLigne::class, 'l')
+            ->join('l.devisDetail', 'd')->where('d.devis = :devis')->andWhere('d.prixUnitaire <= 0')
+            ->setParameter('devis', $devi)->getQuery()->getSingleScalarResult();
+        if ($aChiffrer > 0) {
+            $this->addFlash('warning', 'Une ligne venue de la demande du site est encore à 0 F : chiffrez-la (Modifier) avant d\'envoyer le devis au client.');
 
             return $this->redirectToRoute('app_devis_show', ['id' => $devi->getId()]);
         }

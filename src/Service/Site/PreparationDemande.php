@@ -4,6 +4,7 @@ namespace App\Service\Site;
 
 use App\Entity\Clients;
 use App\Entity\DemandeDevis;
+use App\Entity\DemandeDevisLigne;
 use App\Entity\Devis;
 use App\Entity\DevisDetailFinition;
 use App\Entity\DevisDetails;
@@ -27,11 +28,11 @@ final class PreparationDemande
      * @param array{paliers: list<array{quantite: int, pourcentage: float}>, face_en_plus: int, paliers_b2b: bool}|null $tarifAtelier réglages de l'Atelier 3D (TarifAtelier::reglages)
      * @param float|null $espacementPiecesM2 espacement des pièces au m² (réglage du local), pour un produit au m² dont le visiteur donne la taille
      *
-     * @return array{client: ?Clients, nouveauClient: bool, prospect: ?Prospect, devis: ?Devis, aChiffrer: ?string}
+     * @return array{client: ?Clients, nouveauClient: bool, prospect: ?Prospect, devis: ?Devis, aChiffrer: ?string, lignes: list<array{0: DemandeDevisLigne, 1: DevisDetails}>}
      */
     public static function construire(DemandeDevis $demande, ?Clients $existant, \DateTimeImmutable $le, ?array $tarifAtelier = null, ?float $espacementPiecesM2 = null): array
     {
-        $resultat = ['client' => $existant, 'nouveauClient' => false, 'prospect' => null, 'devis' => null, 'aChiffrer' => null];
+        $resultat = ['client' => $existant, 'nouveauClient' => false, 'prospect' => null, 'devis' => null, 'aChiffrer' => null, 'lignes' => []];
 
         if (!$demande->estDevis()) {
             // Un message : rattaché au client connu ; une demande de devis d'un inconnu devient un prospect.
@@ -50,7 +51,17 @@ final class PreparationDemande
             ->setStatut(Devis::STATUT_BROUILLON)
             ->setObservation(self::note($demande));
 
-        if (null !== $demande->getConfiguration()) {
+        if ($demande->estPanier()) {
+            // Panier de devis : une ligne de devis par ligne de la demande, dans le même ordre.
+            foreach ($demande->getLignes() as $l) {
+                $ligne = self::ligneDuPanier($l, $espacementPiecesM2);
+                $devis->addDevisDetail($ligne);
+                $resultat['lignes'][] = [$l, $ligne];
+                if (DevisDetails::TYPE_LIBRE === $ligne->getTypeLigne()) {
+                    $resultat['aChiffrer'] ??= 'Ligne '.$l->getPosition().' à chiffrer';
+                }
+            }
+        } elseif (null !== $demande->getConfiguration()) {
             try {
                 $ligne = self::ligneDevis($demande->getConfiguration(), (int) ($demande->getQuantite() ?? 1), $demande->getLargeurCm(), $demande->getHauteurCm(), self::finitionsChoisies($demande));
                 if (null !== $espacementPiecesM2 && FormulaireDemande::piecesAuM2Possible($demande->getConfiguration())) {
@@ -82,6 +93,76 @@ final class PreparationDemande
         }
 
         return $resultat;
+    }
+
+    /**
+     * Ligne du devis pour une ligne du panier : le produit au tarif public
+     * (pièces au m² comprises), avec ses finitions ; un « Autre projet » ou
+     * un produit impossible à chiffrer devient une ligne libre à 0, que
+     * l'équipe chiffre (le devis ne peut pas être enregistré sans prix).
+     * L'observation de la ligne dit d'où elle vient et nomme son fichier.
+     */
+    public static function ligneDuPanier(DemandeDevisLigne $l, ?float $espacementPiecesM2 = null): DevisDetails
+    {
+        $note = [\sprintf('Ligne %d de la demande %s du site.', $l->getPosition(), $l->getDemande()?->getNumero() ?? '')];
+        if (null !== $l->getQuantiteM2()) {
+            $note[] = \sprintf('Le visiteur a demandé %s m².', number_format($l->getQuantiteM2(), 2, ',', ' '));
+        }
+        if (null !== $l->getPrixIndicatif()) {
+            $note[] = \sprintf('Prix indicatif montré sur le site : %s F.', number_format($l->getPrixIndicatif(), 0, ',', ' '));
+        }
+        if (null !== $l->getFichier()) {
+            $note[] = 'Fichier joint : '.$l->getFichier()->getNomOriginal().' (Ventes › Demandes du site).';
+        }
+
+        $config = $l->getConfiguration();
+        if (null !== $config) {
+            try {
+                $ligne = self::ligneDevis($config, (int) ($l->getQuantite() ?? max(1, $config->getQuantiteMinimale())), $l->getLargeurCm(), $l->getHauteurCm(), self::finitionsDeLigne($l));
+                if (null !== $espacementPiecesM2 && FormulaireDemande::piecesAuM2Possible($config)) {
+                    $ligne->choisirPiecesAuM2(true, $espacementPiecesM2)->calculerTotaux(false);
+                }
+
+                return $ligne->setObservation(implode("\n", $note));
+            } catch (\DomainException $e) {
+                $note[] = 'À chiffrer : '.$e->getMessage();
+            }
+        } else {
+            $note[] = 'À chiffrer par l\'équipe.';
+        }
+
+        $designation = null !== $config ? $l->getResume() : 'Autre projet : '.($l->getDescription() ?? 'voir le message');
+        if (null === $config && null !== $l->getNomsFinitions()) {
+            $designation .= ' · '.$l->getNomsFinitions();
+        }
+
+        return (new DevisDetails())
+            ->setTypeLigne(DevisDetails::TYPE_LIBRE)
+            ->setModeConfiguration('manuel')
+            ->setDesignation(mb_substr($designation, 0, 255))
+            ->setQuantite(max(1, (int) ($l->getQuantite() ?? 1)))
+            ->setPrixUnitaire(0)
+            ->setTva(0)
+            ->setObservation(implode("\n", $note))
+            ->calculerTotaux(false);
+    }
+
+    /**
+     * Finitions d'une ligne du panier (par l'identifiant public de leur
+     * finition) retrouvées dans celles que propose le produit.
+     *
+     * @return list<int>
+     */
+    public static function finitionsDeLigne(DemandeDevisLigne $l): array
+    {
+        $ids = [];
+        foreach ($l->getConfiguration()?->getConfigurationFinitions() ?? [] as $cf) {
+            if (null !== $cf->getId() && null !== $cf->getFinition() && \in_array($cf->getFinition()->getPublicId()->toRfc4122(), $l->getFinitions(), true)) {
+                $ids[] = $cf->getId();
+            }
+        }
+
+        return $ids;
     }
 
     /**
@@ -179,6 +260,14 @@ final class PreparationDemande
         }
         if (null !== $demande->getFichier()) {
             $lignes[] = 'Fichier joint : '.$demande->getFichier()->getNomOriginal();
+        }
+        if ($demande->estPanier()) {
+            $prix = array_map(static fn (DemandeDevisLigne $l): ?int => $l->getPrixIndicatif(), $demande->getLignes()->toArray());
+            $total = PanierDevis::total($prix);
+            $lignes[] = \sprintf('Panier de %d lignes, %d fichier%s joint%s (un par ligne au plus).', \count($prix), $demande->nombreFichiers(), $demande->nombreFichiers() > 1 ? 's' : '', $demande->nombreFichiers() > 1 ? 's' : '');
+            if (null !== $total['total']) {
+                $lignes[] = \sprintf('Total indicatif montré sur le site : %s F%s, à confirmer.', number_format($total['total'], 0, ',', ' '), $total['complet'] ? '' : ' (sans les lignes à chiffrer)');
+            }
         }
         if (null !== $demande->getCreation()) {
             $lignes[] = \sprintf('Modèle du Studio textile %s : vues et images dans Ventes › Créations Studio textile.', $demande->getCreation()->getNumero() ?? '');

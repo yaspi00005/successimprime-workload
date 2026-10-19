@@ -1,0 +1,93 @@
+{#
+	Une ligne du panier de devis (docs/site-vitrine.md) : produit ou « Autre
+	projet », taille, quantité (pièces ou m²), finitions, fichier de la
+	ligne et prix indicatif (rempli par le script de la page, jamais écrit
+	ici : la page envoyée ne contient aucun montant).
+
+	Variables : cle (clé de la ligne dans lignes[...], '__i__' pour le
+	modèle copié par le script), l (saisie de la ligne), numero (1, 2…),
+	retirable, modele (vrai pour le <template>), plus groupes, fiches,
+	erreurs, extensions, tailleMax, tailleMo, wa de la page.
+	La ligne 0 garde les identifiants de l'ancien formulaire
+	(champ-produit, pieces-m2…), que la recette des accès lit.
+#}
+{% set modele = modele ?? false %}
+{% set sfx = (cle ~ '' == '0' and not modele) ? '' : '-' ~ cle %}
+{% set nom = 'lignes[' ~ cle ~ ']' %}
+{% set err = 'lignes.' ~ cle ~ '.' %}
+{% set fiche = l.produit ? (fiches[l.produit] ?? null) : null %}
+{% set autre = not l.produit %}
+<li class="si-ligne" data-ligne="{{ cle }}">
+	<div class="si-ligne-tete">
+		<h3 class="si-ligne-titre"><span class="si-ligne-num" data-ligne-num aria-hidden="true">{{ numero }}</span> <span data-ligne-nom>Produit {{ numero }}</span></h3>
+		<button type="submit" name="_retirer" value="{{ cle }}" formnovalidate class="si-ligne-retirer" data-retirer{% if not retirable %} hidden{% endif %} aria-label="Retirer le produit {{ numero }}">
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h4v2H4V5h4Zm-3 6h12l-1 12H7Zm4 2v8h2v-8Zm4 0v8h2v-8Z"/></svg>
+			<span>Retirer</span>
+		</button>
+	</div>
+
+	<div class="si-champ{{ erreurs[err ~ 'produit'] is defined ? ' si-champ-erreur' }}">
+		<label for="champ-produit{{ sfx }}">Produit</label>
+		<select id="champ-produit{{ sfx }}" name="{{ nom }}[produit]" data-champ="produit"{% if erreurs[err ~ 'produit'] is defined %} aria-invalid="true" aria-describedby="erreur-produit{{ sfx }}"{% endif %}>
+			<option value="">Autre projet : je le décris</option>
+			{% for g in groupes %}
+				<optgroup label="{{ g.nom }}">
+					{% for p in g.produits %}
+						<option value="{{ p.id }}"{% if p.id ~ '' == l.produit ~ '' %} selected{% endif %}>{{ p.nom }}</option>
+					{% endfor %}
+				</optgroup>
+			{% endfor %}
+		</select>
+		{% if erreurs[err ~ 'produit'] is defined %}<p class="si-erreur" id="erreur-produit{{ sfx }}">{{ erreurs[err ~ 'produit'] }}</p>{% endif %}
+	</div>
+
+	<div class="si-champ si-ligne-description{{ erreurs[err ~ 'description'] is defined ? ' si-champ-erreur' }}" data-bloc="description"{% if not autre %} hidden{% endif %}>
+		<label for="champ-description{{ sfx }}">Votre projet <span class="si-facultatif">(support, taille, quantité…)</span></label>
+		<textarea id="champ-description{{ sfx }}" name="{{ nom }}[description]" data-champ="description" rows="2" maxlength="{{ constant('App\\Entity\\DemandeDevisLigne::DESCRIPTION_MAX') }}" placeholder="Ex. : 2 panneaux en Forex 60 × 40 cm pour la vitrine"{% if erreurs[err ~ 'description'] is defined %} aria-invalid="true" aria-describedby="erreur-description{{ sfx }}"{% endif %}>{{ l.description ?? '' }}</textarea>
+		{% if erreurs[err ~ 'description'] is defined %}<p class="si-erreur" id="erreur-description{{ sfx }}">{{ erreurs[err ~ 'description'] }}</p>{% endif %}
+	</div>
+
+	<div class="si-champs-3">
+		<div class="si-taille" id="bloc-taille{{ sfx }}" data-bloc="taille"{% if fiche and not fiche.taille %} hidden{% endif %}>
+			{% for cote in ['largeur', 'hauteur'] %}
+				<div class="si-champ{{ erreurs[err ~ cote] is defined ? ' si-champ-erreur' }}">
+					<label for="champ-{{ cote }}{{ sfx }}">{{ cote == 'largeur' ? 'Largeur' : 'Hauteur' }} (cm)</label>
+					<input type="text" id="champ-{{ cote }}{{ sfx }}" name="{{ nom }}[{{ cote }}]" value="{{ attribute(l, cote) }}" data-champ="{{ cote }}" inputmode="decimal" maxlength="8" autocomplete="off" placeholder="{{ fiche and attribute(fiche, cote) ? attribute(fiche, cote)|number_format(0, ',', ' ') : (cote == 'largeur' ? '300' : '100') }}"{% if erreurs[err ~ cote] is defined %} aria-invalid="true" aria-describedby="erreur-{{ cote }}{{ sfx }}"{% endif %}>
+					{% if erreurs[err ~ cote] is defined %}<p class="si-erreur" id="erreur-{{ cote }}{{ sfx }}">{{ erreurs[err ~ cote] }}</p>{% endif %}
+				</div>
+			{% endfor %}
+		</div>
+		<div class="si-champ{{ erreurs[err ~ 'quantite'] is defined ? ' si-champ-erreur' }}">
+			<label for="champ-quantite{{ sfx }}">Quantité</label>
+			<input type="number" id="champ-quantite{{ sfx }}" name="{{ nom }}[quantite]" value="{{ l.quantite }}" data-champ="quantite" min="1" max="100000" step="1" inputmode="numeric" placeholder="{{ fiche ? fiche.min : '1' }}"{% if erreurs[err ~ 'quantite'] is defined %} aria-invalid="true" aria-describedby="erreur-quantite{{ sfx }}"{% endif %}>
+			{% if erreurs[err ~ 'quantite'] is defined %}<p class="si-erreur" id="erreur-quantite{{ sfx }}">{{ erreurs[err ~ 'quantite'] }}</p>{% endif %}
+		</div>
+	</div>
+	<p class="si-aide si-aide-taille" id="aide-taille{{ sfx }}" data-bloc="aide-taille"{% if not fiche or not fiche.taille %} hidden{% endif %}>Une estimation de la taille suffit : nous la vérifions avec vous.</p>
+	{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m². #}
+	{{ include('partials/_pieces_m2.html.twig', {id: 'pieces-m2' ~ sfx, largeur: '#champ-largeur' ~ sfx, hauteur: '#champ-hauteur' ~ sfx, quantite: '#champ-quantite' ~ sfx, arrondi_mm: 1, unite: l.unite_quantite ?? 'piece', m2: l.quantite_m2 ?? '', erreur: erreurs[err ~ 'quantite_m2'] ?? null, masque: not (fiche and fiche.m2), nom_unite: nom ~ '[unite_quantite]', nom_m2: nom ~ '[quantite_m2]', sans_ressources: true}) }}
+
+	<div class="si-champ si-finitions" id="bloc-finitions{{ sfx }}" data-bloc="finitions"{% if not fiche or not fiche.finitions %} hidden{% endif %}>
+		<span class="si-champ-libelle" id="libelle-finitions{{ sfx }}">Finitions</span>
+		<div class="si-puces" id="liste-finitions{{ sfx }}" data-liste-finitions role="group" aria-labelledby="libelle-finitions{{ sfx }}">
+			{% for f in fiche.finitions ?? [] %}
+				<label class="si-puce">
+					<input type="checkbox" name="{{ nom }}[finitions][]" value="{{ f.id }}"{% if f.id in l.finitions or f.obligatoire or (not l.finitions and f.parDefaut and not erreurs) %} checked{% endif %}{% if f.obligatoire %} disabled{% endif %}>
+					<span>{{ f.nom }}{% if f.obligatoire %} (inclus){% endif %}</span>
+				</label>
+			{% endfor %}
+		</div>
+	</div>
+
+	<div class="si-champ si-fichier{{ erreurs[err ~ 'fichier'] is defined ? ' si-champ-erreur' }}">
+		<span class="si-champ-libelle">Fichier <span class="si-facultatif">(facultatif)</span></span>
+		<label class="si-depot si-depot-ligne" for="champ-fichier{{ sfx }}">
+			<input type="file" id="champ-fichier{{ sfx }}" name="{{ nom }}[fichier]" class="si-fichier-champ" data-champ="fichier" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" aria-describedby="nom-fichier{{ sfx }}{{ erreurs[err ~ 'fichier'] is defined ? ' erreur-fichier' ~ sfx }}"{% if erreurs[err ~ 'fichier'] is defined %} aria-invalid="true"{% endif %}>
+			<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 10A7.5 7.5 0 0 0 5.2 8 6 6 0 0 0 6 20h13a5 5 0 0 0 .4-10ZM14 13v4h-4v-4H7l5-5 5 5Z"/></svg>
+			<span><strong>Joindre le fichier de ce produit</strong><span class="si-depot-nom" id="nom-fichier{{ sfx }}" data-nom-fichier>PDF, AI, EPS, PSD, JPG, PNG ou TIFF · {{ tailleMo }} Mo au plus</span></span>
+		</label>
+		<p class="si-erreur" id="erreur-fichier{{ sfx }}" data-erreur-fichier role="alert"{% if erreurs[err ~ 'fichier'] is not defined %} hidden{% endif %}>{{ erreurs[err ~ 'fichier'] ?? '' }}</p>
+	</div>
+
+	<p class="si-ligne-prix" data-prix aria-live="polite" hidden></p>
+</li>

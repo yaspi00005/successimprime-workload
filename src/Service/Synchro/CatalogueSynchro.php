@@ -17,6 +17,7 @@ use App\Entity\DemandeConception;
 use App\Entity\DepotSoldeClient;
 use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
+use App\Entity\DemandeDevisLigne;
 use App\Entity\ControlePrePresse;
 use App\Entity\CommandesDetails;
 use App\Entity\Devis;
@@ -734,6 +735,15 @@ final class CatalogueSynchro
                 'listes' => ['finitions' => 'finition'], 'numero' => 'numero',
                 // Numéro et accusé de réception posés en ligne juste après la création.
                 'remontees' => ['numero' => ['' => ['*']], 'accuseEnvoyeLe' => ['' => ['*']]],
+                // Panier de devis (docs/site-vitrine.md) : une ligne par produit, avec son fichier, qui
+                // arrive avec la demande (le devis brouillon est préparé à l'arrivée). Les finitions vont
+                // par l'identifiant public de leur finition ; la ligne du devis préparée reste au local.
+                'enfants' => ['lignes' => [
+                    'classe' => DemandeDevisLigne::class, 'parent' => 'demande',
+                    'champs' => ['position', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'finitions', 'nomsFinitions', 'description', 'prixIndicatif'],
+                    'relations' => ['configuration' => 'configuration', 'fichier' => 'fichier'],
+                    'facultatives' => ['configuration'],
+                ]],
             ],
             // Demande de conception (docs/demande-conception.md) : supports réglés au local, demandes
             // écrites en ligne. Le support ne dit rien des coûts : le forfait est le prix public.

@@ -1,6 +1,8 @@
 {#
 	Confirmation d'une demande de devis ou d'un message (maquette 11) :
-	numéro de la demande, suite des étapes, aucun prix. Montrée une fois.
+	numéro de la demande, suite des étapes. Montrée une fois. Pour un devis,
+	les produits envoyés avec leur prix indicatif et le total, toujours « à
+	confirmer par l'imprimerie » (panier de devis, docs/site-vitrine.md).
 #}
 {% extends 'site/_site.html.twig' %}
 
@@ -12,7 +14,7 @@
 
 {% block entete %}
 	<meta name="robots" content="noindex, nofollow">
-	{{ site_styles('css/site-formulaires.css') }}
+	{{ site_styles('css/site-formulaires.css', 'css/site-panier.css') }}
 {% endblock %}
 
 {% block contenu %}
@@ -31,7 +33,21 @@
 					</div>
 				</div>
 
-				{% if envoi.resume ?? null %}
+				{% if devis and (envoi.lignes ?? [])|length > 0 %}
+					<ul class="si-envoyee-lignes" aria-label="Produits demandés">
+						{% for l in envoi.lignes %}
+							<li>
+								<b>{{ l.nom }}</b>
+								{% if l.detail or l.fichier %}<small>{{ l.detail }}{% if l.fichier %}{{ l.detail ? ' · ' }}fichier : {{ l.fichier }}{% endif %}</small>{% endif %}
+								<span class="si-envoyee-prix">{% if l.prix %}{{ l.prix }}<em>indicatif</em>{% else %}<em>prix donné avec le devis</em>{% endif %}</span>
+							</li>
+						{% endfor %}
+					</ul>
+					{% if envoi.total %}
+						<p class="si-envoyee-total"><span>Total indicatif{{ envoi.totalComplet ? '' : ' (sans les lignes à chiffrer)' }}</span><strong>{{ envoi.total }}</strong></p>
+						<p class="si-note">Prix au tarif public, à confirmer par l'imprimerie : ce n'est pas un prix ferme.</p>
+					{% endif %}
+				{% elseif envoi.resume ?? null %}
 					<p class="si-envoyee-resume">{{ devis ? 'Demandé' : 'Objet' }} : {{ envoi.resume }}{% if envoi.fichier ?? false %} · fichier joint{% endif %}</p>
 				{% endif %}
 
@@ -41,7 +57,7 @@
 					<li><strong>Nous vous répondons</strong><span>Par téléphone ou WhatsApp, pendant nos horaires ({{ horaires.texte }}).</span></li>
 				</ol>
 
-				<p class="si-note">{{ horaires.etat }}. Le prix vous est donné avec le devis, après vérification : rien à payer pour l'instant.</p>
+				<p class="si-note">{{ horaires.etat }}. Le prix ferme vous est donné avec le devis, après vérification : rien à payer pour l'instant.</p>
 
 				<div class="si-formulaire-actions">
 					{% if wa %}

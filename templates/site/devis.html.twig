@@ -1,96 +1,76 @@
 {#
-	Demander un devis sans compte (maquette 11) : produit du catalogue
-	publié, taille, quantité, finitions, fichier facultatif, coordonnées.
-	Prérempli par le calculateur (?produit=&largeur=&hauteur=&quantite=&finitions=),
-	le produit et les finitions par leur jeton (docs/site-vitrine.md) : la
-	page ne reçoit que des jetons (groupes, fiches, saisie).
-	Aucun prix ici : l'équipe vérifie et répond avec le devis.
+	Demander un devis sans compte (maquette 11), en panier (docs/site-vitrine.md) :
+	jusqu'à 10 produits du catalogue publié ou « Autre projet », chacun avec
+	sa taille, sa quantité, ses finitions et son fichier, puis les coordonnées.
+	Prérempli par le calculateur (?produit=&largeur=&hauteur=&quantite=&finitions=,
+	et &ajouter=1 pour « Ajouter au devis » : le panier en cours est repris),
+	le produit et les finitions par leur jeton : la page ne reçoit que des
+	jetons (groupes, fiches, saisie).
+	La page envoyée ne contient aucun montant : le script demande le prix
+	indicatif de chaque ligne (app_site_devis_estimation, tarif public) et
+	l'affiche « à confirmer par l'imprimerie ». Sans script, une ligne se
+	remplit et s'envoie comme avant ; « Ajouter un produit » renvoie la page.
 #}
 {% extends 'site/_site.html.twig' %}
 
 {% set menu_actif = '' %}
 {% set wa = site_whatsapp('Bonjour Succès Imprim, je voudrais un devis pour ') %}
-{% set fiche = saisie.produit ? (fiches[saisie.produit] ?? null) : null %}
 {% set tailleMo = (tailleMax / 1048576)|round(0, 'floor') %}
+{% set totalMo = (tailleMaxTotale / 1048576)|round(0, 'floor') %}
 
 {% block title %}Demander un devis d'impression à Bamako · Succès Imprim{% endblock %}
-{% block description %}Bâche, banderole, roll-up, t-shirts, cartes de visite : décrivez votre impression, joignez votre fichier et recevez un devis, sans créer de compte.{% endblock %}
+{% block description %}Bâche, banderole, roll-up, t-shirts, cartes de visite : mettez plusieurs produits dans un seul devis, joignez vos fichiers et recevez une réponse, sans créer de compte.{% endblock %}
 
 {% block entete %}
-	{{ site_styles('css/site-formulaires.css') }}
+	{{ site_styles('css/site-formulaires.css', 'css/pieces-m2.css', 'css/site-panier.css') }}
 {% endblock %}
 
 {% block contenu %}
-	{{ include('site/_bandeau.html.twig', {titre: 'Demander un devis', accroche: 'Sans compte et sans engagement : nous vérifions votre demande et vous répondons avec un devis précis.'}) }}
+	{{ include('site/_bandeau.html.twig', {titre: 'Demander un devis', accroche: 'Sans compte et sans engagement : mettez tous vos produits dans une seule demande, nous vous répondons avec un devis précis.'}) }}
 
 	<section class="si-section si-devis">
 		<div class="si-cadre si-devis-grille">
-			<form method="post" action="{{ path('app_site_devis') }}" enctype="multipart/form-data" class="si-carte si-formulaire" id="formulaire-devis" novalidate>
+			<form method="post" action="{{ path('app_site_devis') }}" enctype="multipart/form-data" class="si-carte si-formulaire" id="formulaire-devis" novalidate
+				data-estimation="{{ path('app_site_devis_estimation') }}" data-reprise="{{ app.request.method == 'GET' ? '1' : '0' }}" data-lignes-max="{{ lignesMax }}" data-fichiers-max="{{ fichiersMax }}" data-max="{{ tailleMax }}" data-max-mo="{{ tailleMo }}" data-total-max="{{ tailleMaxTotale }}" data-total-mo="{{ totalMo }}">
 				{{ include('site/_demande_protections.html.twig', {nature: 'devis'}) }}
+				{% if info %}
+					<p class="si-repris" role="status">{{ info }}</p>
+				{% endif %}
 				{% if calculateur %}
-					<p class="si-repris">
+					<p class="si-repris" data-repris>
 						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v4h10V4Zm1 7v2h2v-2Zm4 0v2h2v-2Zm4 0v6h2v-6ZM8 15v2h2v-2Zm4 0v2h2v-2Z"/></svg>
-						Repris du calculateur : vérifiez, ajoutez vos coordonnées et envoyez.
+						<span data-repris-texte>Repris du calculateur : vérifiez, ajoutez d'autres produits si besoin, puis vos coordonnées.</span>
 					</p>
 				{% endif %}
 
 				<fieldset class="si-bloc">
-					<legend><span class="si-bloc-num" aria-hidden="true">1</span> Votre projet</legend>
-					<div class="si-champ{{ erreurs.produit is defined ? ' si-champ-erreur' }}">
-						<label for="champ-produit">Produit</label>
-						<select id="champ-produit" name="produit"{% if erreurs.produit is defined %} aria-invalid="true" aria-describedby="erreur-produit"{% endif %}>
-							<option value="">Autre projet : je le décris plus bas</option>
-							{% for g in groupes %}
-								<optgroup label="{{ g.nom }}">
-									{% for p in g.produits %}
-										<option value="{{ p.id }}"{% if p.id ~ '' == saisie.produit %} selected{% endif %}>{{ p.nom }}</option>
-									{% endfor %}
-								</optgroup>
-							{% endfor %}
-						</select>
-						{% if erreurs.produit is defined %}<p class="si-erreur" id="erreur-produit">{{ erreurs.produit }}</p>{% endif %}
+					<legend><span class="si-bloc-num" aria-hidden="true">1</span> Vos produits</legend>
+					{% if erreurs.lignes is defined %}<p class="si-erreur" role="alert">{{ erreurs.lignes }}</p>{% endif %}
+					<p class="si-panier-vide" id="panier-vide" hidden>Votre devis est vide : ajoutez un produit ou décrivez votre projet.</p>
+					<ol class="si-panier" id="panier-lignes">
+						{% for cle, l in saisie.lignes %}
+							{{ include('site/_devis_ligne.html.twig', {cle: cle, l: l, numero: loop.index, retirable: saisie.lignes|length > 1}) }}
+						{% endfor %}
+					</ol>
+					<div class="si-panier-ajout">
+						<button type="submit" name="_ajouter" value="1" formnovalidate class="si-bouton si-bouton-contour" id="ajouter-ligne"{% if saisie.lignes|length >= lignesMax %} disabled{% endif %}>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+							Ajouter un produit
+						</button>
+						<p class="si-aide" id="aide-panier">Jusqu'à {{ lignesMax }} produits, chacun avec son fichier ({{ tailleMo }} Mo par fichier, {{ totalMo }} Mo en tout).{% if wa %} Plus lourd ? <a href="{{ wa }}" target="_blank" rel="noopener">Envoyez-le par WhatsApp</a> ou collez un lien dans le message.{% else %} Plus lourd ? Collez un lien de partage dans le message.{% endif %}</p>
 					</div>
 
-					<div class="si-champs-3">
-						<div class="si-taille" id="bloc-taille"{% if fiche and not fiche.taille %} hidden{% endif %}>
-							{{ include('site/_champ.html.twig', {nom: 'largeur', libelle: 'Largeur (cm)', valeur: saisie.largeur, attributs: 'inputmode="decimal" maxlength="8" autocomplete="off"', exemple: fiche and fiche.largeur ? fiche.largeur|number_format(0, ',', ' ') : '300'}) }}
-							{{ include('site/_champ.html.twig', {nom: 'hauteur', libelle: 'Hauteur (cm)', valeur: saisie.hauteur, attributs: 'inputmode="decimal" maxlength="8" autocomplete="off"', exemple: fiche and fiche.hauteur ? fiche.hauteur|number_format(0, ',', ' ') : '100'}) }}
+					<div class="si-panier-total" id="panier-total" aria-live="polite" hidden>
+						<div class="si-panier-total-ligne">
+							<span>Total indicatif <small data-total-detail></small></span>
+							<strong data-total></strong>
 						</div>
-						{{ include('site/_champ.html.twig', {nom: 'quantite', libelle: 'Quantité', valeur: saisie.quantite, type: 'number', attributs: 'min="1" max="100000" step="1" inputmode="numeric"', exemple: fiche ? fiche.min : '1'}) }}
-					</div>
-					<p class="si-aide" id="aide-taille"{% if fiche and not fiche.taille %} hidden{% endif %}>Une estimation de la taille suffit : nous la vérifions avec vous.</p>
-					{# Petites pièces au m² (autocollants, étiquettes) : quantité en pièces ou en m². #}
-					{{ include('partials/_pieces_m2.html.twig', {id: 'pieces-m2', largeur: '#champ-largeur', hauteur: '#champ-hauteur', quantite: '#champ-quantite', arrondi_mm: 1, unite: saisie.unite_quantite ?? 'piece', m2: saisie.quantite_m2 ?? '', erreur: erreurs.quantite_m2 ?? null, masque: not (fiche and fiche.m2)}) }}
-
-					<div class="si-champ si-finitions" id="bloc-finitions"{% if not fiche or not fiche.finitions %} hidden{% endif %}>
-						<span class="si-champ-libelle" id="libelle-finitions">Finitions</span>
-						<div class="si-puces" id="liste-finitions" role="group" aria-labelledby="libelle-finitions">
-							{% for f in fiche.finitions ?? [] %}
-								<label class="si-puce">
-									<input type="checkbox" name="finitions[]" value="{{ f.id }}"{% if f.id in saisie.finitions or f.obligatoire or (not saisie.finitions and f.parDefaut and not erreurs) %} checked{% endif %}{% if f.obligatoire %} disabled{% endif %}>
-									<span>{{ f.nom }}{% if f.obligatoire %} (inclus){% endif %}</span>
-								</label>
-							{% endfor %}
-						</div>
+						<p class="si-aide">Prix au tarif public, à confirmer par l'imprimerie après vérification de la taille, des finitions et des fichiers. Ce n'est pas un prix ferme.</p>
 					</div>
 				</fieldset>
 
 				<fieldset class="si-bloc">
-					<legend><span class="si-bloc-num" aria-hidden="true">2</span> Votre fichier <span class="si-facultatif">(facultatif)</span></legend>
-					<div class="si-champ si-fichier{{ erreurs.fichier is defined ? ' si-champ-erreur' }}">
-						<label for="champ-fichier" class="si-visuel-cache">Fichier à joindre</label>
-						<div class="si-depot">
-							<input type="file" id="champ-fichier" name="fichier" class="si-fichier-champ" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" data-max="{{ tailleMax }}" data-max-mo="{{ tailleMo }}" aria-describedby="nom-fichier{{ erreurs.fichier is defined ? ' erreur-fichier' }}"{% if erreurs.fichier is defined %} aria-invalid="true"{% endif %}>
-							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.4 10A7.5 7.5 0 0 0 5.2 8 6 6 0 0 0 6 20h13a5 5 0 0 0 .4-10ZM14 13v4h-4v-4H7l5-5 5 5Z"/></svg>
-							<span><strong>Joindre un fichier</strong><span class="si-depot-nom" id="nom-fichier">PDF, AI, EPS, PSD, JPG, PNG ou TIFF · {{ tailleMo }} Mo au plus</span></span>
-						</div>
-						<p class="si-erreur" id="erreur-fichier"{% if erreurs.fichier is not defined %} hidden{% endif %}>{{ erreurs.fichier ?? '' }}</p>
-						<p class="si-aide">Plus lourd ?{% if wa %} <a href="{{ wa }}" target="_blank" rel="noopener">Envoyez-le par WhatsApp</a> ou{% endif %} collez un lien de partage dans le message.</p>
-					</div>
-				</fieldset>
-
-				<fieldset class="si-bloc">
-					<legend><span class="si-bloc-num" aria-hidden="true">3</span> Vos coordonnées</legend>
+					<legend><span class="si-bloc-num" aria-hidden="true">2</span> Vos coordonnées</legend>
 					<div class="si-champs-2">
 						{{ include('site/_champ.html.twig', {nom: 'nom', libelle: 'Nom', valeur: saisie.nom, attributs: 'autocomplete="name" maxlength="120" required', exemple: 'Moussa Traoré'}) }}
 						{{ include('site/_champ_telephone.html.twig', {valeur: saisie.telephone}) }}
@@ -104,17 +84,21 @@
 				</fieldset>
 
 				<div class="si-formulaire-actions">
-					<button type="submit" class="si-bouton si-bouton-rouge si-bouton-grand">Envoyer ma demande</button>
+					<button type="submit" class="si-bouton si-bouton-rouge si-bouton-grand" id="envoyer-devis">Envoyer ma demande</button>
 				</div>
-				<p class="si-note">Rien à payer maintenant. Le prix vous est donné avec le devis, après vérification de la taille, des finitions et du fichier. Votre nom et votre numéro servent seulement à vous répondre.</p>
+				<p class="si-note">Rien à payer maintenant. Le prix ferme vous est donné avec le devis, après vérification de la taille, des finitions et des fichiers. Votre nom et votre numéro servent seulement à vous répondre.</p>
+
+				<template id="modele-ligne">
+					{{ include('site/_devis_ligne.html.twig', {cle: '__i__', l: {produit: '', largeur: '', hauteur: '', quantite: '', unite_quantite: 'piece', quantite_m2: '', finitions: [], description: ''}, numero: '__n__', retirable: true, modele: true}) }}
+				</template>
 			</form>
 
 			<aside class="si-devis-cote" aria-label="Comment se passe une demande de devis">
 				<div class="si-carte">
 					<h2>Comment ça se passe</h2>
 					<ol class="si-parcours">
-						<li><strong>Vous envoyez votre demande</strong><span>Avec votre fichier si vous l'avez.</span></li>
-						<li><strong>Nous préparons le devis</strong><span>Taille, finitions et fichier vérifiés par l'atelier.</span></li>
+						<li><strong>Vous envoyez votre demande</strong><span>Un ou plusieurs produits, avec leurs fichiers si vous les avez.</span></li>
+						<li><strong>Nous préparons le devis</strong><span>Un seul devis pour tout, taille, finitions et fichiers vérifiés par l'atelier.</span></li>
 						<li><strong>Nous vous répondons</strong><span>Par téléphone ou WhatsApp, pendant nos horaires ({{ horaires.texte }}).</span></li>
 						<li><strong>BAT avant impression</strong><span>Vous validez l'aperçu, puis nous imprimons.</span></li>
 					</ol>
@@ -132,84 +116,6 @@
 
 {% block scripts %}
 	<script type="application/json" id="fiches-produits">{{ fiches|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
-	<script>
-	(function () {
-		var fiches = JSON.parse(document.getElementById('fiches-produits').textContent || '{}');
-		var produit = document.getElementById('champ-produit');
-		var taille = document.getElementById('bloc-taille');
-		var aideTaille = document.getElementById('aide-taille');
-		var blocFinitions = document.getElementById('bloc-finitions');
-		var liste = document.getElementById('liste-finitions');
-		var quantite = document.getElementById('champ-quantite');
-		var largeur = document.getElementById('champ-largeur');
-		var hauteur = document.getElementById('champ-hauteur');
-		var facultatif = document.getElementById('message-facultatif');
-		var piecesM2 = document.getElementById('pieces-m2');
-
-		function appliquer(premiere) {
-			var f = fiches[produit.value] || null;
-			var avecTaille = !!(f && f.taille);
-			taille.hidden = !avecTaille;
-			aideTaille.hidden = !avecTaille;
-			if (f) {
-				quantite.placeholder = f.min;
-				quantite.min = f.min;
-				if (f.largeur) { largeur.placeholder = Math.round(f.largeur); }
-				if (f.hauteur) { hauteur.placeholder = Math.round(f.hauteur); }
-			}
-			facultatif.textContent = f ? '(facultatif)' : '(décrivez votre projet)';
-			// Pièces au m² : seulement pour un produit au m² dont on donne la taille.
-			piecesM2.hidden = !(f && f.m2);
-			if (window.SiPiecesM2) { window.SiPiecesM2.rafraichir(piecesM2); }
-			if (premiere) { return; }
-			var cochees = {};
-			liste.querySelectorAll('input:checked').forEach(function (c) { cochees[c.value] = true; });
-			liste.textContent = '';
-			(f ? f.finitions : []).forEach(function (fi) {
-				var etiquette = document.createElement('label');
-				etiquette.className = 'si-puce';
-				var caseFinition = document.createElement('input');
-				caseFinition.type = 'checkbox';
-				caseFinition.name = 'finitions[]';
-				caseFinition.value = fi.id;
-				caseFinition.checked = fi.obligatoire || fi.parDefaut || !!cochees[fi.id];
-				caseFinition.disabled = fi.obligatoire;
-				var texte = document.createElement('span');
-				texte.textContent = fi.nom + (fi.obligatoire ? ' (inclus)' : '');
-				etiquette.appendChild(caseFinition);
-				etiquette.appendChild(texte);
-				liste.appendChild(etiquette);
-			});
-			blocFinitions.hidden = !(f && f.finitions.length);
-		}
-		produit.addEventListener('change', function () { appliquer(false); });
-		appliquer(true);
-
-		// Trop lourd : dit tout de suite, sans attendre l'envoi.
-		var fichier = document.getElementById('champ-fichier');
-		var nomFichier = document.getElementById('nom-fichier');
-		var erreurFichier = document.getElementById('erreur-fichier');
-		var texteFichier = nomFichier.textContent;
-		fichier.addEventListener('change', function () {
-			var f = fichier.files && fichier.files[0];
-			nomFichier.textContent = texteFichier;
-			erreurFichier.hidden = true;
-			if (!f) { return; }
-			if (f.size > Number(fichier.dataset.max)) {
-				fichier.value = '';
-				erreurFichier.textContent = 'Ce fichier dépasse ' + fichier.dataset.maxMo + ' Mo : envoyez-le par WhatsApp ou collez un lien dans le message.';
-				erreurFichier.hidden = false;
-				return;
-			}
-			nomFichier.textContent = f.name + ' · ' + (f.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
-		});
-
-		// Un seul envoi, même si le réseau est lent.
-		var formulaire = document.getElementById('formulaire-devis');
-		formulaire.addEventListener('submit', function () {
-			var bouton = formulaire.querySelector('button[type=submit]');
-			setTimeout(function () { bouton.disabled = true; bouton.textContent = 'Envoi en cours…'; }, 0);
-		});
-	})();
-	</script>
+	<script src="{{ asset('js/pieces-m2.js') }}" defer></script>
+	<script src="{{ asset('js/panier-devis.js') }}" defer></script>
 {% endblock %}

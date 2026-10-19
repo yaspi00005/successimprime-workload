@@ -7,6 +7,7 @@ use App\Entity\Commandes;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\CreationAtelier;
 use App\Entity\DemandeDevis;
+use App\Entity\DemandeDevisLigne;
 use App\Entity\Devis;
 use App\Entity\Finition;
 use App\Entity\SynchroJournal;
@@ -135,12 +136,85 @@ final class DemandesSite
                 ->setFichier($creation->getImageDevant() ?? $creation->getImageDos() ?? $creation->getRenduDevant());
         }
 
-        $chemin = null;
+        $fichiers = null === $fichier ? [] : [[$fichier, $demande->setFichier(...), $valeurs['largeur'] ?? null, $valeurs['hauteur'] ?? null]];
+
+        return $this->sauver($demande, $fichiers, $le);
+    }
+
+    /**
+     * Panier de devis à plusieurs produits (docs/site-vitrine.md) : une
+     * demande, une ligne par produit avec son fichier et le prix indicatif
+     * montré au visiteur. Valeurs contrôlées par FormulaireDemande::validerPanier.
+     *
+     * @param array<string, mixed>                                                            $valeurs coordonnées et message
+     * @param list<array{valeurs: array<string, mixed>, fichier: ?UploadedFile, prix: ?int}> $lignes
+     *
+     * @throws \DomainException
+     */
+    public function enregistrerPanier(array $valeurs, array $lignes, \DateTimeImmutable $le): DemandeDevis
+    {
+        $demande = DemandeDevis::nouvelle(DemandeDevis::NATURE_DEVIS, (string) $valeurs['nom'], (string) $valeurs['telephone'], $le)
+            ->setEmail($valeurs['email'] ?? null)
+            ->setMessage($valeurs['message'] ?? null);
+        $fichiers = [];
+        foreach ($lignes as $l) {
+            $v = $l['valeurs'];
+            if (null !== $l['fichier']) {
+                self::verifierFichier($l['fichier']);
+            }
+            $ligne = self::ligne($v)->setPrixIndicatif($l['prix'] ?? null);
+            $demande->addLigne($ligne);
+            if (null !== $l['fichier']) {
+                $fichiers[] = [$l['fichier'], $ligne->setFichier(...), $v['largeur'] ?? null, $v['hauteur'] ?? null];
+            }
+        }
+
+        return $this->sauver($demande, $fichiers, $le);
+    }
+
+    /**
+     * Ligne du panier depuis une ligne contrôlée : produit et sa désignation,
+     * taille, quantité, finitions du catalogue, ou description d'un « Autre projet ».
+     *
+     * @param array<string, mixed> $v
+     */
+    public static function ligne(array $v): DemandeDevisLigne
+    {
+        $ligne = new DemandeDevisLigne();
+        $produit = $v['produit'] ?? null;
+        if ($produit instanceof \App\Entity\ProduitConfiguration) {
+            $finitions = [];
+            foreach ($produit->getConfigurationFinitions() as $cf) {
+                if (\in_array($cf->getId(), $v['finitions'] ?? [], true) && $cf->getFinition() instanceof Finition) {
+                    $finitions[] = $cf->getFinition();
+                }
+            }
+            $ligne->setConfiguration($produit)->setDesignation(GrilleTarifaire::libelle($produit))
+                ->setTaille($v['largeur'] ?? null, $v['hauteur'] ?? null)
+                ->setQuantiteM2($v['quantiteM2'] ?? null)
+                ->setFinitionsChoisies(...$finitions);
+        } else {
+            $ligne->setDesignation('Autre projet');
+        }
+
+        return $ligne->setQuantite($v['quantite'] ?? null)->setDescription($v['description'] ?? null);
+    }
+
+    /**
+     * Range les fichiers et enregistre la demande d'un bloc : si quelque
+     * chose échoue, les fichiers déjà rangés sont effacés. Puis accusé de
+     * réception, et préparation tout de suite sur l'aperçu du local.
+     *
+     * @param list<array{0: UploadedFile, 1: callable(CommandeDetailFichier): mixed, 2: ?float, 3: ?float}> $fichiers fichier, où le rattacher, taille demandée
+     */
+    private function sauver(DemandeDevis $demande, array $fichiers, \DateTimeImmutable $le): DemandeDevis
+    {
+        $chemins = [];
         try {
-            $this->em->wrapInTransaction(function () use ($demande, $fichier, $valeurs, &$chemin): void {
-                if (null !== $fichier) {
-                    [$f, $chemin] = $this->ranger($fichier, $valeurs['largeur'] ?? null, $valeurs['hauteur'] ?? null);
-                    $demande->setFichier($f);
+            $this->em->wrapInTransaction(function () use ($demande, $fichiers, &$chemins): void {
+                foreach ($fichiers as [$fichier, $rattacher, $largeur, $hauteur]) {
+                    [$f, $chemins[]] = $this->ranger($fichier, $largeur, $hauteur);
+                    $rattacher($f);
                 }
                 $this->em->persist($demande);
                 $this->em->flush();
@@ -149,7 +223,7 @@ final class DemandesSite
                 $this->em->flush();
             });
         } catch (\Throwable $e) {
-            if (null !== $chemin) {
+            foreach ($chemins as $chemin) {
                 @unlink($chemin);
             }
             throw $e;
@@ -296,6 +370,10 @@ final class DemandesSite
             $this->em->flush();
             $devis->setNumero(\sprintf('DEV-%06d-%s', $devis->getId(), $le->format('m-Y')));
             array_push($aEnvoyer, $devis, ...$devis->getDevisDetails()->toArray());
+            // Panier : chaque ligne de la demande garde la ligne du devis qui en est née (et son fichier).
+            foreach ($r['lignes'] ?? [] as [$ligneDemande, $ligneDevis]) {
+                $ligneDemande->setDevisDetail($ligneDevis);
+            }
         }
         $demande->preparer($r['client'], $r['prospect'], $devis, $le);
         if (!$demande->estDevis() && null !== $this->conversations && null !== $r['client']) {
@@ -312,7 +390,7 @@ final class DemandesSite
 
         $qui = $demande->getNom().(null !== $r['client'] && !$r['nouveauClient'] ? ', client '.$r['client']->getCode() : '');
         $message = $demande->estDevis()
-            ? \sprintf('Demande de devis %s du site (%s) : devis brouillon %s à vérifier avant tout envoi.', $demande->getNumero(), $qui, $devis?->getNumero())
+            ? \sprintf('Demande de devis %s du site (%s) : devis brouillon %s%s à vérifier avant tout envoi.', $demande->getNumero(), $qui, $devis?->getNumero(), $demande->estPanier() ? \sprintf(' (%d lignes)', $demande->getLignes()->count()) : '')
             : ($demande->estRappel()
                 ? \sprintf('Rappel %s demandé sur le site (%s) : à rappeler le %s à %s h.', $demande->getNumero(), $qui, $demande->getRappelLe()?->format('d/m'), $demande->getRappelLe()?->format('G'))
                 : \sprintf('Message %s du site (%s) : %s.', $demande->getNumero(), $qui, $demande->getLibelleObjet() ?? 'question'));

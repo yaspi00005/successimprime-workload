@@ -15,14 +15,16 @@
 	- erreur : message à montrer sous la surface ;
 	- masque : vrai pour cacher le bloc (produit qui n'est pas au m²) ; la
 	  page qui le montre ou le cache appelle SiPiecesM2.rafraichir(bloc) ;
-	- id : préfixe des identifiants (défaut 'pm2').
+	- id : préfixe des identifiants (défaut 'pm2') ;
+	- sans_ressources : vrai quand la page charge elle-même pieces-m2.css et
+	  pieces-m2.js une seule fois (plusieurs blocs, panier de devis).
 #}
 {% set id = id ?? 'pm2' %}
 {% set unite = (unite ?? 'piece') == 'm2' ? 'm2' : 'piece' %}
 {% set nom_unite = nom_unite ?? 'unite_quantite' %}
 {% set nom_m2 = nom_m2 ?? 'quantite_m2' %}
 {% set erreur = erreur ?? null %}
-{{ site_styles('css/pieces-m2.css') }}
+{% if not (sans_ressources ?? false) %}{{ site_styles('css/pieces-m2.css') }}{% endif %}
 <div class="si-pm2" id="{{ id }}" data-pieces-m2 data-espacement="{{ pieces_m2_espacement() }}" data-largeur="{{ largeur }}" data-hauteur="{{ hauteur }}" data-quantite="{{ quantite }}" data-unite-cote="{{ unite_cote ?? 'cm' }}" data-arrondi-mm="{{ (arrondi_mm ?? 0.1) >= 1 ? 1 : 0.1 }}"{% if masque ?? false %} hidden{% endif %}>
 	<fieldset class="si-pm2-unite">
 		<legend>Quantité en</legend>
@@ -36,4 +38,4 @@
 	</div>
 	<p class="si-pm2-resultat" data-pm2-resultat aria-live="polite">Pièces qui tiennent sur 1 m², espacement de {{ pieces_m2_espacement()|replace({'.': ','}) }} mm compris.</p>
 </div>
-<script src="{{ asset('js/pieces-m2.js') }}" defer></script>
+{% if not (sans_ressources ?? false) %}<script src="{{ asset('js/pieces-m2.js') }}" defer></script>{% endif %}

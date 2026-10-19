@@ -1,7 +1,18 @@
 {% extends 'espace/app/_app.html.twig' %}
 
-{% block title %}Mes fichiers{% endblock %}
-{% block entete %}<a class="ec-retour" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mes fichiers</a>{% endblock %}
+{#
+	Fichiers et BAT (maquette DB04) : bandeau des BAT qui attendent le
+	client avec la date limite pour garder ses dates, une carte par BAT,
+	puis deux onglets : l'historique des BAT validés (qui, quand) et ses
+	fichiers envoyés (envoi, contrôle automatique, logos).
+#}
+{% block title %}Fichiers et BAT{% endblock %}
+{% block page_classe %} ec-page-large cd-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Fichiers et BAT</a>{% endblock %}
 
 {% macro icone(f) %}
 	{% if f.typeMime in ['image/jpeg', 'image/png'] %}<span class="ec-fichier-icone"><img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="" loading="lazy"></span>
@@ -9,10 +20,79 @@
 {% endmacro %}
 
 {% block contenu %}
-	{% for ctl in aValider %}
-		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: ctl.id}) }}"><div><b>BAT à valider</b><small>{{ ctl.commandeDetail|espace_titre_ligne }} · commande {{ ctl.commandeDetail.commande.numero }}</small></div><span class="ec-bouton-blanc">Voir</span></a>
-	{% endfor %}
+	<div class="cd-tete">
+		<h1 class="ec-bureau">Fichiers et BAT</h1>
+		{% if not app.user.estLectureSeule() %}<a class="ec-bouton-blanc" href="{{ path('app_espace_fichiers', {vue: 'fichiers'}) }}#depot">📤 Envoyer un fichier</a>{% endif %}
+	</div>
 
+	{% if cartes is not empty %}
+		{% set premiere = cartes|first %}
+		<div class="db-bandeau">
+			<span class="db-bandeau-icone" aria-hidden="true">✅</span>
+			<p><b>{{ cartes|length }} BAT attend{{ cartes|length > 1 ? 'ent' }} votre validation</b>
+			<small>Rien n'est imprimé sans votre accord.{% if premiere.limite %} Validez avant {{ premiere.limite|date('Y-m-d') == 'now'|date('Y-m-d') ? 'aujourd\'hui ' ~ premiere.limite|date('H:i') : limite_bat(premiere.limite) }} pour garder vos dates.{% endif %}</small></p>
+			<a class="ec-bouton-blanc" href="{{ path('app_espace_bat', {id: premiere.controle.id}) }}">Voir le premier</a>
+		</div>
+		<div class="db-bat-cartes">
+			{% for c in cartes %}
+				<article class="ec-carte db-bat-carte">
+					<a class="db-bat-vignette" href="{{ path('app_espace_bat', {id: c.controle.id}) }}" tabindex="-1" aria-hidden="true">
+						{% if c.vignette %}<img src="{{ path('app_espace_bat_fichier', {id: c.vignette.id}) }}" alt="" loading="lazy">{% else %}<span>BAT</span>{% endif %}
+					</a>
+					<div>
+						<h2>{{ c.titre }} <span class="db-badge violet">À valider</span></h2>
+						<small class="db-bat-meta">{{ c.commande.numero }} · V{{ c.version }}{{ c.envoyeLe ? ' · envoyé ' ~ quand_bat(c.envoyeLe) }}</small>
+						<p class="db-bat-limite">⏱ {% if c.limite %}avant {{ limite_bat(c.limite) }} → prête {{ jour_court(c.pret) }}{% else %}si validé aujourd'hui → prête {{ jour_court(c.pret) }}{% endif %}</p>
+						{% if c.modifie %}<p class="db-bat-modifie">Modifié selon votre demande : {{ c.modifie|length > 60 ? c.modifie|slice(0, 59) ~ '…' : c.modifie }}</p>{% endif %}
+						<a class="ec-bouton violet db-petit-bouton" href="{{ path('app_espace_bat', {id: c.controle.id}) }}">Ouvrir le BAT</a>
+					</div>
+				</article>
+			{% endfor %}
+		</div>
+	{% endif %}
+
+	<nav class="cd-onglets db-onglets db-onglets-bat" aria-label="Fichiers et BAT">
+		<a class="cd-onglet{{ not vueFichiers ? ' actif' }}" href="{{ path('app_espace_fichiers') }}">Historique des BAT · {{ historique|length }}</a>
+		<a class="cd-onglet{{ vueFichiers ? ' actif' }}" href="{{ path('app_espace_fichiers', {vue: 'fichiers'}) }}">Mes fichiers envoyés · {{ mesFichiers|length }}</a>
+	</nav>
+
+	{% if not vueFichiers %}
+		{% set enCours = autres|filter(c => not c.batValide) %}
+		{% if enCours is not empty %}
+			<section class="ec-carte db-histo">
+				<h2>En préparation à l'atelier</h2>
+				<ul class="ec-liste">
+					{% for ctl in enCours %}
+						<li class="ec-ligne">
+							<a href="{{ path('app_espace_bat', {id: ctl.id}) }}" style="color:inherit"><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}</div></a>
+							{% if ctl.statut == 'correction_requise' %}<span class="db-badge bleu">Modification demandée</span>{% else %}<span class="db-badge gris">En préparation</span>{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+		<section class="ec-carte db-histo">
+			{% if historique is empty %}
+				<p class="ec-petit">Vos BAT validés apparaîtront ici, avec la date et la personne qui a validé.</p>
+			{% else %}
+				<table class="db-table">
+					<thead><tr><th>BAT</th><th>Commande</th><th>Versions</th><th>Validé</th><th class="ec-bureau">Par</th><th><span class="cd-masque">Fichier</span></th></tr></thead>
+					<tbody>
+						{% for h in historique %}
+							<tr>
+								<td><a href="{{ path('app_espace_bat', {id: h.controle.id}) }}"><b>{{ h.titre }}</b></a></td>
+								<td>{{ h.commande.numero }}</td>
+								<td>V{{ h.version }}</td>
+								<td>{% if h.valideLe %}<span class="db-badge vert">✓ {{ h.valideLe|date('d/m H:i') }}</span>{% endif %}</td>
+								<td class="ec-bureau db-par">{{ h.par ?: 'Vous' }}</td>
+								<td>{% if h.fichier %}<a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: h.fichier.id, telecharger: 1}) }}">{{ h.fichier.typeMime == 'application/pdf' ? 'PDF' : 'Fichier' }}</a>{% endif %}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+	{% else %}
 	<label class="ec-depot" id="depot">
 		<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" multiple>
 		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 11h4.5v6h5v-6H19z"/></svg>
@@ -100,18 +180,6 @@
 		</div>
 	{% endif %}
 
-	{% if autres is not empty %}
-		<div class="ec-carte">
-			<h2>BAT précédents</h2>
-			<ul class="ec-liste">
-				{% for ctl in autres %}
-					<li class="ec-ligne">
-						<a href="{{ path('app_espace_bat', {id: ctl.id}) }}" style="color:inherit"><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}</div></a>
-						{% if ctl.batValide %}<span class="ec-pastille vert">Validé</span>{% elseif ctl.statut == 'correction_requise' %}<span class="ec-pastille ambre">Modification demandée</span>{% else %}<span class="ec-pastille gris">En préparation</span>{% endif %}
-					</li>
-				{% endfor %}
-			</ul>
-		</div>
 	{% endif %}
 {% endblock %}
 
@@ -123,6 +191,7 @@
 		const etat = document.getElementById('envoi-etat');
 		const progres = document.querySelector('#depot .ec-progres');
 		const depot = document.getElementById('depot');
+		if (!depot) return;
 
 		async function envoyerTout(fichiers, logo) {
 			progres.hidden = false;

@@ -15,6 +15,7 @@ use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\CoqueEspace;
 use App\Service\EspaceClient\MonCompte;
 use App\Service\EspaceClient\EspaceClient;
+use App\Service\EspaceClient\MesBatClient;
 use App\Service\EspaceClient\FacturesClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\FilNotifications;
@@ -359,16 +360,21 @@ final class EspaceClientController extends AbstractController
     // Mes devis, le devis et la réponse du client : EspaceDevisController (maquettes DT01, DT04).
 
     #[Route('/fichiers', name: 'fichiers', methods: ['GET'])]
-    public function fichiers(EspaceClient $espace, FichiersClient $fichiers, \App\Service\DossiersClients\PublicationFichiers $publications): Response
+    public function fichiers(Request $request, EspaceClient $espace, FichiersClient $fichiers, \App\Service\DossiersClients\PublicationFichiers $publications, MesBatClient $mesBat): Response
     {
         $client = $this->compte()->getClient();
         $bats = $espace->bats($client);
+        $mesFichiers = $fichiers->liste($client);
 
         return $this->vue('espace/app/fichiers.html.twig', [
             'onglet' => 'fichiers',
+            // Fichiers et BAT (maquette DB04) : BAT à valider avec leur date limite, historique des validations.
+            'vueFichiers' => 'fichiers' === $request->query->get('vue'),
+            'cartes' => $mesBat->aValider($client, new \DateTimeImmutable()),
+            'historique' => $mesBat->historique($client),
             'aValider' => array_values(array_filter($bats, static fn ($c): bool => \App\Entity\ControlePrePresse::STATUT_EN_ATTENTE_BAT === $c->getStatut())),
             'autres' => array_values(array_filter($bats, static fn ($c): bool => \App\Entity\ControlePrePresse::STATUT_EN_ATTENTE_BAT !== $c->getStatut())),
-            'mesFichiers' => array_map(static fn ($f): array => ['fichier' => $f, 'controle' => FichiersClient::resume($f->getAnalyse())], $fichiers->liste($client)),
+            'mesFichiers' => array_map(static fn ($f): array => ['fichier' => $f, 'controle' => FichiersClient::resume($f->getAnalyse())], $mesFichiers),
             'logos' => $fichiers->liste($client, true),
             'extensions' => FichiersClient::extensions(),
             'morceau' => FichiersClient::MORCEAU,
@@ -464,7 +470,7 @@ final class EspaceClientController extends AbstractController
      * suivi valide ou demande une correction (DroitsEspace refuse ses envois).
      */
     #[Route('/bat/{id}', name: 'bat', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]
-    public function bat(int $id, Request $request, EspaceClient $espace, SuiviCommandeClient $suivi): Response
+    public function bat(int $id, Request $request, EspaceClient $espace, SuiviCommandeClient $suivi, MesBatClient $mesBat): Response
     {
         $compte = $this->compte();
         $controle = $espace->bat($compte->getClient(), $id) ?? throw $this->createNotFoundException();
@@ -486,10 +492,15 @@ final class EspaceClientController extends AbstractController
                     $this->addFlash('error', 'Cochez chaque point de « Avant de valider, vérifiez » : après validation, l\'impression part telle quelle.');
                 } else {
                     // La personne qui valide (Awa d'une entreprise), pas seulement le titulaire de la fiche.
-                    $espace->validerBat($controle, $compte->getNomAffiche(), new \DateTimeImmutable(), $verifications);
-                    $this->addFlash('succes', 'BAT validé, merci. Votre accord est enregistré avec la date et l\'heure ; l\'atelier lance l\'impression.');
+                    $espace->validerBat($controle, $compte->getNomAffiche(), new \DateTimeImmutable(), $verifications, EspaceClient::depuis($request->headers->get('User-Agent')));
+                    if (null !== $retour) {
+                        $this->addFlash('succes', 'BAT validé, merci. Votre accord est enregistré avec la date et l\'heure ; l\'atelier lance l\'impression.');
 
-                    return $this->redirect($this->generateUrl('app_espace_commande', ['id' => (string) $commande->getPublicId()]).'#bat-'.$controle->getId());
+                        return $retour;
+                    }
+
+                    // « C'est parti » et la trace de validation (maquette DB07).
+                    return $this->redirectToRoute('app_espace_bat', ['id' => $controle->getId(), 'valide' => 1]);
                 }
             } elseif ('' === $texte && [] === $reperes) {
                 $this->addFlash('error', 'Dites-nous ce qu\'il faut corriger, ou touchez l\'image à l\'endroit à changer.');
@@ -505,10 +516,24 @@ final class EspaceClientController extends AbstractController
             }
         }
 
+        $maintenant = new \DateTimeImmutable();
+        $versions = $mesBat->versions($controle);
+        $voulue = $request->query->getInt('v');
+
         return $this->vue('espace/app/bat.html.twig', [
             'onglet' => 'fichiers',
             'b' => $suivi->carteBat($controle),
+            'carte' => $mesBat->carte($controle, $maintenant),
             'commande' => $commande,
+            // Versions envoyées (V1, V2…) pour comparer avec l'actuelle (maquette DB05).
+            'versions' => $versions,
+            'versionVue' => isset($versions[$voulue]) ? $voulue : (array_key_last($versions) ?? 0),
+            'comparer' => $request->query->getBoolean('comparer') && \count($versions) > 1,
+            'trace' => $mesBat->trace($controle),
+            'justeValide' => $request->query->getBoolean('valide'),
+            'autresAValider' => array_values(array_filter($mesBat->aValider($compte->getClient(), $maintenant), static fn (array $c): bool => $c['controle'] !== $controle)),
+            'prenom' => explode(' ', trim($compte->getNomAffiche()))[0] ?? '',
+            'montants' => $compte->montantsVisibles(),
         ]);
     }
 

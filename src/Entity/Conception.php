@@ -245,7 +245,11 @@ class Conception
      *
      * @param list<string> $verifications
      */
-    public function valider(Bareme $bareme, \DateTimeImmutable $le, ?string $detail = null, array $verifications = []): void
+    /**
+     * @param ?string $par    qui a validé, montré au client (« Awa Diarra », « Awa Diarra (par téléphone, noté par Aminata) »)
+     * @param ?string $depuis d'où (« espace client · téléphone »), montré au client (maquette DB07)
+     */
+    public function valider(Bareme $bareme, \DateTimeImmutable $le, ?string $detail = null, array $verifications = [], ?string $par = null, ?string $depuis = null): void
     {
         $this->arreter($le);
         if ($this->valideLe !== null) {
@@ -258,6 +262,11 @@ class Conception
         $this->noter($le, 'valide', 'BAT validé', $detail);
         if ($verifications !== []) {
             $this->evenements[array_key_last($this->evenements)]['verifications'] = array_values(array_map(static fn (string $v): string => mb_substr($v, 0, 120), \array_slice($verifications, 0, 10)));
+        }
+        foreach (['par' => $par, 'depuis' => $depuis] as $cle => $valeur) {
+            if (null !== $valeur && '' !== trim($valeur)) {
+                $this->evenements[array_key_last($this->evenements)][$cle] = mb_substr(trim($valeur), 0, 120);
+            }
         }
     }
 
@@ -356,11 +365,17 @@ class Conception
             if ('controle' === ($e['type'] ?? null)) {
                 $publics[] = ['le' => $e['le'], 'type' => 'controle', 'titre' => $e['titre'], 'detail' => null] + (\is_string($e['par'] ?? null) ? ['par' => $e['par']] : []);
             } elseif (\in_array($e['type'] ?? null, ['bat', 'retour', 'valide'], true)) {
-                $par = 'bat' === $e['type'] ? ($graphiste ?? (\is_string($e['par'] ?? null) ? $e['par'] : null)) : null;
+                // Validation : la personne qui a validé et d'où (maquette DB07), jamais le détail interne.
+                $par = match ($e['type']) {
+                    'bat' => $graphiste ?? (\is_string($e['par'] ?? null) ? $e['par'] : null),
+                    'valide' => \is_string($e['par'] ?? null) ? $e['par'] : null,
+                    default => null,
+                };
                 $publics[] = ['le' => $e['le'], 'type' => $e['type'], 'titre' => $e['titre'], 'detail' => 'retour' === $e['type'] ? $e['detail'] : null]
                     + (null !== $par ? ['par' => $par] : [])
                     + ('retour' === $e['type'] && [] !== ($e['reperes'] ?? []) ? ['reperes' => $e['reperes']] : [])
-                    + ('valide' === $e['type'] && [] !== ($e['verifications'] ?? []) ? ['verifications' => $e['verifications']] : []);
+                    + ('valide' === $e['type'] && [] !== ($e['verifications'] ?? []) ? ['verifications' => $e['verifications']] : [])
+                    + ('valide' === $e['type'] && \is_string($e['depuis'] ?? null) ? ['depuis' => $e['depuis']] : []);
             }
         }
         // Dans l'ordre du temps : le contrôle du fichier vient avant le premier BAT.

@@ -355,14 +355,25 @@ final class EspaceClient
      */
     public static function verificationsBat(?CommandesDetails $ligne): array
     {
-        $taille = null !== $ligne ? self::taille($ligne) : null;
-
+        // Les quatre vérifications de la maquette DB05 ; la taille est écrite sous le BAT.
         return [
-            'orthographe' => 'L\'orthographe des textes',
-            'coordonnees' => 'Les numéros de téléphone et les adresses',
+            'noms' => 'Les noms et l\'orthographe',
+            'telephones' => 'Les numéros de téléphone',
+            'prix' => 'Les prix et les dates',
             'couleurs' => 'Les couleurs et le logo',
-            'taille' => null !== $taille ? 'La taille : '.$taille : 'La taille et le format',
         ];
+    }
+
+    /** « espace client · téléphone » : d'où le client a validé, d'après son navigateur. */
+    public static function depuis(?string $navigateur): string
+    {
+        $n = mb_strtolower((string) $navigateur);
+
+        return 'espace client · '.match (true) {
+            str_contains($n, 'ipad') || str_contains($n, 'tablet') => 'tablette',
+            str_contains($n, 'mobile') || str_contains($n, 'android') || str_contains($n, 'iphone') => 'téléphone',
+            default => 'ordinateur',
+        };
     }
 
     /**
@@ -428,11 +439,11 @@ final class EspaceClient
      *
      * @param list<string> $verifications points cochés par le client avant de valider
      */
-    public function validerBat(ControlePrePresse $ctl, string $nom, \DateTimeImmutable $maintenant, array $verifications = []): void
+    public function validerBat(ControlePrePresse $ctl, string $nom, \DateTimeImmutable $maintenant, array $verifications = [], ?string $depuis = null): void
     {
         $ctl->setBatNecessaire(true)->setBatValide(true)->setCorrectionNecessaire(false)->setStatut(ControlePrePresse::STATUT_EN_COURS);
-        $this->conception($ctl)?->valider($this->parametres->bareme(), $maintenant, 'par le client dans son espace · '.$nom, $verifications);
-        $this->journal->noterAction($this->em, self::ACTION_BAT_VALIDE, $ctl, ['nom' => $nom, 'le' => $maintenant->format(\DATE_ATOM), 'verifications' => $verifications]);
+        $this->conception($ctl)?->valider($this->parametres->bareme(), $maintenant, 'par le client dans son espace · '.$nom, $verifications, $nom, $depuis);
+        $this->journal->noterAction($this->em, self::ACTION_BAT_VALIDE, $ctl, ['nom' => $nom, 'le' => $maintenant->format(\DATE_ATOM), 'verifications' => $verifications, 'depuis' => $depuis]);
         $this->em->flush();
         $this->notifications->notifierRoles(['ROLE_PREPRESSE'], \sprintf('BAT validé par le client : %s, commande %s.', TableauProduction::titre($ctl->getCommandeDetail()), $ctl->getCommandeDetail()->getCommande()->getNumero()), 'app_controle_pre_presse_controler', ['id' => $ctl->getId()]);
         $this->em->flush();

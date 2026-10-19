@@ -225,6 +225,55 @@ final class DelaisCommande
         return (int) min($total, ceil($total * max(0, min(100, $pourcentage)) / 100));
     }
 
+    /**
+     * « Validez avant lundi 16:00 pour garder vos dates » (maquettes DB04 et
+     * DB06) : le dernier moment où valider le BAT garde la date prévue de
+     * la commande ; sinon la date qu'aurait un BAT validé maintenant.
+     *
+     * @return array{limite: ?\DateTimeImmutable, pret: \DateTimeImmutable, tenue: bool}
+     */
+    public function limiteBat(Commandes $commande, \DateTimeImmutable $maintenant): array
+    {
+        $r = $this->reglages();
+
+        return self::calculerLimiteBat($this->parametres->heuresTravail(), $this->heures($commande) ?? $r['standard'], $r['limite'], $commande->getDateLivraison(), $maintenant);
+    }
+
+    /** @return array{limite: ?\DateTimeImmutable, pret: \DateTimeImmutable, tenue: bool} */
+    public static function calculerLimiteBat(HeuresTravail $heures, int $delaiHeures, string $limite, ?\DateTimeImmutable $prevue, \DateTimeImmutable $maintenant): array
+    {
+        $siMaintenant = self::calculerPretLe($heures, $delaiHeures, $limite, $maintenant)['pret'];
+        if (null === $prevue || $prevue->setTime(0, 0) < $siMaintenant) {
+            // Pas de date promise, ou déjà dépassée : la date que donne une validation maintenant.
+            return ['limite' => null, 'pret' => $siMaintenant, 'tenue' => null === $prevue];
+        }
+        [$h, $m] = array_map('intval', explode(':', $limite) + [1 => '0']);
+        $jour = $prevue->setTime(0, 0);
+        for ($n = (int) ceil(max(1, $delaiHeures) / 24); $n > 0; --$n) {
+            $jour = self::jourOuvrePrecedent($heures, $jour);
+        }
+
+        return ['limite' => max($jour->setTime($h, $m), $maintenant), 'pret' => $prevue->setTime(0, 0), 'tenue' => true];
+    }
+
+    /** « lun. 16:00 » */
+    public static function limiteCourte(\DateTimeImmutable $d): string
+    {
+        return mb_substr(self::JOURS[(int) $d->format('N')], 0, 3).'. '.$d->format('H:i');
+    }
+
+    private static function jourOuvrePrecedent(HeuresTravail $heures, \DateTimeImmutable $jour): \DateTimeImmutable
+    {
+        for ($i = 0; $i < 366; ++$i) {
+            $jour = $jour->modify('-1 day');
+            if ($heures->estOuvre($jour)) {
+                return $jour;
+            }
+        }
+
+        return $jour;
+    }
+
     private static function jourOuvreSuivant(HeuresTravail $heures, \DateTimeImmutable $jour): \DateTimeImmutable
     {
         // Une année sans jour ouvré n'existe pas : la boucle s'arrête au plus tard après un an.

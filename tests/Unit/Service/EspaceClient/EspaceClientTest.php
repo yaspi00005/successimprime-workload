@@ -89,24 +89,25 @@ final class EspaceClientTest extends TestCase
 
     public function testPointsAVerifierAvantDeValiderLeBat(): void
     {
-        self::assertSame('La taille : 20 × 10 cm', EspaceClient::verificationsBat($this->ligne('Plaques', '0.20', '0.10', 40))['taille']);
-        self::assertSame('La taille : 3 m × 1 m', EspaceClient::verificationsBat($this->ligne('Bâche', '3', '1', 2))['taille']);
-        self::assertSame('La taille : 85 × 200 cm', EspaceClient::verificationsBat($this->ligne('Roll-up', '0.85', '2', 1))['taille']);
-        self::assertSame('La taille et le format', EspaceClient::verificationsBat($this->ligne('Cartes', null, null, 500))['taille']);
-        self::assertSame(['orthographe', 'coordonnees', 'couleurs', 'taille'], array_keys(EspaceClient::verificationsBat(null)));
+        // Les quatre vérifications de la maquette DB05.
+        self::assertSame(['noms', 'telephones', 'prix', 'couleurs'], array_keys(EspaceClient::verificationsBat(null)));
+        self::assertSame('Les prix et les dates', EspaceClient::verificationsBat($this->ligne('Plaques', '0.20', '0.10', 40))['prix']);
+        self::assertSame('espace client · téléphone', EspaceClient::depuis('Mozilla/5.0 (Linux; Android 14) Mobile Safari'));
+        self::assertSame('espace client · ordinateur', EspaceClient::depuis('Mozilla/5.0 (Windows NT 10.0)'));
+        self::assertSame('espace client · tablette', EspaceClient::depuis('Mozilla/5.0 (iPad; CPU OS 17)'));
     }
 
     public function testValiderDemandeChaquePointCoche(): void
     {
         $ligne = $this->ligne('Bâche', '3', '1', 2);
-        $tout = ['taille', 'couleurs', 'orthographe', 'coordonnees', 'autre chose'];
+        $tout = ['prix', 'couleurs', 'noms', 'telephones', 'autre chose'];
 
-        self::assertSame(['L\'orthographe des textes', 'Les numéros de téléphone et les adresses', 'Les couleurs et le logo', 'La taille : 3 m × 1 m'], EspaceClient::verificationsCochees($ligne, $tout));
-        self::assertNull(EspaceClient::verificationsCochees($ligne, ['orthographe', 'coordonnees', 'couleurs']), 'un point manque');
+        self::assertSame(['Les noms et l\'orthographe', 'Les numéros de téléphone', 'Les prix et les dates', 'Les couleurs et le logo'], EspaceClient::verificationsCochees($ligne, $tout));
+        self::assertNull(EspaceClient::verificationsCochees($ligne, ['noms', 'telephones', 'couleurs']), 'un point manque');
         self::assertNull(EspaceClient::verificationsCochees($ligne, []));
-        self::assertNull(EspaceClient::verificationsCochees($ligne, 'orthographe'), 'pas une liste');
+        self::assertNull(EspaceClient::verificationsCochees($ligne, 'noms'), 'pas une liste');
         self::assertNull(EspaceClient::verificationsCochees($ligne, null));
-        self::assertNull(EspaceClient::verificationsCochees($ligne, [['orthographe'], ['coordonnees'], ['couleurs'], ['taille']]), 'des listes au lieu des textes');
+        self::assertNull(EspaceClient::verificationsCochees($ligne, [['noms'], ['telephones'], ['prix'], ['couleurs']]), 'des listes au lieu des textes');
         self::assertNotNull(EspaceClient::verificationsCochees($ligne, [...$tout, ['x']]), 'une liste en plus est ignorée');
     }
 

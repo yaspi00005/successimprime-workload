@@ -144,3 +144,129 @@
 /* .orange, .rouge et .violet colorent aussi du texte (espace-commandes.css) : pas sur un bouton plein. */
 .ec-bouton.orange, .ec-bouton.rouge, .ec-bouton.violet, .ec-bouton.vert, .ec-bouton.bleu { color: #fff; }
 .db-dialogue h2 + p { margin: -.4rem 0 0; }
+
+/* DB04 Fichiers et BAT */
+.db-bandeau { display: flex; align-items: center; gap: .9rem; margin: 0 0 1rem; padding: .9rem 1.1rem; border-radius: 16px; background: var(--violet); color: #fff; }
+.db-bandeau p { flex: 1; margin: 0; line-height: 1.35; }
+.db-bandeau small { display: block; color: #E9DEFF; font-size: .84rem; }
+.db-bandeau-icone { font-size: 1.5rem; }
+.db-bandeau .ec-bouton-blanc { white-space: nowrap; color: var(--violet); }
+.db-bat-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 1rem; margin-bottom: 1.2rem; }
+.db-bat-carte { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: .9rem; align-items: start; margin: 0; }
+.db-bat-carte h2 { margin: 0 0 .15rem; font-size: 1rem; }
+.db-bat-vignette { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 12px; overflow: hidden; background: var(--fond); color: var(--gris); font-weight: 800; text-decoration: none; }
+.db-bat-vignette img { width: 100%; height: 100%; object-fit: contain; }
+.db-bat-meta { display: block; color: var(--gris); font-size: .8rem; }
+.db-bat-limite { margin: .45rem 0 0; font-size: .84rem; font-weight: 700; color: var(--orange); }
+.db-bat-modifie { margin: .3rem 0 0; font-size: .8rem; color: var(--bleu); }
+.db-petit-bouton { width: auto; display: inline-block; margin-top: .6rem; padding: .5rem .9rem; font-size: .86rem; text-decoration: none; }
+.db-histo h2 { font-size: .98rem; margin: 0 0 .5rem; }
+.db-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.db-table th { text-align: left; font-size: .78rem; font-weight: 700; color: var(--gris); padding: .5rem .45rem; background: var(--fond); }
+.db-table td { padding: .65rem .45rem; border-top: 1px solid var(--trait); vertical-align: middle; }
+.db-table a { color: inherit; text-decoration: none; }
+.db-table a.ec-lien { color: var(--bleu); font-weight: 700; }
+.db-par { color: var(--gris); font-size: .84rem; }
+
+/* DB05 Examiner un BAT */
+.db-bat { align-items: start; }
+.db-bat-vue { min-width: 0; }
+.db-bat-outils { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .7rem; }
+.db-versions { display: flex; flex-wrap: wrap; gap: .35rem; }
+.db-version, .db-comparer { padding: .35rem .75rem; border-radius: 99px; background: #F1F4F9; color: var(--encre); font-size: .82rem; font-weight: 700; text-decoration: none; }
+.db-version.actif { background: var(--bleu); color: #fff; }
+.db-comparer { background: none; color: var(--bleu); }
+.db-comparer.actif { background: #E8F0FC; }
+.db-annoter-lien { border: 0; background: none; font: inherit; font-size: .86rem; font-weight: 700; color: var(--violet); cursor: pointer; }
+.db-annoter-aide { margin: 0; font-size: .84rem; color: var(--gris); }
+.db-pilule-violette { display: inline-block; margin-right: .35rem; padding: .2rem .6rem; border-radius: 99px; background: var(--violet); color: #fff; font-weight: 800; font-size: .78rem; }
+.db-bat-cadre { position: relative; overflow: auto; max-height: 75vh; padding: 1rem; border-radius: 14px; background: #EEF1F6; text-align: center; }
+.db-bat-taille { margin: 0 0 .5rem; font-size: .78rem; color: var(--gris); }
+.db-bat-images { display: grid; gap: 1rem; justify-items: center; width: 100%; margin: 0 auto; }
+.db-bat-image { position: relative; display: inline-block; max-width: 100%; line-height: 0; box-shadow: 0 8px 24px rgba(18,33,58,.15); }
+.db-bat-image img { display: block; max-width: 100%; max-height: 68vh; width: auto; height: auto; }
+.db-bat-images[style] .db-bat-image img { max-height: none; }
+.db-bat-image .ec-repere.ancien { background: var(--gris); opacity: .75; }
+.db-bat-images iframe { width: 100%; height: 70vh; border: 0; background: #fff; }
+.db-comparaison { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+.db-comparaison figure { margin: 0; }
+.db-comparaison figcaption { margin-bottom: .4rem; font-size: .82rem; font-weight: 800; color: var(--gris); }
+.db-comparaison img { display: block; width: 100%; height: auto; box-shadow: 0 8px 24px rgba(18,33,58,.15); }
+.db-corrige { margin: .6rem 0 0; font-size: .82rem; color: var(--vert); font-weight: 700; }
+.db-zoom { position: sticky; bottom: 0; display: inline-flex; align-items: center; gap: .4rem; margin-top: .8rem; padding: .25rem .4rem; border-radius: 99px; background: #fff; box-shadow: 0 4px 12px rgba(18,33,58,.12); font-size: .82rem; font-weight: 700; }
+.db-zoom button { width: 28px; height: 28px; border: 0; border-radius: 50%; background: var(--fond); font: inherit; font-size: 1rem; cursor: pointer; }
+.db-verifs h2, .db-demandes h2, .db-trace-carte h2 { font-size: .98rem; margin: 0 0 .6rem; }
+.db-verifs label { display: flex; gap: .55rem; align-items: center; padding: .45rem 0; border-top: 1px solid var(--trait); font-size: .9rem; cursor: pointer; }
+.db-verifs label:first-of-type { border-top: 0; }
+.db-verifs input { width: 1.15rem; height: 1.15rem; accent-color: var(--vert); }
+.db-infos-commande dl, .db-trace-carte dl, .db-parti-chiffres { margin: 0; display: grid; gap: .1rem; }
+.db-infos-commande dl > div, .db-trace-carte dl > div { display: flex; justify-content: space-between; gap: 1rem; padding: .35rem 0; border-top: 1px solid var(--trait); font-size: .88rem; }
+.db-infos-commande dl > div:first-child, .db-trace-carte dl > div:first-child { border-top: 0; }
+.db-infos-commande dt, .db-trace-carte dt { color: var(--gris); }
+.db-infos-commande dd, .db-trace-carte dd { margin: 0; font-weight: 700; text-align: right; }
+.db-actions-bat { display: grid; gap: .5rem; }
+.db-actions-bat > div { display: grid; gap: .5rem; }
+.db-actions-bat .ec-bouton:disabled { background: #C9CFD9; box-shadow: none; cursor: not-allowed; }
+.db-centre { text-align: center; margin: 0; }
+
+/* DB06 Annoter */
+.db-seulement-annotation, .db-titre-annoter { display: none !important; }
+body.db-annotation .db-seulement-annotation { display: revert !important; }
+body.db-annotation .db-titre-annoter { display: inline !important; }
+body.db-annotation .db-hors-annotation { display: none !important; }
+body.db-annotation .db-actions-bat > div.db-seulement-annotation, body.db-annotation .db-demandes, body.db-annotation .db-prepare { display: grid !important; }
+body.db-annotation .db-bat-cadre { outline: 2px dashed var(--violet); outline-offset: -2px; }
+body.db-annotation .ec-bat-image { cursor: crosshair; }
+body.db-annotation .ec-repere.ancien { display: none; }
+.ec-repere.nouveau { background: var(--violet); }
+.db-bat .cd-masque { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.db-reperes li .ec-num { flex: 0 0 auto; border: 0; box-shadow: none; display: inline-flex; align-items: center; justify-content: center; width: 24px; height: 24px; border-radius: 50%; background: var(--violet); color: #fff; font-size: .78rem; font-weight: 800; }
+.db-reperes li .ec-champ { flex: 1; min-width: 0; }
+.db-reperes .ec-retirer { border: 0; background: none; font-size: 1.2rem; color: var(--gris); cursor: pointer; }
+.db-reperes-vide { margin: 0 0 .5rem; }
+.db-prepare p { margin: 0 0 .5rem; line-height: 1.35; }
+.db-prepare small { display: block; color: var(--gris); font-size: .8rem; }
+.db-note-bleue, .db-note-ambre { padding: .55rem .75rem; border-radius: 10px; font-size: .84rem; line-height: 1.4; }
+.db-note-bleue { background: #E8F0FC; color: var(--bleu); }
+.db-note-ambre { margin: 0; background: #FFF6E5; color: #92400E; }
+
+/* DB07 BAT validé */
+.db-parti { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 1.4rem; align-items: center; }
+.db-parti-visuel { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 1; border-radius: 16px; background: #EEF1F6; }
+.db-parti-visuel img { max-width: 80%; max-height: 80%; box-shadow: 0 8px 24px rgba(18,33,58,.15); }
+.db-parti-pdf { font-weight: 800; color: var(--gris); }
+.db-parti-ok { position: absolute; right: -10px; bottom: -10px; display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; background: var(--vert); color: #fff; font-size: 1.6rem; font-weight: 800; box-shadow: 0 0 0 5px #fff; }
+.db-parti-texte h2 { margin: 0 0 .3rem; font-size: 1.5rem; }
+.db-parti-texte > p { margin: 0 0 1rem; color: var(--gris); }
+.db-etapes { display: grid; grid-template-columns: repeat(6, 1fr); margin: 0 0 1rem; padding: 0; list-style: none; }
+.db-etapes li { position: relative; display: flex; flex-direction: column; align-items: center; gap: .3rem; font-size: .74rem; color: var(--gris); }
+.db-etapes li::before { content: ''; position: absolute; top: 8px; left: -50%; width: 100%; height: 3px; background: var(--trait); z-index: 0; }
+.db-etapes li:first-child::before { display: none; }
+.db-etapes li span { position: relative; z-index: 1; width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 3px solid var(--trait); }
+.db-etapes li.faite span { background: var(--vert); border-color: var(--vert); }
+.db-etapes li.faite::before, .db-etapes li.en_cours::before { background: var(--vert); }
+.db-etapes li.en_cours span { border-color: var(--bleu); box-shadow: 0 0 0 4px #E8F0FC; }
+.db-etapes li.faite small, .db-etapes li.en_cours small { color: var(--encre); font-weight: 700; }
+.db-parti-chiffres { grid-template-columns: repeat(3, 1fr); gap: .6rem; }
+.db-parti-chiffres > div { padding: .6rem .7rem; border-radius: 12px; background: var(--fond); }
+.db-parti-chiffres dt { font-size: .76rem; color: var(--gris); }
+.db-parti-chiffres dd { margin: .1rem 0 0; font-weight: 800; font-size: .92rem; }
+.db-deux-boutons { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+.db-deux-boutons a { text-align: center; text-decoration: none; }
+.db-encore { display: grid; gap: .3rem; background: var(--violet-clair); }
+.db-encore small { color: var(--gris); }
+.db-encore .ec-bouton { text-decoration: none; text-align: center; }
+
+@media (max-width: 900px) {
+	.db-parti { grid-template-columns: 1fr; }
+	.db-parti-visuel { max-width: 240px; margin: 0 auto; }
+	.db-comparaison { grid-template-columns: 1fr; }
+}
+@media (max-width: 640px) {
+	.db-bandeau { flex-wrap: wrap; }
+	.db-bat-cartes { grid-template-columns: 1fr; }
+	.db-bat-carte { grid-template-columns: 84px minmax(0, 1fr); }
+	.db-parti-chiffres { grid-template-columns: 1fr 1fr; }
+	.db-etapes small { font-size: .66rem; }
+	.db-bat-cadre { max-height: none; padding: .6rem; }
+}

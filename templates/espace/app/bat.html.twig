@@ -1,17 +1,224 @@
 {% extends 'espace/app/_app.html.twig' %}
 
 {#
-	Page d'un BAT (depuis Fichiers et BAT ou une notification) : la même
-	carte que sur la page de la commande (_bat_carte.html.twig), avec le
-	lien vers le suivi de la commande.
+	Page d'un BAT (maquettes DB05 à DB07, téléphone DB12) :
+	 - examiner : versions V1, V2… et « Comparer », zoom, quatre
+	   vérifications à cocher avant « Je valide · lancer l'impression »,
+	   les informations de la commande ;
+	 - demander une modification : toucher l'image pose un repère numéroté
+	   avec ce qu'il faut changer, corrections incluses, effet sur la date ;
+	 - validé : « C'est parti », suite de la commande et trace de validation.
+	Le serveur revérifie les cases et les repères. Un compte Lecture · suivi
+	voit le BAT sans bouton. b : SuiviCommandeClient::carteBat ; carte :
+	MesBatClient::carte.
 #}
-{% block title %}BAT · {{ b.titre }}{% endblock %}
-{% block styles %}<link href="{{ asset('css/espace-suivi.css') }}" rel="stylesheet">{% endblock %}
-{% block entete %}<a class="ec-retour" href="{{ path('app_espace_fichiers') }}"><span class="fl">‹</span>BAT · {{ b.titre }}</a>{% endblock %}
+{% set ctl = b.controle %}
+{% set lecture = app.user.estLectureSeule() %}
+{% set agir = b.etat == 'attente' and not lecture %}
+{% set valide = b.etat == 'valide' %}
+{% set fichierPrincipal = b.fichiers|first %}
+{% set actuelle = versions|keys|last %}
+{% set images = (versions[versionVue] ?? b.fichiers)|filter(f => f.typeMime starts with 'image/') %}
 
-{% block contenu %}
-	<p class="ec-sous">Commande {{ commande.numero }} · <a href="{{ path('app_espace_commande', {id: commande.publicId}) }}">suivre la commande</a></p>
-	{% include 'espace/app/_bat_carte.html.twig' with {b: b, contexte: 'bat'} %}
+{% block title %}BAT · {{ b.titre }}{% endblock %}
+{% block page_classe %} ec-page-large db-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-suivi.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}
+	<a class="ec-retour" href="{{ path('app_espace_fichiers') }}"><span class="fl">‹</span><span>{{ valide ? 'BAT validé' : 'BAT · ' ~ b.titre }}<span class="db-titre-annoter"> · modifications</span></span></a>
+	<div class="cs-entete-actions ec-bureau">
+		{% if valide %}
+			<a class="ec-bouton-blanc" href="{{ path('app_espace_fichiers') }}">Retour à mes BAT</a>
+		{% else %}
+			{% if fichierPrincipal %}<a class="ec-bouton-blanc db-hors-annotation" href="{{ path('app_espace_bat_fichier', {id: fichierPrincipal.id, telecharger: 1}) }}">⬇ {{ fichierPrincipal.typeMime == 'application/pdf' ? 'PDF' : 'Fichier' }}</a>{% endif %}
+			<a class="ec-bouton-blanc db-hors-annotation" href="{{ conversation_url_client(commande) }}">💬 Question</a>
+			{% if agir %}<button type="button" class="ec-bouton-blanc db-seulement-annotation" data-annoter-fin>Annuler</button>{% endif %}
+		{% endif %}
+	</div>
 {% endblock %}
 
-{% block scripts %}<script src="{{ asset('js/espace-bat.js') }}" defer></script>{% endblock %}
+{% macro image(f, b, rang, marques) %}
+	<div class="ec-bat-image db-bat-image" data-rang="{{ rang }}">
+		<img src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" alt="BAT · {{ b.titre }}">
+		{% if marques %}
+			{% for r in b.reperes.reperes %}{% if r.i == rang %}<span class="ec-repere ancien" style="left:{{ r.x * 100 }}%;top:{{ r.y * 100 }}%" title="{{ r.t }}">{{ loop.index }}</span>{% endif %}{% endfor %}
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% block contenu %}
+	{% import _self as m %}
+	{% if valide %}
+		{# DB07 : le BAT est validé, la commande continue. #}
+		<div class="db-grille">
+			<section class="ec-carte db-parti">
+				<div class="db-parti-visuel">
+					{% set vignette = b.fichiers|filter(f => f.typeMime starts with 'image/')|first %}
+					{% if vignette %}<img src="{{ path('app_espace_bat_fichier', {id: vignette.id}) }}" alt="BAT validé · {{ b.titre }}">{% else %}<span class="db-parti-pdf">PDF</span>{% endif %}
+					<span class="db-parti-ok" aria-hidden="true">✓</span>
+				</div>
+				<div class="db-parti-texte">
+					<h2>{{ justeValide ? 'C\'est parti, ' ~ prenom ~ ' !' : 'BAT validé' }}</h2>
+					<p>{{ b.titre }} : {{ commande.statutProduction|default('') == 'termine' ? 'l\'impression est terminée.' : 'part en impression. Vous recevez un message dès que c\'est prêt.' }}</p>
+					{% set fini = commande.dateLivraisonEffective|default(null) %}
+					<ol class="db-etapes" aria-label="Où en est la commande">
+						{% for e in ['Commande', 'Acompte', 'BAT', 'Production', 'Prête', 'Livrée'] %}
+							<li class="{{ loop.index <= 3 ? 'faite' : (loop.index == 4 ? 'en_cours' : '') }}"><span></span><small>{{ e }}</small></li>
+						{% endfor %}
+					</ol>
+					<dl class="db-parti-chiffres">
+						<div><dt>Prête le</dt><dd>{{ carte.pret ? jour_court(carte.pret) : '—' }}</dd></div>
+						{% if montants and peutPayer %}<div><dt>Reste à payer</dt><dd>{{ commande.resteAPayer|number_format(0, ',', ' ') }} F</dd></div>{% endif %}
+						<div><dt>{{ commande.estALivrer ? 'Livraison' : 'Retrait' }}</dt><dd>{{ commande.estALivrer ? (commande.adresseLivraison ?: 'à programmer') : 'à l\'imprimerie' }}</dd></div>
+					</dl>
+				</div>
+			</section>
+			<aside class="db-droite">
+				<section class="ec-carte db-trace-carte" aria-labelledby="trace-titre">
+					<h2 id="trace-titre">Trace de validation</h2>
+					<dl>
+						<div><dt>Version</dt><dd>V{{ trace.version ?? b.version }}</dd></div>
+						<div><dt>Validé par</dt><dd>{{ trace.par ?? 'Vous' }}</dd></div>
+						<div><dt>Le</dt><dd>{{ trace ? jour_court(trace.le) ~ ' à ' ~ trace.le|date('H:i') : (b.valideLe ? b.valideLe|date('d/m/Y H:i') : '—') }}</dd></div>
+						{% if trace and trace.depuis %}<div><dt>Depuis</dt><dd>{{ trace.depuis }}</dd></div>{% endif %}
+						{% if trace and trace.verifications %}<div><dt>Vérifications</dt><dd>{{ trace.verifications }} sur {{ b.verifications|length }} cochées</dd></div>{% endif %}
+					</dl>
+					<p class="ec-petit">Le BAT validé est gardé dans votre dossier et sert de référence pour l'impression.</p>
+				</section>
+				<section class="ec-carte db-deux-boutons">
+					{% if fichierPrincipal %}<a class="ec-bouton-blanc" href="{{ path('app_espace_bat_fichier', {id: fichierPrincipal.id, telecharger: 1}) }}">⬇ BAT {{ fichierPrincipal.typeMime == 'application/pdf' ? 'PDF' : '' }}</a>{% endif %}
+					<a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: commande.publicId}) }}">Suivre la commande</a>
+				</section>
+				{% if autresAValider is not empty %}
+					{% set suivant = autresAValider|first %}
+					<section class="ec-carte db-encore">
+						<b>Encore {{ autresAValider|length }} BAT à valider</b>
+						<small>{{ suivant.titre }} · {{ suivant.commande.numero }}</small>
+						<a class="ec-bouton violet" href="{{ path('app_espace_bat', {id: suivant.controle.id}) }}">Ouvrir</a>
+					</section>
+				{% endif %}
+			</aside>
+		</div>
+	{% else %}
+		{# DB05 et DB06 : examiner, puis valider ou annoter. #}
+		<form method="post" action="{{ path('app_espace_bat', {id: ctl.id}) }}" class="db-grille db-bat" data-bat-page>
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			<input type="hidden" name="reperes" value="[]" data-reperes>
+			<section class="ec-carte db-bat-vue">
+				<div class="db-bat-outils">
+					<div class="db-hors-annotation db-versions">
+						{% for n, fichiers in versions %}
+							<a class="db-version{{ not comparer and n == versionVue ? ' actif' }}" href="{{ path('app_espace_bat', {id: ctl.id, v: n}) }}">V{{ n }}{{ n == actuelle ? ' · actuelle' }}</a>
+						{% endfor %}
+						{% if versions|length > 1 %}<a class="db-comparer{{ comparer ? ' actif' }}" href="{{ path('app_espace_bat', {id: ctl.id, comparer: 1}) }}">⇆ Comparer</a>{% endif %}
+					</div>
+					{% if agir %}
+						<button type="button" class="db-annoter-lien db-hors-annotation" data-annoter>✎ Annoter</button>
+						<p class="db-seulement-annotation db-annoter-aide"><span class="db-pilule-violette">✎ Mode annotation</span> Touchez l'endroit à modifier, puis écrivez ce que vous voulez</p>
+					{% endif %}
+				</div>
+
+				<div class="db-bat-cadre" data-zoom-cadre>
+					{% if b.note %}<p class="db-bat-taille">{{ b.note }}</p>{% endif %}
+					{% if comparer %}
+						{% set precedente = versions|keys|slice(-2, 1)|first %}
+						<div class="db-comparaison">
+							{% for n in [precedente, actuelle] %}
+								<figure>
+									<figcaption>V{{ n }}{{ n == actuelle ? ' · actuelle' : '' }}</figcaption>
+									{% for f in versions[n]|filter(f => f.typeMime starts with 'image/') %}<img src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" alt="BAT V{{ n }}">{% else %}<p class="ec-petit">Fichier PDF : téléchargez-le pour le voir.</p>{% endfor %}
+								</figure>
+							{% endfor %}
+						</div>
+					{% else %}
+						<div class="db-bat-images" data-zoom>
+							{% for f in images %}
+								{% if versionVue == actuelle or versions is empty %}
+									{{ m.image(f, b, b.rangs[f.id] ?? 0, b.reperes and b.etat != 'valide') }}
+								{% else %}
+									<div class="db-bat-image"><img src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" alt="BAT V{{ versionVue }}"></div>
+								{% endif %}
+							{% else %}
+								{% for f in b.fichiers|filter(f => f.typeMime == 'application/pdf') %}
+									<iframe src="{{ path('app_espace_bat_fichier', {id: f.id}) }}" title="BAT · {{ b.titre }}"></iframe>
+								{% else %}
+									<p class="cs-bat-vide">Le fichier du BAT n'est pas encore en ligne. L'atelier vous l'envoie aussi par WhatsApp.</p>
+								{% endfor %}
+							{% endfor %}
+						</div>
+						{% if b.reperes and b.reperes.corrigeeEn and versionVue == actuelle %}
+							<p class="db-corrige">Corrigé en V{{ b.reperes.corrigeeEn }} : {{ b.reperes.reperes|map(r => r.t)|join(' · ') }}</p>
+						{% endif %}
+						{% if images is not empty %}
+							<div class="db-zoom db-hors-annotation" aria-label="Zoom">
+								<button type="button" data-zoom-moins aria-label="Réduire">−</button><span data-zoom-niveau>100 %</span><button type="button" data-zoom-plus aria-label="Agrandir">+</button>
+							</div>
+						{% endif %}
+					{% endif %}
+				</div>
+			</section>
+
+			<aside class="db-droite">
+				{% if agir %}
+					<section class="ec-carte db-verifs db-hors-annotation">
+						<h2>Avant de valider, vérifiez</h2>
+						{% for cle, libelle in b.verifications %}
+							<label><input type="checkbox" name="verifications[]" value="{{ cle }}" data-verif> {{ libelle }}</label>
+						{% endfor %}
+						<p class="ec-petit">Les couleurs d'un écran varient un peu. Un doute ? Demandez un essai imprimé à l'imprimerie.</p>
+					</section>
+				{% endif %}
+
+				<section class="ec-carte db-infos-commande db-hors-annotation">
+					<dl>
+						<div><dt>Commande</dt><dd>{{ commande.numero }}</dd></div>
+						<div><dt>Format</dt><dd>{{ espace_taille(b.ligne) ?: '—' }}</dd></div>
+						<div><dt>Papier</dt><dd>{{ b.ligne.support ? b.ligne.support.nom : '—' }}</dd></div>
+						<div><dt>Quantité</dt><dd>{{ b.ligne.quantite|number_format(0, ',', ' ') }}</dd></div>
+						{% if b.par %}<div><dt>Graphiste</dt><dd>{{ b.par }}</dd></div>{% endif %}
+						<div><dt>Prête le</dt><dd>{{ jour_court(carte.pret) }}</dd></div>
+					</dl>
+				</section>
+
+				{% if agir %}
+					{# DB06 : les repères posés sur l'image, une remarque générale, ce que la correction change. #}
+					<section class="ec-carte db-demandes db-seulement-annotation" aria-live="polite">
+						<h2>Vos demandes · <span data-nombre-demandes>0</span></h2>
+						<ol class="ec-reperes ec-saisie db-reperes" data-reperes-saisie></ol>
+						<p class="ec-petit db-reperes-vide" data-reperes-vide>Touchez l'image du BAT : un repère numéroté s'y pose.</p>
+						<label class="cd-masque" for="db-remarque">Autre remarque générale</label>
+						<textarea id="db-remarque" name="texte" class="ec-champ" maxlength="500" placeholder="Autre remarque générale (facultatif)…" data-remarque></textarea>
+					</section>
+					<section class="ec-carte db-prepare db-seulement-annotation">
+						<p><b>{{ b.par ? b.par|split(' ')|first ~ ' prépare' : 'L\'atelier prépare' }} la V{{ b.version + 1 }}</b><small>en général sous 2 h ouvrées</small></p>
+						{% set c = b.corrections %}
+						<p class="db-note-bleue">{% if c.restantes > 0 %}{{ c.gratuites }} correction{{ c.gratuites > 1 ? 's sont incluses' : ' est incluse' }} dans votre commande. Celle-ci est la {{ c.faites + 1 }}{{ c.faites == 0 ? 're' : 'e' }}.{% else %}Les corrections incluses sont utilisées : celle-ci peut être facturée, l'atelier vous dit le prix avant de la faire.{% endif %}</p>
+					</section>
+
+					<section class="ec-carte db-actions-bat">
+						<div class="db-hors-annotation">
+							<button type="submit" class="ec-bouton vert" name="action" value="valider" data-valider disabled>✓ Je valide · lancer l'impression</button>
+							<p class="ec-petit db-centre" data-valider-aide>Cochez les {{ b.verifications|length }} vérifications pour valider</p>
+							<button type="button" class="ec-bouton db-contour-violet" data-annoter>✎ Demander une modification</button>
+						</div>
+						<div class="db-seulement-annotation">
+							<p class="db-note-ambre">{% if carte.limite %}Si la V{{ b.version + 1 }} est validée avant {{ limite_bat(carte.limite) }}, la date reste <b>{{ jour_court(carte.pret) }}</b>.{% else %}Chaque version à refaire peut décaler la date : nous vous la confirmons avec la V{{ b.version + 1 }}.{% endif %}</p>
+							<button type="submit" class="ec-bouton violet" name="action" value="modifier" formnovalidate data-envoyer-demandes disabled>Envoyer mes demandes</button>
+						</div>
+						<p class="ec-petit db-centre">Votre accord est horodaté et archivé.</p>
+					</section>
+				{% elseif b.etat == 'attente' and lecture %}
+					<div class="ec-note">BAT en attente : une personne de votre entreprise le valide ou demande une modification.</div>
+				{% elseif b.etat == 'correction' %}
+					<div class="ec-note">{{ b.correctionLe ? 'Modification demandée le ' ~ b.correctionLe|date('d/m à H:i') ~ '. ' }}L'atelier prépare la V{{ b.version + 1 }} : vous êtes prévenu dès qu'elle est prête.</div>
+				{% else %}
+					<div class="ec-note">L'atelier prépare le BAT. Vous êtes prévenu dès qu'il est prêt.</div>
+				{% endif %}
+			</aside>
+		</form>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-bat-page.js') }}" defer></script>{% endblock %}

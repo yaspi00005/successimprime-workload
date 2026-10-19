@@ -6,12 +6,12 @@ use App\Entity\DemandeDevis;
 use App\Service\Synchro\CatalogueSynchro;
 use PHPUnit\Framework\TestCase;
 
-/** Demandes du site (maquette 11) : montent du site au local, jamais l'inverse. */
+/** Demandes du site (maquette 11) : créées en ligne, le local y relie la fiche client et le devis, qui redescendent (DB01). */
 final class DemandeDevisSynchroTest extends TestCase
 {
-    public function testMonteSeulementDuSiteAuLocal(): void
+    public function testCreeeEnLigneLeLocalRenvoieLeLien(): void
     {
-        self::assertSame(CatalogueSynchro::ASCENDANT, CatalogueSynchro::types()['demande_devis']['sens']);
+        self::assertSame(CatalogueSynchro::DEUX, CatalogueSynchro::types()['demande_devis']['sens']);
         self::assertSame('demande_devis', CatalogueSynchro::typeDe(new DemandeDevis()));
 
         // Le site envoie, le local reçoit et crée.
@@ -19,9 +19,10 @@ final class DemandeDevisSynchroTest extends TestCase
         self::assertTrue(CatalogueSynchro::accepte('demande_devis', false));
         self::assertTrue(CatalogueSynchro::creationAcceptee('demande_devis', false));
 
-        // Le local ne la renvoie jamais au site (rien de ce qu'il y ajoute ne descend), le site ne l'accepte pas.
-        self::assertFalse(CatalogueSynchro::envoye('demande_devis', false));
-        self::assertFalse(CatalogueSynchro::accepte('demande_devis', true));
+        // Le local la renvoie avec la fiche client et le devis reliés (« En préparation » de Mes devis).
+        self::assertTrue(CatalogueSynchro::envoye('demande_devis', false));
+        self::assertTrue(CatalogueSynchro::accepte('demande_devis', true));
+        self::assertSame(['client' => null, 'devis' => null], CatalogueSynchro::types()['demande_devis']['imposeAuLocal']);
     }
 
     public function testCeQuiResteAuLocalNeVoyagePas(): void
@@ -29,11 +30,11 @@ final class DemandeDevisSynchroTest extends TestCase
         $type = CatalogueSynchro::types()['demande_devis'];
         $voyagent = [...$type['champs'], ...array_keys($type['relations']), ...array_keys($type['listes'] ?? [])];
 
-        foreach (['client', 'prospect', 'devis', 'prepareeLe', 'traiteeLe', 'traiteePar'] as $local) {
+        foreach (['prospect', 'prepareeLe', 'traiteeLe', 'traiteePar'] as $local) {
             self::assertNotContains($local, $voyagent, $local);
         }
         self::assertSame(['numero', 'nature', 'nom', 'telephone', 'email', 'objet', 'numeroCommande', 'rappelLe', 'designation', 'largeurCm', 'hauteurCm', 'quantite', 'quantiteM2', 'message', 'creeLe', 'accuseEnvoyeLe'], $type['champs']);
-        self::assertSame(['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation'], $type['relations']);
+        self::assertSame(['configuration' => 'configuration', 'fichier' => 'fichier', 'creation' => 'atelier_creation', 'client' => 'client', 'devis' => 'devis'], $type['relations']);
         self::assertSame(['finitions' => 'finition'], $type['listes']);
     }
 

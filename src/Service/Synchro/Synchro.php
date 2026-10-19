@@ -639,7 +639,7 @@ final class Synchro
         if ($action === EspaceClient::ACTION_BAT_VALIDE) {
             // Les points cochés par le client avant de valider (texte seulement), gardés avec la validation.
             $verifications = array_values(array_filter(\is_array($donnees['verifications'] ?? null) ? $donnees['verifications'] : [], 'is_string'));
-            ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le, $verifications);
+            ($this->espaceClient)()->validerBat($controle, mb_substr((string) ($donnees['nom'] ?? 'client'), 0, 80), $le, $verifications, \is_string($donnees['depuis'] ?? null) ? mb_substr($donnees['depuis'], 0, 60) : null);
             $message = 'BAT validé par le client en ligne';
         } else {
             $espace = ($this->espaceClient)();

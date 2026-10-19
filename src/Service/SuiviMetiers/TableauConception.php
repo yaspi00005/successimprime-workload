@@ -262,7 +262,9 @@ final class TableauConception
     {
         $controle = $c->getControle();
         $controle->setBatValide(true)->setCorrectionNecessaire(false);
-        $c->valider($this->parametres->bareme(), $maintenant, 'par le client · enregistré par '.($par->getEmploye()?->getPrenom() ?? $par->getUsername()));
+        $notePar = $par->getEmploye()?->getPrenom() ?? $par->getUsername();
+        $client = $controle->getCommandeDetail()?->getCommande()?->getClients()?->getNomComplet() ?? 'Le client';
+        $c->valider($this->parametres->bareme(), $maintenant, 'par le client · enregistré par '.$notePar, [], \sprintf('%s (par téléphone, noté par %s)', $client, $notePar), 'imprimerie');
         $reste = null;
         try {
             $controle->valider($par);

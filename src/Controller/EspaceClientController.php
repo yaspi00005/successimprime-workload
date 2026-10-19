@@ -22,6 +22,7 @@ use App\Service\EspaceClient\FilNotifications;
 use App\Service\EspaceClient\MesCommandesClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\RecommanderClient;
+use App\Service\Fichiers\ConservationFichiers;
 use App\Service\EspaceClient\SuiviCommandeClient;
 use App\Service\EspaceClient\SuiviSansCompte;
 use App\Service\Http\Entree;
@@ -460,6 +461,28 @@ final class EspaceClientController extends AbstractController
         }
 
         return $this->redirectToRoute('app_espace_fichiers');
+    }
+
+    /**
+     * « Garder ce fichier 1 an » (ConservationFichiers) : sans rien demander,
+     * le fichier est effacé du serveur quelques mois après l'impression.
+     */
+    #[Route('/fichiers/{id}/garder', name: 'fichier_garder', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function garderFichier(int $id, Request $request, FichiersClient $fichiers, ConservationFichiers $conservation, EntityManagerInterface $em): Response
+    {
+        $this->jeton($request);
+        $compte = $this->compte();
+        // Fichier envoyé par le client, ou BAT de l'atelier sur une de ses commandes.
+        $f = $fichiers->trouver($compte->getClient(), $id) ?? $em->find(\App\Entity\CommandeDetailFichier::class, $id);
+        if (null === $f || !$f->isActif() || $f->getCommandeDetail()?->getCommande()?->getClients()?->getId() !== $compte->getClient()->getId()) {
+            throw $this->createNotFoundException();
+        }
+        $conservation->garder($f, trim(($compte->getNom() ?? 'client').' (client)'), new \DateTimeImmutable());
+        $em->flush();
+        $le = $conservation->effacement($f);
+        $this->addFlash('succes', \sprintf('%s est gardé %d mois après l\'impression%s.', $f->getNomOriginal(), $conservation->moisGarde(), null !== $le ? ', jusqu\'au '.$le->format('d/m/Y') : ''));
+
+        return $this->redirect($request->headers->get('referer') && str_contains((string) $request->headers->get('referer'), '/espace/') ? (string) $request->headers->get('referer') : $this->generateUrl('app_espace_fichiers'));
     }
 
     /**

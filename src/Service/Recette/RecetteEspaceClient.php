@@ -85,6 +85,7 @@ final class RecetteEspaceClient
         // Mon solde : retour d'Orange Money après un dépôt.
         'app_espace_solde_retour' => 'depot',
         'app_espace_fichier' => 'fichier',
+        'app_espace_fichier_garder' => 'fichier',
         'app_espace_bat' => 'bat',
         'app_espace_bat_fichier' => 'bat_fichier',
         'app_espace_conception_demande' => 'conception',
@@ -602,6 +603,7 @@ final class RecetteEspaceClient
         $envois = [
             ['app_espace_devis_accepter', 'devis_envoye', [], 'accepter le devis', fn (int|string $v): bool => (bool) $this->em->find(Devis::class, $v)?->estEnAttente()],
             ['app_espace_devis_refuser', 'devis_envoye', ['motif' => 'prix'], 'refuser le devis', fn (int|string $v): bool => (bool) $this->em->find(Devis::class, $v)?->estEnAttente()],
+            ['app_espace_fichier_garder', 'fichier', [], 'garder le fichier 1 an', fn (int|string $v): bool => null === $this->em->find(CommandeDetailFichier::class, $v)?->getGardeDemandeeLe()],
             ['app_espace_fichier_retirer', 'fichier', [], 'retirer le fichier', fn (int|string $v): bool => (bool) $this->em->find(CommandeDetailFichier::class, $v)?->isActif()],
             ['app_espace_commande_valider', 'commande_a_valider', [], 'valider la demande', null],
             ['app_espace_commande_refuser', 'commande_a_valider', ['motif' => 'Recette'], 'refuser la demande', null],

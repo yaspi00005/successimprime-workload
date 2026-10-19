@@ -14,6 +14,24 @@
 {% endblock %}
 {% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Fichiers et BAT</a>{% endblock %}
 
+{# Conservation (ConservationFichiers) : effacé du serveur quelques mois après l'impression, sauf « Garder ce fichier 1 an ». #}
+{% macro conservation(f) %}
+	{% set c = fichier_conservation(f) %}
+	<div class="ec-petit ec-conservation">
+		{% if c.efface %}Effacé du serveur le {{ c.efface|date('d/m/Y') }}
+		{% elseif c.protege %}Gardé avec « Mes produits »
+		{% elseif c.effacement %}Effacé le {{ c.effacement|date('d/m/Y') }}{{ c.garde ? ' (gardé ' ~ c.moisGarde ~ ' mois)' }}
+		{% else %}Gardé {{ c.garde ? c.moisGarde : c.mois }} mois après l'impression
+		{% endif %}
+		{% if c.peutGarder and not app.user.estLectureSeule() %}
+			<form method="post" action="{{ path('app_espace_fichier_garder', {id: f.id}) }}" class="ec-en-ligne">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<button type="submit" class="ec-lien">Garder ce fichier {{ c.moisGarde == 12 ? '1 an' : c.moisGarde ~ ' mois' }}</button>
+			</form>
+		{% endif %}
+	</div>
+{% endmacro %}
+
 {% macro icone(f) %}
 	{% if f.typeMime in ['image/jpeg', 'image/png'] %}<span class="ec-fichier-icone"><img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="" loading="lazy"></span>
 	{% else %}<span class="ec-fichier-icone">{{ f.nomOriginal|split('.')|last|upper|slice(0, 4) }}</span>{% endif %}
@@ -85,7 +103,7 @@
 								<td>V{{ h.version }}</td>
 								<td>{% if h.valideLe %}<span class="db-badge vert">✓ {{ h.valideLe|date('d/m H:i') }}</span>{% endif %}</td>
 								<td class="ec-bureau db-par">{{ h.par ?: 'Vous' }}</td>
-								<td>{% if h.fichier %}<a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: h.fichier.id, telecharger: 1}) }}">{{ h.fichier.typeMime == 'application/pdf' ? 'PDF' : 'Fichier' }}</a>{% endif %}</td>
+								<td>{% if h.fichier %}<a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: h.fichier.id, telecharger: 1}) }}">{{ h.fichier.typeMime == 'application/pdf' ? 'PDF' : 'Fichier' }}</a>{% if h.fichier.commandeDetail %}{{ _self.conservation(h.fichier) }}{% endif %}{% endif %}</td>
 							</tr>
 						{% endfor %}
 					</tbody>
@@ -120,6 +138,7 @@
 						<b>{{ f.nomOriginal }}</b>
 						<div class="ec-petit">{{ item.controle.texte }}</div>
 						<div class="ec-petit">{{ f.creeLe|date('d/m/Y') }}{% if f.commandeDetail %} · commande {{ f.commandeDetail.commande.numero }}{% endif %}</div>
+						{% if f.commandeDetail %}{{ _self.conservation(f) }}{% endif %}
 					</div>
 					<span class="ec-pastille {{ item.controle.etat }}">{{ item.controle.libelle }}</span>
 				</li>

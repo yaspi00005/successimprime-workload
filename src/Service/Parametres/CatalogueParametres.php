@@ -449,8 +449,11 @@ final class CatalogueParametres
                     ['cle' => 'delai_express', 'type' => 'nombre', 'libelle' => 'Délai express', 'aide' => 'Après validation du BAT.', 'suffixe' => 'h', 'min' => 1, 'max' => 720, 'defaut' => DelaisCommande::EXPRESS_DEFAUT],
                     ['cle' => 'majoration_express', 'type' => 'nombre', 'libelle' => 'Majoration express', 'aide' => 'Ajoutée en ligne « Express » sur la commande, sur le prix des produits.', 'suffixe' => '%', 'min' => 0, 'max' => 200, 'defaut' => DelaisCommande::MAJORATION_DEFAUT],
                     ['cle' => 'heure_limite', 'type' => 'heure', 'libelle' => 'BAT validé avant', 'aide' => 'Le délai part le jour même ; après, le jour ouvré suivant.', 'defaut' => DelaisCommande::HEURE_LIMITE_DEFAUT],
+                    // Conservation des fichiers de commande (ConservationFichiers) : jamais pour les fichiers de « Mes produits ».
+                    ['cle' => 'fichiers_conservation', 'type' => 'nombre', 'libelle' => 'Fichiers gardés après impression', 'aide' => 'Ensuite, le fichier est effacé du serveur. Jamais les fichiers enregistrés dans « Mes produits ».', 'suffixe' => 'mois', 'min' => 1, 'max' => 36, 'defaut' => \App\Service\Fichiers\ConservationFichiers::MOIS_DEFAUT],
+                    ['cle' => 'fichiers_garde', 'type' => 'nombre', 'libelle' => 'Avec « Garder ce fichier 1 an »', 'aide' => 'Demandé par le client ou l\'équipe sur le fichier.', 'suffixe' => 'mois', 'min' => 1, 'max' => 60, 'defaut' => \App\Service\Fichiers\ConservationFichiers::GARDE_DEFAUT],
                 ],
-                'motsCles' => ['Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
+                'motsCles' => ['Fichiers effacés après impression · 4 mois · garder 1 an', 'Connexion par code e-mail ou SMS', 'Mot de passe oublié', 'Commande en ligne du client', 'Paiement Orange Money en ligne', 'Délai standard · express 24 h', 'WhatsApp · mot de passe', 'Corrections de BAT gratuites'],
                 'note' => 'Tout est appliqué par le serveur. Commande en ligne coupée : la page Nouvelle commande l\'explique et rien ne s\'enregistre. Paiement Orange Money en ligne coupé (réglage de départ) : aucun paiement Orange Money depuis l\'espace, ni à la commande, ni dans Factures et paiements, ni pour la conception.',
             ],
             // Programme de points (docs/fidelite.md), règles de Yaya du 13/10/2026.

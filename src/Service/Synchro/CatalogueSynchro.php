@@ -108,7 +108,7 @@ final class CatalogueSynchro
      */
     public const REGLAGES_PUBLICS = [
         // Délais et majoration express : la nouvelle commande en ligne les montre et les applique ; corrections de BAT gratuites : suivi du BAT.
-        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne', 'delai_standard', 'express', 'delai_express', 'majoration_express', 'heure_limite', 'corrections_bat_gratuites'],
+        'espace_client' => ['code_sms', 'commande_en_ligne', 'paiement_en_ligne', 'delai_standard', 'express', 'delai_express', 'majoration_express', 'heure_limite', 'corrections_bat_gratuites', 'fichiers_conservation', 'fichiers_garde'],
         // Taux des frais Orange Money (tenus dans ParametresPaiement) : le paiement de l'espace client les applique.
         // Moyens acceptés, acompte par défaut, seuil et coordonnées du virement : « Factures et paiements » et choix « Acompte » de la commande en ligne.
         'paiements' => ['orange_money', 'tauxFondsSoutien', 'tauxFraisRetrait', 'especes', 'virement', 'virement_seuil', 'acompte', 'virement_coordonnees'],
@@ -417,6 +417,8 @@ final class CatalogueSynchro
                     'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux', 'logo', 'analyse', 'empreinte',
                     // Raison d'une retouche validée malgré une alerte, montrée au client avec le BAT (docs/prepresse-retouche.md).
                     'remarqueBat',
+                    // « Garder ce fichier 1 an » (ConservationFichiers) : demandé d'un côté ou de l'autre. L'effacement reste propre à chaque serveur.
+                    'gardeDemandeeLe', 'gardePar',
                 ],
                 'relations' => ['commandeDetail' => 'commande_ligne', 'client' => 'client'], 'listes' => [],
                 // Le jeton d'envoi ne part pas : la copie en reçoit un neuf.
@@ -424,7 +426,7 @@ final class CatalogueSynchro
                 // Un envoi pas fini ne part pas encore.
                 'pret' => static fn (CommandeDetailFichier $f): bool => $f->estUploadTermine(),
                 // En ligne, le client retire son fichier, le met dans une commande, et le contrôle est refait à la taille commandée.
-                'remontees' => ['actif' => ['1' => ['0']], 'analyse' => null, 'commandeDetail' => ['' => ['*']]],
+                'remontees' => ['actif' => ['1' => ['0']], 'analyse' => null, 'commandeDetail' => ['' => ['*']], 'gardeDemandeeLe' => null, 'gardePar' => null],
             ],
             'controle' => [
                 'classe' => ControlePrePresse::class, 'sens' => self::DESCENDANT, 'libelle' => 'BAT', 'titre' => ['statut'],

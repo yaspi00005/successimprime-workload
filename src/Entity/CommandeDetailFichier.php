@@ -10,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'commande_detail_fichier')]
 class CommandeDetailFichier
 {
+    use Trait\ConservationFichierTrait;
     use PublicIdTrait;
 
     public const STATUT_EN_ATTENTE = 'EN_ATTENTE';

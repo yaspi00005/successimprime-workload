@@ -253,6 +253,21 @@
 										{% for fichier in detail.fichiers|filter(f => f.origine == 'client' and f.actif)|slice(0, 3) %}
 											<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
 										{% endfor %}
+										{# Conservation (ConservationFichiers) : effacés du serveur quelques mois après l'impression, sauf « Garder 1 an ». #}
+										{% set fc = detail.fichiers|filter(f => f.actif and not f.logo) %}
+										{% if fc is not empty %}
+											{% set c = fichier_conservation(fc|first) %}
+											<small class="text-muted" title="Fichiers effacés du serveur après l'impression ; jamais ceux de Mes produits">
+												<i class="fas fa-hourglass-half"></i>
+												{% if c.efface %}fichiers effacés le {{ c.efface|date('d/m/Y') }}{% elseif c.protege %}fichiers gardés (Mes produits){% elseif c.effacement %}fichiers effacés le {{ c.effacement|date('d/m/Y') }}{% else %}fichiers gardés {{ c.garde ? c.moisGarde : c.mois }} mois après impression{% endif %}{{ c.garde and not c.efface ? ' · gardés ' ~ c.moisGarde ~ ' mois' }}
+											</small>
+											{% if c.peutGarder and is_granted('ROLE_COMMANDE') %}
+												<form method="post" action="{{ path('app_commande_ligne_garder_fichiers', {id: detail.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('garder-fichiers-' ~ detail.id) }}">
+													<button type="submit" class="btn btn-link">Garder {{ c.moisGarde == 12 ? '1 an' : c.moisGarde ~ ' mois' }}</button>
+												</form>
+											{% endif %}
+										{% endif %}
 										{# Retouche prépresse d'une image (docs/prepresse-retouche.md). #}
 										{% if is_granted('ROLE_PREPRESSE') and detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id}) }}" title="Redimensionner l'image, contour, fichier final"><i class="fas fa-crop-alt"></i> Redimensionner</a>{% endif %}
 										{% if client and not detail.produitClient and detail.statutProduction in ['livree', 'en_livraison', 'terminee', 'prete_livraison'] and is_granted('ROLE_COMMANDE') %}

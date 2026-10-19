@@ -425,6 +425,26 @@ final class Conversations
         }
     }
 
+    /**
+     * Au local : un message du formulaire Contact du site (ou une demande de
+     * rappel) devient une conversation attribuée (maquette EC08) : même
+     * attribution, même chronomètre et même retard imputé que les messages
+     * de l'espace client. Elle reste au local (origine « site ») : le
+     * numéro tapé sur le site n'est pas vérifié, le client ne la voit pas.
+     */
+    public function ouvrirPourDemandeSite(Clients $client, ?Commandes $commande, string $objet, string $texte, string $auteur, \DateTimeImmutable $le, \DateTimeImmutable $maintenant): ConversationClient
+    {
+        $c = ConversationClient::nouvelle($client, $commande, null, mb_substr($objet, 0, ConversationClient::OBJET_MAX), null !== $commande ? ConversationClient::SUJET_COMMANDE : ConversationClient::SUJET_AUTRE, $le)
+            ->setOrigine(ConversationClient::ORIGINE_SITE);
+        $this->em->persist($c);
+        $m = MessageClient::nouveau($client, MessageClient::CLIENT, mb_substr(trim($texte), 0, 2000) ?: $objet, mb_substr($auteur, 0, 80), $commande, $le);
+        $m->setConversation($c);
+        $this->em->persist($m);
+        $this->recevoirDuClient($m, $maintenant);
+
+        return $c;
+    }
+
     /** Conversation ouverte d'un client pour cette commande (ou sans commande), créée au besoin. */
     private function conversationPour(Clients $client, ?Commandes $commande, \DateTimeImmutable $le): ConversationClient
     {

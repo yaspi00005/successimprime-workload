@@ -198,7 +198,7 @@ final class PreparationDemande
         $devis->setTotalHt($ht)->setTotalTtc($ttc)->setTva(0);
     }
 
-    private static function prospect(DemandeDevis $demande, ?Clients $client, \DateTimeImmutable $le, ?string $besoin): Prospect
+    public static function prospect(DemandeDevis $demande, ?Clients $client, \DateTimeImmutable $le, ?string $besoin): Prospect
     {
         return (new Prospect())
             ->setNom($demande->getNom())

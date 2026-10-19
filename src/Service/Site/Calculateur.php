@@ -241,7 +241,8 @@ final class Calculateur
         $resultat['liens'] = [
             // Les deux liens portent des jetons (SiteExtension::lien, ::jetons), jamais d'identifiant. L'espace client reprend ces paramètres (connexion d'abord si besoin) ; pas de commande sur une saisie refusée.
             'commander' => null === $resultat['erreur'] ? $this->urls->generate('app_espace_nouvelle_commande', $this->site->jetons($parametres)) : null,
-            'devis' => $this->site->lien('app_site_devis', $parametres),
+            // « Ajouter au devis » : le panier de devis en cours sur cet appareil est repris, ce produit en plus (docs/site-vitrine.md).
+            'devis' => $this->site->lien('app_site_devis', $parametres + ['ajouter' => 1]),
             'whatsapp' => $this->site->whatsapp(self::message($resultat, $valeurs)),
         ];
 

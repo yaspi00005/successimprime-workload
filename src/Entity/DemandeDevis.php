@@ -121,6 +121,17 @@ class DemandeDevis
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $message = null;
 
+    /**
+     * Panier de devis (docs/site-vitrine.md) : à partir de deux produits,
+     * chacun a sa ligne (quantité, finitions, fichier). Vide pour une
+     * demande à un seul produit, qui garde ses champs ici.
+     *
+     * @var Collection<int, DemandeDevisLigne>
+     */
+    #[ORM\OneToMany(targetEntity: DemandeDevisLigne::class, mappedBy: 'demande', cascade: ['persist'], orphanRemoval: true)]
+    #[ORM\OrderBy(['position' => 'ASC'])]
+    private Collection $lignes;
+
     /** Fichier joint, rangé hors de public/ comme ceux de « Mes fichiers ». */
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
@@ -187,6 +198,7 @@ class DemandeDevis
         $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
         $this->finitions = new ArrayCollection();
+        $this->lignes = new ArrayCollection();
     }
 
     public static function nouvelle(string $nature, string $nom, string $telephone, \DateTimeImmutable $creeLe): self
@@ -427,6 +439,39 @@ class DemandeDevis
         return $this;
     }
 
+    /** @return Collection<int, DemandeDevisLigne> */
+    public function getLignes(): Collection
+    {
+        return $this->lignes;
+    }
+
+    public function addLigne(DemandeDevisLigne $ligne): static
+    {
+        if (!$this->lignes->contains($ligne)) {
+            $ligne->setDemande($this)->setPosition($this->lignes->count() + 1);
+            $this->lignes->add($ligne);
+        }
+
+        return $this;
+    }
+
+    /** Panier de devis à plusieurs lignes. */
+    public function estPanier(): bool
+    {
+        return $this->lignes->count() > 0;
+    }
+
+    /** Tous les fichiers joints : celui de la demande et ceux des lignes. */
+    public function nombreFichiers(): int
+    {
+        $n = null !== $this->fichier ? 1 : 0;
+        foreach ($this->lignes as $l) {
+            $n += null !== $l->getFichier() ? 1 : 0;
+        }
+
+        return $n;
+    }
+
     public function getMessage(): ?string
     {
         return $this->message;
@@ -543,9 +588,12 @@ class DemandeDevis
         return $this;
     }
 
-    /** « 300 × 100 cm × 2 », pour la liste de l'équipe. */
+    /** « 300 × 100 cm × 2 », pour la liste de l'équipe ; « 3 produits : … » pour un panier. */
     public function getResume(): string
     {
+        if ($this->estPanier()) {
+            return \sprintf('%d produits : %s', $this->lignes->count(), implode(' ; ', array_map(static fn (DemandeDevisLigne $l): string => $l->getResume(), $this->lignes->toArray())));
+        }
         $morceaux = [];
         $nombre = static fn (float $n): string => number_format($n, floor($n) == $n ? 0 : 1, ',', ' ');
         if (null !== $this->largeurCm && null !== $this->hauteurCm) {

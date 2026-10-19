@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\DemandeDevis;
+use App\Entity\DemandeDevisLigne;
 use App\Entity\ProduitConfiguration;
 use App\Entity\Commandes;
 use App\Service\Catalogue\NomCommercial;
@@ -13,15 +14,18 @@ use App\Service\Messagerie\ReglesReponse;
 use App\Service\EspaceClient\NouvelleCommande;
 use App\Service\PiecesParMetreCarre;
 use App\Service\Site\ContactSite;
+use App\Service\Site\Calculateur;
 use App\Service\Site\DemandesSite;
 use App\Service\Site\FormulaireDemande;
 use App\Service\Site\JetonsSite;
+use App\Service\Site\PanierDevis;
 use App\Service\Site\RappelsSite;
 use App\Service\Site\SuiviSite;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\RateLimiter\RateLimiterFactoryInterface;
@@ -31,7 +35,9 @@ use Symfony\Component\Routing\Attribute\Route;
  * Contact et demande de devis sans compte (maquette 11). La demande est
  * enregistrée, monte au local et y devient un prospect ou la fiche du
  * client du même numéro, avec un devis brouillon que l'équipe vérifie.
- * Aucun prix n'est montré ni envoyé au visiteur.
+ * La page du devis n'écrit aucun prix : le prix indicatif de chaque ligne
+ * du panier vient de l'estimation (tarif public, « à confirmer par
+ * l'imprimerie ») ; jamais de montant par SMS.
  *
  * Contre les robots : jeton CSRF, champ piège, temps de saisie minimum,
  * limite par adresse IP et contrôle de chaque champ côté serveur.
@@ -116,6 +122,12 @@ final class SiteDemandeController extends AbstractController
         ]);
     }
 
+    /**
+     * Demande de devis : un panier de 1 à PanierDevis::LIGNES_MAX produits
+     * (docs/site-vitrine.md), chacun avec sa quantité, ses finitions et son
+     * fichier. Sans script, une ligne se remplit et s'envoie comme avant ;
+     * les boutons « Ajouter un produit » et « Retirer » renvoient la page.
+     */
     #[Route('/demander-un-devis', name: 'app_site_devis', methods: ['GET', 'POST'])]
     public function devis(Request $request): Response
     {
@@ -125,23 +137,284 @@ final class SiteDemandeController extends AbstractController
         }
         $produits = $this->catalogue->produits();
         $prerempli = FormulaireDemande::preremplir($this->jetons->decoderParametres($requete), $produits);
-        $saisie = ['nom' => '', 'telephone' => '', 'email' => '', 'message' => ''] + $prerempli;
-        $traitement = $this->traiter(DemandeDevis::NATURE_DEVIS, $request, $produits, $saisie);
+        $saisie = ['nom' => '', 'telephone' => '', 'email' => '', 'message' => '', 'lignes' => [0 => $prerempli + self::ligneVide()]];
+        $traitement = $this->traiterPanier($request, $produits, $saisie);
         if ($traitement instanceof Response) {
             return $traitement;
         }
 
         // Ce que la page montre : jetons à la place des identifiants.
-        $traitement['saisie'] = $this->jetons->encoderParametres($traitement['saisie']);
+        $traitement['saisie']['lignes'] = array_map(fn (array $l): array => $this->jetons->encoderParametres($l), $traitement['saisie']['lignes']);
 
         return $this->page('site/devis.html.twig', $traitement + [
             'groupes' => array_map(fn (array $g): array => ['produits' => array_map(fn (array $p): array => ['id' => $this->jetons->encoder(JetonsSite::CONFIGURATION, $p['id'])] + $p, $g['produits'])] + $g, self::groupes($produits)),
             'fiches' => $this->fichesPubliques(self::fiches($produits)),
             'calculateur' => $request->isMethod('GET') && '' !== $prerempli['produit'],
             'tailleMax' => DemandesSite::tailleMaxFichier(),
+            'tailleMaxTotale' => PanierDevis::tailleMaxTotale(),
+            'fichiersMax' => PanierDevis::fichiersMax(),
+            'lignesMax' => PanierDevis::LIGNES_MAX,
             'extensions' => FichiersClient::extensions(),
             'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
         ]);
+    }
+
+    /**
+     * Prix indicatif d'une ligne du panier pour le script de la page : le
+     * prix que le devis brouillon aura (tarif public, pièces au m²
+     * comprises), jamais le prix B2B. Mêmes paramètres qu'une ligne, le
+     * produit et les finitions par leur jeton ; un produit inconnu est une
+     * erreur 422, une saisie refusée revient avec son message.
+     */
+    #[Route('/demander-un-devis/estimation', name: 'app_site_devis_estimation', methods: ['GET'])]
+    public function estimation(Request $request): JsonResponse
+    {
+        $donnees = $this->jetons->decoderParametres($request->query->all());
+        $produit = null;
+        foreach (isset($donnees['produit']) ? $this->catalogue->produits() : [] as $p) {
+            if ($p->getId() === $donnees['produit']) {
+                $produit = $p;
+                break;
+            }
+        }
+        if (null === $produit) {
+            return $this->estimationReponse(['total' => null, 'texte' => null, 'erreur' => 'Choisissez un produit.'], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $espacement = $this->piecesM2->espacement();
+        ['valeurs' => $v, 'erreurs' => $erreurs] = FormulaireDemande::validerLigne(['produit' => (string) $produit->getId()] + $donnees, [$produit], $espacement);
+        if ([] !== $erreurs) {
+            return $this->estimationReponse(['total' => null, 'texte' => null, 'erreur' => (string) reset($erreurs)]);
+        }
+        $prix = PanierDevis::prixIndicatif($produit, $v['quantite'], $v['largeur'], $v['hauteur'], $v['finitions'], $espacement);
+
+        return $this->estimationReponse([
+            'total' => $prix,
+            'texte' => null !== $prix ? Calculateur::fcfa($prix) : null,
+            'erreur' => null === $prix ? 'Prix donné par l\'imprimerie avec le devis.' : null,
+        ]);
+    }
+
+    /** @param array<string, mixed> $donnees */
+    private function estimationReponse(array $donnees, int $statut = Response::HTTP_OK): JsonResponse
+    {
+        $reponse = new JsonResponse($donnees, $statut);
+        $reponse->setPrivate();
+        $reponse->setMaxAge(60);
+        $reponse->headers->set('X-Robots-Tag', 'noindex');
+
+        return $reponse;
+    }
+
+    /** @return array<string, mixed> */
+    private static function ligneVide(): array
+    {
+        return ['produit' => '', 'largeur' => '', 'hauteur' => '', 'quantite' => '', 'unite_quantite' => 'piece', 'quantite_m2' => '', 'finitions' => [], 'description' => ''];
+    }
+
+    /**
+     * Contrôle et enregistre un panier de devis : mêmes protections que
+     * les autres formulaires (CSRF, champ piège, temps de saisie, limite par
+     * adresse IP), plus le nombre et le poids total des fichiers.
+     *
+     * @param list<ProduitConfiguration> $produits
+     * @param array<string, mixed>       $saisie   valeurs affichées par défaut
+     *
+     * @return Response|array{saisie: array<string, mixed>, erreurs: array<string, string>, jeton: string, info: ?string}
+     */
+    private function traiterPanier(Request $request, array $produits, array $saisie): Response|array
+    {
+        $maintenant = time();
+        if (!$request->isMethod('POST')) {
+            return ['saisie' => $saisie, 'erreurs' => [], 'jeton' => FormulaireDemande::jetonDelai($maintenant, $this->secret), 'info' => null];
+        }
+
+        $brut = $request->request->all();
+        $jeton = (string) $request->request->get('_t', '');
+        $jetonRenvoi = null === FormulaireDemande::verifierDelai($jeton, $maintenant + FormulaireDemande::DELAI_MIN_SECONDES, $this->secret)
+            ? $jeton : FormulaireDemande::jetonDelai($maintenant, $this->secret);
+        $vue = static fn (array $erreurs, array $saisie, ?string $info = null): array => ['saisie' => $saisie, 'erreurs' => $erreurs, 'jeton' => $jetonRenvoi, 'info' => $info];
+
+        // Envoi plus gros que ce que le serveur accepte : PHP a tout jeté.
+        if ([] === $brut && (int) $request->server->get('CONTENT_LENGTH') > 0) {
+            return $vue(['_' => \sprintf('Vos fichiers sont trop lourds pour partir ensemble (%s Mo au plus en tout, %s Mo par fichier) : remplissez de nouveau le formulaire, puis envoyez les plus lourds par WhatsApp ou collez un lien dans le message.', PanierDevis::mo(PanierDevis::tailleMaxTotale()), PanierDevis::mo(DemandesSite::tailleMaxFichier()))], $saisie);
+        }
+
+        // Chaque ligne : produit et finitions en jetons (les identifiants restent lus : un envoi n'est pas une adresse).
+        $donnees = $brut;
+        $donnees['lignes'] = [];
+        foreach (FormulaireDemande::lignes($brut) as $cle => $ligne) {
+            $decodee = $this->jetons->decoderParametres($ligne, JetonsSite::PARAMETRES_PRODUIT, true);
+            if ('' !== trim(\is_scalar($ligne['produit'] ?? null) ? (string) $ligne['produit'] : '') && !isset($decodee['produit'])) {
+                // Jeton refusé : « Choisissez un produit de la liste », pas « Autre projet ».
+                $decodee['produit'] = '0';
+            }
+            $donnees['lignes'][$cle] = $decodee;
+        }
+        $saisie = self::saisiePanier($donnees) + $saisie;
+
+        // Sans script : ajouter ou retirer une ligne renvoie la page, sans rien contrôler ni enregistrer.
+        if ($request->request->has('_ajouter')) {
+            if (\count($saisie['lignes']) < PanierDevis::LIGNES_MAX) {
+                $saisie['lignes'][max(array_keys($saisie['lignes'])) + 1] = self::ligneVide();
+            }
+
+            return $vue([], $saisie, 'Produit ajouté en bas de la liste. Les fichiers déjà choisis sont à choisir de nouveau.');
+        }
+        if ($request->request->has('_retirer')) {
+            $cle = $request->request->getInt('_retirer', -1);
+            if (\count($saisie['lignes']) > 1 && isset($saisie['lignes'][$cle])) {
+                unset($saisie['lignes'][$cle]);
+            }
+
+            return $vue([], $saisie, 'Produit retiré. Les fichiers déjà choisis sont à choisir de nouveau.');
+        }
+
+        if (!$this->isCsrfTokenValid('site-demande-'.DemandeDevis::NATURE_DEVIS, (string) $request->request->get('_token'))) {
+            return $vue(['_' => 'La page a expiré : vérifiez votre demande puis envoyez-la à nouveau.'], $saisie);
+        }
+        if (FormulaireDemande::estPiege($brut)) {
+            // Un robot : rien n'est enregistré, et il ne le sait pas.
+            $request->getSession()->set(self::SESSION, ['nature' => DemandeDevis::NATURE_DEVIS, 'numero' => null, 'accuse' => false]);
+
+            return $this->redirectToRoute('app_site_devis_envoyee', [], Response::HTTP_SEE_OTHER);
+        }
+        if (null !== $erreur = FormulaireDemande::verifierDelai($jeton, $maintenant, $this->secret)) {
+            return $vue(['_' => $erreur], $saisie);
+        }
+
+        // Fichiers : un par ligne (lignes[i][fichier]), ou « fichier » de l'ancien formulaire.
+        $fichiers = [];
+        $envoyes = \is_array($request->files->all()['lignes'] ?? null) ? $request->files->all()['lignes'] : [];
+        foreach ($envoyes as $cle => $champs) {
+            $f = \is_array($champs) ? ($champs['fichier'] ?? null) : null;
+            if ($f instanceof UploadedFile && isset($donnees['lignes'][$cle])) {
+                $fichiers[$cle] = $f;
+            }
+        }
+        if ([] === $fichiers && ($ancien = $request->files->get('fichier')) instanceof UploadedFile) {
+            $fichiers[array_key_first($donnees['lignes']) ?? 0] = $ancien;
+        }
+
+        $espacement = $this->piecesM2->espacement();
+        ['valeurs' => $valeurs, 'erreurs' => $erreurs] = FormulaireDemande::validerPanier($donnees, $produits, $espacement, array_keys($fichiers));
+        foreach ($fichiers as $cle => $f) {
+            try {
+                DemandesSite::verifierFichier($f);
+            } catch (\DomainException $e) {
+                $erreurs['lignes.'.$cle.'.fichier'] = $e->getMessage();
+            }
+        }
+        if (!self::aErreurFichier($erreurs) && null !== $ensemble = PanierDevis::verifierEnsemble(array_values($fichiers))) {
+            $erreurs['_'] = $ensemble;
+        }
+        if ([] !== $erreurs) {
+            foreach (array_keys($fichiers) as $cle) {
+                $erreurs['lignes.'.$cle.'.fichier'] ??= 'Choisissez de nouveau ce fichier : il n\'est pas gardé tant que la demande n\'est pas envoyée.';
+            }
+
+            return $vue($erreurs, $saisie);
+        }
+
+        if (!$this->limite->create((string) $request->getClientIp())->consume()->isAccepted()) {
+            return $vue(['_' => 'Trop d\'envois depuis cette connexion. Réessayez dans une heure, ou écrivez-nous sur WhatsApp.'], $saisie);
+        }
+
+        // Prix indicatif de chaque ligne (celui du devis brouillon), pour la confirmation et l'équipe.
+        $lignes = [];
+        $resumes = [];
+        foreach ($valeurs['lignes'] as $l) {
+            $prix = null !== $l['produit'] ? PanierDevis::prixIndicatif($l['produit'], $l['quantite'], $l['largeur'], $l['hauteur'], $l['finitions'], $espacement) : null;
+            $fichier = $fichiers[$l['cle']] ?? null;
+            $lignes[] = ['valeurs' => $l, 'fichier' => $fichier, 'prix' => $prix];
+            $resumes[] = PanierDevis::resume($l, self::nomsFinitions($l), $prix, $fichier ? FichiersClient::nomPropre((string) $fichier->getClientOriginalName()) : null);
+        }
+
+        try {
+            if (\count($lignes) <= 1) {
+                // Un seul produit (ou un projet décrit dans le message) : la demande comme avant le panier.
+                $l = $lignes[0]['valeurs'] ?? null;
+                $message = implode("\n\n", array_filter([$l['description'] ?? null, $valeurs['message']]));
+                $simple = ['objet' => null, 'numeroCommande' => null, 'rappelLe' => null, 'message' => '' === $message ? null : $message] + $valeurs
+                    + ($l ?? ['produit' => null, 'largeur' => null, 'hauteur' => null, 'quantite' => null, 'quantiteM2' => null, 'finitions' => []]);
+                $demande = $this->demandes->enregistrer(DemandeDevis::NATURE_DEVIS, $simple, $lignes[0]['fichier'] ?? (reset($fichiers) ?: null), new \DateTimeImmutable());
+            } else {
+                $demande = $this->demandes->enregistrerPanier($valeurs, $lignes, new \DateTimeImmutable());
+            }
+        } catch (\DomainException $e) {
+            return $vue(['_' => $e->getMessage()], $saisie);
+        }
+
+        $total = PanierDevis::total(array_column($lignes, 'prix'));
+        $request->getSession()->set(self::SESSION, [
+            'nature' => DemandeDevis::NATURE_DEVIS,
+            'numero' => $demande->getNumero(),
+            'accuse' => null !== $demande->getAccuseEnvoyeLe(),
+            'resume' => self::sansDemo($demande->getResume()),
+            'fichier' => $demande->nombreFichiers() > 0,
+            'prenom' => self::prenom($demande->getNom()),
+            'message' => null !== $demande->getMessage() ? mb_strimwidth($demande->getMessage(), 0, 240, '…') : null,
+            'lignes' => $resumes,
+            'total' => null !== $total['total'] ? Calculateur::fcfa($total['total']) : null,
+            'totalComplet' => $total['complet'],
+            'le' => $demande->getCreeLe()->getTimestamp(),
+        ]);
+
+        return $this->redirectToRoute('app_site_devis_envoyee', [], Response::HTTP_SEE_OTHER);
+    }
+
+    /** @param array<string, string> $erreurs */
+    private static function aErreurFichier(array $erreurs): bool
+    {
+        foreach (array_keys($erreurs) as $cle) {
+            if (str_ends_with($cle, '.fichier')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Noms des finitions choisies sur une ligne contrôlée.
+     *
+     * @param array{produit: ?ProduitConfiguration, finitions: list<int>} $ligne
+     *
+     * @return list<string>
+     */
+    private static function nomsFinitions(array $ligne): array
+    {
+        $noms = [];
+        foreach ($ligne['produit']?->getConfigurationFinitions() ?? [] as $cf) {
+            if (\in_array($cf->getId(), $ligne['finitions'], true)) {
+                $noms[] = self::sansDemo((string) $cf->getFinition()?->getNom());
+            }
+        }
+
+        return array_values(array_filter($noms));
+    }
+
+    /**
+     * Ce que le visiteur a tapé dans le panier, pour le lui remontrer.
+     *
+     * @param array<string, mixed> $donnees
+     *
+     * @return array<string, mixed>
+     */
+    private static function saisiePanier(array $donnees): array
+    {
+        $saisie = self::saisie(DemandeDevis::NATURE_DEVIS, $donnees);
+        $saisie = array_intersect_key($saisie, array_flip(['nom', 'telephone', 'message', 'email']));
+        $saisie['lignes'] = [];
+        foreach ($donnees['lignes'] ?? [] as $cle => $l) {
+            $ligne = self::saisie(DemandeDevis::NATURE_DEVIS, \is_array($l) ? $l : []);
+            $saisie['lignes'][$cle] = array_intersect_key($ligne, self::ligneVide())
+                + ['description' => mb_substr(\is_scalar($l['description'] ?? null) ? (string) $l['description'] : '', 0, DemandeDevisLigne::DESCRIPTION_MAX)];
+        }
+        if ([] === $saisie['lignes']) {
+            $saisie['lignes'][0] = self::ligneVide();
+        }
+
+        return $saisie;
     }
 
     /** Confirmation (une fois) : numéro de la demande, jamais de prix. */

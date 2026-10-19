@@ -1,6 +1,8 @@
 {#
 	Une demande du site (maquette 11) : ce que le visiteur a écrit, son
 	fichier, et ce qui a été préparé (client ou prospect, devis brouillon).
+	Panier de devis (docs/site-vitrine.md) : une ligne par produit, avec son
+	fichier, le prix indicatif montré au visiteur et la ligne du devis.
 #}
 {% extends 'base.html.twig' %}
 
@@ -30,7 +32,10 @@
 					<dt class="col-sm-3">E-mail</dt>
 					<dd class="col-sm-9"><a href="mailto:{{ d.email }}">{{ d.email }}</a></dd>
 				{% endif %}
-				{% if d.estDevis %}
+				{% if d.estDevis and d.estPanier %}
+					<dt class="col-sm-3">Produits</dt>
+					<dd class="col-sm-9">{{ d.lignes|length }} lignes · {{ d.nombreFichiers }} fichier{{ d.nombreFichiers > 1 ? 's' }} joint{{ d.nombreFichiers > 1 ? 's' }}</dd>
+				{% elseif d.estDevis %}
 					<dt class="col-sm-3">Produit</dt>
 					<dd class="col-sm-9">{{ d.designation ? d|ligne_interne : 'Non choisi : voir le message' }}</dd>
 					{% if d.largeurCm and d.hauteurCm %}
@@ -65,6 +70,47 @@
 					</dd>
 				{% endif %}
 			</dl>
+
+			{% if d.estPanier %}
+				{% set totalIndicatif = d.lignes|reduce((s, l) => s + (l.prixIndicatif ?? 0), 0) %}
+				<div class="table-responsive mt-3">
+					<table class="table table-sm align-middle mb-0 si-dd-lignes" data-sans-filtres>
+						<thead>
+							<tr><th>#</th><th>Produit demandé</th><th>Qté</th><th>Finitions</th><th>Fichier</th><th class="text-end">Prix montré</th><th>Devis</th></tr>
+						</thead>
+						<tbody>
+							{% for l in d.lignes %}
+								<tr>
+									<td>{{ l.position }}</td>
+									<td>
+										<b>{{ l.designation ?? 'Autre projet' }}</b>
+										{% if l.largeurCm and l.hauteurCm %}<br><small>{{ l.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ l.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm</small>{% endif %}
+										{% if l.description %}<br><small>{{ l.description }}</small>{% endif %}
+										{% if not l.configuration and not l.description %}<br><small class="text-muted">produit retiré du catalogue depuis</small>{% endif %}
+									</td>
+									<td>{{ l.quantite ? l.quantite|number_format(0, ',', ' ') : '—' }}{% if l.quantiteM2 is not null %}<br><small class="text-muted">{{ l.quantiteM2|number_format(2, ',', ' ') }} m² demandés</small>{% endif %}</td>
+									<td>{{ l.nomsFinitions ?? '—' }}</td>
+									<td>
+										{% if l.fichier %}
+											{% if fichiersLignes[l.position] ?? false %}
+												<a href="{{ path('app_demandes_site_fichier', {id: d.id, ligne: l.position}) }}"><i class="fas fa-download me-1"></i>{{ l.fichier.nomOriginal }}</a>
+											{% else %}
+												{{ l.fichier.nomOriginal }} <small class="text-muted">(pas encore arrivé)</small>
+											{% endif %}
+											<br><small class="text-muted">{{ (l.fichier.taille / 1048576)|number_format(1, ',', ' ') }} Mo</small>
+										{% else %}—{% endif %}
+									</td>
+									<td class="text-end">{{ l.prixIndicatif ? l.prixIndicatif|number_format(0, ',', ' ') ~ ' F' : 'à chiffrer' }}</td>
+									<td>{% if l.devisDetail and d.devis %}<a href="{{ path('app_devis_show', {id: d.devis.id}) }}">Ligne {{ loop.index }}</a><br><small>{{ l.devisDetail.totalTtc ? l.devisDetail.totalTtc|number_format(0, ',', ' ') ~ ' F' : 'à chiffrer' }}</small>{% else %}—{% endif %}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+						{% if totalIndicatif > 0 %}
+							<tfoot><tr><th colspan="5" class="text-end">Total indicatif montré au visiteur (à confirmer)</th><th class="text-end">{{ totalIndicatif|number_format(0, ',', ' ') }} F</th><th></th></tr></tfoot>
+						{% endif %}
+					</table>
+				</div>
+			{% endif %}
 
 			<form method="post" action="{{ path('app_demandes_site_traiter', {id: d.id}) }}" class="mt-3 d-flex flex-wrap gap-2">
 				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">

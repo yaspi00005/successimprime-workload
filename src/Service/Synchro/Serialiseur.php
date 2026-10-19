@@ -127,7 +127,9 @@ final class Serialiseur
                 $meta->setFieldValue($e, $enfant['parent'], $entite);
                 foreach ($enfant['relations'] as $c => $cible) {
                     $id = $donnees['relations'][$c] ?? null;
-                    $meta->setFieldValue($e, $c, $id === null ? null : $this->exiger($cible, $id));
+                    // Lien facultatif (produit retiré du catalogue entre-temps) : la ligne arrive sans lui.
+                    $facultatif = \in_array($c, $enfant['facultatives'] ?? [], true);
+                    $meta->setFieldValue($e, $c, $id === null ? null : ($facultatif ? $this->trouver($cible, $id) : $this->exiger($cible, $id)));
                 }
                 $collection?->add($e);
                 $this->em->persist($e);

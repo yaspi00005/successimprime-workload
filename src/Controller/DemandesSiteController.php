@@ -64,19 +64,38 @@ final class DemandesSiteController extends AbstractController
     {
         $demande = $this->demande($id);
 
+        // Panier : le fichier de chaque ligne, arrivé ou non du site (position => présent).
+        $presents = [];
+        foreach ($demande->getLignes() as $l) {
+            $presents[$l->getPosition()] = null !== $l->getFichier() && null !== $fichiers->chemin($l->getFichier());
+        }
+
         return $this->render('demandes_site/voir.html.twig', [
             'd' => $demande,
             'fichierPresent' => null !== $demande->getFichier() && null !== $fichiers->chemin($demande->getFichier()),
+            'fichiersLignes' => $presents,
             'jeton' => self::CSRF,
         ]);
     }
 
-    /** Fichier joint : toujours téléchargé (jamais affiché dans la page), et noté au journal. */
+    /**
+     * Fichier joint : toujours téléchargé (jamais affiché dans la page), et
+     * noté au journal. ?ligne=<position> : le fichier d'une ligne du panier.
+     */
     #[Route('/{id}/fichier', name: 'fichier', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function fichier(int $id, FichiersClient $fichiers): Response
+    public function fichier(int $id, Request $request, FichiersClient $fichiers): Response
     {
         $demande = $this->demande($id);
         $fichier = $demande->getFichier();
+        if ($request->query->has('ligne')) {
+            $position = $request->query->getInt('ligne');
+            $fichier = null;
+            foreach ($demande->getLignes() as $l) {
+                if ($l->getPosition() === $position) {
+                    $fichier = $l->getFichier();
+                }
+            }
+        }
         $chemin = null !== $fichier && $fichier->isActif() ? $fichiers->chemin($fichier) : null;
         if (null === $chemin) {
             throw $this->createNotFoundException('Le fichier n\'est pas encore arrivé du site.');

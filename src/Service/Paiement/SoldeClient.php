@@ -292,6 +292,28 @@ final class SoldeClient
     }
 
     /**
+     * Avoir validé (Avoir, maquette FD04) : son montant va au compte du
+     * client, sans aucun argent qui entre ni compte de trésorerie. Ensuite
+     * AvoirsFactures le déduit de la facture ou le rend, au choix.
+     */
+    public function crediterAvoir(Clients $client, int $montant, string $reference, ?Commandes $commande, User $par): MouvementSoldeClient
+    {
+        if ($montant <= 0) {
+            throw new \DomainException('L\'avoir doit être supérieur à zéro.');
+        }
+        self::verifierChiffres($montant, $client->getSoldeCredit());
+
+        return $this->enTransaction(function () use ($client, $montant, $reference, $commande, $par): MouvementSoldeClient {
+            $ligne = $this->crediter($client, MouvementSoldeClient::AVOIR, $montant, $par, null, $reference)
+                ->setCommande($commande)
+                ->setMotif('Avoir '.$reference);
+            $this->em->flush();
+
+            return $ligne;
+        });
+    }
+
+    /**
      * Paie une commande (ou sa facture) avec le solde : tout ou partie,
      * jamais plus que le reste dû ni que le solde disponible. Le paiement
      * « solde client » est validé tout de suite (aucun compte de trésorerie).

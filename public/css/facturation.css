@@ -1,0 +1,73 @@
+/*
+ * Documents de facturation (maquettes FD01 à FD07) : liste, nouveau
+ * document, éditeur, facture validée, avoir, documents liés, paiement.
+ */
+.fd-page { --fd-bleu: #0F4590; --fd-rouge: #DE1028; --fd-vert: #1F9D55; --fd-violet: #7B3FC4; --fd-orange: #E95B35; --fd-gris: #6B7280; --fd-bord: #E5E9F0; --fd-fond: #F5F7FB; }
+.fd-page .fd-carte { background: #fff; border: 1px solid var(--fd-bord); border-radius: 14px; padding: 16px 18px; margin-bottom: 16px; }
+.fd-page .fd-carte h2, .fd-page .fd-titre-bloc { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--fd-gris); font-weight: 700; margin: 0 0 10px; }
+.fd-page .fd-grille { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }
+.fd-page .fd-entete { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.fd-page .fd-entete h1 { font-size: 22px; font-weight: 800; margin: 0; color: #111827; }
+.fd-page .fd-fil { font-size: 12px; color: var(--fd-gris); margin-bottom: 2px; }
+.fd-page .fd-fil a { color: inherit; }
+.fd-page .fd-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Pastilles de choix (motif, moyen de paiement, onglets) */
+.fd-page .fd-pastilles { display: flex; flex-wrap: wrap; gap: 8px; }
+.fd-page .fd-pastille { display: inline-flex; align-items: center; border: 1px solid var(--fd-bord); background: #F1F3F8; color: #1F2937; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; margin: 0; }
+.fd-page .fd-pastille input { position: absolute; opacity: 0; pointer-events: none; }
+.fd-page .fd-pastille:has(input:checked), .fd-page .fd-pastille.actif { background: var(--fd-violet); border-color: var(--fd-violet); color: #fff; }
+.fd-page .fd-pastilles.bleu .fd-pastille:has(input:checked), .fd-page .fd-pastilles.bleu .fd-pastille.actif { background: #111827; border-color: #111827; }
+
+/* Tableaux */
+.fd-page .fd-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.fd-page .fd-table th { font-size: 12px; color: var(--fd-gris); font-weight: 600; text-align: left; padding: 8px 8px; background: var(--fd-fond); }
+.fd-page .fd-table td { padding: 10px 8px; border-bottom: 1px solid var(--fd-bord); vertical-align: middle; }
+.fd-page .fd-table .num { text-align: right; white-space: nowrap; }
+.fd-page .fd-table input.fd-qte { width: 72px; text-align: center; border: 1px solid var(--fd-bord); border-radius: 8px; padding: 4px 6px; }
+.fd-page .fd-table input.fd-qte:focus { border-color: var(--fd-bleu); outline: none; box-shadow: 0 0 0 2px rgba(15, 69, 144, .15); }
+.fd-page .fd-table tr.fd-remise td { color: var(--fd-vert); }
+.fd-page .fd-table tr.fd-total td { font-weight: 700; border-bottom: 0; }
+.fd-page .fd-violet { color: var(--fd-violet); }
+.fd-page .fd-vert { color: var(--fd-vert); }
+.fd-page .fd-rouge { color: var(--fd-rouge); }
+.fd-page .fd-muet { color: var(--fd-gris); font-size: 12px; }
+
+/* Choix en cartes (que faire de l'avoir, partir de…) */
+.fd-page .fd-choix { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.fd-page .fd-choix label { display: block; border: 1.5px solid var(--fd-bord); border-radius: 12px; padding: 12px 14px; cursor: pointer; margin: 0; }
+.fd-page .fd-choix label b { display: block; font-size: 14px; }
+.fd-page .fd-choix label small { color: var(--fd-gris); }
+.fd-page .fd-choix input[type=radio] { position: absolute; opacity: 0; }
+.fd-page .fd-choix label:has(input:checked) { border-color: var(--fd-violet); box-shadow: 0 0 0 1px var(--fd-violet); }
+.fd-page .fd-choix.bleu label:has(input:checked) { border-color: var(--fd-bleu); box-shadow: 0 0 0 1px var(--fd-bleu); background: #F5F8FE; }
+
+/* Encadrés */
+.fd-page .fd-regle { background: #F3ECFC; border-radius: 12px; padding: 12px 14px; font-size: 13px; color: #4B2A80; }
+.fd-page .fd-alerte { background: #FFF6DB; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #7A5600; }
+.fd-page .fd-ligne-solde { display: flex; justify-content: space-between; font-size: 14px; padding: 6px 0; border-bottom: 1px solid var(--fd-bord); }
+.fd-page .fd-ligne-solde:last-of-type { border-bottom: 0; font-weight: 700; }
+
+/* Badges de type et de statut */
+.fd-badge { display: inline-block; border-radius: 999px; padding: 2px 10px; font-size: 12px; font-weight: 600; white-space: nowrap; background: #EEF1F6; color: #374151; }
+.fd-badge.facture { background: #EEF1F6; color: #111827; }
+.fd-badge.avoir { background: #F3ECFC; color: #7B3FC4; }
+.fd-badge.recu { background: #E7F6EE; color: #1F9D55; }
+.fd-badge.acompte { background: #FDEDE6; color: #E95B35; }
+.fd-badge.proforma { background: #E6F4F2; color: #0F766E; }
+.fd-badge.bl { background: #E6F0FB; color: #0F4590; }
+.fd-badge.devis { background: #EEF2FF; color: #3730A3; }
+.fd-badge.ok { background: #E7F6EE; color: #1F9D55; }
+.fd-badge.attente { background: #FFF6DB; color: #8A6100; }
+.fd-badge.retard { background: #FDE8EA; color: #DE1028; }
+.fd-badge.brouillon { background: #F1F3F8; color: #6B7280; }
+.fd-badge.envoye { background: #E6F0FB; color: #0F4590; }
+
+@media (max-width: 991px) {
+	.fd-page .fd-grille { grid-template-columns: minmax(0, 1fr); }
+	.fd-page .fd-choix { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 640px) {
+	.fd-page .fd-table { font-size: 13px; }
+	.fd-page .fd-table th:nth-child(3), .fd-page .fd-table td:nth-child(3) { display: none; }
+}

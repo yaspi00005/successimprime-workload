@@ -42,6 +42,9 @@ class MouvementSoldeClient
     /** Solde déjà sur la fiche avant le relevé (reprise de la migration). */
     public const REPRISE = 'reprise';
 
+    /** Avoir sur une facture validée (Avoir), crédité au compte du client : aucun argent n'entre. */
+    public const AVOIR = 'avoir';
+
     public const TYPES = [
         self::MONNAIE => 'Monnaie gardée',
         self::DEPOT => 'Dépôt',
@@ -50,6 +53,7 @@ class MouvementSoldeClient
         self::RETOUR => 'Paiement annulé, remis au solde',
         self::OUVERTURE => 'Solde d\'ouverture',
         self::REPRISE => 'Solde déjà sur la fiche',
+        self::AVOIR => 'Avoir',
     ];
 
     public const MODES = [

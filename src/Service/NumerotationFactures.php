@@ -3,6 +3,7 @@
 namespace App\Service;
 
 use App\Entity\Entreprise;
+use App\Entity\Factures;
 use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -18,6 +19,25 @@ final class NumerotationFactures
 {
     public function __construct(private readonly EntityManagerInterface $em)
     {
+    }
+
+    /**
+     * Le numéro définitif d'un document (règle de Yaya du 19/10/2026) :
+     * une facture n'en reçoit un qu'à sa validation, jamais au brouillon.
+     * Format de l'entreprise émettrice, sinon FAC-000123-10-2026 (PF-
+     * pour une proforma). Ne change jamais un numéro déjà donné.
+     */
+    public function attribuer(Factures $facture): string
+    {
+        if (null !== $facture->getNumero() && '' !== $facture->getNumero()) {
+            return $facture->getNumero();
+        }
+        $date = $facture->getDateFacture() ?? new \DateTimeImmutable();
+        $entreprise = $this->em->getRepository(Entreprise::class)->findOneBy(['code' => $facture->getEmetteur()]);
+        $numero = null !== $entreprise && $facture->estFacture() ? $this->prochain($entreprise, $date) : null;
+        $facture->setNumero($numero ?? \sprintf('%s-%06d-%s', $facture->estFacture() ? 'FAC' : 'PF', $facture->getId(), $date->format('m-Y')));
+
+        return (string) $facture->getNumero();
     }
 
     /**

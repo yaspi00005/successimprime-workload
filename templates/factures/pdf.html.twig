@@ -65,6 +65,7 @@
 	</style>
 </head>
 <body>
+	{% if facture.etat == 'brouillon' %}<div style="position: fixed; top: 38%; left: 8%; font-size: 110px; font-weight: bold; color: rgba(222, 16, 40, 0.12); transform: rotate(-30deg);">BROUILLON</div>{% endif %}
 	{% set estTiers = facture.facturerAUnTiers|default(false) %}
 	{% set details = commande.commandesDetails|default([]) %}
 	{% set avecRemise = details|filter(d => d.montantRemise|default(0) > 0)|length > 0 %}
@@ -98,7 +99,7 @@
 			</td>
 			<td class="droite">
 				<div class="titre">{{ facture.estProforma ? 'PROFORMA' : 'FACTURE' }}</div>
-				<div class="numero">N° {{ facture.numero|default('FAC-' ~ facture.id) }}</div>
+				<div class="numero">{{ facture.numero ? 'N° ' ~ facture.numero : 'N° attribué à la validation' }}</div>
 				<div class="dates">
 					Date : {{ facture.dateFacture|date('d/m/Y') }}<br>
 					Commande : {{ commande.numero|default('CMD-' ~ commande.id) }}<br>
@@ -231,7 +232,7 @@
 							<td style="vertical-align: middle">
 								<b>Payer par Orange Money</b><br>
 								{% if entreprise.marchandOrangeMoney %}Marchand {{ entreprise.nomAffiche }} · {{ entreprise.marchandOrangeMoney }}<br>{% endif %}
-								Référence : {{ facture.numero }}
+								Référence : {{ facture.numero|default('commande ' ~ commande.numero) }}
 							</td>
 						</tr></table>
 					</div>

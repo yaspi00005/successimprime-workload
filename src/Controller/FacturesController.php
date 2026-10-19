@@ -398,51 +398,12 @@ class FacturesController extends AbstractController
 
 
                 /*
-                 * =================================================
-                 * NUMÉRO
-                 * =================================================
+                 * Numéro : une facture n'en reçoit un qu'à sa validation
+                 * (« Valider et numéroter », emettre) ; une proforma tout de suite.
                  */
-
-                if (
-                    $facture->estFacture()
-                ) {
-                    $prefixe = 'FAC';
-                } else {
-                    $prefixe = 'PF';
+                if (!$facture->estFacture()) {
+                    $numerotation->attribuer($facture);
                 }
-
-
-                /*
-                 * Exemples :
-                 *
-                 * FAC-000001-08-2026
-                 * PF-000002-08-2026
-                 */
-                // Format propre à l'entreprise (Réglages › Entreprises), sinon l'ancien.
-                $entreprise =
-                    $entrepriseRepository->parCode(
-                        $facture->getEmetteur()
-                    );
-                $numeroEntreprise =
-                    $entreprise !== null
-                    && $facture->estFacture()
-                        ? $numerotation->prochain(
-                            $entreprise,
-                            $facture->getDateFacture()
-                        )
-                        : null;
-
-                $facture->setNumero(
-                    $numeroEntreprise
-                    ?? sprintf(
-                        '%s-%06d-%s',
-                        $prefixe,
-                        $facture->getId(),
-                        $facture
-                            ->getDateFacture()
-                            ->format('m-Y')
-                    )
-                );
 
 
                 /*
@@ -491,13 +452,9 @@ class FacturesController extends AbstractController
 
                 $this->addFlash(
                     'success',
-                    sprintf(
-                        '%s %s a été enregistré avec succès.',
-                        $facture
-                            ->getTypeDocumentLabel(),
-                        $facture
-                            ->getNumero()
-                    )
+                    null === $facture->getNumero()
+                        ? 'Facture enregistrée en brouillon : son numéro sera attribué à la validation.'
+                        : sprintf('%s %s a été enregistré avec succès.', $facture->getTypeDocumentLabel(), $facture->getNumero())
                 );
 
 
@@ -662,6 +619,9 @@ class FacturesController extends AbstractController
 
                 'statutPaiement' =>
                 $facture->getStatutPaiement(),
+
+                'avoirsFacture' =>
+                $entityManager->getRepository(\App\Entity\Avoir::class)->findBy(['facture' => $facture], ['id' => 'ASC']),
             ]
         );
     }
@@ -679,7 +639,8 @@ class FacturesController extends AbstractController
     public function emettre(
         Factures $facture,
         Request $request,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        NumerotationFactures $numerotation
     ): Response {
         if (
             !$this->isCsrfTokenValid(
@@ -728,6 +689,21 @@ class FacturesController extends AbstractController
             );
         }
 
+
+        // Validation : le numéro définitif est attribué maintenant, à la date du jour
+        // (les numéros suivent l'ordre des dates) ; l'échéance garde son délai.
+        if (null === $facture->getNumero()) {
+            $aujourdhui = new \DateTimeImmutable('today');
+            $date = $facture->getDateFacture();
+            if (null === $date || $date < $aujourdhui) {
+                $delai = null !== $date && null !== $facture->getDateEcheance() ? (int) $date->diff($facture->getDateEcheance())->days : null;
+                $facture->setDateFacture($aujourdhui);
+                if (null !== $delai) {
+                    $facture->setDateEcheance($aujourdhui->modify('+'.$delai.' days'));
+                }
+            }
+            $numerotation->attribuer($facture);
+        }
 
         $facture->setEtat(
             Factures::ETAT_EMISE
@@ -910,6 +886,15 @@ class FacturesController extends AbstractController
             );
         }
 
+        // Règle de Yaya (19/10/2026) : une facture validée ne se modifie ni ne s'annule ;
+        // toute correction passe par un avoir numéroté.
+        if ($facture->estFacture() && $facture->estEmise()) {
+            $this->addFlash('warning', sprintf('La facture %s est validée : elle ne se modifie plus. Pour la corriger ou l\'annuler, créez un avoir.', $facture->getNumero()));
+
+            return $this->redirectToRoute('app_factures_show', ['id' => $facture->getId()]);
+        }
+
+
 
         /*
          * Une fois la facture totalement payée, elle redevient un
@@ -1017,6 +1002,15 @@ class FacturesController extends AbstractController
                 ]
             );
         }
+
+        // Règle de Yaya (19/10/2026) : une facture validée ne se modifie ni ne s'annule ;
+        // toute correction passe par un avoir numéroté.
+        if ($facture->estFacture() && $facture->estEmise()) {
+            $this->addFlash('warning', sprintf('La facture %s est validée : elle ne se modifie plus. Pour la corriger ou l\'annuler, créez un avoir.', $facture->getNumero()));
+
+            return $this->redirectToRoute('app_factures_show', ['id' => $facture->getId()]);
+        }
+
 
 
         $facture->setEtat(
@@ -1448,6 +1442,19 @@ public function pdf(
 
 
     /*
+     * Brouillon : PDF d'aperçu (mention « Brouillon », sans numéro),
+     * jamais archivé. Le PDF définitif s'archive une fois la facture validée.
+     */
+    if (Factures::ETAT_BROUILLON === $facture->getEtat()) {
+        return new Response($contenuPdf, Response::HTTP_OK, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => sprintf('inline; filename="brouillon-%d.pdf"', $facture->getId()),
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+
+    /*
      * ============================================================
      * CRÉATION DU DOSSIER
      * ============================================================
@@ -1662,6 +1669,9 @@ public function pdf(
             );
         }
 
+        if ($facture->estFacture() && null === $facture->getNumero()) {
+            return $this->json(['success' => false, 'message' => 'Validez la facture avant de l\'envoyer : un brouillon n\'a pas encore de numéro.'], Response::HTTP_BAD_REQUEST);
+        }
         if (!$whatsAppService->estConfigure()) {
             return $this->json(
                 [

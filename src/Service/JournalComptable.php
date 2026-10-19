@@ -84,6 +84,7 @@ final class JournalComptable
         '661' => 'Rémunérations du personnel',
         '681' => 'Dotations aux amortissements d’exploitation',
         '702' => 'Ventes de produits finis',
+        '709' => 'Rabais, remises et ristournes accordés',
         '758' => 'Produits divers',
     ];
 
@@ -271,6 +272,16 @@ final class JournalComptable
     public static function ecrituresSoldeClient(MouvementSoldeClient $ligne): array
     {
         $montant = abs($ligne->getMontant());
+        if (0 !== $montant && MouvementSoldeClient::AVOIR === $ligne->getType()) {
+            // Avoir (FD04) : la vente baisse (709 au débit), le client a une avance (4191 au crédit).
+            $piece = (string) ($ligne->getReference() ?? sprintf('SC-%06d', (int) $ligne->getId()));
+            $tiers = $ligne->getClient()?->getNomComplet();
+
+            return [
+                self::ligne($ligne->getCreeLe(), $piece, '709', null, 'Avoir '.$piece, $montant, 0),
+                self::ligne($ligne->getCreeLe(), $piece, '4191', $tiers, 'Avoir '.$piece, 0, $montant),
+            ];
+        }
         if (0 === $montant || !\in_array($ligne->getType(), [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR], true)) {
             return [];
         }
@@ -489,7 +500,7 @@ final class JournalComptable
             ->leftJoin('ligne.commande', 'commande')
             ->andWhere('ligne.type IN (:types)')
             ->andWhere('ligne.creeLe BETWEEN :debut AND :fin')
-            ->setParameter('types', [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR])
+            ->setParameter('types', [MouvementSoldeClient::UTILISATION, MouvementSoldeClient::RETOUR, MouvementSoldeClient::AVOIR])
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
             ->getQuery()

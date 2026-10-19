@@ -63,7 +63,7 @@ final class CaisseSansTresorerieTest extends TestCase
     {
         $onglets = array_column((new NavigationExtension())->ongletsAutorises('finances', Version20261015090000::sans(self::CAISSE_AVANT)), 'route');
 
-        self::assertSame(['app_finances_vue_ensemble', 'app_finances_encaissements', 'app_caisse_index', 'app_finances_depenses'], $onglets);
+        self::assertSame(['app_finances_vue_ensemble', 'app_factures_index', 'app_finances_encaissements', 'app_caisse_index', 'app_finances_depenses'], $onglets);
         self::assertNotContains('app_finances_tresorerie', $onglets);
         self::assertNotContains('app_finances_fournisseurs', $onglets);
     }

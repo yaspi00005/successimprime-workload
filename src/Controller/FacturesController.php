@@ -26,36 +26,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 #[Route('/factures')]
 class FacturesController extends AbstractController
 {
-    /*
-     * ============================================================
-     * LISTE
-     * ============================================================
-     */
-    #[Route(
-        '/',
-        name: 'app_factures_index',
-        methods: ['GET']
-    )]
-    public function index(
-        FacturesRepository $facturesRepository
-    ): Response {
-        $factures =
-            $facturesRepository->findBy(
-                [],
-                [
-                    'dateFacture' => 'DESC',
-                    'id' => 'DESC',
-                ]
-            );
-
-        return $this->render(
-            'factures/index.html.twig',
-            [
-                'factures' => $factures,
-            ]
-        );
-    }
-
+    // La liste (maquette FD06) est dans DocumentsFacturationController.
 
     /*
      * ============================================================
@@ -101,8 +72,11 @@ class FacturesController extends AbstractController
         /*
          * Valeurs par défaut.
          */
+        // « Nouveau document » (FD01) peut demander une proforma.
         $facture->setTypeDocument(
-            Factures::TYPE_FACTURE
+            Factures::TYPE_PROFORMA === $request->query->getString('type')
+                ? Factures::TYPE_PROFORMA
+                : Factures::TYPE_FACTURE
         );
 
         $facture->setEmetteur(

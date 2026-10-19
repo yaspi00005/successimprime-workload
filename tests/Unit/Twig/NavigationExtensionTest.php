@@ -93,16 +93,17 @@ final class NavigationExtensionTest extends TestCase
         // Le préfixe le plus précis gagne sur « Livraisons » (app_livraisons_).
         self::assertSame(5, $extension->ongletActif('app_livraisons_mes_livraisons'));
         self::assertSame(6, $extension->ongletActif('app_livraisons_suivi'));
-        self::assertSame(2, $extension->ongletActif('app_clients_soldes'));
+        self::assertSame(3, $extension->ongletActif('app_clients_soldes'));
         self::assertSame(0, $extension->ongletActif('app_finances_vue_ensemble'));
-        self::assertSame(1, $extension->ongletActif('app_creances_index'));
-        self::assertSame(4, $extension->ongletActif('app_finances_depenses_voir'));
-        self::assertSame(6, $extension->ongletActif('app_mouvement_tresorerie_index'));
-        self::assertSame(7, $extension->ongletActif('app_finances_rentabilite'));
-        self::assertSame(8, $extension->ongletActif('app_comptabilite_index'));
-        self::assertSame(5, $extension->ongletActif('app_finances_fournisseurs'));
-        self::assertSame(6, $extension->ongletActif('app_finances_tresorerie'));
-        self::assertSame(1, $extension->ongletActif('app_paiements_show'));
+        self::assertSame(1, $extension->ongletActif('app_factures_show'));
+        self::assertSame(2, $extension->ongletActif('app_creances_index'));
+        self::assertSame(5, $extension->ongletActif('app_finances_depenses_voir'));
+        self::assertSame(7, $extension->ongletActif('app_mouvement_tresorerie_index'));
+        self::assertSame(8, $extension->ongletActif('app_finances_rentabilite'));
+        self::assertSame(9, $extension->ongletActif('app_comptabilite_index'));
+        self::assertSame(6, $extension->ongletActif('app_finances_fournisseurs'));
+        self::assertSame(7, $extension->ongletActif('app_finances_tresorerie'));
+        self::assertSame(2, $extension->ongletActif('app_paiements_show'));
         self::assertSame(0, $extension->ongletActif('app_reglages_parametres_index'));
         self::assertSame(2, $extension->ongletActif('app_couts_revient_index'));
         self::assertSame(0, $extension->ongletActif('app_employes_index'));

@@ -24,7 +24,7 @@
 				<h1>Avoir sur la facture {{ facture.numero }}</h1>
 			</div>
 			<div class="fd-actions">
-				<a href="{{ path('app_factures_show', {id: facture.id}) }}" class="btn btn-light">Annuler</a>
+				<a href="{{ path('app_factures_show', {id: facture.id}) }}" class="btn fd-btn-blanc">Annuler</a>
 				{% if peutValider %}
 					<button type="submit" class="btn btn-danger">Valider l'avoir</button>
 				{% endif %}

@@ -93,7 +93,7 @@
 				<form method="post" action="{{ path('app_engagements_direction_publier') }}" class="d-flex flex-wrap gap-2 mt-2">
 					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 					<input type="hidden" name="mois" value="{{ mois }}">
-					<button class="btn btn-warning btn-sm" name="action" value="publier"{% if enLigne %} disabled title="À faire sur l'ERP de l'imprimerie"{% endif %}>Publier les chiffres de {{ periode }}</button>
+					<button class="btn btn-warning btn-sm" name="action" value="publier"{% if enLigne %} disabled title="À faire sur l'ERP de l'imprimerie"{% endif %}>Publier les chiffres {{ periode matches '/^[aeiouyéèh]/i' ? "d'" : 'de ' }}{{ periode }}</button>
 					{% if publies %}<button class="btn btn-outline-light btn-sm" name="action" value="retirer" data-confirmer="Retirer les chiffres de la page « Nos engagements » ?"{% if enLigne %} disabled{% endif %}>Retirer du site</button>{% endif %}
 				</form>
 				<p class="mt-2 mb-0"><small>Seuls les chiffres mesurés partent ; un chiffre vide n'est jamais affiché.</small></p>

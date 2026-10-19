@@ -67,3 +67,12 @@ Une valeur refusée n'est pas enregistrée (l'ancienne reste) et son message s'a
 
 - Tests : `tests/Unit/Service/Site/AdresseSiteTest.php`, `DonneesStructureesTest.php`, `ReferencementSiteTest.php`, `MesureAudienceTest.php`, `PlanDuSiteTest.php`, `tests/Unit/Twig/ReferencementExtensionTest.php`, `tests/Unit/EventSubscriber/ReferencementSubscriberTest.php`, `tests/Unit/Security/SansCdnTest.php` (mesure d'audience).
 - Après mise en ligne : test des résultats enrichis de Google (search.google.com/test/rich-results), Search Console › Inspection de l'URL, PageSpeed Insights sur téléphone.
+
+## Pages du 19/10/2026
+
+- **Comment venir** (/comment-venir) : indexée (`ReferencementSubscriber::INDEXABLES`), dans le plan du site (`PlanDuSite::AUTRES_PAGES`), lien « Comment venir » du pied de page, fil d'Ariane Contact › Comment venir. Les photos du local y portent un texte alternatif qui décrit ce qu'on voit (façade au balcon rond, allée pavée, jardin).
+- **Nos engagements** : titre et description venus de la page (Réglages › Site vitrine) ou de leur repli ; un seul `<h1>` (« Des promesses écrites. »). Les chiffres affichés sont ceux publiés par la direction : jamais de chiffre dans les données structurées.
+- **Contact** : toujours la fiche de l'imprimerie (LocalBusiness). L'écran « L'atelier dort » change le `<h1>` la nuit, pas l'adresse ni la description.
+- **Pas indexées** : /suivre-ma-reclamation, /contact/envoye et la réponse de « Un engagement non tenu ? » (`noindex`, `Cache-Control: private, no-store`, hors du plan du site).
+- **www** : `www.succesimprim.com` renvoie en 301 vers `https://succesimprim.com` (règle de `public/.htaccess` sous Apache ; bloc `server` à part sous Nginx, docs/deploiement.md).
+

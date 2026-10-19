@@ -14,7 +14,7 @@
 .se-mesures ul { list-style: none; margin: 0; padding: 0; }
 .se-mesures li { display: grid; grid-template-columns: 96px 1fr; gap: 10px; align-items: center; padding: 6px 0; }
 .se-mesures li b { color: var(--jaune); font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
-.se-mesures li span { font-size: 14px; }
+.se-mesures li > span { font-size: 14px; }
 .se-mesures-note { margin: 8px 0 0; font-size: 12px; color: rgba(255, 255, 255, .65); }
 .se-intro { padding-bottom: 0; }
 

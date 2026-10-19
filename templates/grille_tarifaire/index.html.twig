@@ -109,7 +109,7 @@
 									{% set unite = unites[c.modeCalcul]|default(c.modeCalcul) %}
 									<tr class="{{ not c.active ? 'si-grille-inactif' }}">
 										<td data-libelle="Article">
-											<strong>{{ c.produit|nom_interne }}</strong>
+											<strong><a href="{{ path('app_produits_fiche', {id: c.produit.id}) }}" title="Ouvrir la fiche du produit">{{ c.produit|nom_interne }}</a></strong>
 											<small>{{ [c.support ? c.support|texte_interne, c.format ? c.format|texte_interne, c.typeImpression ? c.typeImpression|texte_interne]|filter(v => v)|join(' · ') }}</small>
 										</td>
 										<td data-libelle="Unité">/ {{ unite }}</td>
@@ -131,7 +131,7 @@
 										</td>
 									</tr>
 								{% else %}
-									<tr><td colspan="7" class="si-grille-vide">Aucune configuration dans cette catégorie. <a href="{{ path('app_produits_index') }}">Ajouter un produit</a></td></tr>
+									<tr><td colspan="7" class="si-grille-vide">Aucun prix dans cette catégorie : ajoutez-les dans la fiche du produit (<a href="{{ path('app_produits_index') }}">Produits</a>).</td></tr>
 								{% endfor %}
 							</tbody>
 						</table>

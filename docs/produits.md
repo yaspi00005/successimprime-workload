@@ -34,6 +34,17 @@ Rien de cela n'est envoyé au site en ligne : la liste blanche de `CatalogueSync
 - Dupliquer : la copie part masquée en ligne avec le motif « copie à relire ».
 - Supprimer : seulement un produit sans commande.
 
+### Configurations : tout dans la fiche
+
+Demande de Yaya : « au niveau des grilles tarifaires il n'y a rien, ça nous envoie à la configuration, or dans la configuration ça a été supprimé ». Les configurations (type d'impression + support + format → prix) se créent, se modifient et s'arrêtent **dans la fiche produit**, carte « Prix par configuration » (Admin, à l'ERP de l'imprimerie seulement, jamais en ligne) :
+- chaque configuration : prix, prix revendeur (pas au-dessus du prix), quantité minimale, case « En vente » ; envoyés avec « Enregistrer » ;
+- « + Configuration » : type d'impression, support et format **parmi les compatibilités du produit** (« Compatibilités (saisie du comptoir) », celles cochées dans le même envoi comptent) ; le support affine ensuite les types et formats qu'il liste (même règle que l'ancienne page). Prix par pièce, m², mètre, forfait ou heure (par défaut l'unité de vente du produit) ; format facultatif (« sur mesure »). Une même combinaison ne peut exister deux fois ;
+- arrêter une configuration = décocher « En vente » : elle reste dans les commandes et devis passés. Le × (supprimer) n'apparaît que pour une configuration jamais utilisée (lignes de commande ou de devis, prix négociés, demandes de devis, Atelier 3D, supports de conception) ; elle part à la corbeille ;
+- chaque changement (et la création) va dans l'historique des prix, comme la grille tarifaire ; un prix changé recontrôle les paliers à prix fixe (garde-fous des paliers, voir plus bas) ;
+- tout passe par Doctrine : le journal de synchronisation emporte les configurations au site.
+
+L'ancienne page `/produit-configurations` renvoie au catalogue avec un message (ses routes AJAX restent pour la saisie des devis). **Réglages › Grille tarifaire** reste une vue de tous les prix par catégorie ; chaque ligne ouvre la fiche de son produit, et une catégorie vide dit « Aucun prix dans cette catégorie : ajoutez-les dans la fiche du produit (Produits) ».
+
 ### Visible en ligne
 
 `publie` sert déjà au comptoir (un produit non publié ne se vend plus). Le nouveau champ `visibleEnLigne` ne retire le produit que du site public, du calculateur et de l'espace client : il reste vendu au comptoir. `motifHorsLigne` (160 caractères) dit pourquoi ; remettre le produit en ligne vide le motif. `Produits::estEnLigne()` = actif, publié et visible en ligne. Quand une machine tombe en panne, l'atelier (Maintenance, docs/atelier-production.md) masque en ligne les produits qui n'ont qu'elle (sans machine de secours en état), avec le motif « Machine en réparation », et les remet en ligne à la résolution ; ces écrans-ci ne gèrent pas les pannes.

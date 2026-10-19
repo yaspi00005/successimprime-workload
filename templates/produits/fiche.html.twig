@@ -80,10 +80,33 @@
 					{% endif %}
 				</section>
 
-				<section class="si-pd-carte">
-					<div class="si-pd-carte-tete"><h3>Prix par configuration</h3>{% if modifiable and not nouveau %}<a href="{{ path('app_produit_configuration_index') }}">+ Configuration</a>{% endif %}</div>
+				<section class="si-pd-carte" id="pd-configurations">
+					<div class="si-pd-carte-tete"><h3>Prix par configuration</h3>{% if modifiable and not nouveau %}<a href="#pd-config-nouvelle" data-ouvrir-config>+ Configuration</a>{% endif %}</div>
 					{% if configurations is empty %}
-						<p class="si-pd-note mt-0">Aucune configuration : {{ nouveau ? 'enregistrez le produit, puis ajoutez ses' : 'ajoutez les' }} configurations (support, format, prix) pour le vendre au comptoir et en ligne.</p>
+						<p class="si-pd-note mt-0">Aucune configuration : {{ nouveau ? 'enregistrez le produit, puis ajoutez ses' : 'ajoutez ci-dessous les' }} configurations (type d'impression, support, format, prix) pour le vendre au comptoir et en ligne.</p>
+					{% elseif modifiable %}
+						{# Saisie dans la fiche (docs/produits.md) : envoyée avec « Enregistrer », historisée comme la grille tarifaire. #}
+						<input type="hidden" name="configurations_envoyees" value="1">
+						<div class="table-responsive">
+							<table class="si-pd-mini si-pd-configs" data-sans-filtres>
+								<thead><tr><th>Configuration</th><th class="si-pd-num">Prix (F)</th><th class="si-pd-num">Revendeur (F)</th><th class="si-pd-num">Minimum</th><th class="text-center">En vente</th>{% if avec_couts %}<th class="si-pd-num">Marge</th>{% endif %}<th></th></tr></thead>
+								<tbody>
+									{% for c in configurations %}
+										{% set cid = c.configuration.id %}
+										<tr{% if not c.configuration.active %} class="si-pd-gris"{% endif %}>
+											<td>{{ c.libelle }}<small class="d-block si-pd-gris">par {{ c.unite }}{{ not c.configuration.active ? ' · désactivée' }}</small></td>
+											<td class="si-pd-num"><input name="configurations[{{ cid }}][prixBase]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixBase }}" aria-label="Prix {{ c.libelle }}"></td>
+											<td class="si-pd-num"><input name="configurations[{{ cid }}][prixB2B]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.prixB2B }}" placeholder="—" aria-label="Prix revendeur {{ c.libelle }}"></td>
+											<td class="si-pd-num"><input name="configurations[{{ cid }}][quantiteMinimale]" inputmode="numeric" class="form-control form-control-sm" value="{{ c.configuration.quantiteMinimale }}" aria-label="Minimum {{ c.libelle }}"></td>
+											<td class="text-center"><input type="checkbox" class="form-check-input" name="configurations[{{ cid }}][active]" value="1"{{ c.configuration.active ? ' checked' }} aria-label="{{ c.libelle }} en vente"></td>
+											{% if avec_couts %}<td class="si-pd-num">{{ c.marge is null ? '—' : c.marge ~ ' %' }}{% if c.margeRevendeur is not null %}<small class="d-block si-pd-gris">rev. {{ c.margeRevendeur }} %</small>{% endif %}</td>{% endif %}
+											<td>{% if c.supprimable %}<button type="submit" form="pd-config-suppr-{{ cid }}" class="btn btn-link btn-sm text-danger p-0" title="Supprimer (jamais utilisée)" aria-label="Supprimer {{ c.libelle }}">×</button>{% endif %}</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+						<p class="si-pd-note">Décochez « En vente » pour arrêter une configuration : elle reste dans les commandes et devis passés. Seule une configuration jamais utilisée peut se supprimer (×).</p>
 					{% else %}
 						<div class="table-responsive">
 							<table class="si-pd-mini" data-sans-filtres>
@@ -100,6 +123,46 @@
 								</tbody>
 							</table>
 						</div>
+					{% endif %}
+					{% if modifiable and not nouveau %}
+						<details class="si-pd-pliable mt-2" id="pd-config-nouvelle"{{ configurations is empty ? ' open' }}>
+							<summary>Ajouter une configuration</summary>
+							<input type="hidden" name="configurations_envoyees" value="1">
+							{% if config_types is empty or config_supports is empty %}
+								<p class="si-pd-note mt-1 mb-0">Cochez d'abord les types d'impression, supports et formats de ce produit dans « Compatibilités (saisie du comptoir) », enregistrez, puis ajoutez la configuration.</p>
+							{% else %}
+								<div class="si-pd-champs mt-1" data-config-nouvelle data-compat="{{ config_compat_supports|json_encode|e('html_attr') }}">
+									<div><label for="cn-type">Type d'impression</label>
+										<select id="cn-type" name="configuration_nouvelle[type]" class="form-select form-select-sm">
+											<option value="">—</option>
+											{% for t in config_types %}<option value="{{ t.id }}">{{ t.nom }}</option>{% endfor %}
+										</select>
+									</div>
+									<div><label for="cn-support">Support</label>
+										<select id="cn-support" name="configuration_nouvelle[support]" class="form-select form-select-sm">
+											<option value="">—</option>
+											{% for s in config_supports %}<option value="{{ s.id }}">{{ s.nom }}</option>{% endfor %}
+										</select>
+									</div>
+									<div><label for="cn-format">Format</label>
+										<select id="cn-format" name="configuration_nouvelle[format]" class="form-select form-select-sm">
+											<option value="">Sans format (sur mesure)</option>
+											{% for f in config_formats %}<option value="{{ f.id }}">{{ f.nom }}</option>{% endfor %}
+										</select>
+									</div>
+									<div><label for="cn-mode">Prix par</label>
+										<select id="cn-mode" name="configuration_nouvelle[mode]" class="form-select form-select-sm">
+											{% for cle, libelle in modes_configuration %}<option value="{{ cle }}"{{ cle == mode_configuration ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+										</select>
+									</div>
+									<div><label for="cn-prix">Prix (F)</label><input id="cn-prix" name="configuration_nouvelle[prixBase]" inputmode="numeric" class="form-control form-control-sm"></div>
+									<div><label for="cn-b2b">Prix revendeur (F)</label><input id="cn-b2b" name="configuration_nouvelle[prixB2B]" inputmode="numeric" class="form-control form-control-sm" placeholder="facultatif"></div>
+									<div><label for="cn-min">Quantité minimale</label><input id="cn-min" name="configuration_nouvelle[quantiteMinimale]" inputmode="numeric" class="form-control form-control-sm" value="1"></div>
+								</div>
+								<p class="si-pd-note mb-1">Seuls les choix compatibles avec ce produit sont proposés ; le support choisi affine les types et les formats. Les paliers de prix se règlent ensuite dans « Paliers de prix ».</p>
+								<button type="submit" class="btn btn-outline-secondary btn-sm">Ajouter et enregistrer la fiche</button>
+							{% endif %}
+						</details>
 					{% endif %}
 					{% set rg = remises_grilles() %}
 					<p class="si-pd-note">Grille « Revendeur » : prix revendeur pour {{ clients_revendeurs }} client{{ clients_revendeurs > 1 ? 's' }} B2B, sans palier. Grilles « Partenaire » (−{{ rg.PARTENAIRE|number_format(rg.PARTENAIRE == rg.PARTENAIRE|round ? 0 : 1, ',') }} %) et « Association » (−{{ rg.ASSOCIATION|number_format(rg.ASSOCIATION == rg.ASSOCIATION|round ? 0 : 1, ',') }} %) : sur le prix du palier.{% if prix_speciaux > 0 %} {{ prix_speciaux }} prix négocié{{ prix_speciaux > 1 ? 's' }} : <a href="{{ path('app_produits_prix_speciaux_index') }}">voir</a>.{% endif %}</p>
@@ -341,6 +404,14 @@
 		{% endif %}
 	</form>
 
+	{% if modifiable and not nouveau %}
+		{% for c in configurations|filter(c => c.supprimable) %}
+			<form method="post" id="pd-config-suppr-{{ c.configuration.id }}" action="{{ path('app_produits_configuration_supprimer', {id: produit.id, configuration: c.configuration.id}) }}" hidden data-confirmer="Supprimer la configuration « {{ c.libelle }} » ?" data-confirmer-detail="Elle n'a jamais été utilisée ; elle part à la corbeille." data-confirmer-bouton="Supprimer" data-confirmer-danger>
+				<input type="hidden" name="_token" value="{{ csrf_token('produit-configuration-supprimer-' ~ c.configuration.id) }}">
+			</form>
+		{% endfor %}
+	{% endif %}
+
 	{% if modifiable and not nouveau and produit.commandesDetails is empty %}
 		<form method="post" action="{{ path('app_produits_supprimer', {id: produit.id}) }}" class="mt-2" data-confirmer="Supprimer ce produit pour de bon ?" data-confirmer-detail="Il n'est dans aucune commande ; il quitte le catalogue." data-confirmer-bouton="Supprimer" data-confirmer-danger>
 			<input type="hidden" name="_token" value="{{ csrf_token('produit-supprimer-' ~ produit.id) }}">
@@ -353,6 +424,25 @@
 	{{ parent() }}
 	<script src="{{ asset('js/paliers-prix.js') }}"></script>
 	<script>
+	(function () {
+		// Nouvelle configuration : le support choisi affine les types d'impression et les formats (le serveur revérifie).
+		const bloc = document.querySelector('[data-config-nouvelle]');
+		document.querySelectorAll('[data-ouvrir-config]').forEach((a) => a.addEventListener('click', () => { const d = document.getElementById('pd-config-nouvelle'); if (d) { d.open = true; } }));
+		if (!bloc) { return; }
+		const compat = JSON.parse(bloc.dataset.compat || '{}');
+		const support = document.getElementById('cn-support');
+		function filtrer(select, permis) {
+			select.querySelectorAll('option[value]:not([value=""])').forEach((o) => {
+				o.hidden = o.disabled = permis.length > 0 && !permis.includes(+o.value);
+				if (o.disabled && o.selected) { select.value = ''; }
+			});
+		}
+		support.addEventListener('change', () => {
+			const c = compat[support.value] || {types: [], formats: []};
+			filtrer(document.getElementById('cn-type'), c.types);
+			filtrer(document.getElementById('cn-format'), c.formats);
+		});
+	})();
 	(function () {
 		const bloc = document.getElementById('pd-simulateur');
 		if (!bloc) { return; }

@@ -145,7 +145,7 @@ final class ProduitsController extends AbstractController
             $this->em->refresh($produit);
         }
 
-        return $this->fiche($produit, $options, $delais);
+        return $this->fiche($produit, $options, $delais, $edition);
     }
 
     #[Route('/{id}/dupliquer', name: 'dupliquer', requirements: ['id' => '\d+'], methods: ['POST'])]
@@ -158,6 +158,30 @@ final class ProduitsController extends AbstractController
         $this->addFlash('success', \sprintf('Copie créée : « %s », masquée en ligne tant que vous ne l\'avez pas relue.', $copie->getNom()));
 
         return $this->redirectToRoute('app_produits_fiche', ['id' => $copie->getId()]);
+    }
+
+    /**
+     * Supprime une configuration jamais utilisée (carte « Prix par
+     * configuration ») ; une configuration utilisée se désactive.
+     */
+    #[Route('/{id}/configurations/{configuration}/supprimer', name: 'configuration_supprimer', requirements: ['id' => '\d+', 'configuration' => '\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function supprimerConfiguration(Produits $produit, int $configuration, Request $request, EditionProduit $edition): Response
+    {
+        $this->refuserEnLigne();
+        $this->verifierJeton($request, 'produit-configuration-supprimer-'.$configuration);
+        $config = $this->em->find(ProduitConfiguration::class, $configuration);
+        if (null === $config || $config->getProduit()?->getId() !== $produit->getId()) {
+            throw $this->createNotFoundException('Configuration introuvable.');
+        }
+        $libelle = GrilleTarifaire::libelle($config);
+        if ($edition->supprimerConfiguration($config, $this->utilisateur())) {
+            $this->addFlash('success', \sprintf('Configuration « %s » supprimée.', $libelle));
+        } else {
+            $this->addFlash('warning', \sprintf('« %s » est déjà utilisée (commandes, devis ou prix négociés) : décochez « En vente » pour la désactiver.', $libelle));
+        }
+
+        return $this->redirectToRoute('app_produits_fiche', ['id' => $produit->getId(), '_fragment' => 'pd-configurations']);
     }
 
     /**
@@ -199,7 +223,7 @@ final class ProduitsController extends AbstractController
         return $this->redirectToRoute('app_produits_index');
     }
 
-    private function fiche(Produits $produit, OptionsPartagees $options, DelaisCommande $delais): Response
+    private function fiche(Produits $produit, OptionsPartagees $options, DelaisCommande $delais, ?EditionProduit $edition = null): Response
     {
         $avecCouts = $this->isGranted('ROLE_COUT_MARGE');
         $g = $this->gardeFous->valeurs();
@@ -219,6 +243,8 @@ final class ProduitsController extends AbstractController
                 'cout' => $coutConfig,
                 'marge' => $avecCouts ? CoutProduit::marge($c->getPrixBase(), $coutConfig) : null,
                 'margeRevendeur' => $avecCouts ? CoutProduit::marge($c->getPrixB2B(), $coutConfig) : null,
+                // Une configuration jamais utilisée peut se supprimer ; sinon on la désactive.
+                'supprimable' => null !== $edition && $this->peutModifier() && 0 === $edition->utilisations($c),
             ];
         }
 
@@ -260,6 +286,20 @@ final class ProduitsController extends AbstractController
         }
 
         $nouveau = null === $produit->getId();
+
+        // Nouvelle configuration : seulement les types, supports et formats compatibles avec le produit ;
+        // chaque support dit ses types et formats (vide : pas de restriction), pour affiner la liste.
+        $parNom = static function (iterable $liste): array {
+            $l = [...$liste];
+            usort($l, static fn (object $a, object $b): int => strcasecmp((string) $a->getNom(), (string) $b->getNom()));
+
+            return $l;
+        };
+        $ids = static fn (iterable $liste): array => array_values(array_map(static fn (object $e): int => (int) $e->getId(), [...$liste]));
+        $compatSupports = [];
+        foreach ($produit->getSupports() as $s) {
+            $compatSupports[(int) $s->getId()] = ['types' => $ids($s->getTypesImpressions()), 'formats' => $ids($s->getFormats())];
+        }
 
         // Paliers de prix par configuration (docs/produits.md) : tranches à lire, lignes à saisir.
         $paliers = [];
@@ -310,6 +350,12 @@ final class ProduitsController extends AbstractController
             'categories' => $this->em->getRepository(CategorieProduit::class)->findBy([], ['ordre' => 'ASC', 'nom' => 'ASC']),
             'machines' => $this->em->getRepository(Machines::class)->findBy([], ['nom' => 'ASC']),
             'modes' => EditionProduit::MODES,
+            'modes_configuration' => EditionProduit::MODES_CONFIGURATION,
+            'mode_configuration' => EditionProduit::modeConfiguration((string) $produit->getModeCalcul()),
+            'config_types' => $parNom($produit->getTypesImpressions()),
+            'config_supports' => $parNom($produit->getSupports()),
+            'config_formats' => $parNom($produit->getFormats()),
+            'config_compat_supports' => $compatSupports,
             'modes_nomenclature' => EditionProduit::MODES_NOMENCLATURE,
             'types' => $this->em->getRepository(TypesImpression::class)->findBy([], ['nom' => 'ASC']),
             'supports' => $this->em->getRepository(Supports::class)->findBy([], ['nom' => 'ASC']),

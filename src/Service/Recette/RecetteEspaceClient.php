@@ -3,6 +3,7 @@
 namespace App\Service\Recette;
 
 use App\Entity\AdresseLivraison;
+use App\Entity\BonLivraison;
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
@@ -99,6 +100,11 @@ final class RecetteEspaceClient
         'app_espace_message_vocale_ecouter' => 'vocale',
         // Fichier publié par l'atelier depuis le dossier du client (docs/dossiers-clients.md).
         'app_espace_fichier_publie' => 'fichier_publie',
+        // Livraisons (maquettes DB08 à DB11) : programmer une commande, suivre ou voir la preuve d'un bon de livraison.
+        'app_espace_livraison_programmer' => 'commande',
+        'app_espace_livraison' => 'livraison',
+        'app_espace_livraison_position' => 'livraison',
+        'app_espace_livraison_photo' => 'livraison',
     ];
 
     /** Pages réservées à qui paie (factures, solde, paiement). */
@@ -300,6 +306,7 @@ final class RecetteEspaceClient
             'reglement' => $this->premiere(ReglementEnLigne::class, $client, '1 = 1', 'reference'),
             'depot' => $this->premiere(DepotSoldeClient::class, $client, '1 = 1', 'reference'),
             'demande_devis' => $this->premiere(DemandeDevis::class, $client, "e.nature = 'devis'"),
+            'livraison' => $this->livraison($client),
             'fichier' => $this->premiere(CommandeDetailFichier::class, $client, 'e.actif = true'),
             'bat' => [] === $bats ? null : $bats[0]->getId(),
             'bat_attente' => [] === $batsEnAttente ? null : $batsEnAttente[0]->getId(),
@@ -959,6 +966,16 @@ final class RecetteEspaceClient
         $valeur = $ligne[$champ] ?? null;
 
         return $valeur instanceof AbstractUid ? $valeur->toRfc4122() : $valeur;
+    }
+
+    /** Un bon de livraison du client (suivi ou preuve), le plus récent. */
+    private function livraison(Clients $client): ?string
+    {
+        $ligne = $this->em->createQueryBuilder()->select('bl.publicId')->from(BonLivraison::class, 'bl')->join('bl.commande', 'c')
+            ->where('c.clients = :cl')->andWhere('bl.statut != :annule')->setParameter('cl', $client)->setParameter('annule', BonLivraison::STATUT_ANNULE)
+            ->orderBy('bl.id', 'DESC')->setMaxResults(1)->getQuery()->getOneOrNullResult();
+
+        return null === $ligne ? null : self::uuid($ligne['publicId']);
     }
 
     /** Un paiement validé du client (son reçu existe), le plus récent. */

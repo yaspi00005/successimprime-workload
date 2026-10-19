@@ -274,7 +274,7 @@ final class DelaisCommande
         return $jour;
     }
 
-    private static function jourOuvreSuivant(HeuresTravail $heures, \DateTimeImmutable $jour): \DateTimeImmutable
+    public static function jourOuvreSuivant(HeuresTravail $heures, \DateTimeImmutable $jour): \DateTimeImmutable
     {
         // Une année sans jour ouvré n'existe pas : la boucle s'arrête au plus tard après un an.
         for ($i = 0; $i < 366; ++$i) {

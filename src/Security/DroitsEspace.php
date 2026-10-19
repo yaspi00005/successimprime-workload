@@ -43,6 +43,9 @@ final class DroitsEspace
         'app_espace_devis_pdf',
         'app_espace_devis_detail',
         'app_espace_devis_demande',
+        // Livraisons (maquettes DB09, DB11) : programmer et donner son avis ; le suivi reste ouvert à tous.
+        'app_espace_livraison_programmer',
+        'app_espace_livraison_avis',
         'app_espace_payer',
         'app_espace_payer_retour',
         'app_espace_factures',

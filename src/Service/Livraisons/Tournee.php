@@ -205,12 +205,18 @@ final class Tournee
         if ($bon->getStatut() !== BonLivraison::STATUT_VALIDE) {
             return 'Cette livraison n\'est pas en cours.';
         }
-        if ($signaturePng === null || $signaturePng === '') {
-            return 'La signature du client est obligatoire.';
+        // Le code de réception donné par le client prouve la remise (maquettes DB10, DB11) ; sans code, sa signature.
+        $avecCode = null !== $bon->getCodeVerifieLe();
+        if (!$avecCode && ($signaturePng === null || $signaturePng === '')) {
+            return 'Tapez le code de réception du client, ou faites-le signer.';
         }
         // Qui a reçu le colis : le bureau doit pouvoir le dire (suivi des livraisons).
         if ($signataire === null || trim($signataire) === '') {
             return 'Indiquez le nom de la personne qui reçoit le colis.';
+        }
+        $photos = array_values(array_filter($photos, fn ($p): bool => $p instanceof UploadedFile && $p->isValid() && isset(self::TYPES_PHOTO[(string) $p->getMimeType()]) && $p->getSize() <= self::MAX_PHOTO));
+        if ([] === $photos) {
+            return 'Prenez la photo du colis remis : elle sert de preuve au client.';
         }
         $remises = [];
         foreach ($bon->getLignes() as $ligne) {
@@ -226,15 +232,23 @@ final class Tournee
             }
             $bon->noterEncaissement($montant, $mode, $maintenant);
         }
-        $signature = $this->rangerSignature($signaturePng, $maintenant);
-        if ($signature === null) {
-            return 'La signature n\'a pas pu être lue : recommencez.';
+        if ($signaturePng !== null && $signaturePng !== '') {
+            $signature = $this->rangerSignature($signaturePng, $maintenant);
+            if ($signature === null) {
+                return 'La signature n\'a pas pu être lue : recommencez.';
+            }
+            $bon->signer($signature, $signataire);
+        } else {
+            $bon->signer('', $signataire);
         }
-        $bon->signer($signature, $signataire);
-        foreach ($photos as $photo) {
+        foreach ($photos as $k => $photo) {
             $nom = $this->rangerPhoto($photo, $maintenant);
             if ($nom !== null) {
                 $bon->ajouterPhoto($nom);
+                // La première photo, réduite, part en ligne pour le client (maquette DB11).
+                if (0 === $k) {
+                    $bon->setPhotoClient(self::reduire($this->dossier.'/'.$nom), $maintenant);
+                }
             }
         }
         foreach ($remises as [$ligne, $q]) {
@@ -244,9 +258,56 @@ final class Tournee
         $bon->noterPosition($latitude, $longitude);
         $bon->avancer('arrive', $maintenant);
         $bon->marquerLivre($livreur);
+        $bon->oublierLivreurEnRoute();
         $this->em->flush();
 
         return null;
+    }
+
+    /** Ce que le client voit du livreur pendant la tournée : prénom et téléphone (maquette DB10). */
+    public static function suiviLivreur(BonLivraison $bon, User $livreur): void
+    {
+        $employe = $livreur->getEmploye();
+        $bon->noterLivreurSuivi($employe?->getPrenom() ?: $livreur->getUsername(), $employe?->getTelephone());
+    }
+
+    /**
+     * Position du livreur, notée sur ses livraisons en route du jour (le
+     * client la suit, maquette DB10). Renvoie le nombre de livraisons mises à jour.
+     */
+    public function noterPosition(User $livreur, float $latitude, float $longitude, \DateTimeImmutable $maintenant): int
+    {
+        $n = 0;
+        foreach ($this->duJour($maintenant, $livreur) as $bon) {
+            if ($bon->getStatut() === BonLivraison::STATUT_VALIDE && null !== $bon->getEnRouteLe() && !$bon->isEchecEnCours()) {
+                $bon->noterPositionLivreur($latitude, $longitude, $maintenant);
+                ++$n;
+            }
+        }
+        $this->em->flush();
+
+        return $n;
+    }
+
+    /** Photo réduite (800 px au plus, JPEG) en base64, ou null si elle ne se lit pas. */
+    public static function reduire(string $chemin, int $cote = 800): ?string
+    {
+        $octets = is_file($chemin) ? file_get_contents($chemin) : false;
+        $image = false === $octets ? false : @imagecreatefromstring($octets);
+        if (false === $image) {
+            return null;
+        }
+        $l = imagesx($image);
+        $h = imagesy($image);
+        $r = min(1, $cote / max($l, $h));
+        $petite = imagescale($image, max(1, (int) round($l * $r)), max(1, (int) round($h * $r)));
+        if (false === $petite) {
+            return null;
+        }
+        ob_start();
+        imagejpeg($petite, null, 72);
+
+        return base64_encode((string) ob_get_clean());
     }
 
     /**

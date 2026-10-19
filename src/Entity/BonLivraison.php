@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SuiviClientLivraisonTrait;
 use App\Repository\BonLivraisonRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,6 +15,7 @@ use Doctrine\ORM\Mapping as ORM;
 class BonLivraison
 {
     use PublicIdTrait;
+    use SuiviClientLivraisonTrait;
 
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_VALIDE = 'valide';
@@ -205,6 +207,7 @@ class BonLivraison
         $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
         $this->lignes = new ArrayCollection();
+        $this->donnerCode();
     }
 
     public function getId(): ?int
@@ -614,7 +617,7 @@ class BonLivraison
     public function getPhotos(): array { return $this->photos ?? []; }
     public function ajouterPhoto(string $fichier): static { $this->photos = [...$this->getPhotos(), $fichier]; return $this; }
     public function getSignature(): ?string { return $this->signature; }
-    public function signer(string $fichier, ?string $signataire): static { $this->signature = $fichier; $this->signataire = $signataire !== null && trim($signataire) !== '' ? mb_substr(trim($signataire), 0, 120) : null; return $this; }
+    public function signer(string $fichier, ?string $signataire): static { $this->signature = '' === $fichier ? null : $fichier; $this->signataire = $signataire !== null && trim($signataire) !== '' ? mb_substr(trim($signataire), 0, 120) : null; return $this; }
     public function getSignataire(): ?string { return $this->signataire; }
     public function getEncaisseMontant(): ?int { return $this->encaisseMontant; }
     public function getEncaisseMode(): ?string { return $this->encaisseMode; }

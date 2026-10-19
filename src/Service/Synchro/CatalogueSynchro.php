@@ -367,6 +367,8 @@ final class CatalogueSynchro
                     'fraisLivraison', 'objet',
                     // Commande en ligne (docs/espace-client.md) : délai demandé (standard, express) et créneau de livraison.
                     'delaiProduction', 'creneauLivraison',
+                    // Livraison programmée par le client dans son espace (maquette DB09).
+                    'programmationLivraison',
                 ],
                 // codePromo : le code retenu par l'imprimerie, pour compter en ligne les utilisations du client.
                 'relations' => ['clients' => 'client', 'societe' => 'societe', 'codePromo' => 'code_promo'], 'facultatives' => ['codePromo'], 'listes' => [], 'numero' => 'numero',
@@ -377,6 +379,8 @@ final class CatalogueSynchro
                 'imposeAuLocal' => ['soldeOuverture' => false, 'codePromo' => null],
                 // Décision du valideur de l'entreprise, prise en ligne.
                 'remontees' => [
+                    // Le client programme, puis reprogramme tant que le livreur n'est pas parti (ProgrammationLivraison::appliquer).
+                    'programmationLivraison' => null,
                     'validationEntreprise' => [Commandes::VALIDATION_A_FAIRE => [Commandes::VALIDATION_ACCEPTEE, Commandes::VALIDATION_REFUSEE]],
                     'valideePar' => ['' => ['*']],
                     'motifRefusEntreprise' => ['' => ['*']],
@@ -644,11 +648,22 @@ final class CatalogueSynchro
                 'imposeAuLocal' => ['statut' => PropositionClient::EN_ATTENTE, 'traiteLe' => null, 'motif' => null],
             ],
             // Où en est la livraison, pour l'espace client (livreur en route, livrée, reportée) et ses notifications.
-            // Livreur, réceptionnaire, adresse, photos, signature, position, encaissement, stock et notes restent au local,
+            // Livraisons de l'espace client (maquettes DB08 à DB13) : le code de réception, la photo de remise réduite,
+            // le prénom du livreur, son téléphone et sa position pendant la tournée (effacés à la remise), qui a reçu,
+            // l'adresse, le repère et la personne si absente choisis par le client, l'ordre dans la tournée.
+            // Photos en taille réelle, signature, position de remise, encaissement, stock, notes internes restent au local,
             // comme la raison d'un échec et qui l'a noté : le client voit seulement « reportée » et la date.
             'livraison' => [
                 'classe' => BonLivraison::class, 'sens' => self::DESCENDANT, 'libelle' => 'Bon de livraison', 'titre' => ['numero'],
-                'champs' => ['numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe', 'echecLe', 'echecEnCours'],
+                'champs' => [
+                    'numero', 'statut', 'creeLe', 'valideLe', 'prevuLe', 'creneau', 'chargeLe', 'enRouteLe', 'arriveLe', 'livreLe', 'echecLe', 'echecEnCours',
+                    'ordreTournee', 'adresseLivraison', 'nomReceptionnaire', 'telephoneReceptionnaire', 'repere', 'absentNom', 'signataire',
+                    'codeReception', 'codeVerifieLe', 'photoClient', 'photoClientLe',
+                    'livreurNom', 'livreurTelephone', 'livreurLatitude', 'livreurLongitude', 'livreurPositionLe',
+                    'conformeLe', 'noteLivraison', 'noteTags', 'noteLe',
+                ],
+                // L'avis du client sur la livraison, donné en ligne (maquette DB11).
+                'remontees' => ['conformeLe' => null, 'noteLivraison' => null, 'noteTags' => null, 'noteLe' => null],
                 'relations' => ['commande' => 'commande'], 'listes' => [],
                 'enfants' => ['lignes' => [
                     'classe' => BonLivraisonLigne::class, 'parent' => 'bonLivraison',

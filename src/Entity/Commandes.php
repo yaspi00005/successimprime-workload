@@ -196,6 +196,17 @@ class Commandes implements AppartientASociete
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $creneauLivraison = null;
 
+    /**
+     * Livraison programmée par le client dans son espace (maquette DB09) :
+     * adresse, repère, position, jour, créneau, qui reçoit (et si absent),
+     * paiement du reste. Appliquée au bon de livraison au local
+     * (ProgrammationLivraison::appliquer).
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $programmationLivraison = null;
+
     /** Numéro du bon de commande du client (entreprise). */
     #[ORM\Column(length: 60, nullable: true)]
     private ?string $bonCommande = null;
@@ -857,6 +868,20 @@ class Commandes implements AppartientASociete
     {
         $creneau = null !== $creneau ? mb_substr(trim($creneau), 0, 60) : null;
         $this->creneauLivraison = '' === $creneau ? null : $creneau;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getProgrammationLivraison(): ?array
+    {
+        return $this->programmationLivraison;
+    }
+
+    /** @param array<string, mixed>|null $programmation */
+    public function setProgrammationLivraison(?array $programmation): static
+    {
+        $this->programmationLivraison = $programmation;
 
         return $this;
     }

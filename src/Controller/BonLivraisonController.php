@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\BonLivraison;
+use App\Service\Livraisons\ProgrammationLivraison;
 use App\Entity\BonLivraisonLigne;
 use App\Entity\Commandes;
 use App\Entity\StockSorties;
@@ -408,6 +409,9 @@ final class BonLivraisonController extends AbstractController
          * 5. ENREGISTREMENT
          * ========================================================
          */
+            // Livraison déjà programmée par le client dans son espace (maquette DB09) : jour, créneau, adresse, qui reçoit.
+            ProgrammationLivraison::appliquer($commande, $bon);
+
             $em->persist(
                 $bon
             );

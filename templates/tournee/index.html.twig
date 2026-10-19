@@ -77,4 +77,24 @@
 		})();
 		</script>
 	{% endif %}
+	{# Suivi en direct du client (maquette DB10) : tant qu'une livraison est en route, la position part chaque minute, page ouverte seulement. #}
+	{% set enRoute = bons|filter(b => b.statut == 'valide' and b.enRouteLe and not b.echecEnCours and b.livreur and b.livreur == app.user) %}
+	{% if enRoute is not empty %}
+		<p class="si-pg-note text-center" id="si-tr-position" role="status">Position partagée avec les clients en attente pendant la tournée.</p>
+		<script>
+		(function () {
+			if (!navigator.geolocation) { return; }
+			var etat = document.getElementById('si-tr-position'), dernier = 0;
+			navigator.geolocation.watchPosition(function (p) {
+				if (Date.now() - dernier < 60000) { return; }
+				dernier = Date.now();
+				var d = new FormData();
+				d.append('_token', {{ token|json_encode|raw }});
+				d.append('latitude', p.coords.latitude);
+				d.append('longitude', p.coords.longitude);
+				fetch({{ path('app_livraisons_tournee_position')|json_encode|raw }}, {method: 'POST', body: d, credentials: 'same-origin'}).catch(function () {});
+			}, function () { etat.textContent = 'Position refusée : les clients voient seulement l\'heure prévue.'; }, {enableHighAccuracy: true, maximumAge: 30000});
+		})();
+		</script>
+	{% endif %}
 {% endblock %}

@@ -1,0 +1,75 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Suivi en direct (maquettes DB10, DB13) : carte avec le livreur et la
+	destination, heure d'arrivée estimée, le livreur à appeler ou à écrire,
+	les étapes, le code de réception et ce qu'il reste à payer au livreur.
+	La position est relue toutes les 30 secondes (route livraison_position).
+	Le téléphone du livreur n'existe que pendant la tournée.
+#}
+{% set enRoute = b.enRouteLe and not b.echecEnCours %}
+{% block title %}Livraison · {{ commande.numero }}{% endblock %}
+{% block page_classe %} ec-page-large db-page db-lv-suivi-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+	<link href="{{ asset('vendor/leaflet/leaflet.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}
+	<a class="ec-retour" href="{{ path('app_espace_livraisons') }}"><span class="fl">‹</span>{{ enRoute ? 'Livraison en cours' : 'Livraison prévue' }} · {{ commande.numero }}</a>
+	<div class="cs-entete-actions ec-bureau"><a class="ec-bouton-blanc" href="{{ conversation_url_client(commande) }}">💬 Message</a></div>
+{% endblock %}
+
+{% block contenu %}
+	<div class="db-grille db-lv-suivi">
+		<section class="ec-carte db-lv-carte-grande">
+			<div class="db-lv-carte" data-carte data-grande data-suivi="{{ path('app_espace_livraison_position', {id: b.publicId}) }}" data-livreur="{{ suivi.livreur|json_encode|e('html_attr') }}" data-destination="{{ suivi.destination|json_encode|e('html_attr') }}" data-depart="{{ suivi.depart|json_encode|e('html_attr') }}" aria-label="Carte du livreur">
+				<span class="db-lv-carte-vide">{{ enRoute ? '🛵 La carte s\'affiche dès que le livreur partage sa position.' : '🗓 Le suivi en direct commence quand le livreur part de l\'atelier.' }}</span>
+			</div>
+			<div class="db-lv-direct">
+				{% if enRoute %}<small class="db-lv-live"><span class="db-point-vert" aria-hidden="true"></span>EN DIRECT</small>{% endif %}
+				<b data-lv-heure>{{ suivi.heure ? suivi.heure|date('H:i') : (b.creneau ?: '—') }}</b>
+				<small data-lv-detail>{{ suivi.heure ? 'arrivée estimée · ' ~ suivi.km|number_format(1, ',', ' ') ~ ' km' : (quand ? quand : 'date à confirmer') }}</small>
+			</div>
+		</section>
+
+		<aside class="db-droite">
+			{% if b.livreurNom %}
+				<section class="ec-carte db-lv-livreur-carte">
+					<p class="db-lv-livreur"><span class="ec-avatar" aria-hidden="true">{{ b.livreurNom|slice(0, 1)|upper }}</span><span><b>{{ b.livreurNom }}</b><small>livreur Succès Imprim · moto</small></span></p>
+					{% if enRoute and b.livreurTelephone %}
+						<div class="db-deux-boutons">
+							<a class="ec-bouton bleu" href="tel:{{ b.livreurTelephone }}">📞 Appeler</a>
+							<a class="ec-bouton vert" href="https://wa.me/{{ b.livreurTelephone|replace({'+': ''}) }}" rel="noopener" target="_blank">💬 WhatsApp</a>
+						</div>
+					{% endif %}
+				</section>
+			{% endif %}
+			<section class="ec-carte db-lv-etapes">
+				<h2>Étapes</h2>
+				<ol>
+					{% for e in suivi.etapes %}
+						<li class="{{ e.etat }}"><span aria-hidden="true"></span><b>{{ e.libelle }}</b><small>{{ e.etat == 'en_cours' ? 'maintenant' : (e.le ? (e.etat == 'a_venir' ? 'vers ' : '') ~ e.le|date('H:i') : '') }}</small></li>
+					{% endfor %}
+				</ol>
+			</section>
+			{% if b.codeReception %}
+				<section class="ec-carte db-lv-code-carte">
+					<small>Votre code de réception</small>
+					<div class="db-lv-chiffres" aria-label="Code {{ b.codeReception|split('')|join(' ') }}">{% for ch in b.codeReception|split('') %}<span>{{ ch }}</span>{% endfor %}</div>
+					<p>Donnez-le seulement quand vous avez vérifié le colis. Il prouve que c'est bien vous qui l'avez reçu.</p>
+				</section>
+			{% endif %}
+			{% if montants and peutPayer %}
+				<section class="ec-carte db-lv-payer">
+					<span>À payer au livreur</span>
+					<b>{% if commande.resteAPayer > 0 %}{{ commande.resteAPayer|number_format(0, ',', ' ') }} F{% else %}0 F · déjà payé ✓{% endif %}</b>
+				</section>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('vendor/leaflet/leaflet.js') }}" defer></script>
+	<script src="{{ asset('js/espace-livraison.js') }}" defer></script>
+{% endblock %}

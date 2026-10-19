@@ -4721,6 +4721,7 @@ body.si-param-bloque { overflow: hidden; }
 .si-tr-qte { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .si-tr-qte input { width: 70px; }
 .si-tr-signature { width: 100%; height: 160px; border: 2px dashed #CBD5E1; border-radius: 12px; touch-action: none; background: #fff; }
+.si-tr-code-saisie { max-width: 12rem; font-size: 2rem; font-weight: 800; letter-spacing: .6em; text-align: center; padding: .35rem .5rem; }
 .si-tr-modes { display: flex; flex-wrap: wrap; gap: 8px; }
 .si-tr-mode { border: 1px solid #CBD5E1; border-radius: 999px; padding: 6px 14px; font-weight: 600; }
 .si-tr-mode:has(input:checked) { background: #0F3D8C; color: #fff; border-color: #0F3D8C; }

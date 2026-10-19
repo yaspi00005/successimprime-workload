@@ -11,6 +11,20 @@
 {% block body %}
 	<form method="post" enctype="multipart/form-data" class="si-tr si-tr-remise" id="si-remise">
 		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		{# Code de réception (maquettes DB10, DB11) : le client le donne une fois le colis vérifié. Sans code, il signe. #}
+		<section class="card si-ac-bloc si-tr-code" id="si-code" data-url="{{ path('app_livraisons_tournee_code', {id: b.id}) }}" data-jeton="{{ csrf_token(jeton) }}" data-verifie="{{ b.codeVerifieLe ? 1 : 0 }}">
+			<h2>Code de réception</h2>
+			{% if b.codeVerifieLe %}
+				<p class="si-p-ok mb-0" id="si-code-etat">Code correct : c'est bien le client.</p>
+			{% elseif b.codeReception %}
+				<p class="si-pg-note mt-0">Demandez au client son code à 4 chiffres (il le voit dans son espace et par message).</p>
+				<input id="si-code-saisie" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" class="form-control si-tr-code-saisie" aria-label="Code de réception à 4 chiffres"{{ b.essaisCodeRestants == 0 ? ' disabled' }}>
+				<p class="si-pg-note mb-0" id="si-code-etat" role="status" aria-live="polite">{{ b.essaisCodeRestants == 0 ? 'Trop d\'essais : faites signer le client.' }}</p>
+			{% else %}
+				<p class="si-pg-note mb-0">Pas de code pour cette livraison : faites signer le client.</p>
+			{% endif %}
+		</section>
+
 		<section class="card si-ac-bloc">
 			<h2>À remettre</h2>
 			{% for l in b.lignes %}
@@ -26,20 +40,23 @@
 		</section>
 
 		<section class="card si-ac-bloc">
-			<h2>Photos</h2>
-			<input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" capture="environment" multiple class="form-control form-control-sm">
-			<p class="si-pg-note mb-0">Le colis remis, la pose terminée… Jusqu'à 8 Mo par photo.</p>
+			<h2>Photo de remise</h2>
+			<input type="file" name="photos[]" accept="image/jpeg,image/png,image/webp" capture="environment" multiple required class="form-control form-control-sm">
+			<p class="si-pg-note mb-0">Obligatoire : le colis remis, la pose terminée… La première photo est montrée au client. Jusqu'à 8 Mo par photo.</p>
 		</section>
 
-		<section class="card si-ac-bloc">
+		<section class="card si-ac-bloc" id="si-recu">
 			<h2>Reçu par</h2>
 			<label class="d-block mb-2">Nom de la personne qui reçoit le colis
 				<input name="signataire" maxlength="120" required class="form-control" placeholder="Ex. Awa Coulibaly, accueil" value="{{ b.nomReceptionnaire }}" autocomplete="off">
 			</label>
+			<p class="si-pg-note mb-1" id="si-signature-aide">Sans code de réception, le client signe ici.</p>
+			<div id="si-signature-zone">
 			<canvas id="si-signature" class="si-tr-signature" width="600" height="220" aria-label="Zone de signature"></canvas>
 			<div class="d-flex gap-2 mt-2 align-items-center justify-content-between">
 				<small class="text-muted">Elle signe ici, avec le doigt.</small>
 				<button type="button" class="btn btn-light btn-sm si-btn-entete" id="si-effacer">Effacer</button>
+			</div>
 			</div>
 			<input type="hidden" name="signature" id="si-signature-png">
 		</section>
@@ -94,9 +111,35 @@
 		} else {
 			gps.textContent = 'Ce téléphone ne donne pas sa position : la preuve sera incomplète.';
 		}
+		// Code de réception : vérifié dès les 4 chiffres tapés ; juste, la signature n'est plus demandée.
+		var bloc = document.getElementById('si-code'), saisie = document.getElementById('si-code-saisie'), etat = document.getElementById('si-code-etat');
+		var codeOk = bloc.dataset.verifie === '1';
+		function majSignature() {
+			document.getElementById('si-signature-zone').hidden = codeOk;
+			document.getElementById('si-signature-aide').textContent = codeOk ? 'Code correct : pas besoin de signature.' : 'Sans code de réception, le client signe ici.';
+		}
+		majSignature();
+		if (saisie) {
+			saisie.addEventListener('input', function () {
+				saisie.value = saisie.value.replace(/\D/g, '').slice(0, 4);
+				if (saisie.value.length < 4) { return; }
+				var donnees = new FormData();
+				donnees.append('_token', bloc.dataset.jeton);
+				donnees.append('code', saisie.value);
+				saisie.disabled = true;
+				fetch(bloc.dataset.url, {method: 'POST', body: donnees, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (r) {
+					etat.textContent = r.message;
+					etat.className = r.ok ? 'si-p-ok mb-0' : 'si-pg-note mb-0 text-danger';
+					codeOk = r.ok;
+					saisie.disabled = r.ok || r.restants === 0;
+					if (!r.ok) { saisie.value = ''; if (!saisie.disabled) { saisie.focus(); } }
+					majSignature();
+				}).catch(function () { saisie.disabled = false; etat.textContent = 'Pas de réseau : réessayez, ou faites signer le client.'; });
+			});
+		}
 		document.getElementById('si-remise').addEventListener('submit', function (e) {
-			if (!signe) { e.preventDefault(); alert('La signature du client est obligatoire.'); return; }
-			document.getElementById('si-signature-png').value = c.toDataURL('image/png');
+			if (!codeOk && !signe) { e.preventDefault(); alert('Tapez le code de réception du client, ou faites-le signer.'); return; }
+			if (signe) { document.getElementById('si-signature-png').value = c.toDataURL('image/png'); }
 		});
 	})();
 	</script>

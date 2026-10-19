@@ -66,8 +66,10 @@ final class CatalogueSynchroTest extends TestCase
             'fichier' => ['chemin', 'observation', 'montage', 'ajoutePar', 'jetonUpload', 'fichierSource'],
             'controle' => ['anomalies', 'observation', 'correctionsEffectuees', 'controlePar', 'traitePar', 'validePar', 'envoyeProductionPar'],
             'paiement' => ['compteTresorerie', 'mouvementTresorerie', 'justificatif', 'observation', 'encaissePar', 'validePar'],
-            'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'nomReceptionnaire', 'telephoneReceptionnaire', 'adresseLivraison', 'observation', 'photos', 'signature',
-                'signataire', 'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'ordreTournee', 'echecPar', 'echecMotif'],
+            // Adresse, qui reçoit (ou a reçu) et rang dans la tournée descendent pour le client (maquettes DB08 à DB11),
+            // jamais le livreur lui-même, les photos en taille réelle, la signature ni l'encaissement.
+            'livraison' => ['livreur', 'creePar', 'validePar', 'livrePar', 'observation', 'photos', 'signature', 'codeEssais',
+                'encaisseMontant', 'encaisseMode', 'encaisseLe', 'paiementLivraison', 'remiseLatitude', 'remiseLongitude', 'retardJustifie', 'erreurLivraison', 'articleStock', 'echecPar', 'echecMotif'],
             'entreprise' => ['banque', 'compteBancaire', 'prefixeFacture', 'compteur', 'logo', 'logoPied', 'signature', 'cachet'],
         ];
         foreach ($interdits as $type => $champs) {
@@ -78,8 +80,11 @@ final class CatalogueSynchroTest extends TestCase
         }
         // Une facture ne se crée jamais en ligne.
         self::assertFalse(CatalogueSynchro::creationAcceptee('facture', false));
-        // Le bon de livraison ne part que dans un sens, et ses lignes sans observation.
-        self::assertFalse(CatalogueSynchro::accepte('livraison', false));
+        // Le bon de livraison ne se crée jamais en ligne ; seul l'avis du client remonte (maquette DB11), et ses lignes partent sans observation.
+        self::assertFalse(CatalogueSynchro::creationAcceptee('livraison', false));
+        self::assertTrue(CatalogueSynchro::remonteePermise('livraison', 'noteLivraison', null, '5'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('livraison', 'codeVerifieLe', null, '2026-10-21 11:22:00'));
+        self::assertFalse(CatalogueSynchro::remonteePermise('livraison', 'statut', 'valide', 'livre'));
         self::assertNotContains('observation', $types['livraison']['enfants']['lignes']['champs']);
         self::assertSame('livraison', CatalogueSynchro::typeDe(new BonLivraison()));
         // Les coordonnées de l'entreprise ne se modifient pas en ligne.

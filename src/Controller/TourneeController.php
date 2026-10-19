@@ -14,6 +14,7 @@ use App\Service\SuiviMetiers\PointsLivreur;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -174,15 +175,56 @@ final class TourneeController extends AbstractController
     public function etape(BonLivraison $bon, Request $request): Response
     {
         $this->verifierJeton($request);
-        $this->livreurDe($bon);
+        $moi = $this->livreurDe($bon);
         try {
-            $bon->avancer((string) $request->request->get('etape'), new \DateTimeImmutable());
+            $maintenant = new \DateTimeImmutable();
+            $bon->avancer((string) $request->request->get('etape'), $maintenant);
+            // Le client suit son livreur (maquette DB10) : prénom, téléphone et, si le téléphone la donne, sa position.
+            Tournee::suiviLivreur($bon, $bon->getLivreur() ?? $moi);
+            if (is_numeric($request->request->get('latitude')) && is_numeric($request->request->get('longitude'))) {
+                $bon->noterPositionLivreur((float) $request->request->get('latitude'), (float) $request->request->get('longitude'), $maintenant);
+            }
             $this->em->flush();
         } catch (\LogicException|\InvalidArgumentException $e) {
             $this->addFlash('danger', $e->getMessage());
         }
 
         return $this->redirectToRoute('app_livraisons_tournee');
+    }
+
+    /**
+     * Code de réception tapé par le livreur (maquettes DB10, DB11) : juste
+     * ou faux, et les essais qui restent. Le code lui-même n'est jamais
+     * montré au livreur.
+     */
+    #[Route('/tournee/{id}/code', name: 'tournee_code', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function code(BonLivraison $bon, Request $request): JsonResponse
+    {
+        $this->verifierJeton($request);
+        $this->livreurDe($bon);
+        if ($bon->getStatut() !== BonLivraison::STATUT_VALIDE) {
+            return new JsonResponse(['ok' => false, 'message' => 'Cette livraison n\'est pas en cours.'], 409);
+        }
+        $ok = $bon->verifierCode((string) $request->request->get('code'), new \DateTimeImmutable());
+        $this->em->flush();
+        $restants = $bon->essaisCodeRestants();
+
+        return new JsonResponse(['ok' => $ok, 'restants' => $restants, 'message' => $ok
+            ? 'Code correct : c\'est bien le client.'
+            : (0 === $restants ? 'Trop d\'essais : faites signer le client.' : \sprintf('Code faux. Encore %d essai%s.', $restants, $restants > 1 ? 's' : ''))]);
+    }
+
+    /** Position du livreur pendant la tournée, envoyée par sa page « Ma tournée » (suivi du client, maquette DB10). */
+    #[Route('/tournee/position', name: 'tournee_position', methods: ['POST'])]
+    public function position(Request $request): JsonResponse
+    {
+        $this->verifierJeton($request);
+        if (!is_numeric($request->request->get('latitude')) || !is_numeric($request->request->get('longitude'))) {
+            return new JsonResponse(['ok' => false], 400);
+        }
+        $n = $this->tournee->noterPosition($this->moi(), (float) $request->request->get('latitude'), (float) $request->request->get('longitude'), new \DateTimeImmutable());
+
+        return new JsonResponse(['ok' => true, 'livraisons' => $n]);
     }
 
     #[Route('/tournee/{id}/remise', name: 'remise', requirements: ['id' => '\d+'], methods: ['GET', 'POST'])]

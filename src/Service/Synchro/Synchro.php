@@ -26,6 +26,7 @@ use App\Entity\ReponseSondage;
 use App\Entity\SynchroEchange;
 use App\Entity\SynchroEtat;
 use App\Entity\SynchroJournal;
+use App\Service\Livraisons\ProgrammationLivraison;
 use App\Entity\SynchroRecu;
 use App\Entity\User;
 use App\Repository\ParametresPaiementRepository;
@@ -814,6 +815,21 @@ final class Synchro
                 // Refusée par l'entreprise avant toute confirmation : elle ne vient pas à l'atelier.
                 $entite->setDeleted(true);
             }
+        }
+        if ($entite instanceof Commandes && isset($remontees['programmationLivraison']) && null !== $entite->getProgrammationLivraison()) {
+            // Livraison programmée par le client (maquette DB09) : reportée sur le bon pas encore parti, qui redescend.
+            $bon = $this->em->getRepository(BonLivraison::class)->findOneBy(['commande' => $entite, 'statut' => [BonLivraison::STATUT_BROUILLON, BonLivraison::STATUT_VALIDE]], ['id' => 'DESC']);
+            ProgrammationLivraison::appliquer($entite, $bon);
+            if (null !== $bon) {
+                $this->em->persist(new SynchroJournal('livraison', $bon->getPublicId(), SynchroJournal::MAJ));
+            }
+            $quand = ProgrammationLivraison::quand($entite->getProgrammationLivraison());
+            $this->notifications->notifierRoles(['ROLE_LIVRAISON'], null === $quand
+                ? \sprintf('Commande %s : le client viendra la retirer à l\'imprimerie.', $entite->getNumero())
+                : \sprintf('Commande %s : livraison programmée par le client, %s%s.', $entite->getNumero(), $quand, null === $bon ? ' (bon de livraison à préparer)' : ''), 'app_commandes_show', ['id' => $entite->getId()]);
+        }
+        if ($entite instanceof BonLivraison && isset($remontees['noteLivraison']) && null !== $entite->getNoteLivraison() && $entite->getNoteLivraison() <= 2) {
+            $this->notifications->notifierRoles(['ROLE_LIVRAISON'], \sprintf('Livraison %s notée %d/5 par le client.', $entite->getNumero(), $entite->getNoteLivraison()), 'app_livraisons_bl', ['id' => $entite->getId()]);
         }
         if ($entite instanceof ConversationClient) {
             // Décision du client sur sa demande : une note hors 1 à 5 est écartée ; clôturée, plus rien n'attend de réponse.

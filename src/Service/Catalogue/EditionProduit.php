@@ -27,6 +27,9 @@ final class EditionProduit
 {
     public const MODES = ['metre_carre' => 'm² (au mètre carré)', 'metre' => 'mètre linéaire', 'unite' => 'pièce', 'exemplaire' => 'exemplaire', 'feuille' => 'feuille', 'forfait' => 'forfait', 'heure' => 'heure', 'face' => 'face', 'point' => 'point'];
 
+    /** Modes de calcul d'une configuration (ProduitConfiguration::setModeCalcul). */
+    public const MODES_CONFIGURATION = ['unite' => 'pièce', 'metre_carre' => 'm²', 'metre' => 'mètre linéaire', 'forfait' => 'forfait', 'heure' => 'heure'];
+
     public const MODES_NOMENCLATURE = [
         ProduitArticleStock::MODE_SURFACE => 'par m²',
         ProduitArticleStock::MODE_METRE => 'par mètre',
@@ -84,14 +87,25 @@ final class EditionProduit
         if (false === $cout) {
             $erreurs[] = 'Le coût saisi est un nombre entier.';
         }
-        // Paliers de prix des configurations (docs/produits.md) : contrôlés avant tout changement.
+        // Configurations (prix par type d'impression, support et format) : saisies dans la fiche.
+        $configs = !empty($d['configurations_envoyees']) && null !== $p->getId()
+            ? $this->lireConfigurations($p, \is_array($d['configurations'] ?? null) ? $d['configurations'] : [], \is_array($d['configuration_nouvelle'] ?? null) ? $d['configuration_nouvelle'] : [], $d)
+            : ['erreurs' => [], 'plan' => [], 'nouvelle' => null];
+        array_push($erreurs, ...$configs['erreurs']);
+        $prixNouveaux = [];
+        foreach ($configs['plan'] as $id => $l) {
+            $prixNouveaux[$id] = (int) $l['valeurs']['prixBase'];
+        }
+        // Paliers de prix des configurations (docs/produits.md) : contrôlés avant tout changement,
+        // avec le prix de configuration saisi dans le même envoi.
         $paliers = !empty($d['paliers_envoyes']) && null !== $p->getId()
-            ? $this->lirePaliers($p, \is_array($d['paliers'] ?? null) ? $d['paliers'] : [], !empty($d['paliers_accord']), $avecCouts)
+            ? $this->lirePaliers($p, \is_array($d['paliers'] ?? null) ? $d['paliers'] : [], !empty($d['paliers_accord']), $avecCouts, $prixNouveaux)
             : ['erreurs' => [], 'plan' => [], 'alertes' => []];
         array_push($erreurs, ...$paliers['erreurs']);
         if ([] !== $erreurs) {
             return $erreurs;
         }
+        $this->appliquerConfigurations($p, $configs['plan'], $configs['nouvelle'], $par);
         $this->appliquerPaliers($p, $paliers['plan'], $paliers['alertes'], $par);
 
         $this->tracer($p, 'prixBase', null === $p->getPrixBase() ? null : (int) round($p->getPrixBase()), $prixBase, $par);
@@ -127,7 +141,230 @@ final class EditionProduit
         $this->em->persist($p);
         $this->em->flush();
 
+        $nouvelle = $configs['nouvelle'];
+        if (null !== $nouvelle && null !== $nouvelle->getId()) {
+            // La création compte dans l'historique des prix, comme un changement de la grille.
+            foreach (['prixBase' => $nouvelle->getPrixBase(), 'prixB2B' => $nouvelle->getPrixB2B()] as $champ => $valeur) {
+                if (null !== $valeur) {
+                    $this->em->persist(new PrixHistorique('configuration', (int) $nouvelle->getId(), \App\Service\GrilleTarifaire::libelle($nouvelle), $champ, null, (string) $valeur, $par));
+                }
+            }
+            $this->em->flush();
+        }
+
         return [];
+    }
+
+    /**
+     * Configurations postées depuis la carte « Prix par configuration » :
+     * prix, prix revendeur, minimum et « en vente » des configurations du
+     * produit, et une nouvelle configuration (type d'impression, support,
+     * format compatibles avec le produit et le support, mêmes règles que
+     * l'ancienne page /produit-configurations). Rien n'est changé ici.
+     *
+     * @param array<mixed> $postes   configurations[id][prixBase|prixB2B|quantiteMinimale|active]
+     * @param array<mixed> $nouvelle configuration_nouvelle[type|support|format|mode|prixBase|prixB2B|quantiteMinimale]
+     * @param array<mixed> $d        tout l'envoi (compatibilités cochées dans le même envoi)
+     *
+     * @return array{erreurs: list<string>, plan: array<int, array{config: ProduitConfiguration, valeurs: array{prixBase: ?int, prixB2B: ?int, quantiteMinimale: int, active: bool}}>, nouvelle: ?ProduitConfiguration}
+     */
+    private function lireConfigurations(Produits $p, array $postes, array $nouvelle, array $d): array
+    {
+        $erreurs = [];
+        $plan = [];
+        foreach ($p->getConfigurations() as $c) {
+            $v = $postes[(int) $c->getId()] ?? null;
+            if (!\is_array($v)) {
+                continue;
+            }
+            $libelle = \App\Service\GrilleTarifaire::libelle($c);
+            $valeurs = [
+                'prixBase' => self::entier($v['prixBase'] ?? null),
+                'prixB2B' => self::entier($v['prixB2B'] ?? null),
+                'quantiteMinimale' => self::entier($v['quantiteMinimale'] ?? null) ?? 1,
+                'active' => !empty($v['active']),
+            ];
+            if (false === $valeurs['prixBase'] || false === $valeurs['prixB2B'] || false === $valeurs['quantiteMinimale']) {
+                $erreurs[] = \sprintf('%s : les prix et le minimum sont des nombres entiers.', $libelle);
+                continue;
+            }
+            if (null !== $valeurs['prixB2B'] && null !== $valeurs['prixBase'] && $valeurs['prixB2B'] > $valeurs['prixBase']) {
+                $erreurs[] = \sprintf('%s : le prix revendeur dépasse le prix public.', $libelle);
+                continue;
+            }
+            $valeurs['quantiteMinimale'] = max(1, $valeurs['quantiteMinimale']);
+            $plan[(int) $c->getId()] = ['config' => $c, 'valeurs' => $valeurs];
+        }
+
+        $remplie = false;
+        foreach (['type', 'support', 'format', 'prixBase', 'prixB2B'] as $champ) {
+            if (\is_scalar($nouvelle[$champ] ?? null) && '' !== trim((string) $nouvelle[$champ])) {
+                $remplie = true;
+            }
+        }
+        if (!$remplie) {
+            return ['erreurs' => $erreurs, 'plan' => $plan, 'nouvelle' => null];
+        }
+
+        $type = $this->em->find(TypesImpression::class, (int) ($nouvelle['type'] ?? 0));
+        $support = $this->em->find(Supports::class, (int) ($nouvelle['support'] ?? 0));
+        $format = (int) ($nouvelle['format'] ?? 0) > 0 ? $this->em->find(Format::class, (int) $nouvelle['format']) : null;
+        $prixBase = self::entier($nouvelle['prixBase'] ?? null);
+        $prixB2B = self::entier($nouvelle['prixB2B'] ?? null);
+        $minimum = self::entier($nouvelle['quantiteMinimale'] ?? null) ?? 1;
+        $mode = (string) ($nouvelle['mode'] ?? '');
+
+        // Compatibilités du produit : celles cochées dans le même envoi, sinon celles enregistrées.
+        $ids = static fn (iterable $liste): array => array_map(static fn (object $e): int => (int) $e->getId(), [...$liste]);
+        $compatibles = static fn (string $cle, iterable $actuels): array => !empty($d['compatibilites'])
+            ? array_map('intval', \is_array($d[$cle] ?? null) ? $d[$cle] : [])
+            : $ids($actuels);
+
+        $avant = \count($erreurs);
+        if (null === $type || null === $support) {
+            $erreurs[] = 'Nouvelle configuration : choisissez le type d\'impression et le support.';
+        } else {
+            if (!\in_array((int) $type->getId(), $compatibles('types', $p->getTypesImpressions()), true)) {
+                $erreurs[] = 'Nouvelle configuration : ce type d\'impression n\'est pas compatible avec le produit (cochez-le dans « Compatibilités »).';
+            }
+            if (!\in_array((int) $support->getId(), $compatibles('supports', $p->getSupports()), true)) {
+                $erreurs[] = 'Nouvelle configuration : ce support n\'est pas compatible avec le produit (cochez-le dans « Compatibilités »).';
+            }
+            // Le support affine : s'il liste ses types d'impression ou ses formats, le choix doit y être.
+            $typesSupport = $ids($support->getTypesImpressions());
+            if ([] !== $typesSupport && !\in_array((int) $type->getId(), $typesSupport, true)) {
+                $erreurs[] = 'Nouvelle configuration : ce support n\'est pas compatible avec le type d\'impression.';
+            }
+            if (null !== $format) {
+                if (!\in_array((int) $format->getId(), $compatibles('formats', $p->getFormats()), true)) {
+                    $erreurs[] = 'Nouvelle configuration : ce format n\'est pas compatible avec le produit (cochez-le dans « Compatibilités »).';
+                }
+                $formatsSupport = $ids($support->getFormats());
+                if ([] !== $formatsSupport && !\in_array((int) $format->getId(), $formatsSupport, true)) {
+                    $erreurs[] = 'Nouvelle configuration : ce format n\'est pas compatible avec le support.';
+                }
+            }
+            foreach ($p->getConfigurations() as $c) {
+                if ($c->getTypeImpression()?->getId() === $type->getId() && $c->getSupport()?->getId() === $support->getId() && $c->getFormat()?->getId() === $format?->getId()) {
+                    $erreurs[] = \sprintf('Nouvelle configuration : « %s » existe déjà%s.', \App\Service\GrilleTarifaire::libelle($c), $c->isActive() ? '' : ' (désactivée : réactivez-la)');
+                }
+            }
+        }
+        if (false === $prixBase || false === $prixB2B || false === $minimum) {
+            $erreurs[] = 'Nouvelle configuration : les prix et le minimum sont des nombres entiers.';
+        } elseif (null === $prixBase) {
+            $erreurs[] = 'Nouvelle configuration : donnez son prix.';
+        } elseif (null !== $prixB2B && $prixB2B > $prixBase) {
+            $erreurs[] = 'Nouvelle configuration : le prix revendeur dépasse le prix public.';
+        }
+        if (!\array_key_exists($mode, self::MODES_CONFIGURATION)) {
+            $mode = self::modeConfiguration((string) $p->getModeCalcul());
+        }
+        if (\count($erreurs) > $avant) {
+            return ['erreurs' => $erreurs, 'plan' => $plan, 'nouvelle' => null];
+        }
+
+        $config = (new ProduitConfiguration())
+            ->setTypeImpression($type)->setSupport($support)->setFormat($format)
+            ->setModeCalcul($mode)
+            ->setModeDimension(\in_array($mode, ['metre', 'metre_carre'], true) ? 'mesure' : (null !== $format ? 'format' : 'aucune'))
+            ->setPrixBase($prixBase)->setPrixB2B($prixB2B)
+            ->setQuantiteMinimale(max(1, (int) $minimum))
+            ->setActive(true);
+
+        return ['erreurs' => $erreurs, 'plan' => $plan, 'nouvelle' => $config];
+    }
+
+    /**
+     * @param array<int, array{config: ProduitConfiguration, valeurs: array<string, int|bool|null>}> $plan
+     */
+    private function appliquerConfigurations(Produits $p, array $plan, ?ProduitConfiguration $nouvelle, ?User $par): void
+    {
+        foreach ($plan as $l) {
+            $c = $l['config'];
+            $libelle = \App\Service\GrilleTarifaire::libelle($c);
+            $ancien = ['prixBase' => $c->getPrixBase(), 'prixB2B' => $c->getPrixB2B(), 'quantiteMinimale' => $c->getQuantiteMinimale(), 'active' => $c->isActive()];
+            foreach ($l['valeurs'] as $champ => $valeur) {
+                if ($ancien[$champ] === $valeur) {
+                    continue;
+                }
+                match ($champ) {
+                    'prixBase' => $c->setPrixBase($valeur),
+                    'prixB2B' => $c->setPrixB2B($valeur),
+                    'quantiteMinimale' => $c->setQuantiteMinimale((int) $valeur),
+                    'active' => $c->setActive((bool) $valeur),
+                };
+                // Même historique que Réglages › Grille tarifaire.
+                $this->em->persist(new PrixHistorique('configuration', (int) $c->getId(), $libelle, $champ, self::texte($ancien[$champ]), self::texte($valeur), $par));
+            }
+        }
+        if (null !== $nouvelle) {
+            $ordre = 0;
+            foreach ($p->getConfigurations() as $c) {
+                $ordre = max($ordre, $c->getOrdre());
+            }
+            $p->addConfiguration($nouvelle->setOrdre($ordre + 10));
+            $this->em->persist($nouvelle);
+        }
+    }
+
+    /** Unité de vente du produit ramenée à un mode de calcul de configuration. */
+    public static function modeConfiguration(string $modeProduit): string
+    {
+        return \array_key_exists($modeProduit, self::MODES_CONFIGURATION) ? $modeProduit : 'unite';
+    }
+
+    /**
+     * Lignes de commande et de devis, prix négociés, demandes de devis,
+     * Atelier 3D et supports de conception qui utilisent la configuration :
+     * une configuration utilisée se désactive, elle ne se supprime pas.
+     */
+    public function utilisations(ProduitConfiguration $c): int
+    {
+        if (null === $c->getId()) {
+            return 0;
+        }
+        $total = 0;
+        foreach ([
+            [\App\Entity\CommandesDetails::class, 'produitConfiguration'],
+            [\App\Entity\DevisDetails::class, 'produitConfiguration'],
+            [\App\Entity\PrixSpecial::class, 'configuration'],
+            [\App\Entity\DemandeDevis::class, 'configuration'],
+            [\App\Entity\DemandeDevisLigne::class, 'configuration'],
+            [\App\Entity\CreationAtelier::class, 'configuration'],
+            [\App\Entity\ModeleAtelier::class, 'configuration'],
+        ] as [$classe, $champ]) {
+            $total += (int) $this->em->createQueryBuilder()->select('COUNT(x.id)')->from($classe, 'x')
+                ->where(\sprintf('x.%s = :c', $champ))->setParameter('c', $c)->getQuery()->getSingleScalarResult();
+        }
+        $total += (int) $this->em->createQueryBuilder()->select('COUNT(s.id)')->from(\App\Entity\SupportConception::class, 's')
+            ->innerJoin('s.configurations', 'c')->where('c = :c')->setParameter('c', $c)->getQuery()->getSingleScalarResult();
+
+        return $total;
+    }
+
+    /**
+     * Supprime une configuration jamais utilisée (elle part à la corbeille
+     * et la suppression part au journal de synchronisation).
+     *
+     * @return bool false si elle est utilisée : la désactiver à la place
+     */
+    public function supprimerConfiguration(ProduitConfiguration $c, ?User $par): bool
+    {
+        if ($this->utilisations($c) > 0) {
+            return false;
+        }
+        $this->em->persist(new PrixHistorique('configuration', (int) $c->getId(), \App\Service\GrilleTarifaire::libelle($c), 'active', self::texte($c->isActive()), 'supprimée', $par));
+        $c->getProduit()?->removeConfiguration($c);
+        $this->em->remove($c);
+        $this->em->flush();
+
+        return true;
+    }
+
+    private static function texte(int|bool|null $valeur): ?string
+    {
+        return \is_bool($valeur) ? ($valeur ? 'oui' : 'non') : (null === $valeur ? null : (string) $valeur);
     }
 
     /**
@@ -140,10 +377,11 @@ final class EditionProduit
      * l'accord de la direction (case cochée).
      *
      * @param array<mixed> $postes paliers[id de configuration][quantite|surface][]
+     * @param array<int, int> $prixNouveaux prix de configuration saisis dans le même envoi
      *
      * @return array{erreurs: list<string>, plan: array<int, array{config: ProduitConfiguration, quantite: list<array>, surface: list<array>}>, alertes: list<string>}
      */
-    private function lirePaliers(Produits $p, array $postes, bool $accord, bool $avecCouts): array
+    private function lirePaliers(Produits $p, array $postes, bool $accord, bool $avecCouts, array $prixNouveaux = []): array
     {
         $erreurs = [];
         $plan = [];
@@ -156,7 +394,7 @@ final class EditionProduit
                 continue;
             }
             $libelle = \App\Service\GrilleTarifaire::libelle($c);
-            $prixBase = (int) $c->getPrixBase();
+            $prixBase = $prixNouveaux[(int) $c->getId()] ?? (int) $c->getPrixBase();
             $lignesQ = \is_array($brut['quantite'] ?? null) ? $brut['quantite'] : [];
             $lignesS = 'metre_carre' === $c->getModeCalcul() && \is_array($brut['surface'] ?? null) ? $brut['surface'] : [];
             foreach ($lignesQ as $l) {
@@ -195,7 +433,8 @@ final class EditionProduit
 
             // Garde-fous au pire cas : le palier le plus fort, puis la plus forte grille à remise.
             // Seulement pour des paliers changés : une fiche réenregistrée ne redemande pas l'accord.
-            $inchanges = $quantite === $c->getPaliersQuantite() && $surface === $c->getRemisesSurface();
+            // Un prix de configuration changé recompte les paliers à prix fixe.
+            $inchanges = $quantite === $c->getPaliersQuantite() && $surface === $c->getRemisesSurface() && $prixBase === (int) $c->getPrixBase();
             if (null === $g || $prixBase <= 0 || $inchanges) {
                 continue;
             }

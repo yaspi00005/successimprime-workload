@@ -27,100 +27,18 @@ use App\Entity\Produits;
 #[IsGranted('ROLE_ADMIN')]
 final class ProduitConfigurationController extends AbstractController
 {
+    /**
+     * Ancienne page des configurations : elles se créent et se modifient
+     * maintenant dans la fiche produit (carte « Prix par configuration »,
+     * docs/produits.md). Les routes AJAX restent pour les scripts du thème
+     * et la saisie des devis.
+     */
     #[Route('', name: 'app_produit_configuration_index', methods: ['GET'])]
-    public function index(
-        ProduitConfigurationRepository $configurationRepository,
-        ProduitsRepository $produitsRepository,
-        TypesImpressionRepository $typeRepository,
-        SupportsRepository $supportRepository,
-        FormatRepository $formatRepository,
-        FinitionRepository $finitionRepository
-    ): Response {
-        $produits = $produitsRepository->findBy(
-            ['publie' => true, 'actif' => true],
-            ['ordre' => 'ASC', 'nom' => 'ASC']
-        );
+    public function index(): Response
+    {
+        $this->addFlash('info', 'Les configurations (type d\'impression, support, format, prix) se règlent maintenant dans la fiche du produit : ouvrez le produit, carte « Prix par configuration ».');
 
-        $typesImpressions = $typeRepository->findBy(
-            ['publie' => true],
-            ['ordre' => 'ASC', 'nom' => 'ASC']
-        );
-
-        $supports = $supportRepository->findBy(
-            ['publie' => true],
-            ['ordre' => 'ASC', 'nom' => 'ASC']
-        );
-
-        $formats = $formatRepository->findBy(
-            ['publie' => true],
-            ['ordre' => 'ASC', 'nom' => 'ASC']
-        );
-
-        $finitions = $finitionRepository->findBy(
-            ['publie' => true],
-            ['ordre' => 'ASC', 'nom' => 'ASC']
-        );
-
-        /*
-         * Catalogue utilisé par le JavaScript pour les listes dépendantes.
-         *
-         * Produit sélectionné
-         *     -> types d'impression compatibles
-         *     -> supports compatibles
-         *     -> formats compatibles
-         *     -> finitions compatibles
-         *
-         * Le support sélectionné affine ensuite le type, le format
-         * et les finitions.
-         */
-        $catalogueCompatibilites = [
-            'produits' => [],
-            'supports' => [],
-        ];
-
-        foreach ($produits as $produit) {
-            $catalogueCompatibilites['produits'][(string) $produit->getId()] = [
-                'types' => $this->extraireIds(
-                    $produit->getTypesImpressions()
-                ),
-                'supports' => $this->extraireIds(
-                    $produit->getSupports()
-                ),
-                'formats' => $this->extraireIds(
-                    $produit->getFormats()
-                ),
-                'finitions' => $this->extraireIds(
-                    $produit->getFinitions()
-                ),
-            ];
-        }
-
-        foreach ($supports as $support) {
-            $catalogueCompatibilites['supports'][(string) $support->getId()] = [
-                'types' => $this->extraireIds(
-                    $support->getTypesImpressions()
-                ),
-                'formats' => $this->extraireIds(
-                    $support->getFormats()
-                ),
-                'finitions' => $this->extraireIds(
-                    $support->getFinitions()
-                ),
-            ];
-        }
-
-        return $this->render('produit_configuration/index.html.twig', [
-            'configurations' => $configurationRepository->findBy(
-                [],
-                ['ordre' => 'ASC', 'id' => 'ASC']
-            ),
-            'produits' => $produits,
-            'typesImpressions' => $typesImpressions,
-            'supports' => $supports,
-            'formats' => $formats,
-            'finitions' => $finitions,
-            'catalogueCompatibilites' => $catalogueCompatibilites,
-        ]);
+        return $this->redirectToRoute('app_produits_index');
     }
 
     #[Route('/create/ajax', name: 'app_produit_configuration_create_ajax', methods: ['POST'])]

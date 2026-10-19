@@ -147,7 +147,7 @@ final class NavigationExtension extends AbstractExtension
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
-            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_noms_commerciaux', 'app_categorie_produit_', 'app_produit_configuration_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
+            ['libelle' => 'Grille tarifaire', 'route' => 'app_grille_tarifaire_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_grille_tarifaire_', 'app_produits_noms_commerciaux', 'app_categorie_produit_', 'app_type_impression_', 'app_support_', 'app_format_', 'app_finition_', 'app_parametres_paiement_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Coûts de revient', 'route' => 'app_couts_revient_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_revient_']],
             ['libelle' => 'Utilisateurs et droits', 'route' => 'app_utilisateurs_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_utilisateurs_', 'app_user_', 'app_journal_activite_']],
             ['libelle' => 'Entreprises et documents', 'route' => 'app_entreprises_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_entreprises_']],
@@ -309,7 +309,6 @@ final class NavigationExtension extends AbstractExtension
         'app_produits_' => 'ventes',
         'app_grille_tarifaire_' => 'reglages',
         'app_couts_revient_' => 'reglages',
-        'app_produit_configuration_' => 'reglages',
         'app_type_impression_' => 'reglages',
         'app_support_' => 'reglages',
         'app_format_' => 'reglages',

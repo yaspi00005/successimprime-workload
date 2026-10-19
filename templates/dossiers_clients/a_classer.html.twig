@@ -100,7 +100,7 @@
 										</div>
 										<div class="dc-volet-boutons">
 											<button class="btn btn-sm dc-btn-principal">Classer</button>
-											{% if peut_retirer %}<button class="btn btn-sm dc-btn" formaction="{{ path('app_dossiers_clients_retirer_a_classer', {id: f.id}) }}" formnovalidate title="Le fichier reste dans « À classer », il sort seulement de la liste">Retirer de la liste</button>{% endif %}
+											{% if peut_retirer %}<button class="btn btn-sm dc-btn" formaction="{{ path('app_dossiers_clients_retirer_a_classer', {id: f.id}) }}" formnovalidate title="Le fichier reste dans « À classer », il sort seulement de la liste" data-confirmer="Retirer « {{ f.nom }} » de la liste ?" data-confirmer-detail="Le fichier reste dans le dossier « À classer » ; il sort seulement de cette liste." data-confirmer-bouton="Retirer">Retirer de la liste</button>{% endif %}
 											<small>Une copie renommée va dans le dossier du client ; l'original reste dans « À classer ». Si le client n'a pas encore de dossier, il est créé avec les sous-dossiers du modèle.</small>
 										</div>
 									</form>

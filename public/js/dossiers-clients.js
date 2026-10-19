@@ -63,12 +63,6 @@
 		}
 	});
 
-	// Confirmation avant un geste qui se voit chez le client.
-	document.addEventListener('submit', function (e) {
-		var q = e.target.getAttribute && e.target.getAttribute('data-dc-confirmer');
-		if (q && !window.confirm(q)) { e.preventDefault(); }
-	});
-
 	// Tri : envoie le formulaire au changement.
 	document.querySelectorAll('[data-dc-auto]').forEach(function (s) {
 		s.addEventListener('change', function () { s.form.submit(); });

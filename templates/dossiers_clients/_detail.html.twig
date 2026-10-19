@@ -76,7 +76,7 @@
 			</select>
 			<div class="dc-volet-boutons">
 				<button class="btn btn-sm dc-btn-principal">Lier</button>
-				{% if f.commande and d.peut_supprimer %}<button class="btn btn-sm dc-btn" name="commande" value="0" formnovalidate>Retirer le lien</button>{% endif %}
+				{% if f.commande and d.peut_supprimer %}<button class="btn btn-sm dc-btn" name="commande" value="0" formnovalidate data-confirmer="Retirer le lien avec la commande {{ f.commande.numero }} ?" data-confirmer-detail="Le fichier reste dans le dossier, seul le lien est retiré de l'ERP." data-confirmer-bouton="Retirer">Retirer le lien</button>{% endif %}
 			</div>
 			<small>Le lien est gardé dans l'ERP : le fichier n'est ni déplacé ni renommé.</small>
 		</form>

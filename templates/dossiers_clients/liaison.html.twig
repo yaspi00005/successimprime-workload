@@ -29,7 +29,7 @@
 			</div>
 			<div class="dc-entete-boutons">
 				<form method="post" action="{{ path('app_dossiers_clients_rechercher') }}"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn">Relancer la recherche</button></form>
-				<form method="post" action="{{ path('app_dossiers_clients_valider_suggestions') }}" data-dc-confirmer="Lier chaque client à son dossier proposé ({{ compteurs.suggeres }}) ?"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn-principal" {{ compteurs.suggeres == 0 ? 'disabled' }}>Valider les {{ compteurs.suggeres }} suggestion{{ compteurs.suggeres > 1 ? 's' }}</button></form>
+				<form method="post" action="{{ path('app_dossiers_clients_valider_suggestions') }}" data-confirmer="Lier chaque client à son dossier proposé ({{ compteurs.suggeres }}) ?" data-confirmer-detail="Une petite marque « .succes » est posée dans chaque dossier ; aucun fichier n'est déplacé." data-confirmer-bouton="Valider"><input type="hidden" name="_token" value="{{ jeton }}"><button class="btn btn-sm dc-btn-principal" {{ compteurs.suggeres == 0 ? 'disabled' }}>Valider les {{ compteurs.suggeres }} suggestion{{ compteurs.suggeres > 1 ? 's' }}</button></form>
 			</div>
 		</header>
 

@@ -9,7 +9,7 @@
 				<span class="dc-pub-nom" title="{{ p.nom }}">{{ p.nom }}</span>
 				<small>{{ p.publieLe|date('d/m/Y') }}{{ p.commande ? ' · ' ~ p.commande.numero }} · {{ p.taille|taille_octets }}</small>
 				{% if retirer|default(false) %}
-					<form method="post" action="{{ path('app_dossiers_clients_retirer_publication', {id: p.id}) }}" data-dc-confirmer="Le client ne verra plus ce fichier dans son espace. Le fichier de l'atelier n'est pas touché.">
+					<form method="post" action="{{ path('app_dossiers_clients_retirer_publication', {id: p.id}) }}" data-confirmer="Retirer « {{ p.nom }} » de l'espace du client ?" data-confirmer-detail="Le client ne le verra plus. Le fichier de l'atelier n'est pas touché." data-confirmer-bouton="Retirer" data-confirmer-danger>
 						<input type="hidden" name="_token" value="{{ csrf_token('dossiers-clients') }}"><input type="hidden" name="base" value="{{ base }}">
 						<button class="dc-lien-danger">Retirer</button>
 					</form>

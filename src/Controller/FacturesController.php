@@ -573,6 +573,11 @@ class FacturesController extends AbstractController
         }
 
 
+        // Nouveaux écrans (maquettes FD02, FD03) : brouillon, facture et facture d'acompte validées.
+        if (!$facture->estAnnulee() && null !== $facture->getCommande() && ($facture->estBrouillon() || !$facture->estProforma())) {
+            return $this->forward(FacturesEcransController::class.'::ecran', ['id' => $facture->getId()]);
+        }
+
         return $this->render(
             'factures/show.html.twig',
             [
@@ -614,7 +619,7 @@ class FacturesController extends AbstractController
         Factures $facture,
         Request $request,
         EntityManagerInterface $entityManager,
-        NumerotationFactures $numerotation
+        \App\Service\Facturation\ValidationFacture $validation
     ): Response {
         if (
             !$this->isCsrfTokenValid(
@@ -664,26 +669,8 @@ class FacturesController extends AbstractController
         }
 
 
-        // Validation : le numéro définitif est attribué maintenant, à la date du jour
-        // (les numéros suivent l'ordre des dates) ; l'échéance garde son délai.
-        if (null === $facture->getNumero()) {
-            $aujourdhui = new \DateTimeImmutable('today');
-            $date = $facture->getDateFacture();
-            if (null === $date || $date < $aujourdhui) {
-                $delai = null !== $date && null !== $facture->getDateEcheance() ? (int) $date->diff($facture->getDateEcheance())->days : null;
-                $facture->setDateFacture($aujourdhui);
-                if (null !== $delai) {
-                    $facture->setDateEcheance($aujourdhui->modify('+'.$delai.' days'));
-                }
-            }
-            $numerotation->attribuer($facture);
-        }
-
-        $facture->setEtat(
-            Factures::ETAT_EMISE
-        );
-
-        $entityManager->flush();
+        $par = $this->getUser();
+        $validation->valider($facture, $par instanceof \App\Entity\User ? $par : null);
 
 
         $this->addFlash(
@@ -1597,7 +1584,8 @@ public function pdf(
     public function pdfPublic(
         Factures $facture,
         string $token,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        DocumentsEntreprise $documentsEntreprise
     ): Response {
         $tokenAttendu = (string) $facture->getTokenAuthenticite();
 
@@ -1610,7 +1598,13 @@ public function pdf(
             );
         }
 
-        return $this->pdf($facture, $entityManager);
+        // Première ouverture du lien envoyé au client (« Envois », maquette FD03).
+        if ($facture->estEmise() && null === $facture->getLienOuvertLe()) {
+            $facture->setLienOuvertLe(new \DateTimeImmutable());
+            $entityManager->flush();
+        }
+
+        return $this->pdf($facture, $entityManager, $documentsEntreprise);
     }
 
     /*

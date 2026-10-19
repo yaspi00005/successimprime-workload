@@ -33,11 +33,27 @@ final class NumerotationFactures
             return $facture->getNumero();
         }
         $date = $facture->getDateFacture() ?? new \DateTimeImmutable();
+        if ($facture->estAcompte()) {
+            return (string) $facture->setNumero($this->prochainAcompte($date))->getNumero();
+        }
         $entreprise = $this->em->getRepository(Entreprise::class)->findOneBy(['code' => $facture->getEmetteur()]);
         $numero = null !== $entreprise && $facture->estFacture() ? $this->prochain($entreprise, $date) : null;
         $facture->setNumero($numero ?? \sprintf('%s-%06d-%s', $facture->estFacture() ? 'FAC' : 'PF', $facture->getId(), $date->format('m-Y')));
 
         return (string) $facture->getNumero();
+    }
+
+    /** FA-2026-0118 : factures d'acompte, compteur par année, verrouillé le temps de la transaction. */
+    private function prochainAcompte(\DateTimeInterface $date): string
+    {
+        $prefixe = 'FA-'.$date->format('Y').'-';
+        $dernier = $this->em->createQueryBuilder()->select('f.numero')->from(Factures::class, 'f')
+            ->where('f.numero LIKE :p')->setParameter('p', $prefixe.'%')
+            ->orderBy('f.numero', 'DESC')->setMaxResults(1)
+            ->getQuery()->setLockMode(LockMode::PESSIMISTIC_WRITE)->getOneOrNullResult();
+        $n = null === $dernier ? 0 : (int) substr((string) $dernier['numero'], \strlen($prefixe));
+
+        return $prefixe.str_pad((string) ($n + 1), 4, '0', \STR_PAD_LEFT);
     }
 
     /**

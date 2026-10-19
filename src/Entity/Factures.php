@@ -46,10 +46,13 @@ class Factures implements AppartientASociete
 
     public const TYPE_FACTURE = 'facture';
     public const TYPE_PROFORMA = 'proforma';
+    /** Facture d'acompte (maquette FD01) : l'acompte qui lance la production, déduit de la facture finale. */
+    public const TYPE_ACOMPTE = 'acompte';
 
     public const TYPES_DOCUMENT = [
         self::TYPE_FACTURE,
         self::TYPE_PROFORMA,
+        self::TYPE_ACOMPTE,
     ];
 
     public const TYPES_DOCUMENT_LABELS = [
@@ -58,6 +61,9 @@ class Factures implements AppartientASociete
 
         self::TYPE_PROFORMA =>
             'Pro forma / Simulation',
+
+        self::TYPE_ACOMPTE =>
+            'Facture d\'acompte',
     ];
 
 
@@ -466,6 +472,24 @@ private ?string $pdfHash = null;
     )]
     private ?string $codeSuivi = null;
 
+    /* Validation et envois (maquette FD03) : qui a validé, quand ; envoi WhatsApp, ouverture du lien. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $valideePar = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $valideeLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $envoyeeWhatsappLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lienOuvertLe = null;
+
+    /** Facture d'acompte : part de la commande demandée, en %. */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $pourcentageAcompte = null;
+
 
     /*
      * ============================================================
@@ -658,6 +682,77 @@ private ?string $pdfHash = null;
     {
         return $this->typeDocument
             === self::TYPE_FACTURE;
+    }
+
+    public function estAcompte(): bool
+    {
+        return self::TYPE_ACOMPTE === $this->typeDocument;
+    }
+
+    public function getValideePar(): ?User
+    {
+        return $this->valideePar;
+    }
+
+    public function getValideeLe(): ?\DateTimeImmutable
+    {
+        return $this->valideeLe;
+    }
+
+    public function marquerValidee(?User $par, \DateTimeImmutable $le): static
+    {
+        $this->valideePar = $par;
+        $this->valideeLe = $le;
+
+        return $this;
+    }
+
+    public function getEnvoyeeWhatsappLe(): ?\DateTimeImmutable
+    {
+        return $this->envoyeeWhatsappLe;
+    }
+
+    public function setEnvoyeeWhatsappLe(?\DateTimeImmutable $le): static
+    {
+        $this->envoyeeWhatsappLe = $le;
+
+        return $this;
+    }
+
+    public function getLienOuvertLe(): ?\DateTimeImmutable
+    {
+        return $this->lienOuvertLe;
+    }
+
+    public function setLienOuvertLe(?\DateTimeImmutable $le): static
+    {
+        $this->lienOuvertLe = $le;
+
+        return $this;
+    }
+
+    public function getPourcentageAcompte(): ?int
+    {
+        return $this->pourcentageAcompte;
+    }
+
+    /**
+     * Facture d'acompte : une part de la commande, en une ligne. Le
+     * montant est arrondi au franc ; la TVA suit la même part.
+     */
+    public function chargerAcompte(Commandes $commande, int $pourcentage): static
+    {
+        $pourcentage = max(1, min(100, $pourcentage));
+        $this->chargerDepuisCommande($commande);
+        $this->pourcentageAcompte = $pourcentage;
+        $base = $this->totalHt - $this->remise;
+        $this->totalHt = (int) round($base * $pourcentage / 100);
+        $this->remise = 0;
+        $this->montantTva = (int) round($this->montantTva * $pourcentage / 100);
+        $this->fraisLivraison = 0;
+        $this->recalculerTotal();
+
+        return $this;
     }
 
     public function estProforma(): bool
@@ -1501,7 +1596,7 @@ private ?string $pdfHash = null;
     static
 {
     if (
-        !$this->comptabilisee
+        (!$this->comptabilisee && !$this->estAcompte())
         || $this->commande === null
     ) {
         return $this;
@@ -1531,8 +1626,9 @@ private ?string $pdfHash = null;
     }
 
 
+    // Facture d'acompte : payée dès que les paiements couvrent l'acompte.
     $this->montantPaye =
-        $totalPaye;
+        $this->estAcompte() ? min($totalPaye, $this->totalTtc) : $totalPaye;
 
 
     $this->resteAPayer =
@@ -1625,8 +1721,9 @@ private ?string $pdfHash = null;
     public static function getTypesDocumentPourFormulaire():
         array
     {
+        // La facture d'acompte se crée depuis « Nouveau document » (FD01).
         return array_flip(
-            self::TYPES_DOCUMENT_LABELS
+            array_diff_key(self::TYPES_DOCUMENT_LABELS, [self::TYPE_ACOMPTE => true])
         );
     }
 

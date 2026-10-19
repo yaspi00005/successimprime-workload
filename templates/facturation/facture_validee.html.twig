@@ -1,0 +1,99 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Facture validée (maquette FD03) : le PDF A4 avec son numéro définitif,
+	le statut, les envois (WhatsApp, espace client, lien ouvert) et les
+	actions. Elle ne se modifie plus : une correction passe par un avoir.
+#}
+
+{% set nom = facture.estAcompte ? 'Facture d\'acompte' : 'Facture' %}
+{% block title %}{{ nom }} {{ facture.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set payee = facture.resteAPayer <= 0 %}
+	{% set echue = not payee and facture.dateEcheance and facture.dateEcheance < date('today') %}
+	<div class="fd-page">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › {{ facture.numero }}</div>
+				<h1>{{ nom }} {{ facture.numero }}</h1>
+			</div>
+			<div class="fd-actions">
+				<a href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank" class="btn fd-btn-blanc"><i class="fa fa-download me-1"></i>PDF</a>
+				<button type="button" class="btn fd-btn-blanc" onclick="var f=document.querySelector('[data-pdf-cadre]');f&&f.contentWindow.print()"><i class="fa fa-print me-1"></i>Imprimer</button>
+				{% if client and client.telephone %}
+					<form method="post" action="{{ path('app_factures_whatsapp_lien', {id: facture.id}) }}" target="_blank">
+						<input type="hidden" name="_token" value="{{ csrf_token('whatsapp-lien-' ~ facture.id) }}">
+						<button type="submit" class="btn fd-vert-plein"><i class="fab fa-whatsapp me-1"></i>Envoyer sur WhatsApp</button>
+					</form>
+				{% endif %}
+			</div>
+		</div>
+
+		{% include 'facturation/_chaine.html.twig' %}
+
+		<div class="fd-grille large validee">
+			<div class="fd-apercu grand">
+				<iframe src="{{ path('app_factures_apercu', {id: facture.id}) }}" title="Facture {{ facture.numero }}" data-pdf-cadre data-ajuster></iframe>
+			</div>
+
+			<div>
+				<div class="fd-carte">
+					<h2 class="d-flex align-items-center gap-2">Statut
+						{% if payee %}<span class="fd-badge ok">Payée</span>
+						{% elseif echue %}<span class="fd-badge retard">Échue</span>
+						{% else %}<span class="fd-badge envoye">Validée{{ facture.envoyeeWhatsappLe ? ' · envoyée' }}</span>{% endif %}
+					</h2>
+					<p class="mb-2 small">Validée{% if facture.valideePar %} par {{ facture.valideePar.employe ? facture.valideePar.employe.prenom ~ ' ' ~ facture.valideePar.employe.nom : facture.valideePar.userIdentifier }}{% endif %}{% if facture.valideeLe %} le {{ facture.valideeLe|date('d/m à H:i') }}{% endif %}. Le numéro est définitif : la facture ne peut plus être modifiée. Pour corriger, créez un avoir.</p>
+					<div class="fd-ligne-solde"><span>Total</span><b>{{ facture.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+					{% for a in avoirs %}<div class="fd-ligne-solde"><a href="{{ path('app_factures_avoir_show', {id: a.id}) }}" class="fd-lien avoir">Avoir {{ a.numero }}</a><span class="fd-violet">− {{ a.total|number_format(0, ',', ' ') }} F</span></div>{% endfor %}
+					{% if chaine.voirPaiements %}<div class="fd-ligne-solde"><span>Payé</span><span>− {{ (facture.montantPaye - (avoirs|reduce((s, a) => s + a.deduit, 0)))|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+					<div class="fd-ligne-solde"><span>Reste à payer</span><b class="{{ echue ? 'fd-rouge' }}">{{ facture.resteAPayer|number_format(0, ',', ' ') }} F{% if facture.dateEcheance and not payee %} <small class="fd-muet fw-normal">avant le {{ facture.dateEcheance|date('d/m') }}</small>{% endif %}</b></div>
+				</div>
+
+				<div class="fd-carte">
+					<h2>Envois</h2>
+					<div class="fd-envoi"><span><i class="fab fa-whatsapp me-1 fd-vert"></i><b>WhatsApp</b></span>
+						<span class="fd-muet">{% if facture.envoyeeWhatsappLe %}{{ client ? client.nomComplet ~ ' · ' }}{{ facture.envoyeeWhatsappLe|date('d/m H:i') }}{% else %}pas encore envoyée{% endif %}</span>
+						{% if facture.lienOuvertLe %}<span class="fd-badge ok">lu {{ facture.lienOuvertLe|date('d/m H:i') }}</span>{% endif %}</div>
+					<div class="fd-envoi"><span><i class="fa fa-user me-1 fd-bleu"></i><b>Espace client</b></span>
+						<span class="fd-muet">{{ client ? 'visible depuis la validation' : 'vente sans compte client' }}</span></div>
+				</div>
+
+				<div class="fd-carte">
+					<h2>Actions</h2>
+					{% if not payee and is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+						<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn fd-vert-plein fd-bouton-action">Enregistrer un paiement</a>
+					{% endif %}
+					{% if facture.estFacture %}
+						<a href="{{ path('app_factures_avoir', {id: facture.id}) }}" class="btn fd-btn-blanc fd-bouton-action"><i class="fa fa-undo me-1"></i>Créer un avoir</a>
+					{% endif %}
+					{% if not payee and client and client.telephone %}
+						<form method="post" action="{{ path('app_creances_relancer') }}" class="fd-bouton-action">
+							<input type="hidden" name="_token" value="{{ csrf_token('relancer-creances') }}">
+							<input type="hidden" name="commandes[]" value="{{ commande.id }}">
+							<button type="submit" class="btn fd-btn-blanc w-100"><i class="fa fa-clock-o me-1"></i>Relancer le client</button>
+						</form>
+					{% endif %}
+					<a href="{{ path('app_factures_documents_lies', {id: commande.id}) }}" class="btn fd-btn-blanc fd-bouton-action"><i class="fa fa-link me-1"></i>Voir tous les documents liés</a>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	// Aperçu A4 réduit à la largeur du cadre.
+	document.querySelectorAll('iframe[data-ajuster]').forEach(function (f) {
+		function ajuster() { try { var d = f.contentDocument; if (!d || !d.body) return; var e = Math.min(1, (f.clientWidth - 8) / 808); d.documentElement.style.zoom = e; f.style.height = Math.ceil((d.body.scrollHeight + 60) * e) + 'px'; } catch (x) {} }
+		f.addEventListener('load', ajuster); window.addEventListener('resize', ajuster); ajuster();
+	});
+	</script>
+{% endblock %}

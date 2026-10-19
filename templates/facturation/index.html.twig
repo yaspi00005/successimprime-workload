@@ -95,7 +95,8 @@
 
 	{# FENÊTRE « NOUVEAU DOCUMENT » (FD01) #}
 	<div class="fd-fond-modal" id="fd-nouveau" hidden>
-		<form method="get" action="{{ path('app_factures_nouveau_document') }}" class="fd-page fd-modal" role="dialog" aria-modal="true" aria-labelledby="fd-nouveau-titre">
+		<form method="post" action="{{ path('app_factures_nouveau_document') }}" class="fd-page fd-modal" role="dialog" aria-modal="true" aria-labelledby="fd-nouveau-titre">
+			<input type="hidden" name="_token" value="{{ csrf_token('nouveau-document') }}">
 			<div class="d-flex justify-content-between align-items-center mb-3">
 				<h2 id="fd-nouveau-titre" class="fd-modal-titre">Nouveau document de facturation</h2>
 				<button type="button" class="btn-close" data-fd-fermer aria-label="Fermer"></button>
@@ -104,32 +105,36 @@
 				{% set cartes = [
 					{cle: 'devis', titre: 'Devis', texte: 'Proposer un prix au client avant la commande', note: 'Prix ferme 15 jours', couleur: 'devis', droit: nouveau.droits.devis},
 					{cle: 'proforma', titre: 'Facture proforma', texte: 'Pour une administration ou un client qui doit obtenir un accord de paiement', note: 'Sans valeur comptable', couleur: 'proforma', droit: true},
-					{cle: 'acompte', titre: 'Facture d\'acompte', texte: 'Demander l\'acompte qui lance la production', note: 'Déduite de la facture finale', couleur: 'acompte', droit: false},
+					{cle: 'acompte', titre: 'Facture d\'acompte', texte: 'Demander l\'acompte qui lance la production', note: 'Déduite de la facture finale', couleur: 'acompte', droit: true},
 					{cle: 'facture', titre: 'Facture', texte: 'Facturer une commande livrée ou retirée', note: 'Numéro définitif à la validation', couleur: 'facture', droit: true},
 					{cle: 'avoir', titre: 'Avoir', texte: 'Annuler tout ou partie d\'une facture déjà validée', note: 'Une facture validée ne se modifie pas', couleur: 'avoir', droit: nouveau.droits.avoir},
 					{cle: 'bl', titre: 'Bon de livraison', texte: 'Liste de ce qui est remis, signé à la réception', note: 'Code de réception ou signature', couleur: 'bl', droit: nouveau.droits.bl},
 					{cle: 'recu', titre: 'Reçu de paiement', texte: 'Prouver un paiement reçu', note: 'Envoyé par WhatsApp automatiquement', couleur: 'recu', droit: nouveau.droits.recu},
 				] %}
 				{% for c in cartes %}
-					<label class="fd-type {{ not c.droit ? 'fd-inactif' }}" {% if c.cle == 'acompte' %}title="Arrive avec l'éditeur de facture"{% elseif not c.droit %}title="Vous n'avez pas ce droit"{% endif %}>
+					<label class="fd-type {{ not c.droit ? 'fd-inactif' }}" {% if not c.droit %}title="Vous n'avez pas ce droit"{% endif %}>
 						<input type="radio" name="type" value="{{ c.cle }}" {{ c.cle == 'facture' ? 'checked' }} {{ not c.droit ? 'disabled' }}>
 						<b><span class="fd-puce {{ c.couleur }}"></span>{{ c.titre }}</b>
 						<small>{{ c.texte }}</small>
 						<em class="{{ c.couleur }}">{{ c.note }}</em>
 					</label>
 				{% endfor %}
-				<div class="fd-type fd-info">Numérotation automatique par type<br><span>FAC · AV-2026-0001 · R-000123 · BL…</span></div>
+				<div class="fd-type fd-info">Numérotation automatique par type<br><span>FAC · FA-2026-0001 · AV-2026-0001 · R-000123 · BL…</span></div>
 			</div>
 
 			{# Point de départ, selon le type choisi #}
-			<div class="mt-3" data-depart="facture proforma">
+			<div class="mt-3" data-depart="facture proforma acompte">
 				<div class="fd-titre-bloc"><span data-titre-type>Facture</span> · partir de</div>
 				<div class="fd-choix bleu">
 					<label><input type="radio" name="depart" value="commande" checked><b>Une commande</b>
 						<select name="commande" class="form-select form-select-sm mt-1" aria-label="Commande">
 							{% for c in nouveau.commandes %}<option value="{{ c.id }}">{{ c.libelle }}</option>{% else %}<option value="">Aucune commande à facturer</option>{% endfor %}
 						</select>
-						<small class="fd-vert">Lignes, remise et client repris automatiquement</small></label>
+						<small class="fd-vert" data-seulement-pas="acompte">Lignes, remise et client repris automatiquement</small>
+						<span class="d-flex align-items-center gap-2 mt-1" data-seulement-acompte><small>Acompte de</small>
+							<select name="acompte" class="form-select form-select-sm" style="width:auto" aria-label="Part de l'acompte">
+								{% for pc in [30, 50, 70, 100] %}<option value="{{ pc }}" {{ pc == 50 ? 'selected' }}>{{ pc }} %</option>{% endfor %}
+							</select><small>de la commande</small></span></label>
 					<label data-seulement="facture"><input type="radio" name="depart" value="devis" {{ nouveau.devis is empty ? 'disabled' }}><b>Un devis accepté</b>
 						<select name="devis" class="form-select form-select-sm mt-1" aria-label="Devis accepté">
 							{% for d in nouveau.devis %}<option value="{{ d.id }}">{{ d.libelle }}</option>{% else %}<option value="">Aucun devis accepté</option>{% endfor %}
@@ -168,7 +173,8 @@
 		if (!fond) return;
 		var form = fond.querySelector('form');
 		var noms = {devis: 'le devis', proforma: 'la proforma', facture: 'la facture', avoir: 'l\'avoir', bl: 'le bon de livraison', recu: 'le reçu'};
-		var titres = {facture: 'Facture', proforma: 'Proforma'};
+		var titres = {facture: 'Facture', proforma: 'Proforma', acompte: 'Facture d\'acompte'};
+		noms.acompte = 'la facture d\'acompte';
 		function ouvrir() { fond.hidden = false; form.querySelector('input[name=type]:checked').focus(); }
 		function fermer() { fond.hidden = true; }
 		function maj() {
@@ -183,6 +189,8 @@
 				l.hidden = !ok;
 				if (!ok) { var r = l.querySelector('input'); if (r.checked) form.querySelector('input[name=depart][value=commande]').checked = true; }
 			});
+			form.querySelectorAll('[data-seulement-acompte]').forEach(function (e) { e.hidden = type !== 'acompte'; e.querySelector('select').disabled = type !== 'acompte'; });
+			form.querySelectorAll('[data-seulement-pas]').forEach(function (e) { e.hidden = e.dataset.seulementPas === type; });
 			var t = form.querySelector('[data-titre-type]'); if (t && titres[type]) t.textContent = titres[type];
 			form.querySelector('[data-bouton-creer]').textContent = 'Créer ' + (noms[type] || 'le document');
 		}

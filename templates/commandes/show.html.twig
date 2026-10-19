@@ -141,7 +141,15 @@
 					{% if facture and peutFacturer %}
 						<a class="dropdown-item" href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank"><i class="fas fa-file-pdf me-2"></i>Facture PDF</a>
 					{% elseif peutFacturer and not annulee %}
-						<a class="dropdown-item" href="{{ path('app_factures_nouveau', {id: commande.id}) }}"><i class="fas fa-file-invoice me-2"></i>Facturer</a>
+						{# Brouillon de facture tout de suite (maquette FD02) : le numéro viendra à la validation. #}
+						<form method="post" action="{{ path('app_factures_nouveau_document') }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('nouveau-document') }}">
+							<input type="hidden" name="type" value="facture"><input type="hidden" name="depart" value="commande"><input type="hidden" name="commande" value="{{ commande.id }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-file-invoice me-2"></i>Facturer</button>
+						</form>
+					{% endif %}
+					{% if peutFacturer %}
+						<a class="dropdown-item" href="{{ path('app_factures_documents_lies', {id: commande.id}) }}"><i class="fas fa-link me-2"></i>Documents liés</a>
 					{% endif %}
 					{% if lienWhatsapp %}
 						<a class="dropdown-item" href="{{ lienWhatsapp }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-2"></i>WhatsApp client</a>

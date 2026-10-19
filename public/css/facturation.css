@@ -132,3 +132,41 @@
 .fd-page .fd-liste { font-size: 13px; }
 .fd-page .fd-liste td:nth-child(2), .fd-page .fd-liste td:nth-child(7), .fd-page .fd-liste td:nth-child(1) { white-space: nowrap; }
 .fd-page .fd-liste td:nth-child(3) { min-width: 140px; }
+.fd-page [data-seulement-acompte][hidden], .fd-page [data-seulement-pas][hidden] { display: none !important; }
+
+/* Chaîne des documents (FD02) et frise (FD05) */
+.fd-page .fd-chaine { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; background: #fff; border: 1px solid var(--fd-bord); border-radius: 14px; padding: 10px 14px; margin-bottom: 16px; }
+.fd-page .fd-maillon { display: inline-flex; align-items: center; background: #F1F3F8; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: #111827; text-decoration: none; }
+.fd-page a.fd-maillon:hover { background: #E5E9F0; }
+.fd-page .fd-maillon.courant { background: #111827; color: #fff; }
+.fd-page .fd-frise { display: flex; gap: 0; overflow-x: auto; padding: 6px 0 4px; }
+.fd-page .fd-frise-etape { position: relative; flex: 1 0 130px; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 2px; padding: 0 6px; font-size: 13px; }
+.fd-page .fd-frise-etape::before { content: ''; position: absolute; top: 22px; left: -50%; width: 100%; height: 3px; background: #1F6F5C; z-index: 0; }
+.fd-page .fd-frise-etape:first-child::before { display: none; }
+.fd-page .fd-frise-rond { position: relative; z-index: 1; width: 46px; height: 46px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 18px; background: #111827; box-shadow: 0 0 0 4px #fff; margin-bottom: 6px; }
+.fd-page .fd-frise-rond.devis { background: #1E40AF; } .fd-page .fd-frise-rond.recu { background: var(--fd-vert); }
+.fd-page .fd-frise-rond.avoir { background: var(--fd-violet); } .fd-page .fd-frise-rond.bl { background: #2563EB; }
+.fd-page .fd-frise-rond.acompte { background: var(--fd-orange); } .fd-page .fd-frise-rond.proforma { background: #0F766E; }
+.fd-page .fd-lien.avoir { color: var(--fd-violet); } .fd-page .fd-lien.recu { color: var(--fd-vert); } .fd-page .fd-lien.bl { color: #2563EB; }
+.fd-page .fd-frise-montant { font-size: 14px; }
+
+/* Éditeur (FD02) et facture validée (FD03) */
+.fd-page .fd-grille.large { grid-template-columns: minmax(0, 1fr) 420px; }
+.fd-page .fd-apercu { background: #E9EDF4; border-radius: 14px; padding: 12px; position: sticky; top: 12px; }
+.fd-page .fd-apercu iframe { width: 100%; height: 560px; min-height: 300px; border: 0; border-radius: 6px; background: #fff; box-shadow: 0 6px 20px rgba(15, 23, 42, .12); }
+.fd-page .fd-apercu.grand iframe { height: 980px; }
+.fd-page .fd-apercu { overflow: hidden; }
+.fd-page .fd-champ label { display: block; font-size: 12px; color: var(--fd-gris); margin-bottom: 2px; }
+.fd-page .fd-champ .form-control, .fd-page .fd-champ .form-select { font-size: 14px; }
+.fd-page .fd-client { display: flex; gap: 12px; align-items: center; }
+.fd-page .fd-avatar { width: 42px; height: 42px; border-radius: 50%; background: #E6F0FB; color: var(--fd-bleu); display: flex; align-items: center; justify-content: center; font-weight: 800; flex: none; }
+.fd-page .fd-totaux { margin-left: auto; min-width: 260px; }
+.fd-page .fd-totaux div { display: flex; justify-content: space-between; padding: 3px 0; font-size: 14px; }
+.fd-page .fd-totaux .grand { font-size: 20px; font-weight: 800; border-top: 1px solid var(--fd-bord); padding-top: 8px; margin-top: 4px; }
+.fd-page .fd-envoi { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 6px 0; font-size: 14px; border-bottom: 1px solid var(--fd-bord); }
+.fd-page .fd-envoi:last-child { border-bottom: 0; }
+.fd-page .fd-bouton-action { display: block; width: 100%; text-align: center; margin-bottom: 8px; }
+.fd-page .fd-bouton-action:last-child { margin-bottom: 0; }
+.fd-page .btn.fd-vert-plein { background: var(--fd-vert); border-color: var(--fd-vert); color: #fff; font-weight: 700; }
+.fd-page .fd-grille.large.validee { grid-template-columns: minmax(0, 1fr) 360px; }
+@media (max-width: 1199px) { .fd-page .fd-grille.large, .fd-page .fd-grille.large.validee { grid-template-columns: minmax(0, 1fr); } .fd-page .fd-apercu { position: static; } }

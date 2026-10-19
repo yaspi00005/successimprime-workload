@@ -98,7 +98,7 @@
 				</div>
 			</td>
 			<td class="droite">
-				<div class="titre">{{ facture.estProforma ? 'PROFORMA' : 'FACTURE' }}</div>
+				<div class="titre">{{ facture.estProforma ? 'PROFORMA' : (facture.estAcompte ? 'FACTURE D\'ACOMPTE' : 'FACTURE') }}</div>
 				<div class="numero">{{ facture.numero ? 'N° ' ~ facture.numero : 'N° attribué à la validation' }}</div>
 				<div class="dates">
 					Date : {{ facture.dateFacture|date('d/m/Y') }}<br>
@@ -148,6 +148,20 @@
 				<th class="droite" style="width: 17%">Total (F)</th>
 			</tr></thead>
 			<tbody>
+				{# Facture d'acompte : une seule ligne, la part de la commande ; le détail reste sur la facture finale. #}
+				{% if facture.estAcompte %}
+					{% set details = [] %}
+					{% set fraisLivraison = 0 %}
+					<tr>
+						<td class="centre muted">1</td>
+						<td><div class="designation">Acompte de {{ facture.pourcentageAcompte }} % sur la commande {{ commande.numero }}</div>
+							<div class="detail">Total de la commande : {{ commande.totalTtc|number_format(0, ',', ' ') }} F TTC. Acompte déduit de la facture finale.</div></td>
+						<td class="centre">1</td>
+						<td class="droite">{{ (facture.totalHt)|number_format(0, ',', ' ') }}</td>
+						{% if avecRemise %}<td class="droite">—</td>{% endif %}
+						<td class="droite fort">{{ (facture.totalHt)|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% endif %}
 				{% for detail in details %}
 					<tr class="{{ loop.index is even ? 'paire' }}">
 						<td class="centre muted">{{ loop.index }}</td>
@@ -164,7 +178,7 @@
 						<td class="droite fort">{{ (detail.totalTtc|default(detail.totalHt|default(0)))|number_format(0, ',', ' ') }}</td>
 					</tr>
 				{% else %}
-					<tr><td colspan="6" class="centre muted">Aucune ligne.</td></tr>
+					{% if not facture.estAcompte %}<tr><td colspan="6" class="centre muted">Aucune ligne.</td></tr>{% endif %}
 				{% endfor %}
 				{# Frais de livraison : une ligne visible, déjà comprise dans le total HT. #}
 				{% if fraisLivraison > 0 %}
@@ -210,7 +224,7 @@
 						<tr><td>Majoration{{ facture.tauxSurfacturation ? ' (' ~ facture.tauxSurfacturation ~ ' %)' }}</td><td class="droite">+ {{ (facture.montantSurfacturation)|number_format(0, ',', ' ') }} F</td></tr>
 					{% endif %}
 					{# Facture : total, déjà payé (même 0) et reste à payer, comme l'ancien modèle. #}
-					{% if facture.comptabilisee %}
+					{% if facture.comptabilisee or facture.estAcompte %}
 						<tr><td class="fort">Total TTC</td><td class="droite fort">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
 						<tr><td>Déjà payé</td><td class="droite">{{ facture.montantPaye > 0 ? '− ' }}{{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
 						<tr class="final"><td>Reste à payer</td><td class="droite">{{ (facture.resteAPayer)|number_format(0, ',', ' ') }} F</td></tr>

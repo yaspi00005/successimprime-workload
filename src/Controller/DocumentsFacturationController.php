@@ -6,6 +6,7 @@ use App\Entity\BonLivraison;
 use App\Entity\Commandes;
 use App\Entity\Devis;
 use App\Entity\Factures;
+use App\Service\Facturation\CreationFacture;
 use App\Service\Facturation\DocumentsFacturation;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -77,10 +78,13 @@ final class DocumentsFacturationController extends AbstractController
      * La fenêtre « Nouveau document » envoie ici le type et le point de
      * départ ; chaque document s'ouvre dans son écran, avec ses droits.
      */
-    #[Route('/nouveau-document', name: 'app_factures_nouveau_document', methods: ['GET'])]
-    public function nouveauDocument(Request $request): Response
+    #[Route('/nouveau-document', name: 'app_factures_nouveau_document', methods: ['POST'])]
+    public function nouveauDocument(Request $request, CreationFacture $creation): Response
     {
-        $q = $request->query;
+        $q = $request->request;
+        if (!$this->isCsrfTokenValid('nouveau-document', $q->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
         $commande = $q->getInt('commande') > 0 ? $this->em->getRepository(Commandes::class)->find($q->getInt('commande')) : null;
         $type = $q->getString('type');
         $depart = $q->getString('depart', 'commande');
@@ -96,7 +100,7 @@ final class DocumentsFacturationController extends AbstractController
 
             return $this->redirectToRoute('app_factures_avoir', ['id' => $facture->getId()]);
         }
-        if (\in_array($type, ['facture', 'proforma'], true) && 'vide' === $depart) {
+        if (\in_array($type, ['facture', 'proforma', 'acompte'], true) && 'vide' === $depart) {
             $this->addFlash('info', 'Saisissez la vente au comptoir comme une commande ; sa facture se fait ensuite depuis la commande.');
 
             return $this->redirectToRoute('app_commandes_new');
@@ -117,9 +121,20 @@ final class DocumentsFacturationController extends AbstractController
             return $this->retour('Choisissez la commande.');
         }
 
+        if (\in_array($type, [Factures::TYPE_FACTURE, Factures::TYPE_PROFORMA, Factures::TYPE_ACOMPTE], true)) {
+            try {
+                $facture = $creation->brouillon($commande, $type, $q->getInt('acompte', 50));
+            } catch (\DomainException $e) {
+                $this->addFlash('warning', $e->getMessage());
+
+                return $e->getCode() > 0 ? $this->redirectToRoute('app_factures_show', ['id' => $e->getCode()]) : $this->retour($e->getMessage());
+            }
+            $this->addFlash('success', null === $facture->getNumero() ? 'Brouillon créé : vérifiez-le, puis « Valider et numéroter ».' : \sprintf('%s %s créée.', $facture->getTypeDocumentLabel(), $facture->getNumero()));
+
+            return $this->redirectToRoute('app_factures_show', ['id' => $facture->getId()]);
+        }
+
         return match ($type) {
-            'facture' => $this->redirectToRoute('app_factures_nouveau', ['id' => $commande->getId()]),
-            'proforma' => $this->redirectToRoute('app_factures_nouveau', ['id' => $commande->getId(), 'type' => Factures::TYPE_PROFORMA]),
             'recu' => $this->redirectToRoute('app_commandes_paiement', ['id' => $commande->getId()]),
             'bl' => $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId(), '_fragment' => 'livraison']),
             default => $this->retour('Type de document inconnu.'),

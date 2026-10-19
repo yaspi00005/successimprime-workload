@@ -129,6 +129,24 @@ final class TotauxDocumentTest extends TestCase
         self::assertSame(68200, $facture->getResteAPayer());
     }
 
+    public function testLaFactureDAcompteEstUnePartDeLaCommande(): void
+    {
+        $commande = (new Commandes())->setRemise(4200)->setFraisLivraison(1500);
+        $commande->addCommandesDetail((new CommandesDetails())->setTotalHt(139100)->setTotalTtc(139100));
+        $commande->addPaiement(self::paiementValide(68200));
+        $commande->recalculerTotaux();
+
+        $acompte = (new Factures())->setTypeDocument(Factures::TYPE_ACOMPTE)->chargerAcompte($commande, 30);
+        $acompte->synchroniserPaiementsDepuisCommande();
+
+        self::assertTrue($acompte->estAcompte());
+        self::assertFalse($acompte->isComptabilisee(), 'l\'acompte n\'est pas une vente : les paiements le sont déjà');
+        self::assertSame(30, $acompte->getPourcentageAcompte());
+        self::assertSame(40920, $acompte->getTotalTtc(), '30 % de 136 400 F');
+        self::assertSame(40920, $acompte->getMontantPaye(), 'payé dès que les paiements couvrent l\'acompte');
+        self::assertSame(0, $acompte->getResteAPayer());
+    }
+
     public function testLaFactureAvecTva(): void
     {
         $commande = (new Commandes())->setRemise(10000)->setTva(18);

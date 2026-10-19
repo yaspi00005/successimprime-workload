@@ -18,6 +18,7 @@ use App\Service\EspaceClient\EspaceClient;
 use App\Service\EspaceClient\FacturesClient;
 use App\Service\EspaceClient\FichiersClient;
 use App\Service\EspaceClient\FilNotifications;
+use App\Service\EspaceClient\MesCommandesClient;
 use App\Service\EspaceClient\MesProduits;
 use App\Service\EspaceClient\RecommanderClient;
 use App\Service\EspaceClient\SuiviCommandeClient;
@@ -249,19 +250,79 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
+    /**
+     * Mes commandes (maquette CD01) : étapes, payé et reste, bouton du
+     * moment, onglets « Mon action », « En cours », « À payer », « Livrées ».
+     */
     #[Route('/commandes', name: 'commandes', methods: ['GET'])]
-    public function commandes(EspaceClient $espace, MesProduits $mesProduits): Response
+    public function commandes(Request $request, EspaceClient $espace, MesProduits $mesProduits, MesCommandesClient $mesCommandes): Response
     {
         $compte = $this->compte();
         $client = $compte->getClient();
+        [$lignes, $annees, $annee, $onglet, $tri] = $this->mesCommandes($request, $compte, $mesCommandes);
 
         return $this->vue('espace/app/commandes.html.twig', [
             'onglet' => 'commandes',
-            'cartes' => array_map($espace->carte(...), $espace->commandes($client)),
+            'lignes' => array_values(array_filter($lignes, static fn (array $l): bool => \in_array($onglet, $l['onglets'], true))),
+            'resume' => MesCommandesClient::resume($lignes, $annee, $compte->montantsVisibles()),
+            'onglets' => MesCommandesClient::ONGLETS,
+            'ongletChoisi' => $onglet,
+            'annees' => $annees,
+            'annee' => $annee,
+            'tri' => $tri,
             'aValider' => array_map($espace->carte(...), $this->compteEntreprise->aValider($compte)),
             'devisAAccepter' => \count(array_filter($espace->devis($client), static fn (Devis $d): bool => $d->estEnAttente())),
             'mesProduits' => \count($mesProduits->liste($client)),
         ]);
+    }
+
+    /** « Exporter » : la liste choisie (année, onglet) en CSV pour un tableur ; montants pour qui les voit. */
+    #[Route('/commandes/export', name: 'commandes_export', methods: ['GET'])]
+    public function commandesExport(Request $request, MesCommandesClient $mesCommandes): Response
+    {
+        $compte = $this->compte();
+        [$lignes, , , $onglet] = $this->mesCommandes($request, $compte, $mesCommandes);
+        $montants = $compte->montantsVisibles();
+        $flux = fopen('php://temp', 'r+');
+        fwrite($flux, "\xEF\xBB\xBF"); // Excel lit les accents
+        fputcsv($flux, array_merge(['Commande', 'Date', 'Produits', 'Étape'], $montants ? ['Total (F)', 'Payé (F)', 'Reste (F)'] : []), ';', '"', '');
+        foreach ($lignes as $l) {
+            if (!\in_array($onglet, $l['onglets'], true)) {
+                continue;
+            }
+            fputcsv($flux, array_merge(
+                [$l['commande']->getNumero(), $l['commande']->getDateCommande()?->format('d/m/Y'), $l['titre'], $l['etat']['titre']],
+                $montants ? [$l['montants']['total'], $l['montants']['paye'], $l['montants']['reste']] : [],
+            ), ';', '"', '');
+        }
+        rewind($flux);
+        $reponse = new Response((string) stream_get_contents($flux), 200, ['Content-Type' => 'text/csv; charset=UTF-8', 'Cache-Control' => 'private, no-store']);
+        $reponse->headers->set('Content-Disposition', $reponse->headers->makeDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, 'mes-commandes.csv'));
+
+        return $reponse;
+    }
+
+    /**
+     * Les commandes de l'année choisie, triées, et l'onglet demandé.
+     *
+     * @return array{0: list<array<string, mixed>>, 1: list<int>, 2: ?int, 3: string, 4: string}
+     */
+    private function mesCommandes(Request $request, CompteClient $compte, MesCommandesClient $mesCommandes): array
+    {
+        $maintenant = new \DateTimeImmutable();
+        $liste = $mesCommandes->liste($compte, $maintenant);
+        $choix = $request->query->getString('annee', $maintenant->format('Y'));
+        $annee = 'toutes' === $choix ? null : (\in_array((int) $choix, $liste['annees'], true) ? (int) $choix : null);
+        $lignes = array_values(array_filter($liste['lignes'], static fn (array $l): bool => null === $annee || $l['annee'] === $annee));
+        $tri = \in_array($request->query->getString('tri'), ['anciennes', 'montant'], true) ? $request->query->getString('tri') : 'recentes';
+        if ('anciennes' === $tri) {
+            $lignes = array_reverse($lignes);
+        } elseif ('montant' === $tri && $compte->montantsVisibles()) {
+            usort($lignes, static fn (array $a, array $b): int => $b['montants']['total'] <=> $a['montants']['total']);
+        }
+        $onglet = \array_key_exists($request->query->getString('onglet'), MesCommandesClient::ONGLETS) ? $request->query->getString('onglet') : 'toutes';
+
+        return [$lignes, $liste['annees'], $annee, $onglet, $tri];
     }
 
     /**

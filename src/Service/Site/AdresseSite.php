@@ -79,8 +79,8 @@ final class AdresseSite
 
     /**
      * « succesimprim.com », « https://www.succesimprim.com/ » ou
-     * « http://succesimprim.com/accueil » donnent l'origine en https
-     * (« https://succesimprim.com »). Une adresse locale (localhost, IP,
+     * « http://succesimprim.com/accueil » donnent l'origine en https,
+     * toujours sans « www » (« https://succesimprim.com »). Une adresse locale (localhost, IP,
      * nom sans point) ou illisible donne null, sauf si $publique est faux.
      */
     public static function normaliser(?string $saisie, bool $publique = true): ?string
@@ -105,6 +105,8 @@ final class AdresseSite
             return null;
         }
 
-        return 'https://'.$hote;
+        // Domaine choisi sans « www » (décision du gérant, 15/10/2026) : www.succesimprim.com est redirigé
+        // en 301 vers succesimprim.com (public/.htaccess). Canonique, plan du site et partages suivent.
+        return 'https://'.(str_starts_with($hote, 'www.') && substr_count($hote, '.') >= 2 ? substr($hote, 4) : $hote);
     }
 }

@@ -20,7 +20,12 @@ final class ContactSite
     }
 
     /**
-     * @return array{texte: string, ouvert: bool, etat: string}
+     * Horaires du réglage Horaires : « Lun – sam : 8 h – 18 h », les jours
+     * fermés qui s'en déduisent (« Dimanche : fermé »), la version courte du
+     * bandeau du haut (« Lun – sam 8 h – 18 h · dim. fermé ») et l'état
+     * en ce moment.
+     *
+     * @return array{texte: string, fermes: ?string, court: string, ouvert: bool, etat: string}
      */
     public function horaires(\DateTimeImmutable $maintenant): array
     {
@@ -28,7 +33,62 @@ final class ContactSite
         $ouverture = (string) $this->parametres->valeur('horaires', 'ouverture');
         $fermeture = (string) $this->parametres->valeur('horaires', 'fermeture');
 
-        return ['texte' => self::texteHoraires($jours, $ouverture, $fermeture)] + self::etat($jours, $ouverture, $fermeture, $maintenant);
+        return [
+            'texte' => self::texteHoraires($jours, $ouverture, $fermeture),
+            'fermes' => self::joursFermes($jours),
+            'court' => self::texteCourt($jours, $ouverture, $fermeture),
+        ] + self::etat($jours, $ouverture, $fermeture, $maintenant);
+    }
+
+    /** Jours fermés d'après les jours travaillés : « Dimanche : fermé », « Samedi et dimanche : fermé », ou null (tous les jours). */
+    public static function joursFermes(string $jours): ?string
+    {
+        return match ($jours) {
+            'lun-dim' => null,
+            'lun-ven' => 'Samedi et dimanche : fermé',
+            default => 'Dimanche : fermé',
+        };
+    }
+
+    /** « Lun – sam 8 h – 18 h · dim. fermé » (bandeau du haut du site). */
+    public static function texteCourt(string $jours, string $ouverture, string $fermeture): string
+    {
+        $plage = match ($jours) {
+            'lun-ven' => 'Lun – ven',
+            'lun-dim' => 'Tous les jours',
+            default => 'Lun – sam',
+        };
+        $fermes = match ($jours) {
+            'lun-dim' => '',
+            'lun-ven' => ' · sam. et dim. fermé',
+            default => ' · dim. fermé',
+        };
+
+        return $plage.' '.self::heure($ouverture).' – '.self::heure($fermeture).$fermes;
+    }
+
+    /** Repère de l'adresse (« près de… »), réglé dans la tuile « Site : contact et accueil » ; vide : rien. */
+    public function repere(): ?string
+    {
+        $repere = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'repere')));
+
+        return '' === $repere ? null : mb_substr($repere, 0, 120);
+    }
+
+    /** Délai de réponse affiché sous le formulaire de contact ; vide : rien. */
+    public function delaiReponse(): ?string
+    {
+        $delai = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'delai_reponse')));
+
+        return '' === $delai ? null : mb_substr($delai, 0, 120);
+    }
+
+    /** Largeur d'impression la plus grande annoncée sur l'accueil (« 3,20 m ») ; vide : l'accueil n'en parle pas. */
+    public function largeurMax(): ?string
+    {
+        $largeur = trim((string) $this->parametres->valeur('site_contact', 'largeur_max'));
+
+        return '' === $largeur ? null : mb_substr($largeur, 0, 20);
     }
 
     /** Adresse à ouvrir pour l'itinéraire, ou null tant que rien n'est réglé. */

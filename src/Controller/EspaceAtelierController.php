@@ -50,7 +50,14 @@ final class EspaceAtelierController extends AbstractController
     ) {
     }
 
-    #[Route('/atelier-3d', name: 'atelier', methods: ['GET'])]
+    /** Ancienne adresse (« Atelier 3D ») : 301 vers /espace/studio-textile, paramètres gardés (?creation=…). */
+    #[Route('/atelier-3d', name: 'atelier_ancienne', methods: ['GET'])]
+    public function ancienneAdresse(Request $request): Response
+    {
+        return $this->redirectToRoute('app_espace_atelier', $request->query->all(), Response::HTTP_MOVED_PERMANENTLY);
+    }
+
+    #[Route('/studio-textile', name: 'atelier', methods: ['GET'])]
     public function atelier(Request $request): Response
     {
         $compte = $this->ecrivain();
@@ -79,7 +86,7 @@ final class EspaceAtelierController extends AbstractController
     }
 
     /** Prix du client, recalculé ici à chaque changement ; aucun montant pour un demandeur. */
-    #[Route('/atelier-3d/prix', name: 'atelier_prix', methods: ['GET'])]
+    #[Route('/studio-textile/prix', name: 'atelier_prix', methods: ['GET'])]
     public function prix(Request $request): JsonResponse
     {
         $compte = $this->ecrivain();
@@ -91,7 +98,7 @@ final class EspaceAtelierController extends AbstractController
         return $this->json($this->catalogue->estimer($modele, Entree::entier($request->query, 'quantite'), Entree::entier($request->query, 'faces', 1), $compte->getClient(), CatalogueAtelier::montantsVisibles($compte), new \DateTimeImmutable('today')));
     }
 
-    #[Route('/atelier-3d/image', name: 'atelier_image', methods: ['POST'])]
+    #[Route('/studio-textile/image', name: 'atelier_image', methods: ['POST'])]
     public function image(Request $request): JsonResponse
     {
         $this->ecrivain();
@@ -103,7 +110,7 @@ final class EspaceAtelierController extends AbstractController
     }
 
     /** « Valider mon modèle » : commande « à confirmer » (ou demande à valider dans l'entreprise). */
-    #[Route('/atelier-3d/valider', name: 'atelier_valider', methods: ['POST'])]
+    #[Route('/studio-textile/valider', name: 'atelier_valider', methods: ['POST'])]
     public function valider(Request $request): JsonResponse
     {
         $compte = $this->ecrivain();

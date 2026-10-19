@@ -15,6 +15,9 @@ use Twig\TwigFunction;
  */
 final class SiteVisiteExtension extends AbstractExtension
 {
+    /** @var array<string, mixed>|null */
+    private ?array $visite = null;
+
     public function __construct(
         private readonly ContactSite $contact,
         private readonly SiteExtension $site,
@@ -31,20 +34,49 @@ final class SiteVisiteExtension extends AbstractExtension
     }
 
     /**
-     * @return array{nom: string, adresse: string, horaires: array{texte: string, ouvert: bool, etat: string}, itineraire: string, whatsapp: ?string}
+     * Coordonnées publiques de l'imprimerie, lues une fois par page (bandeau
+     * du haut, « Venez nous voir », pied de page, Contact) : nom, adresse et
+     * repère (tuile « Site : contact et accueil »), horaires avec les jours
+     * fermés et l'état en ce moment, téléphone (lien tel:), e-mail public
+     * de l'entité (null s'il n'est pas rempli : rien d'inventé), itinéraire,
+     * WhatsApp.
+     *
+     * @return array{nom: string, adresse: string, repere: ?string, ville: string, horaires: array{texte: string, fermes: ?string, court: string, ouvert: bool, etat: string}, itineraire: string, whatsapp: ?string, telephone: ?string, tel: ?string, email: ?string, delaiReponse: ?string}
      */
     public function visite(): array
     {
+        if (null !== $this->visite) {
+            return $this->visite;
+        }
         $entreprise = $this->site->entreprise();
         $nom = $entreprise?->getNomAffiche() ?: 'Succès Imprim';
         $adresse = trim((string) $entreprise?->getAdresse()) ?: 'Bamako, Mali';
+        $telephone = trim((string) $entreprise?->getTelephone());
+        $email = trim((string) $entreprise?->getEmail());
 
-        return [
+        return $this->visite = [
             'nom' => $nom,
             'adresse' => $adresse,
+            'repere' => $this->contact->repere(),
+            // « Sotuba ACI, Bamako » pour le bandeau du haut : l'adresse remise dans l'ordre quartier, ville.
+            'ville' => self::adresseCourte($adresse),
             'horaires' => $this->contact->horaires(new \DateTimeImmutable()),
             'itineraire' => $this->contact->itineraire($nom, $adresse),
             'whatsapp' => $this->site->whatsapp('Bonjour '.$nom.', je voudrais passer à l\'imprimerie : '),
+            'telephone' => '' === $telephone ? null : $telephone,
+            'tel' => '' === $telephone ? null : 'tel:'.preg_replace('/[^\d+]/', '', $telephone),
+            'email' => false === filter_var($email, \FILTER_VALIDATE_EMAIL) ? null : $email,
+            'delaiReponse' => $this->contact->delaiReponse(),
         ];
+    }
+
+    /** « Bamako, Sotuba ACI » devient « Sotuba ACI, Bamako » ; une autre adresse reste telle quelle. */
+    public static function adresseCourte(string $adresse): string
+    {
+        if (preg_match('/^\s*Bamako\s*[,\-–]\s*(.+)$/iu', $adresse, $m)) {
+            return trim($m[1]).', Bamako';
+        }
+
+        return $adresse;
     }
 }

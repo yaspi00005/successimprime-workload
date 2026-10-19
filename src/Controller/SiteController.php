@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\CategorieProduit;
+use App\EventSubscriber\ApostrophesSiteSubscriber;
 use App\Repository\RealisationRepository;
 use App\Service\Atelier\CatalogueAtelier;
 use App\Service\Site\AvantApres;
@@ -118,7 +119,8 @@ final class SiteController extends AbstractController
         if ('/' === $request->getPathInfo()) {
             $reponse->headers->addCacheControlDirective('no-cache');
             $reponse->setVary('Cookie', false);
-            $reponse->setEtag(hash('xxh128', (string) $reponse->getContent()));
+            // Même contenu que celui envoyé, apostrophes comprises (ApostrophesSiteSubscriber).
+            $reponse->setEtag(hash('xxh128', ApostrophesSiteSubscriber::apostrophes((string) $reponse->getContent())));
             $reponse->isNotModified($request);
         } else {
             $reponse->setMaxAge(300);

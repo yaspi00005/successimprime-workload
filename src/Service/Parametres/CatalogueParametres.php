@@ -512,14 +512,18 @@ final class CatalogueParametres
                 'motsCles' => ['Playlist de l\'écran TV', 'Bandeau · avis clients', 'Horaires de l\'écran'],
             ],
             'site_contact' => [
-                'famille' => 'clients', 'libelle' => 'Site : page Contact', 'icone' => 'fa-map-marker-alt',
+                'famille' => 'clients', 'libelle' => 'Site : contact et accueil', 'icone' => 'fa-map-marker-alt',
                 'roles' => ['ROLE_ADMIN', 'ROLE_PARAMETRES'], 'route' => 'app_site_contact',
                 'champs' => [
                     // Repère de la fiche Google de l'imprimerie (lien envoyé par Yaya le 15/10/2026).
                     ['cle' => 'lien_plan', 'type' => 'texte', 'libelle' => 'Position de l\'imprimerie (carte et Itinéraire)', 'aide' => 'Coordonnées « latitude, longitude » pour la carte de la page Contact : dans Google Maps, appui long sur l\'imprimerie (téléphone) ou clic droit (ordinateur) affiche « 12.6517571, -7.9299376 » ; copiez ces deux nombres ici. Un lien court (https://maps.app.goo.gl/…) donne seulement le bouton Itinéraire, sans carte. Vide : ni carte ni bouton.', 'defaut' => '12.6517571, -7.9299376'],
+                    // Analyse du site du 19/10/2026 : repère, délai de réponse et largeur annoncée, tous modifiables, rien d'inventé.
+                    ['cle' => 'repere', 'type' => 'texte', 'libelle' => 'Repère de l\'adresse', 'aide' => 'Affiché après l\'adresse, en haut du site, sur l\'accueil et sur la page Contact. Exemple : « près de la pharmacie… ». Vide : rien n\'est affiché.', 'defaut' => ''],
+                    ['cle' => 'delai_reponse', 'type' => 'texte', 'libelle' => 'Délai de réponse affiché', 'aide' => 'Sous le formulaire de contact. Exemple : « Réponse sous 2 h pendant nos horaires d\'ouverture ». Vide : rien n\'est affiché.', 'defaut' => 'Réponse pendant nos horaires d\'ouverture'],
+                    ['cle' => 'largeur_max', 'type' => 'texte', 'libelle' => 'Grand format : largeur la plus grande', 'aide' => 'Annoncée sur l\'accueil (« jusqu\'à 3,20 m de large »). À changer avec le parc de machines ; vide : l\'accueil n\'en parle pas.', 'defaut' => '3,20 m'],
                 ],
-                'motsCles' => ['Carte de l\'imprimerie · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine'],
-                'note' => 'Les horaires de la page viennent de la tuile Horaires ; l\'adresse, le téléphone et l\'e-mail, de l\'entité Succès Imprim (Entités et en-têtes).',
+                'motsCles' => ['Carte de l\'imprimerie · bouton Itinéraire', 'Lien Google Maps · coordonnées GPS', 'Contact du site vitrine', 'Repère de l\'adresse · délai de réponse', 'Largeur du grand format sur l\'accueil'],
+                'note' => 'Les horaires du site viennent de la tuile Horaires (« Dimanche : fermé » s\'en déduit) ; l\'adresse, le téléphone et l\'e-mail public, de l\'entité Succès Imprim (Entités et en-têtes) : sans e-mail, le site écrit « Téléphone et WhatsApp ».',
             ],
             'site_vitrine' => [
                 'famille' => 'clients', 'libelle' => 'Site vitrine', 'icone' => 'fa-globe',

@@ -34,6 +34,7 @@ final class PlanDuSite
         private readonly UrlGeneratorInterface $urls,
         private readonly AdresseSite $adresse,
         #[AutowireIterator('app.site.plan')] private readonly iterable $sources = [],
+        private readonly ?EtatCatalogue $catalogue = null,
     ) {
     }
 
@@ -62,6 +63,8 @@ final class PlanDuSite
         $ajouter('app_home', [], '1.0');
         // Les pages de contenu (équipements, FAQ…) n'entrent que publiées : c'est PlanPages qui les donne.
         $pagesDeContenu = array_column(PageSite::PAGES, 'route');
+        // « Produits » et « Calculateur » vides : pas proposés aux moteurs (EtatCatalogue).
+        $pagesDeContenu = [...$pagesDeContenu, ...($this->catalogue?->routesVides() ?? [])];
         foreach ([...array_keys(SiteExtension::MENU + SiteExtension::PIED), ...self::AUTRES_PAGES] as $route) {
             if (!\in_array($route, [...self::EXCLUES, ...$pagesDeContenu], true)) {
                 $ajouter($route, [], isset(SiteExtension::MENU[$route]) ? '0.8' : '0.6');

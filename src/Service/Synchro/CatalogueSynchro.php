@@ -115,7 +115,8 @@ final class CatalogueSynchro
         'horaires' => ['jours', 'ouverture', 'fermeture', 'feries'],
         // Frais de « Livraison à Bamako » de la commande en ligne (un des paliers). Les objets restent au local.
         'saisie' => ['paliers_livraison', 'livraison_en_ligne'],
-        'site_contact' => ['lien_plan'],
+        // Repère de l'adresse, délai de réponse et largeur annoncée : montrés par le site (docs/site-vitrine.md).
+        'site_contact' => ['lien_plan', 'repere', 'delai_reponse', 'largeur_max'],
         // Le coût d'une image chez le fournisseur (cout_image) reste au local.
         'conception' => ['ia_active', 'prix_image', 'finalisation', 'packs', 'plafond_jour', 'limite_heure'],
         // Atelier 3D : les paliers et la seconde face servent au prix calculé en ligne (docs/atelier-3d.md).

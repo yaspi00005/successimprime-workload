@@ -48,6 +48,7 @@
 
 .si-produits-vide { max-width: 560px; }
 .si-produits-vide p { color: var(--texte-doux); }
+.si-produits-vide-actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .si-produits-autre { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; padding: 20px; border-radius: var(--rayon); background: var(--bleu-pale); }
 .si-produits-autre h2 { margin: 0 0 4px; font-size: 20px; }
 .si-produits-autre p { margin: 0; color: var(--texte-doux); }

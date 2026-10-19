@@ -17,7 +17,11 @@
 {% set photo_sur_mesure = site_photo('fourgon-publicitaire-succes-imprim') %}
 
 {% block title %}{{ recherche ? ('« ' ~ recherche ~ ' » · Nos produits')|site_titre : (univers_choisi ? (univers_choisi.nom ~ ' · Nos produits')|site_titre : 'Nos produits et prix d\'impression à Bamako · Succès Imprim') }}{% endblock %}
-{% block description %}Bâches, banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite, autocollants : nos produits et leur prix de départ en FCFA, à Bamako.{% endblock %}
+{# Sans produit à montrer, la description ne promet pas de prix (EtatCatalogue, docs/site-vitrine.md). #}
+{% block description %}{% if univers is empty %}Bâches, roll-up, kakémonos, t-shirts personnalisés, cartes de visite à Bamako : décrivez votre projet, l'atelier vous répond avec un prix en FCFA.{% else %}Bâches, banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite, autocollants : nos produits et leur prix de départ en FCFA, à Bamako.{% endif %}{% endblock %}
+
+{# Page vide : gardée pour les liens déjà partagés, mais pas proposée aux moteurs. #}
+{% block canonique %}{% if univers is empty %}<meta name="robots" content="noindex, follow">{% else %}{{ parent() }}{% endif %}{% endblock %}
 
 {% block entete %}
 	{{ site_styles('css/site-produits.css') }}
@@ -26,15 +30,18 @@
 {% endblock %}
 
 {% block contenu %}
-	{{ include('site/_bandeau.html.twig', {titre: 'Nos produits', ariane: 'Produits', accroche: 'Grand format, textile, petit format et signalétique : choisissez, calculez, commandez.'}) }}
+	{{ include('site/_bandeau.html.twig', {titre: 'Nos produits', ariane: 'Produits', accroche: univers is empty ? 'Grand format, textile, petit format et signalétique : demandez votre prix à l\'atelier.' : 'Grand format, textile, petit format et signalétique : choisissez, calculez, commandez.'}) }}
 
 	<section class="si-section si-produits">
 		<div class="si-cadre">
 			{% if univers is empty %}
 				<div class="si-carte si-produits-vide">
-					<h2>Le catalogue arrive bientôt</h2>
-					<p>En attendant, l'atelier vous répond pour toute impression.</p>
-					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+					<h2>Nos prix en ligne sont en préparation</h2>
+					<p>Bâches, roll-up, kakémonos, t-shirts, cartes de visite : dites-nous ce que vous voulez imprimer, l'atelier vous répond avec un prix en FCFA.</p>
+					<div class="si-produits-vide-actions">
+						{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+						{% if whatsapp %}<a href="{{ whatsapp }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+					</div>
 				</div>
 			{% else %}
 				<form class="si-produits-recherche" role="search" method="get" action="{{ path('app_site_produits') }}">

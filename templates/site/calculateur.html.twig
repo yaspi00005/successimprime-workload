@@ -13,20 +13,27 @@
 {% set guide = site_lien('app_site_guide') %}
 
 {% block title %}Calculateur de prix d'impression en FCFA · Succès Imprim{% endblock %}
-{% block description %}Prix immédiat en FCFA pour votre bâche, roll-up, t-shirt DTF ou vos cartes de visite à Bamako : taille et quantité, puis commande ou devis.{% endblock %}
+{# Sans produit chiffrable, pas de « prix immédiat » promis (EtatCatalogue, docs/site-vitrine.md). #}
+{% block description %}{% if resultat is null %}Votre prix d'impression en FCFA à Bamako : bâche, roll-up, t-shirt ou cartes de visite. Décrivez votre projet, l'atelier vous répond avec un devis.{% else %}Prix immédiat en FCFA pour votre bâche, roll-up, t-shirt DTF ou vos cartes de visite à Bamako : taille et quantité, puis commande ou devis.{% endif %}{% endblock %}
+
+{% block canonique %}{% if resultat is null %}<meta name="robots" content="noindex, follow">{% else %}{{ parent() }}{% endif %}{% endblock %}
 
 {% block entete %}{{ site_styles('css/site-produits.css') }}{% endblock %}
 
 {% block contenu %}
-	{{ include('site/_bandeau.html.twig', {titre: 'Calculez votre prix', ariane: 'Calculateur de prix', accroche: 'Prix indicatif immédiat, confirmé après contrôle de votre fichier.'}) }}
+	{{ include('site/_bandeau.html.twig', {titre: 'Calculez votre prix', ariane: 'Calculateur de prix', accroche: resultat is null ? 'Votre prix d\'impression en FCFA, préparé par l\'atelier.' : 'Prix indicatif immédiat, confirmé après contrôle de votre fichier.'}) }}
 
 	<section class="si-section si-calc-section">
 		<div class="si-cadre">
 			{% if resultat is null %}
 				<div class="si-carte si-produits-vide">
-					<h2>Le calculateur arrive bientôt</h2>
-					<p>En attendant, l'atelier vous fait un prix pour toute impression.</p>
-					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+					<h2>Le calcul en ligne est en préparation</h2>
+					<p>Donnez-nous la taille et la quantité : l'atelier vous répond avec un prix en FCFA, puis vous montre le BAT avant d'imprimer.</p>
+					<div class="si-produits-vide-actions">
+						{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+						{% set wa_calcul = site_whatsapp('Bonjour Succès Imprim, je voudrais un prix pour : ') %}
+						{% if wa_calcul %}<a href="{{ wa_calcul }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+					</div>
 				</div>
 			{% else %}
 				<div class="si-calc">

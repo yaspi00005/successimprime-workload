@@ -186,7 +186,7 @@ final class RecetteSiteSocial
         $home = $this->navigateur->get($accueil)->contenu;
         $restes = array_keys(array_filter([
             'bloc' => str_contains($home, 'id="si-soutien-titre"'),
-            'pied de page' => str_contains($home, '>Nous soutenir</a>'),
+            'pied de page' => str_contains($home, 'class="si-pied-avis"'),
             'QR code' => Reponse::INTROUVABLE !== $this->navigateur->get($qr)->etat(),
         ]));
         $bilan->controler('Visiteur : « Nous soutenir » disparaît quand le lien est vidé', [] === $restes, [] === $restes ? 'ni bloc, ni lien, ni QR' : 'reste : '.implode(', ', $restes));

@@ -23,13 +23,13 @@ final class SiteReferencementController extends AbstractController
      * connexions, API, liens privés (factures, avis, Orange Money), écrans de
      * l'atelier, administration, recherche, réponses en JSON du calculateur
      * et du studio textile. Préfixes : « /atelier/ » (administration) ne
-     * ferme pas « /atelier-3d » (studio textile). Les autres pages de
+     * ferme pas « /studio-textile » ni l'ancienne « /atelier-3d ». Les autres pages de
      * l'administration portent « noindex » (ReferencementSubscriber).
      */
     public const INTERDITS = [
         '/espace', '/login', '/api', '/verification', '/appareil', '/acces', '/f/', '/om/',
         '/avis/', '/assistant/', '/tablette', '/ecran-accueil', '/recherche', '/reglages',
-        '/atelier/', '/calculateur/estimation', '/atelier-3d/', '/changer-utilisateur', '/lockscreen',
+        '/atelier/', '/calculateur/estimation', '/studio-textile/', '/atelier-3d/', '/changer-utilisateur', '/lockscreen',
     ];
 
     public function __construct(

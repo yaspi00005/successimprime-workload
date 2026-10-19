@@ -7,6 +7,7 @@ use App\Entity\Entreprise;
 use App\Repository\EntrepriseRepository;
 use App\Security\AccesEnLigne;
 use App\Service\Site\ActionsSociales;
+use App\Service\Site\EtatCatalogue;
 use App\Service\Site\JetonsSite;
 use Symfony\Component\Routing\Exception\RouteNotFoundException;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -63,6 +64,7 @@ final class SiteExtension extends AbstractExtension
         private readonly AccesEnLigne $acces,
         private readonly ?ActionsSociales $actionsSociales = null,
         private readonly ?JetonsSite $jetons = null,
+        private readonly ?EtatCatalogue $catalogue = null,
     ) {
     }
 
@@ -76,6 +78,8 @@ final class SiteExtension extends AbstractExtension
             new TwigFunction('site_whatsapp', $this->whatsapp(...)),
             new TwigFunction('site_en_ligne', $this->acces->estEnLigne(...)),
             new TwigFunction('site_jeton', $this->jeton(...)),
+            // Catalogue public (EtatCatalogue) : produits montrables, calculateur utilisable.
+            new TwigFunction('site_catalogue', fn (): array => ['produits' => $this->catalogue?->aDesProduits() ?? true, 'calculateur' => $this->catalogue?->aUnCalculateur() ?? true]),
         ];
     }
 
@@ -129,9 +133,11 @@ final class SiteExtension extends AbstractExtension
      *
      * @return list<array{route: string, libelle: string, url: string}>
      */
-    private function menu(array $liens): array
+    public function menu(array $liens): array
     {
         $menu = [];
+        // « Produits » et « Calculateur » sans rien à montrer : hors du menu (EtatCatalogue).
+        $liens = array_diff_key($liens, array_flip($this->catalogue?->routesVides() ?? []));
         foreach ($liens as $route => $libelle) {
             if (null !== $url = $this->lien($route)) {
                 $menu[] = ['route' => $route, 'libelle' => $libelle, 'url' => $url];

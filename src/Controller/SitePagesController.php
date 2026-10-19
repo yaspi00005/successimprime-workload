@@ -11,6 +11,7 @@ use App\Repository\MembreEquipeRepository;
 use App\Repository\PageSiteRepository;
 use App\Repository\RealisationRepository;
 use App\Service\Site\AvantApres;
+use App\Service\Site\ContenuInitial;
 use App\Service\Site\MarkdownSite;
 use App\Twig\SiteContenuExtension;
 use Doctrine\ORM\EntityManagerInterface;
@@ -102,7 +103,7 @@ final class SitePagesController extends AbstractController
     #[Route('/faq', name: 'app_site_faq', methods: ['GET'])]
     public function faq(Request $request): Response
     {
-        $page = $this->pages->publiee('faq') ?? throw $this->createNotFoundException();
+        $page = $this->pages->publiee('faq') ?? $this->pageProvisoire('faq') ?? throw $this->createNotFoundException();
         $contenu = MarkdownSite::sections($page->getCorps());
 
         return $this->site->cache($this->render('site/faq.html.twig', [
@@ -187,11 +188,27 @@ final class SitePagesController extends AbstractController
     }
 
     /**
+     * Page jamais créée (app:site:contenu-initial pas lancé) : le texte
+     * provisoire s'affiche au lieu d'une erreur 404. Une page dépubliée
+     * dans l'admin reste introuvable.
+     */
+    private function pageProvisoire(string $slug): ?PageSite
+    {
+        $texte = ContenuInitial::pages()[$slug] ?? null;
+        if (null === $texte || null !== $this->pages->findOneBy(['slug' => $slug])) {
+            return null;
+        }
+
+        return (new PageSite($slug))->setTitre($texte['titre'])->setAccroche($texte['accroche'])
+            ->setDescription($texte['description'])->setCorps($texte['corps'])->setPublie(true);
+    }
+
+    /**
      * @param array<string, mixed> $variables
      */
     private function page(string $slug, string $gabarit, Request $request, array $variables = []): Response
     {
-        $page = $this->pages->publiee($slug) ?? throw $this->createNotFoundException();
+        $page = $this->pages->publiee($slug) ?? $this->pageProvisoire($slug) ?? throw $this->createNotFoundException();
 
         return $this->site->cache($this->render($gabarit, [
             'page' => $page,

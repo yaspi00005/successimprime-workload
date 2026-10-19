@@ -4,6 +4,10 @@
  * dessiné tient la place de la carte, rien ne bouge quand elle arrive.
  * Les styles de Leaflet viennent avec la carte (public/vendor/leaflet).
  */
+.si-plan { position: relative; display: block; overflow: hidden; border: 1px solid var(--bordure); border-radius: var(--rayon); line-height: 0; }
+.si-plan > svg { display: block; width: 100%; height: 210px; }
+.si-plan .si-bouton { position: absolute; right: 14px; bottom: 14px; line-height: 1.2; }
+.si-plan:hover .si-bouton { background: var(--bleu-fonce); }
 .si-carte-boutique { position: relative; }
 .si-carte-boutique .si-plan > svg { height: 260px; }
 .si-carte-zone { position: absolute; inset: 0; z-index: 1; overflow: hidden; border: 1px solid var(--bordure); border-radius: var(--rayon); background: #EEF2F8; font: 14px/1.4 var(--police); }

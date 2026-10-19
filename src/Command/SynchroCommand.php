@@ -2,6 +2,7 @@
 
 namespace App\Command;
 
+use App\Service\Site\AtelierDirect;
 use App\Service\Synchro\AgentSynchro;
 use App\Service\Synchro\Signature;
 use App\Service\Synchro\Synchro;
@@ -24,6 +25,7 @@ final class SynchroCommand extends Command
     public function __construct(
         private readonly AgentSynchro $agent,
         private readonly Synchro $synchro,
+        private readonly ?AtelierDirect $atelierDirect = null,
     ) {
         parent::__construct();
     }
@@ -72,6 +74,12 @@ final class SynchroCommand extends Command
         }
 
         do {
+            // « En direct de l'atelier » de l'accueil : instantané publié avant l'envoi (AtelierDirect).
+            try {
+                $this->atelierDirect?->publier(new \DateTimeImmutable());
+            } catch (\Throwable $e) {
+                $io->warning('Atelier en direct non publié : '.$e->getMessage());
+            }
             $r = $this->agent->cycle();
             $reste = $this->synchro->enAttente();
             $ligne = \sprintf('[%s] %s : %d envoyées, %d reçues%s%s%s', date('H:i:s'), $r['statut'], $r['envoyes'], $r['recus'], $r['conflits'] > 0 ? ', '.$r['conflits'].' conflit(s)' : '', $reste > 0 ? ' · '.$reste.' en attente' : '', $r['message'] ? ' · '.$r['message'] : '');

@@ -4,7 +4,14 @@ namespace App\Controller;
 
 use App\Entity\CategorieProduit;
 use App\EventSubscriber\ApostrophesSiteSubscriber;
+use App\Repository\AvisClientRepository;
 use App\Repository\RealisationRepository;
+use App\Service\EspaceClient\DelaisCommande;
+use App\Service\Parametres\Parametres;
+use App\Service\Site\AtelierDirect;
+use App\Service\Site\ContactSite;
+use App\Service\Site\EngagementsSite;
+use App\Service\Site\EtatCatalogue;
 use App\Service\Atelier\CatalogueAtelier;
 use App\Service\Site\AvantApres;
 use App\Service\Site\CatalogueSite;
@@ -29,9 +36,9 @@ final class SiteController extends AbstractController
     /** Familles d'univers : mots du nom de la catégorie => couleur, icône et exemples par défaut. */
     public const FAMILLES = [
         'grand' => ['mots' => ['grand format', 'bâche', 'bache', 'banderole', 'vinyle'], 'exemples' => 'Bâches, vinyle, micro-perforé'],
-        'textile' => ['mots' => ['textile', 'dtf', 't-shirt', 'tee-shirt', 'polo'], 'exemples' => 'T-shirts, polos, tote bags'],
-        'petit' => ['mots' => ['petit format', 'numérique', 'numerique', 'carte', 'flyer', 'papier'], 'exemples' => 'Cartes, flyers, autocollants'],
-        'signaletique' => ['mots' => ['signalétique', 'signaletique', 'roll-up', 'enseigne', 'panneau'], 'exemples' => 'Roll-up, Door Shape, enseignes'],
+        'textile' => ['mots' => ['textile', 'dtf', 't-shirt', 'tee-shirt', 'polo', 'événementiel', 'evenementiel', 'événement', 'evenement'], 'exemples' => 'T-shirts, polos, tote bags'],
+        'petit' => ['mots' => ['petit format', 'numérique', 'numerique', 'carte', 'flyer', 'papier', 'papeterie'], 'exemples' => 'Cartes, flyers, autocollants'],
+        'signaletique' => ['mots' => ['signalétique', 'signaletique', 'roll-up', 'enseigne', 'panneau', 'communication', 'kakémono', 'kakemono', 'publicité', 'publicite'], 'exemples' => 'Roll-up, Door Shape (support de porte), enseignes'],
     ];
 
     /** Photos de l'accueil (PhotosSite) : en haut de la page, en fond de la bande « Un projet à imprimer ? », dans la bande Studio textile. */
@@ -44,7 +51,89 @@ final class SiteController extends AbstractController
     }
 
     #[Route('/site', name: 'app_site_accueil', methods: ['GET'])]
-    public function accueil(Request $request, CatalogueAtelier $atelier, RealisationRepository $realisations, PhotosSite $photos): Response
+    public function accueil(
+        Request $request,
+        CatalogueAtelier $atelier,
+        RealisationRepository $realisations,
+        AvisClientRepository $avis,
+        PhotosSite $photos,
+        CatalogueSite $catalogue,
+        EtatCatalogue $etat,
+        DelaisCommande $delais,
+        Parametres $parametres,
+        AtelierDirect $direct,
+        EngagementsSite $engagements,
+        ContactSite $contact,
+    ): Response {
+        $maintenant = new \DateTimeImmutable();
+        $calculateur = $etat->aUnCalculateur();
+        $atelierOuvert = [] !== $atelier->modeles();
+
+        // Les plus demandés (maquette SW02) : vrais produits avec un prix de départ, sinon rien.
+        $heures = $parametres->heuresTravail();
+        $limite = $delais->reglages()['limite'];
+        $phares = [];
+        foreach ($catalogue->phares() as $p) {
+            $pret = null !== $p['delai'] && $p['delai'] > 0 ? DelaisCommande::calculerPretLe($heures, (int) $p['delai'], $limite, $maintenant)['pret'] : null;
+            // Sans photo du produit (bâche, banderole…) : une vraie photo de sa famille (PhotosSite::FAMILLES).
+            $phares[] = $p + ['pret' => null === $pret ? null : self::jourCourt($pret), 'photoSecours' => PhotosSite::FAMILLES[$p['famille']][0] ?? null];
+        }
+        // Les autres familles en pastilles : produits publiés qui ne sont pas déjà en carte.
+        $autres = [];
+        $pris = array_column($phares, 'id');
+        foreach ($catalogue->univers() as $u) {
+            foreach ($u['produits'] as $p) {
+                if (!\in_array($p['id'], $pris, true) && \count($autres) < 10) {
+                    $autres[] = ['nom' => $p['nom'], 'configuration' => $p['configuration'], 'cle' => $u['cle']];
+                }
+            }
+        }
+
+        // Sans produit à prix : les univers (catégories publiées), chacun avec la photo qui lui ressemble.
+        $univers = [] === $phares ? $this->univers($photos, $atelierOuvert) : [];
+
+        // Vraies réalisations publiées, avec une photo (4 au plus).
+        $travaux = [];
+        foreach ($realisations->publiees() as $r) {
+            if (null !== $r->getImagePrincipale() && \count($travaux) < 4) {
+                $travaux[] = $r;
+            }
+        }
+
+        $horaires = $contact->horaires($maintenant);
+        $standard = $delais->reglages()['standard'];
+
+        return $this->cache($this->render('site/accueil.html.twig', [
+            'calculateur' => $calculateur,
+            'phares' => $phares,
+            'autres' => $autres,
+            'univers' => $univers,
+            'atelier' => $atelierOuvert,
+            'realisations' => $travaux,
+            'avantApres' => AvantApres::plusRecente($realisations->publiees()),
+            'avis' => $avis->visibles(3),
+            // « En direct de l'atelier » : seulement atelier ouvert et chiffres frais (AtelierDirect).
+            'direct' => $horaires['ouvert'] ? $direct->chiffres($maintenant) : null,
+            'chiffresEngagements' => $engagements->chiffresPublies(),
+            'promesses' => \array_slice($engagements->promesses(), 0, 3),
+            'delaiVisuel' => $engagements->delaiVisuel(),
+            'packs' => $engagements->packs(),
+            'largeurMax' => $contact->largeurMax(),
+            'delaiStandard' => $standard,
+            'position' => $contact->position(),
+        ]), $request);
+    }
+
+    /**
+     * Univers de l'accueil quand aucun produit n'a encore de prix : les
+     * catégories publiées (une carte par nom affiché), photo choisie d'après
+     * leur nom (PhotosSite::pourUnivers), et la carte Textile (vers le Studio
+     * textile) quand il propose des articles et qu'aucune catégorie ne
+     * s'appelle déjà ainsi.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function univers(PhotosSite $photos, bool $atelierOuvert): array
     {
         $univers = [];
         // Les catégories de démonstration portent « (démo) » : une seule carte par nom affiché.
@@ -55,34 +144,37 @@ final class SiteController extends AbstractController
             }
             $famille = self::famille($nom, \count($univers));
             $univers[$nom] = [
-                'categorie' => $categorie,
                 'nom' => $nom,
                 // Clé d'adresse de l'univers (?categorie=grand-format), jamais l'identifiant.
                 'cle' => CatalogueSite::cle($nom),
                 'famille' => $famille,
                 'exemples' => trim((string) $categorie->getDescription()) ?: self::FAMILLES[$famille]['exemples'],
+                'textile' => false,
             ];
             if (\count($univers) === self::UNIVERS_ACCUEIL) {
                 break;
             }
         }
-
-        // Une photo par univers, d'après sa famille, jamais deux fois la même dans la page.
         $univers = array_values($univers);
-        $photosUnivers = $photos->pourFamilles(array_column($univers, 'famille'), [self::PHOTO_ACCROCHE, self::PHOTO_PROJET]);
-        foreach (array_keys($univers) as $i) {
-            $univers[$i]['photo'] = $photos->photo($photosUnivers[$i]);
+        $textile = array_filter($univers, static fn (array $u): bool => (bool) preg_match('/textile|t-shirt|dtf/iu', $u['nom']));
+        if ($atelierOuvert && [] === $textile) {
+            if (\count($univers) === self::UNIVERS_ACCUEIL) {
+                array_pop($univers);
+            }
+            $univers[] = ['nom' => 'Textile', 'cle' => null, 'famille' => 'textile', 'exemples' => self::FAMILLES['textile']['exemples'], 'textile' => true];
+        }
+        // Une photo par univers, jamais deux fois la même dans la page.
+        foreach ($photos->pourUnivers($univers, [self::PHOTO_ACCROCHE]) as $i => $nom) {
+            $univers[$i]['photo'] = null === $nom ? null : $photos->photo($nom);
         }
 
-        return $this->cache($this->render('site/accueil.html.twig', [
-            'univers' => $univers,
-            // La bande Studio textile prend la photo des t-shirts si aucun univers ne la montre déjà.
-            'photoAtelier' => \in_array(self::PHOTO_ATELIER, $photosUnivers, true) ? null : $photos->photo(self::PHOTO_ATELIER),
-            // Bande « Atelier 3D » quand des articles y sont proposés (docs/atelier-3d.md).
-            'atelier' => [] !== $atelier->modeles(),
-            // Dernière réalisation avec ses photos « Avant » et « Après ».
-            'avantApres' => AvantApres::plusRecente($realisations->publiees()),
-        ]), $request);
+        return $univers;
+    }
+
+    /** « mer. 21/10 » (date « prête le » des cartes produits). */
+    public static function jourCourt(\DateTimeImmutable $jour): string
+    {
+        return ['', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'][(int) $jour->format('N')].' '.$jour->format('d/m');
     }
 
     /** Famille d'un univers d'après le nom de sa catégorie, sinon dans l'ordre des maquettes. */

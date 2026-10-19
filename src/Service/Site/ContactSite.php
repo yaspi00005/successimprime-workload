@@ -25,7 +25,7 @@ final class ContactSite
      * bandeau du haut (« Lun – sam 8 h – 18 h · dim. fermé ») et l'état
      * en ce moment.
      *
-     * @return array{texte: string, fermes: ?string, court: string, ouvert: bool, etat: string}
+     * @return array{texte: string, fermes: ?string, court: string, ouverture: string, fermeture: string, ouvert: bool, etat: string, exceptionnel: bool}
      */
     public function horaires(\DateTimeImmutable $maintenant): array
     {
@@ -33,11 +33,33 @@ final class ContactSite
         $ouverture = (string) $this->parametres->valeur('horaires', 'ouverture');
         $fermeture = (string) $this->parametres->valeur('horaires', 'fermeture');
 
+        // Jours fériés de la tuile Horaires (comme l'atelier), puis fermeture exceptionnelle de la tuile « Site : contact et accueil ».
+        $heures = $this->parametres->heuresTravail();
+        $etat = $this->fermetureExceptionnelle() ?? self::etat($jours, $ouverture, $fermeture, $maintenant, $heures->estOuvre(...));
+
         return [
             'texte' => self::texteHoraires($jours, $ouverture, $fermeture),
             'fermes' => self::joursFermes($jours),
             'court' => self::texteCourt($jours, $ouverture, $fermeture),
-        ] + self::etat($jours, $ouverture, $fermeture, $maintenant);
+            'ouverture' => self::heure($ouverture),
+            'fermeture' => self::heure($fermeture),
+        ] + $etat;
+    }
+
+    /**
+     * Fermeture exceptionnelle activée (tuile « Site : contact et accueil »),
+     * avec son motif s'il est saisi ; sinon null.
+     *
+     * @return array{ouvert: bool, etat: string, exceptionnel: bool}|null
+     */
+    public function fermetureExceptionnelle(): ?array
+    {
+        if (!(bool) $this->parametres->valeur('site_contact', 'fermeture')) {
+            return null;
+        }
+        $motif = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'fermeture_motif')));
+
+        return ['ouvert' => false, 'etat' => 'Fermé exceptionnellement'.('' === $motif ? '' : ' : '.mb_substr($motif, 0, 100)), 'exceptionnel' => true];
     }
 
     /** Jours fermés d'après les jours travaillés : « Dimanche : fermé », « Samedi et dimanche : fermé », ou null (tous les jours). */
@@ -68,7 +90,7 @@ final class ContactSite
     }
 
     /** Repère de l'adresse (« près de… »), réglé dans la tuile « Site : contact et accueil » ; vide : rien. */
-    public function repere(): ?string
+    public function repereAdresse(): ?string
     {
         $repere = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'repere')));
 
@@ -158,21 +180,24 @@ final class ContactSite
     }
 
     /**
-     * Ouvert en ce moment, sinon prochaine ouverture (jours fériés de
-     * l'atelier non comptés : l'imprimerie peut ouvrir).
+     * Ouvert en ce moment, sinon prochaine ouverture. $estOuvre (jours
+     * fériés de la tuile Horaires, HeuresTravail::estOuvre) remplace la
+     * seule règle des jours travaillés quand il est donné.
      *
-     * @return array{ouvert: bool, etat: string}
+     * @param (callable(\DateTimeImmutable): bool)|null $estOuvre
+     *
+     * @return array{ouvert: bool, etat: string, exceptionnel: bool}
      */
-    public static function etat(string $jours, string $ouverture, string $fermeture, \DateTimeImmutable $maintenant): array
+    public static function etat(string $jours, string $ouverture, string $fermeture, \DateTimeImmutable $maintenant, ?callable $estOuvre = null): array
     {
         [$premier, $dernier] = self::JOURS[$jours] ?? self::JOURS['lun-sam'];
-        $ouvre = static fn (\DateTimeImmutable $j): bool => (int) $j->format('N') >= $premier && (int) $j->format('N') <= $dernier;
+        $ouvre = $estOuvre ?? static fn (\DateTimeImmutable $j): bool => (int) $j->format('N') >= $premier && (int) $j->format('N') <= $dernier;
         $a = static fn (\DateTimeImmutable $j, string $h): \DateTimeImmutable => $j->setTime(...array_map('intval', explode(':', $h.':0')) + [1 => 0]);
 
         if ($ouvre($maintenant) && $maintenant >= $a($maintenant, $ouverture) && $maintenant < $a($maintenant, $fermeture)) {
-            return ['ouvert' => true, 'etat' => 'Ouvert maintenant, jusqu\'à '.self::heure($fermeture)];
+            return ['ouvert' => true, 'etat' => 'Ouvert maintenant, jusqu\'à '.self::heure($fermeture), 'exceptionnel' => false];
         }
-        for ($i = 0; $i <= 7; ++$i) {
+        for ($i = 0; $i <= 14; ++$i) {
             $jour = $maintenant->modify('+'.$i.' day');
             if ($ouvre($jour) && $a($jour, $ouverture) > $maintenant) {
                 $quand = match ($i) {
@@ -181,11 +206,11 @@ final class ContactSite
                     default => self::NOMS_JOURS[(int) $jour->format('N')],
                 };
 
-                return ['ouvert' => false, 'etat' => 'Fermé, ouvre '.$quand.' à '.self::heure($ouverture)];
+                return ['ouvert' => false, 'etat' => 'Fermé, ouvre '.$quand.' à '.self::heure($ouverture), 'exceptionnel' => false, 'prochaine' => $a($jour, $ouverture)];
             }
         }
 
-        return ['ouvert' => false, 'etat' => 'Fermé'];
+        return ['ouvert' => false, 'etat' => 'Fermé', 'exceptionnel' => false];
     }
 
     /**

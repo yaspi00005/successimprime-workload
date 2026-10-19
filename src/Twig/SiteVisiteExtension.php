@@ -57,7 +57,7 @@ final class SiteVisiteExtension extends AbstractExtension
         return $this->visite = [
             'nom' => $nom,
             'adresse' => $adresse,
-            'repere' => $this->contact->repere(),
+            'repere' => $this->contact->repereAdresse(),
             // « Sotuba ACI, Bamako » pour le bandeau du haut : l'adresse remise dans l'ordre quartier, ville.
             'ville' => self::adresseCourte($adresse),
             'horaires' => $this->contact->horaires(new \DateTimeImmutable()),

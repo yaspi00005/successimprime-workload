@@ -21,7 +21,7 @@
 
 {% block entete %}
 	{{ site_styles('css/site-formulaires.css', 'css/site-local.css') }}
-	{% if positionPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
+	{% if lienPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
 {% endblock %}
 
 {% block contenu %}
@@ -79,30 +79,7 @@
 					</figure>
 				{% endif %}
 				{% if lienPlan %}
-					{# Plan dessiné : seul sans la position, sans JavaScript ou si la carte ne vient pas ; sinon sous la carte. #}
-					<div class="si-carte-boutique"
-						{%- if positionPlan %} data-carte-boutique data-lat="{{ positionPlan.latitude }}" data-lng="{{ positionPlan.longitude }}" data-nom="Imprimerie {{ entreprise.nomAffiche ?? 'Succès Imprim' }}" data-adresse="{{ (entreprise.adresse ?? null) ?: 'Bamako, Mali' }}" data-leaflet-css="{{ asset('vendor/leaflet/leaflet.css') }}" data-leaflet-js="{{ asset('vendor/leaflet/leaflet.js') }}" data-script="{{ asset('js/site-carte.js') }}"{% endif %}>
-					<a href="{{ lienPlan }}" class="si-plan" target="_blank" rel="noopener" aria-label="Voir l'itinéraire jusqu'à l'imprimerie (s'ouvre dans une autre fenêtre)">
-						<svg viewBox="0 0 560 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-							<rect width="560" height="200" fill="#EEF2F8"/>
-							<g stroke="#D7DEEA" stroke-width="1.5">
-								{% for x in range(0, 560, 46) %}<line x1="{{ x }}" y1="0" x2="{{ x }}" y2="200"/>{% endfor %}
-								{% for y in range(0, 200, 40) %}<line x1="0" y1="{{ y }}" x2="560" y2="{{ y }}"/>{% endfor %}
-							</g>
-							<path d="M-10 190 L570 70" stroke="#fff" stroke-width="22"/>
-							<path d="M180 -10 L250 210" stroke="#fff" stroke-width="12"/>
-							<g transform="translate(262 52)">
-								<ellipse cx="0" cy="44" rx="12" ry="4" fill="rgba(0,0,0,.15)"/>
-								<path d="M0 44C-4 34-18 22-18 8a18 18 0 0 1 36 0c0 14-14 26-18 36Z" fill="#DE1028"/>
-								<circle cx="0" cy="8" r="6" fill="#fff"/>
-							</g>
-						</svg>
-						<span class="si-bouton si-bouton-bleu">
-							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.7 11.3 12.7 2.3a1 1 0 0 0-1.4 0l-9 9a1 1 0 0 0 0 1.4l9 9a1 1 0 0 0 1.4 0l9-9a1 1 0 0 0 0-1.4ZM14 14.5V12h-4v3H8v-4a1 1 0 0 1 1-1h5V7.5l3.5 3.5Z"/></svg>
-							Itinéraire
-						</span>
-					</a>
-					</div>
+					{{ include('site/_carte_plan.html.twig') }}
 				{% endif %}
 
 				<div class="si-contact-cartes">
@@ -153,28 +130,4 @@
 
 	{# Galerie « Notre local » : façade, allée, jardin et entrée (bloc autonome). #}
 	{{ include('site/_notre_local.html.twig') }}
-{% endblock %}
-
-{% block scripts %}
-	{% if positionPlan %}
-		{# Carte de l'imprimerie : rien n'est téléchargé avant que le bloc soit à l'écran. #}
-		<script>
-			(function () {
-				var bloc = document.querySelector('[data-carte-boutique]');
-				if (!bloc || !('IntersectionObserver' in window)) {
-					return;
-				}
-				var guetteur = new IntersectionObserver(function (entrees) {
-					if (!entrees.some(function (entree) { return entree.isIntersecting; })) {
-						return;
-					}
-					guetteur.disconnect();
-					var script = document.createElement('script');
-					script.src = bloc.getAttribute('data-script');
-					document.head.appendChild(script);
-				});
-				guetteur.observe(bloc);
-			})();
-		</script>
-	{% endif %}
 {% endblock %}

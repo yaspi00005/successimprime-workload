@@ -4,7 +4,9 @@
  * data-incline s'inclinent un peu sous la souris, les photos avant / après
  * se comparent avec un curseur. Pas de mouvement si la personne a demandé
  * de réduire les animations (le curseur marche quand même) ; rien n'est
- * caché sans ce script, et aucun clic n'est bloqué.
+ * caché sans ce script, et aucun clic n'est bloqué. Les compteurs
+ * data-compte (vrais chiffres de l'atelier, déjà écrits dans la page)
+ * défilent de 0 à leur valeur quand ils arrivent à l'écran.
  */
 (function () {
   'use strict';
@@ -61,6 +63,35 @@
       observateur.observe(b);
     });
     document.documentElement.classList.add('si-anime');
+  }
+
+  // Compteurs : le chiffre écrit dans la page reste la vérité ; on ne fait que le faire défiler.
+  var compteurs = document.querySelectorAll('[data-compte]');
+  if (compteurs.length && 'IntersectionObserver' in window) {
+    var format = function (n, d) {
+      return n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d }).replace(/\u202f/g, '\u00a0');
+    };
+    var compter = new IntersectionObserver(function (entrees) {
+      entrees.forEach(function (e) {
+        if (!e.isIntersecting) return;
+        compter.unobserve(e.target);
+        var el = e.target;
+        var cible = parseFloat(el.getAttribute('data-compte'));
+        var d = parseInt(el.getAttribute('data-decimales') || '0', 10);
+        if (isNaN(cible) || cible <= 0) return;
+        var fin = el.textContent;
+        var t0 = 0;
+        var pas = function (t) {
+          if (!t0) t0 = t;
+          var k = Math.min(1, (t - t0) / 1200);
+          var v = cible * (1 - Math.pow(1 - k, 3));
+          el.textContent = k < 1 ? format(d ? v : Math.round(v), d) : fin;
+          if (k < 1) window.requestAnimationFrame(pas);
+        };
+        window.requestAnimationFrame(pas);
+      });
+    }, { threshold: 0.5 });
+    Array.prototype.forEach.call(compteurs, function (c) { compter.observe(c); });
   }
 
   if (window.matchMedia('(hover: hover) and (pointer: fine)').matches) {

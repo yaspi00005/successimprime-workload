@@ -3,6 +3,7 @@
 namespace App\Tests\Unit\Service\Site;
 
 use App\Service\Parametres\CatalogueParametres;
+use App\Service\ActionsCaisse\HeuresTravail;
 use App\Service\Site\ContactSite;
 use PHPUnit\Framework\TestCase;
 
@@ -59,7 +60,7 @@ final class ContactSiteTest extends TestCase
     public function testOuvertOuFerme(): void
     {
         // 14/10/2026 est un mercredi.
-        $etat = static fn (string $quand, string $jours = 'lun-sam'): array => ContactSite::etat($jours, '08:00', '18:00', new \DateTimeImmutable($quand));
+        $etat = static fn (string $quand, string $jours = 'lun-sam'): array => array_intersect_key(ContactSite::etat($jours, '08:00', '18:00', new \DateTimeImmutable($quand)), ['ouvert' => 1, 'etat' => 1]);
 
         self::assertSame(['ouvert' => true, 'etat' => "Ouvert maintenant, jusqu'à 18\u{a0}h"], $etat('2026-10-14 10:00'));
         self::assertSame(['ouvert' => false, 'etat' => "Fermé, ouvre aujourd'hui à 8\u{a0}h"], $etat('2026-10-14 06:30'));
@@ -67,5 +68,23 @@ final class ContactSiteTest extends TestCase
         self::assertSame(['ouvert' => false, 'etat' => "Fermé, ouvre lundi à 8\u{a0}h"], $etat('2026-10-17 19:00'), 'samedi soir');
         self::assertSame(['ouvert' => false, 'etat' => "Fermé, ouvre lundi à 8\u{a0}h"], $etat('2026-10-16 19:00', 'lun-ven'), 'vendredi soir');
         self::assertTrue($etat('2026-10-18 10:00', 'lun-dim')['ouvert'], 'dimanche quand tous les jours');
+    }
+
+    public function testJourFerieFerme(): void
+    {
+        // Lundi 12/10/2026 déclaré férié : fermé, ouvre mardi.
+        $heures = new HeuresTravail('lun-sam', '08:00', '18:00', '12:00', '13:00', '12/10/2026');
+        $etat = ContactSite::etat('lun-sam', '08:00', '18:00', new \DateTimeImmutable('2026-10-12 10:00'), $heures->estOuvre(...));
+        self::assertFalse($etat['ouvert']);
+        self::assertSame("Fermé, ouvre demain à 8\u{a0}h", $etat['etat']);
+        self::assertFalse($etat['exceptionnel']);
+    }
+
+    public function testJoursFermesEtTexteCourt(): void
+    {
+        self::assertSame('Dimanche : fermé', ContactSite::joursFermes('lun-sam'));
+        self::assertSame('Samedi et dimanche : fermé', ContactSite::joursFermes('lun-ven'));
+        self::assertNull(ContactSite::joursFermes('lun-dim'));
+        self::assertSame("Lun – sam 8\u{a0}h – 18\u{a0}h · dim. fermé", ContactSite::texteCourt('lun-sam', '08:00', '18:00'));
     }
 }

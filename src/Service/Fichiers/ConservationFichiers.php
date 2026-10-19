@@ -108,16 +108,8 @@ final class ConservationFichiers
                 $bilan['gardes'] += null !== $f->getGardeDemandeeLe() ? 1 : 0;
                 continue;
             }
-            // Fichier traité en prépresse (var/<chemin>) ou envoyé à plat (var/uploads/commandes).
-            $chemin = $this->espace->cheminSurDisque($f);
-            // Un autre fichier encore gardé (commande dupliquée) partage les mêmes octets : ils restent.
-            $partage = null !== $chemin && $this->partage($f);
             if (!$essai) {
-                if (null !== $chemin && !$partage) {
-                    $bilan['octets'] += (int) filesize($chemin);
-                    @unlink($chemin);
-                }
-                $f->marquerEfface($maintenant);
+                $bilan['octets'] += $this->effacer($f, $maintenant);
             }
             ++$bilan['effaces'];
         }
@@ -126,6 +118,28 @@ final class ConservationFichiers
         }
 
         return $bilan;
+    }
+
+    /**
+     * Efface les octets d'un fichier du serveur et le note effacé (la fiche
+     * reste). Sert à la commande de nuit, et à un administrateur qui
+     * supprime à la main le fichier d'un produit du client (Mes produits).
+     *
+     * @return int octets libérés
+     */
+    public function effacer(CommandeDetailFichier $f, \DateTimeImmutable $maintenant): int
+    {
+        // Fichier traité en prépresse (var/<chemin>) ou envoyé à plat (var/uploads/commandes).
+        $chemin = $this->espace->cheminSurDisque($f);
+        $octets = 0;
+        // Un autre fichier encore gardé (commande dupliquée) partage les mêmes octets : ils restent.
+        if (null !== $chemin && !$this->partage($f)) {
+            $octets = (int) filesize($chemin);
+            @unlink($chemin);
+        }
+        $f->marquerEfface($maintenant);
+
+        return $octets;
     }
 
     private function partage(CommandeDetailFichier $f): bool

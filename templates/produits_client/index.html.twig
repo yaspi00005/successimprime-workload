@@ -189,6 +189,15 @@
 							</small>
 						</div>
 					{% endif %}
+					{% if choisi and (choisi.fichier or choisi.image) %}
+						{# Jamais effacés par le système (ConservationFichiers) : seul un administrateur les supprime. #}
+						<div class="small text-muted mb-2">
+							<i class="fas fa-lock me-1"></i>Fichiers gardés tant que le produit existe : le système ne les efface jamais.
+							{% if is_granted('ROLE_ADMIN') %}
+								<button type="submit" form="si-pc-supprimer-fichiers" class="btn btn-link btn-sm text-danger p-0 align-baseline">Supprimer les fichiers</button>
+							{% endif %}
+						</div>
+					{% endif %}
 					{% if choisi %}
 						{% if cout and is_granted('ROLE_COUT_MARGE') %}
 							<div class="si-encart si-fond-bleu-clair">
@@ -204,6 +213,11 @@
 					{% endif %}
 					<button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Enregistrer</button>
 				</form>
+				{% if choisi and (choisi.fichier or choisi.image) and is_granted('ROLE_ADMIN') %}
+					<form method="post" id="si-pc-supprimer-fichiers" action="{{ path('app_clients_produits_supprimer_fichiers', {publicId: client.publicId, id: choisi.id}) }}" data-confirmer="Supprimer du serveur le fichier et l'image de « {{ choisi.nom }} » ? Le client devra renvoyer un fichier (et valider un BAT) à sa prochaine commande. Les fichiers du dossier de l'atelier ne sont pas touchés.">
+						<input type="hidden" name="_token" value="{{ csrf_token('produit-client-fichiers-' ~ choisi.id) }}">
+					</form>
+				{% endif %}
 			</div>
 		</div>
 	</div>

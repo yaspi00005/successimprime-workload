@@ -13,6 +13,7 @@ use App\Entity\Supports;
 use App\Repository\ProduitClientRepository;
 use App\Service\CalculateurCoutRevient;
 use App\Service\Catalogue\NomCommercial;
+use App\Service\Fichiers\ConservationFichiers;
 use App\Service\CommandeProduitClient;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bridge\Doctrine\Attribute\MapEntity;
@@ -92,6 +93,41 @@ final class ProduitsClientController extends AbstractController
      * reprend le format, la machine, les finitions, le dernier fichier et
      * le BAT valide, au prix de la ligne.
      */
+    /**
+     * Un fichier de « Mes produits » n'est jamais effacé par le système
+     * (ConservationFichiers) : seul un administrateur le supprime, ici.
+     * Le fichier et l'image du produit quittent le serveur ; les fichiers
+     * liés du dossier de l'atelier ne sont pas touchés.
+     */
+    #[Route('/{id}/supprimer-fichiers', name: '_supprimer_fichiers', requirements: ['id' => '\\d+'], methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function supprimerFichiers(
+        #[MapEntity(mapping: ['publicId' => 'publicId'])] Clients $client,
+        #[MapEntity(id: 'id')] ProduitClient $produit,
+        Request $request,
+        ConservationFichiers $conservation,
+    ): Response {
+        if (!$this->isCsrfTokenValid('produit-client-fichiers-'.$produit->getId(), $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton invalide.');
+        }
+        if ($produit->getClient() !== $client) {
+            throw $this->createNotFoundException();
+        }
+        $maintenant = new \DateTimeImmutable();
+        $n = 0;
+        foreach (array_filter([$produit->getFichier(), $produit->getImage()]) as $f) {
+            if (null === $f->getEffaceLe()) {
+                $conservation->effacer($f, $maintenant);
+                ++$n;
+            }
+        }
+        $produit->setFichier(null)->setImage(null);
+        $this->em->flush();
+        $this->addFlash('success', 0 === $n ? 'Ce produit n\'avait plus de fichier sur le serveur.' : \sprintf('%d fichier%s de « %s » supprimé%s du serveur. Un nouveau fichier (et un BAT) sera demandé à la prochaine commande.', $n, $n > 1 ? 's' : '', $produit->getNom(), $n > 1 ? 's' : ''));
+
+        return $this->redirectToRoute('app_clients_produits', ['publicId' => $client->getPublicId(), 'produit' => $produit->getId()]);
+    }
+
     #[Route('/depuis-ligne/{id}', name: '_depuis_ligne', methods: ['POST'])]
     public function depuisLigne(
         #[MapEntity(mapping: ['publicId' => 'publicId'])] Clients $client,

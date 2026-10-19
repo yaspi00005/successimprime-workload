@@ -1,0 +1,26 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Plafond de crédit · {{ commande.numero }}{% endblock %}
+
+{% block body %}
+	<div class="si-nc-carte" style="max-width:36rem;padding:20px 22px">
+		<h2 style="color:var(--si-n-critique);font-size:1.15rem;margin:0 0 8px">Plafond de crédit dépassé</h2>
+		<p>{{ texte.phrase }}</p>
+		<div class="si-bloquant-chiffres" style="margin:10px 0;padding:10px 12px;background:#F8FAFD;border-radius:10px">
+			{% for ligne in texte.chiffres %}<div style="display:flex;justify-content:space-between"><span>{{ ligne[0] }}</span><b>{{ ligne[1]|number_format(0, ',', ' ') }} F</b></div>{% endfor %}
+		</div>
+		<p>Commande <a href="{{ path('app_commandes_show', {id: commande.id}) }}">{{ commande.numero }}</a>{% if demandeur %} · demandé par {{ demandeur.employe ? (demandeur.employe.prenom ~ ' ' ~ demandeur.employe.nom)|trim : demandeur.username }}{% endif %}.</p>
+		{% if analyse.accordDirection|default(false) %}
+			<div class="alert alert-success mb-0">Accord déjà donné pour cette commande.</div>
+		{% elseif analyse.autorise|default(false) %}
+			<div class="alert alert-info mb-0">La commande ne dépasse plus le plafond : rien à décider.</div>
+		{% else %}
+			<form method="post" action="{{ path('app_plafond_decision', {id: commande.id}) }}" class="si-bloquant-boutons">
+				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+				<input type="hidden" name="par" value="{{ demandeur ? demandeur.id }}">
+				<button type="submit" name="decision" value="refuser" class="btn btn-outline-danger">Refuser : demander un acompte</button>
+				<button type="submit" name="decision" value="accorder" class="btn btn-primary">Donner l'accord</button>
+			</form>
+		{% endif %}
+	</div>
+{% endblock %}

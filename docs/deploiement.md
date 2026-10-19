@@ -194,7 +194,7 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 
 `app:alertes` vérifie l'arrivée de la synchronisation, l'espace disque et la file de messages, puis envoie les alertes système en attente par e-mail et dans l'application (docs/alertes-systeme.md). Mettre dans `.env.local` du serveur `MAILER_DSN`, `MAILER_FROM_ADDRESS` et, au besoin, `ALERTES_EMAIL` (une ou plusieurs adresses, séparées par des virgules, qui reçoivent toutes les alertes en plus de la direction) : sans messagerie, les alertes restent visibles dans Réglages › Alertes système et dans la cloche. La même tâche tourne sur l'ERP local (Windows : `scripts\windows\installer_tache_alertes.bat`).
 
-Les autres tâches (synchronisation, actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail, expiration et relances des devis) tournent sur l'ERP local.
+Les autres tâches (synchronisation, notifications de l'équipe `app:notifications` chaque minute avec la synchronisation ([docs/notifications-equipe.md](notifications-equipe.md)), actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail, expiration et relances des devis) tournent sur l'ERP local.
 
 Devis (docs/devis.md) : sur l'ERP local, `app:devis:relances` chaque heure. Sous Windows : `scripts\windows\installer_tache_devis_relances.bat`. Sous Linux ou Mac, `crontab -e` :
 
@@ -215,7 +215,7 @@ Sur ce serveur en ligne, la commande refuse de tourner : ne pas l'ajouter ici.
 1. Sur l'ERP local, dans `.env.local` : `SYNC_URL=https://succesimprim.com` et la même `SYNC_CLE`.
 2. `php bin/console app:verifier-installation` sur l'ERP local.
 3. Premier chargement : `php bin/console app:synchro --initialiser`.
-4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »). Elle lance aussi `app:messagerie:delais` (délais de réponse aux clients, escalade, clôture automatique : `docs/messagerie-clients.md`).
+4. Tâche planifiée de la synchronisation (docs/synchronisation.md, « Mise en route »). Elle lance aussi `app:messagerie:delais` (délais de réponse aux clients, escalade, clôture automatique : `docs/messagerie-clients.md`) et `app:notifications` (notifications de l'équipe : `docs/notifications-equipe.md`).
 
 ## Comptes du personnel en ligne
 

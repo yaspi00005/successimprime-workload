@@ -506,6 +506,12 @@ final class CatalogueParametres
                 'motsCles' => ['Délai de réponse aux clients · 30 min', 'Retard imputé à l\'agent assigné', 'Clôture automatique des conversations', 'Pénalité de points par réponse en retard'],
                 'note' => 'Le chronomètre ne tourne que pendant les heures ouvrées (tuile Horaires, pause comprise) ; il s\'arrête à la première réponse envoyée, les notes internes ne comptent pas.',
             ],
+            // Notifications de l'équipe (maquette NT04, docs/notifications-equipe.md) : écran complet, tuile sans champ.
+            'notifications_equipe' => [
+                'famille' => 'personnel', 'libelle' => 'Notifications de l\'équipe', 'icone' => 'fa-bell',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_reglages_notifications', 'champs' => [],
+                'motsCles' => ['Qui reçoit quoi · par rôle', 'Son, WhatsApp, SMS, e-mail', 'Heures calmes · escalade à la direction'],
+            ],
             'ecran_tv' => [
                 'famille' => 'clients', 'libelle' => 'Écran TV de l\'accueil', 'icone' => 'fa-tv',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_ecran_tv_reglages', 'champs' => [],

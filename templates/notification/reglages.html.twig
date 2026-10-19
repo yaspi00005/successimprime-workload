@@ -1,0 +1,124 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block body %}
+	<form method="post" action="{{ path('app_reglages_notifications_enregistrer') }}" data-si-reglages-notif>
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<input type="hidden" name="role_affiche" value="{{ role }}" data-si-role-affiche>
+		<div class="si-nc-tete">
+			<div>
+				<div class="si-nc-sur">Réglages › Notifications</div>
+				<h1>Qui reçoit quoi, et comment</h1>
+			</div>
+			<div class="si-nc-boutons">
+				<a class="btn btn-outline-primary btn-sm" href="{{ path('app_notification_index') }}">Centre de notifications</a>
+				{% if not enLigne %}<button type="submit" class="btn btn-danger btn-sm">Enregistrer</button>{% endif %}
+			</div>
+		</div>
+		{% if enLigne %}
+			<div class="alert alert-info">Ces réglages se changent sur l'ERP de l'imprimerie, comme les autres réglages. Ici, vous les consultez.</div>
+		{% endif %}
+
+		<div class="si-rn">
+			<div class="si-nc-carte">
+				<div class="si-rn-roles" role="tablist" aria-label="Rôle">
+					{% for code, nom in roles %}
+						<button type="button" role="tab" class="{{ code == role ? 'actif' }}" aria-selected="{{ code == role ? 'true' : 'false' }}" data-si-role="{{ code }}">{{ nom }}</button>
+					{% endfor %}
+				</div>
+				{% for code, nom in roles %}<input type="hidden" name="roles[{{ code }}][_]" value="1">{% endfor %}
+				<div class="si-rn-defile">
+					<table class="si-rn-table" data-sans-filtres>
+						<thead>
+							<tr><th scope="col">Évènement</th><th scope="col">Niveau</th>{% for canal, libelle in canaux %}<th scope="col">{{ libelle }}</th>{% endfor %}</tr>
+						</thead>
+						{% for code, nom in roles %}
+							<tbody data-si-role-corps="{{ code }}"{% if code != role %} hidden{% endif %}>
+								{% for type, t in types %}
+									{% set ligne = valeurs.roles[code][type] %}
+									<tr>
+										<td>{{ t.libelle }}</td>
+										<td><span class="si-badge-niveau si-badge-{{ t.niveau }}">{{ {critique: 'Critique', urgent: 'Urgent', a_faire: 'À faire', info: 'Info'}[t.niveau] }}</span></td>
+										{% for canal, libelle in canaux %}
+											{% set payant = canal in ['whatsapp', 'sms'] and t.niveau != 'critique' %}
+											<td>
+												<label class="si-rn-interrupteur" title="{{ payant ? 'Réservé aux alertes critiques (envoi payant)' : libelle ~ ' · ' ~ t.libelle ~ ' · ' ~ nom }}">
+													<input type="checkbox" name="roles[{{ code }}][{{ type }}][{{ canal }}]" value="1" {{ ligne[canal] ? 'checked' }} {{ payant or enLigne ? 'disabled' }} aria-label="{{ libelle }} · {{ t.libelle }} · {{ nom }}"{% if canal == 'app' %} data-si-app{% endif %}>
+													<span></span>
+												</label>
+											</td>
+										{% endfor %}
+									</tr>
+								{% endfor %}
+							</tbody>
+						{% endfor %}
+					</table>
+				</div>
+			</div>
+
+			<aside class="si-rn-cote">
+				<div class="si-nc-carte">
+					<h2>Heures calmes</h2>
+					<div class="si-rn-ligne"><label for="calme-debut">Le soir à partir de</label><input id="calme-debut" class="form-control form-control-sm" type="time" name="calme[debut]" value="{{ valeurs.calme.debut }}" {{ enLigne ? 'disabled' }}></div>
+					<div class="si-rn-ligne"><label for="calme-fin">jusqu'au matin</label><input id="calme-fin" class="form-control form-control-sm" type="time" name="calme[fin]" value="{{ valeurs.calme.fin }}" {{ enLigne ? 'disabled' }}></div>
+					<label>Ces soirs-là</label>
+					<div class="si-rn-jours">{% for j in [1, 2, 3, 4, 5, 6, 0] %}<label><input type="checkbox" name="calme[jours][]" value="{{ j }}" {{ j in valeurs.calme.jours ? 'checked' }} {{ enLigne ? 'disabled' }}> {{ jours[j] }}</label>{% endfor %}</div>
+					<label style="margin-top:6px;display:block">Toute la journée</label>
+					<div class="si-rn-jours">{% for j in [1, 2, 3, 4, 5, 6, 0] %}<label><input type="checkbox" name="calme[jours_entiers][]" value="{{ j }}" {{ j in valeurs.calme.jours_entiers ? 'checked' }} {{ enLigne ? 'disabled' }}> {{ jours[j] }}</label>{% endfor %}</div>
+					<p>Pendant les heures calmes, seules les alertes critiques passent (son, téléphone, WhatsApp). Les autres attendent dans la liste.</p>
+				</div>
+
+				<div class="si-nc-carte">
+					<h2>Remontée</h2>
+					<div class="si-rn-ligne"><label for="esc-urgent">Urgent non traité après (min)</label><input id="esc-urgent" class="form-control form-control-sm" type="number" min="0" max="1440" name="escalade[urgent_minutes]" value="{{ valeurs.escalade.urgent_minutes }}" {{ enLigne ? 'disabled' }}></div>
+					<p>→ au responsable du rôle :</p>
+					{% for code, nom in roles %}
+						{% if code != 'ROLE_ADMIN' %}
+							<div class="si-rn-ligne">
+								<label for="resp-{{ loop.index }}">{{ nom }}</label>
+								<select id="resp-{{ loop.index }}" class="form-select form-select-sm" name="escalade[responsables][{{ code }}]" {{ enLigne ? 'disabled' }}>
+									<option value="">la direction</option>
+									{% for p in personnes %}<option value="{{ p.id }}" {{ valeurs.escalade.responsables[code]|default(null) == p.id ? 'selected' }}>{{ p.employe ? (p.employe.prenom ~ ' ' ~ p.employe.nom)|trim : p.username }}</option>{% endfor %}
+								</select>
+							</div>
+						{% endif %}
+					{% endfor %}
+					<div class="si-rn-ligne"><label for="esc-direction">puis à la direction après (min)</label><input id="esc-direction" class="form-control form-control-sm" type="number" min="0" max="1440" name="escalade[direction_minutes]" value="{{ valeurs.escalade.direction_minutes }}" {{ enLigne ? 'disabled' }}></div>
+					<div class="si-rn-ligne"><label for="esc-critique">Critique non traité après (min)</label><input id="esc-critique" class="form-control form-control-sm" type="number" min="0" max="1440" name="escalade[critique_minutes]" value="{{ valeurs.escalade.critique_minutes }}" {{ enLigne ? 'disabled' }}></div>
+					<p>→ à la direction, par l'application et par WhatsApp si la case WhatsApp de la Direction est cochée. 0 : pas de remontée.</p>
+					<div class="si-rn-ligne"><label for="rappel">Urgent : rappel toutes les (min)</label><input id="rappel" class="form-control form-control-sm" type="number" min="5" max="240" name="rappel_minutes" value="{{ valeurs.rappel_minutes }}" {{ enLigne ? 'disabled' }}></div>
+					<div class="si-rn-ligne"><label for="caisse">Caisse non clôturée à</label><input id="caisse" class="form-control form-control-sm" type="time" name="heure_caisse" value="{{ valeurs.heure_caisse }}" {{ enLigne ? 'disabled' }}></div>
+				</div>
+
+				<div class="si-nc-carte">
+					<h2>Coût</h2>
+					<p style="margin-top:0">Les SMS et WhatsApp envoyés automatiquement sont facturés par l'opérateur ou le fournisseur : ils sont réservés aux alertes critiques. Le SMS est coupé par défaut.</p>
+					<div class="si-rn-ligne"><label for="payants">SMS et WhatsApp par jour, au plus</label><input id="payants" class="form-control form-control-sm" type="number" min="0" max="200" name="payants_par_jour" value="{{ valeurs.payants_par_jour }}" {{ enLigne ? 'disabled' }}></div>
+					{% for canal in ['whatsapp', 'sms', 'email'] %}
+						<div class="si-rn-etat {{ etatCanaux[canal] ? 'ok' : 'ko' }}"><i class="fas {{ etatCanaux[canal] ? 'fa-check-circle' : 'fa-exclamation-circle' }}" aria-hidden="true"></i><span>{{ etatCanaux.messages[canal] }}</span></div>
+					{% endfor %}
+				</div>
+			</aside>
+		</div>
+	</form>
+	<script>
+		(function () {
+			var f = document.querySelector('[data-si-reglages-notif]');
+			if (!f) { return; }
+			f.querySelectorAll('[data-si-role]').forEach(function (b) {
+				b.addEventListener('click', function () {
+					f.querySelectorAll('[data-si-role]').forEach(function (o) { o.classList.toggle('actif', o === b); o.setAttribute('aria-selected', o === b ? 'true' : 'false'); });
+					f.querySelectorAll('[data-si-role-corps]').forEach(function (t) { t.hidden = t.dataset.siRoleCorps !== b.dataset.siRole; });
+					f.querySelector('[data-si-role-affiche]').value = b.dataset.siRole;
+				});
+			});
+			// Sans l'application, les autres moyens n'ont pas de sens : ils se décochent.
+			f.addEventListener('change', function (e) {
+				if (e.target.matches('[data-si-app]') && !e.target.checked) {
+					e.target.closest('tr').querySelectorAll('input[type=checkbox]').forEach(function (c) { c.checked = false; });
+				}
+			});
+		})();
+	</script>
+{% endblock %}

@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\User;
+use App\Service\NotificationsEquipe\AccordsPlafond;
 use App\Service\ProduitsClient\Aiguillage;
 use App\Service\ProduitsClient\LiensFichiers;
 use App\Service\Stock\ReservationsCommande;
@@ -35,7 +36,7 @@ final class AiguillageCommandeController extends AbstractController
     /** Confirme la commande (si besoin) et applique l'aiguillage : file d'impression ou prépresse. */
     #[Route('/commandes/{id}/aiguillage/lancer', name: 'app_commandes_aiguillage_lancer', requirements: ['id' => '\d+'], methods: ['POST'])]
     #[IsGranted('ROLE_COMMANDE')]
-    public function lancer(#[MapEntity(id: 'id')] Commandes $commande, Request $request, ReservationsCommande $reservations): Response
+    public function lancer(#[MapEntity(id: 'id')] Commandes $commande, Request $request, ReservationsCommande $reservations, AccordsPlafond $plafond): Response
     {
         if (!$this->isCsrfTokenValid('aiguillage-'.$commande->getId(), $request->request->getString('_token'))) {
             throw $this->createAccessDeniedException('La page a expiré. Rechargez-la.');
@@ -44,6 +45,9 @@ final class AiguillageCommandeController extends AbstractController
             $this->addFlash('warning', 'La file d\'impression est gérée par l\'ERP de l\'atelier : lancez la commande depuis le local.');
         } elseif ($commande->isDeleted() || $commande->attendValidationEntreprise() || $commande->estRefuseeParEntreprise()) {
             $this->addFlash('danger', 'Cette commande ne peut pas être lancée.');
+        } elseif ($plafond->bloquee($commande)) {
+            // Fenêtre bloquante (docs/notifications-equipe.md) : acompte ou accord de la direction d'abord.
+            $this->addFlash('plafond_bloquant', $commande->getId());
         } else {
             $confirmee = !$commande->isStatut();
             $commande->setStatut(true);

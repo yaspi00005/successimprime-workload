@@ -28,6 +28,7 @@ use App\Entity\CommandesDetails;
 use App\Service\Corbeille\Corbeille;
 use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
+use App\Service\NotificationsEquipe\AccordsPlafond;
 use App\Service\Stock\ReservationsCommande;
 use App\Service\CalculateurCoutRevient;
 use App\Service\SuiviCommandeService;
@@ -254,9 +255,11 @@ final class CommandesController extends AbstractController
         CommandesRepository $commandesRepository,
         NotificationService $notificationService,
         Parametres $parametres,
-        PromotionsSaisie $promotionsSaisie
+        PromotionsSaisie $promotionsSaisie,
+        AccordsPlafond $accordsPlafond
     ): Response {
         $commande = new Commandes();
+        $plafondBloque = false;
 
         // « + Commande » de la fiche client (docs/clients.md) : le client est déjà choisi.
         if ($request->isMethod('GET') && Entree::entier($request->query, 'client') > 0) {
@@ -309,6 +312,11 @@ final class CommandesController extends AbstractController
 
             if ('confirmer' === $action || 'brouillon' === $action) {
                 $commande->setStatut('confirmer' === $action);
+            }
+            // Plafond de crédit dépassé (docs/notifications-equipe.md) : enregistrée en brouillon, fenêtre bloquante.
+            if ('confirmer' === $action && $accordsPlafond->bloquee($commande)) {
+                $commande->setStatut(false);
+                $plafondBloque = true;
             }
         }
 
@@ -568,6 +576,12 @@ final class CommandesController extends AbstractController
 
                 $request->getSession()->remove('brouillon_commande');
 
+                if ($plafondBloque) {
+                    $this->addFlash('plafond_bloquant', $commande->getId());
+
+                    return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId(), 'creee' => 1]);
+                }
+
                 /*
                  * Acompte choisi à la saisie : la caisse s'ouvre
                  * avec le montant et le moyen déjà remplis.
@@ -725,8 +739,10 @@ final class CommandesController extends AbstractController
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
         ReservationsCommande $reservationsCommande,
-        PromotionsSaisie $promotionsSaisie
+        PromotionsSaisie $promotionsSaisie,
+        AccordsPlafond $accordsPlafond
     ): Response {
+        $plafondBloque = false;
         if ($commande->estSoldeOuverture()) {
             throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
         }
@@ -855,6 +871,11 @@ final class CommandesController extends AbstractController
             // Une commande confirmée ne repasse pas en brouillon depuis la saisie.
             if ('confirmer' === $action || ('brouillon' === $action && !$commandeEtaitValidee)) {
                 $commande->setStatut('confirmer' === $action);
+            }
+            // Plafond de crédit dépassé : la confirmation attend un acompte ou l'accord de la direction.
+            if ('confirmer' === $action && !$commandeEtaitValidee && $accordsPlafond->bloquee($commande)) {
+                $commande->setStatut(false);
+                $plafondBloque = true;
             }
         }
 
@@ -1078,10 +1099,13 @@ final class CommandesController extends AbstractController
 
                 $entityManager->flush();
 
+                if ($plafondBloque) {
+                    $this->addFlash('plafond_bloquant', $commande->getId());
+                }
 
                 $this->addFlash(
-                    'success',
-                    'La commande a été modifiée avec succès.'
+                    $plafondBloque ? 'warning' : 'success',
+                    $plafondBloque ? 'Modifications enregistrées : la commande reste à confirmer (plafond de crédit).' : 'La commande a été modifiée avec succès.'
                 );
                 $this->avertirStockManquant($reservationsCommande, $commande);
 

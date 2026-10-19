@@ -56,6 +56,7 @@ final class NavigationExtension extends AbstractExtension
         'accueil' => [
             ['libelle' => 'Tableau de bord', 'route' => 'app_home', 'role' => null, 'prefixes' => ['app_home']],
             ['libelle' => 'Planning', 'route' => 'app_planning_index', 'role' => null, 'prefixes' => ['app_planning_']],
+            ['libelle' => 'Notifications', 'route' => 'app_notification_index', 'role' => null, 'prefixes' => ['app_notification_']],
             ['libelle' => 'Entretien', 'route' => 'app_entretien_index', 'role' => ['ROLE_ENTRETIEN', 'ROLE_RH'], 'prefixes' => ['app_entretien_']],
             ['libelle' => 'Mes statistiques', 'route' => 'app_mes_statistiques', 'role' => 'ROLE_STATS_PERSO', 'prefixes' => ['app_mes_statistiques']],
             ['libelle' => 'Statistiques et rapports', 'route' => 'app_statistiques_index', 'role' => 'ROLE_STATS_GLOBAL', 'prefixes' => ['app_statistiques_']],
@@ -223,6 +224,8 @@ final class NavigationExtension extends AbstractExtension
         'app_clients_soldes' => 'finances',
         'app_clients_solde' => 'finances',
         'app_home' => 'accueil',
+        'app_notification_' => 'accueil',
+        'app_reglages_notifications' => 'reglages',
         'app_statistiques_' => 'accueil',
         'app_planning_' => 'accueil',
         'app_entretien_' => 'accueil',

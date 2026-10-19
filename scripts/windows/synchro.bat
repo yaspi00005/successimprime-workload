@@ -23,4 +23,8 @@ set RESULTAT=%ERRORLEVEL%
 :: Direction et cloture automatique, meme sans site en ligne.
 "%PHP%" "%PROJET%\bin\console" app:messagerie:delais --no-interaction >> "%LOG_FILE%" 2>&1
 
+:: Notifications de l'equipe (docs/notifications-equipe.md) : sources,
+:: escalade au responsable puis a la direction, rappels des urgentes.
+"%PHP%" "%PROJET%\bin\console" app:notifications --no-interaction >> "%LOG_FILE%" 2>&1
+
 exit /b %RESULTAT%

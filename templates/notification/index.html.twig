@@ -1,86 +1,121 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	Notifications
+{% block title %}Notifications{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<form method="post" action="{{ path('app_notification_tout_lu') }}" class="m-0">
+			<input type="hidden" name="_token" value="{{ csrf_token('notifications') }}">
+			<input type="hidden" name="filtre" value="{{ filtre }}">
+			<button type="submit" class="btn btn-outline-primary btn-sm si-btn-entete" title="Tout marquer lu" aria-label="Tout marquer lu"><i class="fas fa-check-double" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Tout marquer lu</span></button>
+		</form>
+	</li>
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item"><a class="btn btn-outline-primary btn-sm si-btn-entete" href="{{ path('app_reglages_notifications') }}"><i class="fas fa-cog" aria-hidden="true"></i><span class="d-none d-md-inline ms-1">Réglages</span></a></li>
+	{% endif %}
 {% endblock %}
 
 {% block body %}
+	{% set jeton = csrf_token('notifications') %}
+	<div class="si-nc">
+		<nav class="si-nc-carte si-nc-filtres" aria-label="Filtrer les notifications">
+			{% for cle, libelle in filtres %}
+				{% set nombre = cle == 'toutes' ? listes.toutes|length : (cle == 'non_lues' ? listes.non_lues : (cle == 'urgentes' ? listes.critiques|length + listes.urgentes|length : (cle == 'a_faire' ? listes.a_faire|length : (cle == 'mentions' ? listes.mentions|length : (cle == 'reportees' ? listes.reportees|length : null))))) %}
+				<a href="{{ path('app_notification_index', {filtre: cle}) }}" class="{{ filtre == cle and domaine == '' ? 'actif' }}"{% if filtre == cle and domaine == '' %} aria-current="page"{% endif %}>{{ libelle }}{% if nombre is not null %} <span>{{ nombre }}</span>{% endif %}</a>
+			{% endfor %}
+			<h2>Par domaine</h2>
+			{% for cle, d in domaines %}
+				{% if parDomaine[cle] is defined %}
+					<a href="{{ path('app_notification_index', {filtre: 'toutes', domaine: cle}) }}" class="{{ domaine == cle ? 'actif' }}"><span class="si-nc-dom"><i class="{{ d[1] }}" aria-hidden="true"></i>{{ d[0] }}</span> <span>{{ parDomaine[cle] }}</span></a>
+				{% endif %}
+			{% endfor %}
+		</nav>
 
-	{% include "alert.html.twig" %}
-
-	<div class="side-app">
-
-		<div class="page-header">
-
-			<div>
-
-				<h1 class="page-title">
-					Notifications
-				</h1>
-
-				<ol class="breadcrumb">
-					<li class="breadcrumb-item active">
-						Notifications
-					</li>
-				</ol>
-
-			</div>
-
-		</div>
-
-		<div class="row row-cards">
-
-			<div class="col-lg-12">
-
-				<div class="card">
-
-					<div class="card-header">
-						<div>
-							<h3 class="card-title mb-1">
-								Historique
-							</h3>
-							<small class="text-muted">
-								{{ notifications|length }} notification(s)
-							</small>
-						</div>
-					</div>
-
-					<div class="list-group list-group-flush">
-
-						{% for notification in notifications %}
-
-							<a
-								href="{{ path('app_notification_ouvrir', {id: notification.id}) }}"
-								class="list-group-item list-group-item-action d-flex pb-3 {{ notification.lue ? '' : 'bg-light' }}"
-							>
-
-								<div class="notifyimg {{ notification.lue ? 'bg-secondary' : 'bg-info' }}">
-									<i class="fa fa-bell"></i>
+		<section class="si-nc-carte" aria-label="{{ filtres[filtre] }}">
+			{% if liste is empty %}
+				<div class="si-nc-vide"><i class="far fa-bell-slash" aria-hidden="true"></i>{{ filtre == 'historique' ? 'Rien dans l\'historique pour le moment.' : 'Rien à traiter : tout est à jour.' }}</div>
+			{% else %}
+				<ul class="si-nc-liste">
+					{% set jourCourant = '' %}
+					{% for n in liste %}
+						{% set jour = n.derniereFois|date('Y-m-d') %}
+						{% if jour != jourCourant %}
+							{% set jourCourant = jour %}
+							<li class="si-nc-jour">{{ jour == maintenant|date('Y-m-d') ? 'Aujourd\'hui' : (jour == maintenant|date_modify('-1 day')|date('Y-m-d') ? 'Hier' : n.derniereFois|date('d/m/Y')) }}</li>
+						{% endif %}
+						<li class="si-nc-item si-niv-{{ n.niveau }}{{ n.lue ? '' : ' non-lue' }}{{ n.resolueLe ? ' resolue' }}">
+							<span class="si-nc-icone si-icone-{{ n.niveau }}" aria-hidden="true"><i class="{{ icone_notification(n) }}"></i></span>
+							<div>
+								<div class="si-nc-titre">
+									<span>{{ titre_notification(n) }}</span>
+									{% if n.compteur > 1 %}<small class="si-notif-fois">{{ n.compteur }} fois</small>{% endif %}
+									{% if n.type %}<span class="si-badge-niveau si-badge-{{ n.niveau }}">{{ n.libelleNiveau }}</span>{% endif %}
 								</div>
-
-								<div>
-									<strong>{{ notification.message }}</strong>
-									<div class="small text-muted">{{ notification.dateCreation|temps_ecoule }}</div>
-								</div>
-
-							</a>
-
-						{% else %}
-
-							<div class="list-group-item text-center text-muted py-5">
-								Aucune notification.
+								{% if n.detail %}<div class="si-nc-detail">{{ n.detail }}</div>{% endif %}
+								{% if n.resolueLe %}
+									<div class="si-nc-detail">{{ {auto: 'Réglée toute seule', action: 'Traitée', lue: 'Lue', accord: 'Accord donné', refus: 'Refusée'}[n.resolution]|default('Traitée') }} {{ n.resolueLe|temps_ecoule(true) }}</div>
+								{% elseif filtre == 'reportees' and n.reporteeJusqua %}
+									<div class="si-nc-detail">Revient {{ n.reporteeJusqua|date('d/m à H:i') }}</div>
+								{% endif %}
+								{% if not n.resolueLe and n.estActive %}
+									<div class="si-nc-actions">
+										{% if n.route %}<a class="btn si-nc-agir" href="{{ path('app_notification_ouvrir', {id: n.id}) }}">{{ n.actionLibelle|default('Ouvrir') }}</a>{% endif %}
+										{% if n.type and n.niveau != 'info' %}
+											<details class="si-nc-report">
+												<summary class="btn si-nc-plus-tard">Plus tard</summary>
+												<form method="post" action="{{ path('app_notification_reporter', {id: n.id}) }}" class="si-nc-report-choix">
+													<input type="hidden" name="_token" value="{{ jeton }}">
+													<input type="hidden" name="filtre" value="{{ filtre }}">
+													<button type="submit" name="duree" value="1h">Dans 1 heure</button>
+													<button type="submit" name="duree" value="3h">Dans 3 heures</button>
+													<button type="submit" name="duree" value="demain">Demain à 9:00</button>
+												</form>
+											</details>
+										{% elseif not n.lue %}
+											<form method="post" action="{{ path('app_notification_lue', {id: n.id}) }}">
+												<input type="hidden" name="_token" value="{{ jeton }}">
+												<input type="hidden" name="filtre" value="{{ filtre }}">
+												<button type="submit" class="btn si-nc-plus-tard">Marquer lue</button>
+											</form>
+										{% endif %}
+									</div>
+								{% endif %}
 							</div>
+							<time class="si-nc-quand" datetime="{{ n.derniereFois|date('c') }}">{{ n.derniereFois|date('Y-m-d') == maintenant|date('Y-m-d') ? n.derniereFois|date('H:i') : n.derniereFois|temps_ecoule(true) }}{% if not n.lue and not n.resolueLe %}<span class="si-nc-point" aria-label="non lue"></span>{% endif %}</time>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
 
-						{% endfor %}
-
-					</div>
-
-				</div>
-
+		<aside class="si-nc-cote">
+			<div class="si-nc-carte">
+				<h2>Résumé du jour</h2>
+				<dl class="si-nc-resume">
+					<div><dt>Urgentes non traitées</dt><dd class="{{ resume.urgentes > 0 ? 'rouge' }}">{{ resume.urgentes }}</dd></div>
+					<div><dt>Traitées aujourd'hui</dt><dd class="vert">{{ resume.traitees }}</dd></div>
+					<div><dt>Temps moyen de traitement</dt><dd>{{ resume.moyenne is null ? '—' : (resume.moyenne >= 60 ? (resume.moyenne // 60) ~ ' h ' ~ '%02d'|format(resume.moyenne % 60) : resume.moyenne ~ ' min') }}</dd></div>
+				</dl>
 			</div>
-
-		</div>
-
+			<div class="si-nc-carte">
+				<h2>Reportées</h2>
+				{% if listes.reportees is empty %}
+					<p class="si-nc-aide">Aucune. « Plus tard » met une notification de côté ; elle revient à l'heure choisie.</p>
+				{% else %}
+					<ul class="si-nc-reportees">
+						{% for n in listes.reportees|slice(0, 6) %}
+							<li>« {{ titre_notification(n) }} » revient <b>{{ n.reporteeJusqua|date('Y-m-d') == maintenant|date('Y-m-d') ? 'aujourd\'hui ' : (n.reporteeJusqua|date('Y-m-d') == maintenant|date_modify('+1 day')|date('Y-m-d') ? 'demain ' : 'le ' ~ n.reporteeJusqua|date('d/m') ~ ' ') }}{{ n.reporteeJusqua|date('H:i') }}</b></li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+			<div class="si-nc-carte">
+				<label class="si-nc-son">
+					<span><i class="fas fa-volume-up" aria-hidden="true"></i> Son des alertes</span>
+					<span class="si-rn-interrupteur"><input type="checkbox" data-si-son-personne {{ son ? 'checked' }} aria-label="Son des alertes sur mes appareils"><span></span></span>
+				</label>
+				<p class="si-nc-aide" style="margin-top:8px">Chaque notification a son bouton d'action : valider, relancer, répondre… sans chercher l'écran. Elle disparaît quand l'action est faite.</p>
+			</div>
+		</aside>
 	</div>
-
 {% endblock %}

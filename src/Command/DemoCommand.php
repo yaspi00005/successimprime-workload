@@ -88,6 +88,8 @@ final class DemoCommand extends Command
         }
 
         $purger = (bool) $input->getOption('purger');
+        // Messagerie de l'équipe : ses fichiers sur le disque avant ses lignes (docs/messagerie-interne.md).
+        $this->lancer('app:messagerie-interne:demo', ['--purger' => true], $output);
         if ($purger) {
             // Les avis fictifs d'abord : leur commande les enlève proprement.
             $this->lancer('app:sondages:demo', ['--purger' => true], $output);
@@ -96,7 +98,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -139,13 +141,15 @@ final class DemoCommand extends Command
             // Dotations aux amortissements et évaluations de primes des derniers mois.
             // Conversations avec les clients (délais et retards comptent dans les primes qui suivent).
             $this->lancer('app:messagerie:demo', [], $output);
+            // Messagerie de l'équipe : groupes, fil de l'Atelier, projets, annonces, messages privés (docs/messagerie-interne.md).
+            $this->lancer('app:messagerie-interne:demo', [], $output);
             // Poste machiniste : huit travaux de demo.oumar, du fichier à vérifier au colis prêt (docs/poste-machiniste.md).
             $this->lancer('app:poste-machiniste:demo', [], $output);
             // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).
             $this->lancer('app:fiche-client:demo', [], $output);
             $this->lancer('app:immobilisations:dotations', ['--demo' => true], $output);
             $this->lancer('app:primes', ['--demo' => true], $output);
-            $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur) ou demo.awa (entretien), mot de passe demo1234.');
+            $io->text('Connexion possible avec demo.kadiatou (direction), demo.aminata (caisse), demo.seydou (graphiste), demo.oumar (machine), demo.bakary (livreur), demo.ibrahim (responsable d\'atelier) ou demo.awa (entretien), mot de passe demo1234.');
         }
 
         return Command::SUCCESS;

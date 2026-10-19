@@ -2,7 +2,7 @@
 -- dans toutes les tables. Généré par donnees-demo/generer_demo.py, ne pas
 -- modifier à la main.
 --
--- 18639 lignes. Identifiants de démo à partir de 900001 ; dates
+-- 18563 lignes. Identifiants de démo à partir de 900001 ; dates
 -- relatives au jour du chargement ; clients DEMO-xxxx avec des numéros en
 -- 60 xx xx xx et recevoir_sms = 0 ; utilisateurs demo.xxx (mot de passe
 -- demo1234).
@@ -26,9 +26,6 @@ DELETE FROM `adresse_livraison` WHERE id >= 900000;
 DELETE FROM `parametres_paiement` WHERE id >= 900000;
 DELETE FROM `journal_activite` WHERE id >= 900000;
 DELETE FROM `notifications` WHERE id >= 900000;
-DELETE FROM `messages_chat` WHERE id >= 900000;
-DELETE FROM `conversation_participants` WHERE id >= 900000;
-DELETE FROM `conversations` WHERE id >= 900000;
 DELETE FROM `immobilisation` WHERE id >= 900000;
 DELETE FROM `releve_compteur` WHERE id >= 900000;
 DELETE FROM `jour_ferie` WHERE id >= 900000;
@@ -17589,88 +17586,6 @@ INSERT INTO `immobilisation` (`id`, `code`, `designation`, `categorie`, `lieu`, 
 (900031, 'IMM-D031', 'Vidéoprojecteur', 'audiovisuel', 'Bureau direction', (CURDATE() - INTERVAL 700 DAY), NULL, 280000, 0, 5, 1, 'bon', NULL, 'Bamako Informatique (démo)', NULL, NULL, (CURDATE() - INTERVAL 420 DAY), NULL, NULL, NULL, TIMESTAMP(CURDATE() - INTERVAL 46 DAY, '10:00:00'), TIMESTAMP(CURDATE() - INTERVAL 24 DAY, '11:00:00'), NULL, NULL),
 (900032, 'IMM-D032', 'Licences Adobe Creative Cloud (3 ans)', 'logiciel', 'Atelier', (CURDATE() - INTERVAL 270 DAY), NULL, 1100000, 0, 3, 1, 'bon', NULL, 'Adobe (démo)', NULL, NULL, NULL, NULL, NULL, NULL, TIMESTAMP(CURDATE() - INTERVAL 32 DAY, '10:00:00'), TIMESTAMP(CURDATE() - INTERVAL 13 DAY, '11:00:00'), NULL, NULL),
 (900033, 'IMM-D033', 'Logiciel RIP Onyx', 'logiciel', 'Atelier', (CURDATE() - INTERVAL 650 DAY), NULL, 1500000, 0, 3, 1, 'bon', NULL, 'Dakar Signs (démo)', NULL, NULL, NULL, NULL, NULL, NULL, TIMESTAMP(CURDATE() - INTERVAL 76 DAY, '10:00:00'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '11:00:00'), NULL, NULL);
--- conversations : 6
-INSERT INTO `conversations` (`id`, `date_creation`, `date_dernier_message`, `jeton`) VALUES
-(900001, TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 31 DAY, '16:00:00'), '5b72ba31e16f7a8969716850d62052b4'),
-(900002, TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 31 DAY, '16:00:00'), '72c22a382340c996ed8034ccaf5d4105'),
-(900003, TIMESTAMP(CURDATE() - INTERVAL 42 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 37 DAY, '16:00:00'), 'b958e5e8cb236584649aa034456c562f'),
-(900004, TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '16:00:00'), 'a152e99cc9def81aa2fe9cd78be5fc5e'),
-(900005, TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '16:00:00'), '262e6c07ed9dfd31807a595780913838'),
-(900006, TIMESTAMP(CURDATE() - INTERVAL 12 DAY, '09:00:00'), TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '16:00:00'), '468e61d4217e0fab01a5fe9be806c7b6');
--- conversation_participants : 12
-INSERT INTO `conversation_participants` (`id`, `date_derniere_lecture`, `conversation_id`, `utilisateur_id`) VALUES
-(900001, TIMESTAMP(CURDATE() - INTERVAL 31 DAY, '16:00:00'), 900001, 900003),
-(900002, TIMESTAMP(CURDATE() - INTERVAL 32 DAY, '10:00:00'), 900001, 900006),
-(900003, TIMESTAMP(CURDATE() - INTERVAL 31 DAY, '16:00:00'), 900002, 900003),
-(900004, TIMESTAMP(CURDATE() - INTERVAL 32 DAY, '10:00:00'), 900002, 900008),
-(900005, TIMESTAMP(CURDATE() - INTERVAL 37 DAY, '16:00:00'), 900003, 900001),
-(900006, TIMESTAMP(CURDATE() - INTERVAL 38 DAY, '10:00:00'), 900003, 900002),
-(900007, TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '16:00:00'), 900004, 900004),
-(900008, TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '10:00:00'), 900004, 900007),
-(900009, TIMESTAMP(CURDATE() - INTERVAL 2 DAY, '16:00:00'), 900005, 900005),
-(900010, TIMESTAMP(CURDATE() - INTERVAL 3 DAY, '10:00:00'), 900005, 900010),
-(900011, TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '16:00:00'), 900006, 900006),
-(900012, TIMESTAMP(CURDATE() - INTERVAL 8 DAY, '10:00:00'), 900006, 900008);
--- messages_chat : 58
-INSERT INTO `messages_chat` (`id`, `contenu`, `date_envoi`, `piece_jointe_fichier`, `piece_jointe_nom_original`, `conversation_id`, `auteur_id`) VALUES
-(900001, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '09:22:00'), NULL, NULL, 900001, 900003),
-(900002, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '10:26:00'), NULL, NULL, 900001, 900006),
-(900003, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '11:38:00'), NULL, NULL, 900001, 900003),
-(900004, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '12:03:00'), NULL, NULL, 900001, 900006),
-(900005, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '13:02:00'), NULL, NULL, 900001, 900003),
-(900006, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '14:54:00'), NULL, NULL, 900001, 900006),
-(900007, 'C''est livré, signature reçue.', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '15:33:00'), NULL, NULL, 900001, 900003),
-(900008, 'Oui, envoyé ce matin.', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '16:05:00'), NULL, NULL, 900001, 900006),
-(900009, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '09:15:00'), NULL, NULL, 900001, 900003),
-(900010, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 33 DAY, '10:40:00'), NULL, NULL, 900001, 900006),
-(900011, 'C''est livré, signature reçue.', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '09:34:00'), NULL, NULL, 900002, 900003),
-(900012, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '10:18:00'), NULL, NULL, 900002, 900008),
-(900013, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '11:20:00'), NULL, NULL, 900002, 900003),
-(900014, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '12:42:00'), NULL, NULL, 900002, 900008),
-(900015, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '13:50:00'), NULL, NULL, 900002, 900003),
-(900016, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 35 DAY, '14:44:00'), NULL, NULL, 900002, 900008),
-(900017, 'C''est livré, signature reçue.', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '15:25:00'), NULL, NULL, 900002, 900003),
-(900018, 'Je l''ai demandé au client par WhatsApp.', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '16:45:00'), NULL, NULL, 900002, 900008),
-(900019, 'Merci !', TIMESTAMP(CURDATE() - INTERVAL 34 DAY, '09:00:00'), NULL, NULL, 900002, 900003),
-(900020, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 33 DAY, '10:33:00'), NULL, NULL, 900002, 900008),
-(900021, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 33 DAY, '11:40:00'), NULL, NULL, 900002, 900003),
-(900022, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 33 DAY, '12:10:00'), NULL, NULL, 900002, 900008),
-(900023, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 42 DAY, '09:36:00'), NULL, NULL, 900003, 900001),
-(900024, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 42 DAY, '10:43:00'), NULL, NULL, 900003, 900002),
-(900025, 'Oui, envoyé ce matin.', TIMESTAMP(CURDATE() - INTERVAL 42 DAY, '11:19:00'), NULL, NULL, 900003, 900001),
-(900026, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 41 DAY, '12:08:00'), NULL, NULL, 900003, 900002),
-(900027, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 41 DAY, '13:13:00'), NULL, NULL, 900003, 900001),
-(900028, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 41 DAY, '14:20:00'), NULL, NULL, 900003, 900002),
-(900029, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 40 DAY, '15:46:00'), NULL, NULL, 900003, 900001),
-(900030, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 40 DAY, '16:11:00'), NULL, NULL, 900003, 900002),
-(900031, 'Oui, envoyé ce matin.', TIMESTAMP(CURDATE() - INTERVAL 40 DAY, '09:43:00'), NULL, NULL, 900003, 900001),
-(900032, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '10:18:00'), NULL, NULL, 900003, 900002),
-(900033, 'Oui, envoyé ce matin.', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '11:47:00'), NULL, NULL, 900003, 900001),
-(900034, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '12:45:00'), NULL, NULL, 900003, 900002),
-(900035, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 38 DAY, '13:46:00'), NULL, NULL, 900003, 900001),
-(900036, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '09:32:00'), NULL, NULL, 900004, 900004),
-(900037, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '10:37:00'), NULL, NULL, 900004, 900007),
-(900038, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 39 DAY, '11:30:00'), NULL, NULL, 900004, 900004),
-(900039, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 38 DAY, '12:11:00'), NULL, NULL, 900004, 900007),
-(900040, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 38 DAY, '13:43:00'), NULL, NULL, 900004, 900004),
-(900041, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 38 DAY, '14:37:00'), NULL, NULL, 900004, 900007),
-(900042, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 37 DAY, '15:38:00'), NULL, NULL, 900004, 900004),
-(900043, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 37 DAY, '16:36:00'), NULL, NULL, 900004, 900007),
-(900044, 'Je l''ai demandé au client par WhatsApp.', TIMESTAMP(CURDATE() - INTERVAL 37 DAY, '09:34:00'), NULL, NULL, 900004, 900004),
-(900045, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 36 DAY, '10:00:00'), NULL, NULL, 900004, 900007),
-(900046, 'Oui, envoyé ce matin.', TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '09:29:00'), NULL, NULL, 900005, 900005),
-(900047, 'Il manque le logo en vectoriel.', TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '10:26:00'), NULL, NULL, 900005, 900010),
-(900048, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 7 DAY, '11:20:00'), NULL, NULL, 900005, 900005),
-(900049, 'Le BAT de la pharmacie est parti ?', TIMESTAMP(CURDATE() - INTERVAL 6 DAY, '12:34:00'), NULL, NULL, 900005, 900010),
-(900050, 'On a assez de bâche 510 g pour demain ?', TIMESTAMP(CURDATE() - INTERVAL 6 DAY, '13:54:00'), NULL, NULL, 900005, 900005),
-(900051, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 6 DAY, '14:01:00'), NULL, NULL, 900005, 900010),
-(900052, 'Merci !', TIMESTAMP(CURDATE() - INTERVAL 12 DAY, '09:38:00'), NULL, NULL, 900006, 900006),
-(900053, 'C''est livré, signature reçue.', TIMESTAMP(CURDATE() - INTERVAL 12 DAY, '10:48:00'), NULL, NULL, 900006, 900008),
-(900054, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 12 DAY, '11:11:00'), NULL, NULL, 900006, 900006),
-(900055, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 11 DAY, '12:05:00'), NULL, NULL, 900006, 900008),
-(900056, 'La machine est libre après 11 h.', TIMESTAMP(CURDATE() - INTERVAL 11 DAY, '13:43:00'), NULL, NULL, 900006, 900006),
-(900057, 'Le client passe à 15 h pour la bâche.', TIMESTAMP(CURDATE() - INTERVAL 11 DAY, '14:20:00'), NULL, NULL, 900006, 900008),
-(900058, 'Oui, 2 rouleaux en stock.', TIMESTAMP(CURDATE() - INTERVAL 10 DAY, '15:09:00'), NULL, NULL, 900006, 900006);
 -- notifications : 150
 INSERT INTO `notifications` (`id`, `message`, `route`, `route_parametres`, `lue`, `date_creation`, `destinataire_id`) VALUES
 (900001, 'Nouvelle commande CMD-D00618 · Boulangerie Maïga et Fils', NULL, NULL, 1, TIMESTAMP(CURDATE() - INTERVAL 48 DAY, '11:22:00'), 900001),

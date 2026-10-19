@@ -144,9 +144,9 @@
 									<a href="{{ path('app_notification_index') }}" class="dropdown-item si-cloche-pied">Voir toutes les notifications</a>
 								</div>
 							</li>
-							{% if not livreurSeul %}
+							{% if is_granted('MESSAGERIE_INTERNE_ACCES') and not site_en_ligne() %}
 							<li class="nav-item dropdown notification_dropdown si-masque-mobile">
-								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button" title="Messagerie">
+								<a class="nav-link" href="{{ path('app_messagerie_interne_index') }}" role="button" title="Messagerie de l'équipe">
 									<i class="fa fa-comments"></i>
 									{% set nombreMessages = mes_conversations_non_lues() %}
 									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}

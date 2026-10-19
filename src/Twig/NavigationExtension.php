@@ -135,6 +135,9 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Paie', 'route' => 'app_paie_index', 'role' => 'ROLE_RH', 'prefixes' => ['app_paie_']],
             ['libelle' => 'Actions commerciales', 'route' => 'app_actions_equipe_journal', 'role' => 'ROLE_ACTIONS_GERER', 'prefixes' => ['app_actions_equipe_']],
             ['libelle' => 'Performance et primes', 'route' => 'app_primes_index', 'role' => 'PRIMES_EQUIPE', 'prefixes' => ['app_primes_']],
+            // Messagerie de l'équipe (docs/messagerie-interne.md) : groupes et messages privés, tout le personnel par défaut.
+            ['libelle' => 'Messagerie de l\'équipe', 'route' => 'app_messagerie_interne_index', 'role' => 'ROLE_MESSAGERIE_INTERNE', 'prefixes' => ['app_messagerie_interne_index', 'app_messagerie_interne_voir', 'app_messagerie_interne_recherche']],
+            ['libelle' => 'Fichiers partagés', 'route' => 'app_messagerie_interne_fichiers', 'role' => 'ROLE_MESSAGERIE_INTERNE', 'prefixes' => ['app_messagerie_interne_fichiers']],
         ],
         'reglages' => [
             ['libelle' => 'Paramètres', 'route' => 'app_reglages_parametres_index', 'role' => ['ROLE_ADMIN', 'ROLE_PARAMETRES', 'ROLE_RH', 'ROLE_COUT_MARGE', 'ROLE_PRODUCTION_GERER', 'ROLE_PREPRESSE'], 'prefixes' => ['app_reglages_parametres_', 'app_bareme_']],
@@ -168,6 +171,7 @@ final class NavigationExtension extends AbstractExtension
         'app_actions_index' => ['Mes actions', 'far fa-bell'],
         'app_clients_index' => ['Clients', 'fas fa-user-friends'],
         'app_messages_clients_index' => ['Messages', 'far fa-comment-dots'],
+        'app_messagerie_interne_index' => ['Équipe', 'far fa-comments'],
         'app_ventes_index' => ['Devis et commandes', 'far fa-file-alt'],
         'app_finances_encaissements' => ['Encaissements', 'far fa-credit-card'],
         'app_livraisons_suivi' => ['Suivi des livraisons', 'fas fa-truck'],
@@ -201,6 +205,7 @@ final class NavigationExtension extends AbstractExtension
         'app_actions_index' => 'Actions',
         'app_clients_index' => 'Clients',
         'app_messages_clients_index' => 'Messages',
+        'app_messagerie_interne_index' => 'Équipe',
         'app_ventes_index' => 'Ventes',
         'app_finances_encaissements' => 'Encaisser',
         'app_livraisons_suivi' => 'Suivi',
@@ -235,6 +240,7 @@ final class NavigationExtension extends AbstractExtension
         'app_bons_livraison_' => 'ventes',
         'app_bon_livraison_' => 'ventes',
         'app_atelier_equipes' => 'equipe',
+        'app_messagerie_interne_' => 'equipe',
         'app_production_' => 'atelier',
         'app_atelier_' => 'atelier',
         'app_controle_pre_presse_' => 'atelier',

@@ -45,22 +45,7 @@ final class DossierClient
     /** Le dossier « Produits » du client, ou null (réglage vide, dossier absent). */
     public function dossier(Clients $client): ?string
     {
-        $racine = $this->racine();
-        $code = trim((string) $client->getCode());
-        if ('' === $racine || '' === $code || !is_dir($racine)) {
-            return null;
-        }
-        $dossierClient = null;
-        foreach (@scandir($racine) ?: [] as $nom) {
-            if ('.' === $nom[0] || !is_dir($racine.\DIRECTORY_SEPARATOR.$nom)) {
-                continue;
-            }
-            // « C-0231 Awa Diarra », « C-0231_Awa », « C-0231 » : le code, puis une fin de mot.
-            if (preg_match('/^'.preg_quote($code, '/').'(?![A-Za-z0-9])/i', $nom)) {
-                $dossierClient = $racine.\DIRECTORY_SEPARATOR.$nom;
-                break;
-            }
-        }
+        $dossierClient = $this->dossierDuClient($client);
         if (null === $dossierClient) {
             return null;
         }
@@ -71,6 +56,31 @@ final class DossierClient
         }
 
         return $dossierClient;
+    }
+
+    /**
+     * Le dossier du client lui-même (« D:\Clients\C-0231 Awa Diarra »), ou
+     * null (réglage vide, dossier absent). Sert aussi à la messagerie de
+     * l'équipe (fichiers partagés en lien, docs/messagerie-interne.md).
+     */
+    public function dossierDuClient(Clients $client): ?string
+    {
+        $racine = $this->racine();
+        $code = trim((string) $client->getCode());
+        if ('' === $racine || '' === $code || !is_dir($racine)) {
+            return null;
+        }
+        foreach (@scandir($racine) ?: [] as $nom) {
+            if ('.' === $nom[0] || !is_dir($racine.\DIRECTORY_SEPARATOR.$nom)) {
+                continue;
+            }
+            // « C-0231 Awa Diarra », « C-0231_Awa », « C-0231 » : le code, puis une fin de mot.
+            if (preg_match('/^'.preg_quote($code, '/').'(?![A-Za-z0-9])/i', $nom)) {
+                return $racine.\DIRECTORY_SEPARATOR.$nom;
+            }
+        }
+
+        return null;
     }
 
     /** Chemin à montrer quand le dossier manque : « D:\Clients\DEMO-0195 Amadou Sow\Produits ». */

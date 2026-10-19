@@ -2,7 +2,6 @@
 
 namespace App\Tests\Unit\Service;
 
-use App\Entity\Message;
 use App\Service\FichiersPrives;
 use App\Service\PiecesJointesChat;
 use PHPUnit\Framework\TestCase;
@@ -103,8 +102,8 @@ final class PiecesJointesChatTest extends TestCase
             self::assertArrayNotHasKey('GPSLatitudeRef', (array) @exif_read_data($chemin));
         }
 
-        $message = (new Message())->definirPieceJointe($range['fichier'], $range['nomOriginal']);
-        self::assertSame(realpath($chemin), $this->pieces->chemin($message));
+        self::assertSame(realpath($chemin), $this->pieces->chemin($range['fichier']));
+        self::assertNull($this->pieces->chemin('../'.$range['fichier']), 'jamais hors du dossier');
     }
 
     public function testCaptureEnPngSansSesTextesCaches(): void

@@ -180,7 +180,7 @@
 			<div class="si-contact-infos">
 				{% if photo_allee %}
 					{# L'allée en grand au-dessus de la carte (photos du local du 17/10/2026) : première photo de la page. #}
-					<figure class="si-local-entete si-revele">
+					<figure class="si-local-entete" data-revele>
 						{{ include('site/_photo.html.twig', {photo: photo_allee, sizes: '(max-width: 960px) calc(100vw - 32px), (max-width: 1180px) calc(42vw - 30px), 500px', immediate: not ecran_rappel}) }}
 						<figcaption>L'allée qui mène à notre entrée, sous le balcon rond.</figcaption>
 					</figure>

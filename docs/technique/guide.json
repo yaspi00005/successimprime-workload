@@ -1,13 +1,13 @@
 {
     "genere_le": {
-        "date": "2026-10-20T00:55:03+00:00",
-        "commit": "40f36d0c09b1f87fb742058112a58819a2d1afae",
+        "date": "2026-10-20T01:26:05+00:00",
+        "commit": "bacce5a686f164c9e48ad2fc35d8bf005a2abe8c",
         "branche": "claude/fix-synchronisation-bloquee-9esn94"
     },
     "stats": {
         "entites": 179,
-        "routes": 1033,
-        "routes_modifiant_des_donnees": 550,
+        "routes": 1034,
+        "routes_modifiant_des_donnees": 551,
         "routes_sans_csrf_signalees": 5,
         "routes_publiques": 72,
         "controleurs": 189,
@@ -15,17 +15,17 @@
         "commandes": 57,
         "commandes_planifiees": 27,
         "migrations": 121,
-        "tests_unitaires": 353,
+        "tests_unitaires": 354,
         "droits": 37,
         "voteurs": 9,
         "types_synchronises": 62,
         "tuiles_parametres": 51,
         "chapitres": 9,
-        "audit": 1247,
+        "audit": 1248,
         "audit_par_type": {
             "controleur": 189,
             "entite": 179,
-            "route": 779,
+            "route": 780,
             "securite": 73,
             "commande": 27
         }
@@ -729,6 +729,7 @@
                 "app_consommables_supprimer",
                 "app_controle_pre_presse_ajouter_fichier_traite",
                 "app_controle_pre_presse_controler",
+                "app_controle_pre_presse_decoupe_requise",
                 "app_controle_pre_presse_depot",
                 "app_controle_pre_presse_depot_associer",
                 "app_controle_pre_presse_depot_enregistrer",
@@ -32997,7 +32998,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/articles/\\d+/commande/ajax",
+                    "chemin": "^/articles/(?:\\d+|[0-9A-Za-z]{9})/commande/ajax",
                     "roles": [
                         "ROLE_COMMANDE"
                     ],
@@ -37477,6 +37478,36 @@
             "sensibles": []
         },
         {
+            "nom": "app_controle_pre_presse_decoupe_requise",
+            "chemin": "/pre-presse/travail/{id}/decoupe",
+            "methodes": [
+                "POST"
+            ],
+            "controleur": "App\\Controller\\ControlePrePresseController::decoupeRequise",
+            "module": "atelier",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/pre-presse",
+                    "roles": [
+                        "ROLE_PREPRESSE"
+                    ],
+                    "methodes": [],
+                    "rang": 53
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": true,
+            "csrf": true,
+            "csrf_detail": "dans l'action",
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
             "nom": "app_controle_pre_presse_depot",
             "chemin": "/pre-presse/commande/{id}/depot",
             "methodes": [
@@ -38021,7 +38052,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/pre-presse/fichier/\\d+/(visualiser|telecharger)$",
+                    "chemin": "^/pre-presse/fichier/(\\d+|[0-9A-Za-z]{9})/(visualiser|telecharger)$",
                     "roles": [
                         "ROLE_PREPRESSE",
                         "ROLE_PRODUCTION_VOIR"
@@ -38084,7 +38115,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/pre-presse/fichier/\\d+/(visualiser|telecharger)$",
+                    "chemin": "^/pre-presse/fichier/(\\d+|[0-9A-Za-z]{9})/(visualiser|telecharger)$",
                     "roles": [
                         "ROLE_PREPRESSE",
                         "ROLE_PRODUCTION_VOIR"
@@ -39575,7 +39606,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/devis/\\d+/pdf-public/",
+                    "chemin": "^/devis/(?:\\d+|[0-9A-Za-z]{9})/pdf-public/",
                     "roles": [
                         "PUBLIC_ACCESS"
                     ],
@@ -46157,7 +46188,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/factures/\\d+/pdf-public/",
+                    "chemin": "^/factures/(?:\\d+|[0-9A-Za-z]{9})/pdf-public/",
                     "roles": [
                         "PUBLIC_ACCESS"
                     ],
@@ -49875,7 +49906,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -49908,7 +49939,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -49945,7 +49976,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -49976,7 +50007,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -50007,7 +50038,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -50280,7 +50311,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -50313,7 +50344,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/livraisons/(planning|bl/\\d+)",
+                    "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                     "roles": [
                         "ROLE_LIVRAISON",
                         "ROLE_COMMANDE"
@@ -54306,7 +54337,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/paiements/\\d+$",
+                    "chemin": "^/paiements/(?:\\d+|[0-9A-Za-z]{9})$",
                     "roles": [
                         "ROLE_PAIEMENT_ENCAISSER"
                     ],
@@ -54344,7 +54375,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/paiements/\\d+/edit$",
+                    "chemin": "^/paiements/(?:\\d+|[0-9A-Za-z]{9})/edit$",
                     "roles": [
                         "ROLE_PAIEMENT_ENCAISSER"
                     ],
@@ -56948,7 +56979,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -56984,7 +57015,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57020,7 +57051,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57056,7 +57087,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57096,7 +57127,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57135,7 +57166,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57239,7 +57270,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57277,7 +57308,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57313,7 +57344,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57351,7 +57382,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57389,7 +57420,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57425,7 +57456,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57461,7 +57492,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -57499,7 +57530,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                    "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                     "roles": [
                         "ROLE_ADMIN",
                         "ROLE_COMMANDE",
@@ -62957,7 +62988,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/tablette(/\\d+)?$",
+                    "chemin": "^/tablette(/(?:\\d+|[0-9A-Za-z]{9}))?$",
                     "roles": [
                         "PUBLIC_ACCESS"
                     ],
@@ -62988,7 +63019,7 @@
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
-                    "chemin": "^/tablette(/\\d+)?$",
+                    "chemin": "^/tablette(/(?:\\d+|[0-9A-Za-z]{9}))?$",
                     "roles": [
                         "PUBLIC_ACCESS"
                     ],
@@ -65400,6 +65431,7 @@
             "routes": [
                 "app_controle_pre_presse_ajouter_fichier_traite",
                 "app_controle_pre_presse_controler",
+                "app_controle_pre_presse_decoupe_requise",
                 "app_controle_pre_presse_fichier_traite_initialiser",
                 "app_controle_pre_presse_fichier_traite_morceau",
                 "app_controle_pre_presse_telecharger_fichier",
@@ -65429,9 +65461,9 @@
                 "App\\Entity\\CommandeDetailFichier"
             ],
             "csrf": {
-                "routes_modifiant": 4,
-                "avec_jeton": 4,
-                "appels_isCsrfTokenValid": 4,
+                "routes_modifiant": 5,
+                "avec_jeton": 5,
+                "appels_isCsrfTokenValid": 5,
                 "sans_jeton": []
             }
         },
@@ -72891,6 +72923,11 @@
                     "resume": "Fichier à montrer et à imprimer : le plus récent de ceux transmis à"
                 },
                 {
+                    "nom": "fichierDecoupe",
+                    "statique": true,
+                    "resume": "Fichier de découpe (le contour pour le plotter, docs/prepresse.md) :"
+                },
+                {
                     "nom": "typeApercu",
                     "statique": true,
                     "resume": "« image », « pdf » ou null (fichier de travail à ouvrir dans le logiciel)."
@@ -74250,9 +74287,13 @@
                     "resume": "Cree la ligne de commande correspondante, prete pour la production."
                 },
                 {
-                    "nom": "aiguillerALaCommande",
+                    "nom": "referenceLien",
                     "statique": true,
-                    "resume": "À la commande (MP05) : une ligne à une taille validée garde la"
+                    "resume": "La référence du fichier lié gardée sur la ligne, avec son fichier de"
+                },
+                {
+                    "nom": "aiguillerALaCommande",
+                    "statique": true
                 },
                 {
                     "nom": "taille",
@@ -82716,7 +82757,12 @@
                 {
                     "nom": "fichiersRecus",
                     "statique": true,
-                    "resume": "Fichiers reçus sur la ligne : actifs et complets (un envoi en cours"
+                    "resume": "Fichiers à imprimer reçus sur la ligne : actifs et complets (un envoi"
+                },
+                {
+                    "nom": "role",
+                    "statique": true,
+                    "resume": "Rôle d'un fichier déposé : celui choisi, sinon d'après son nom (« decoupe », « cut », « contour »)."
                 },
                 {
                     "nom": "aFichier",
@@ -83204,6 +83250,11 @@
                 },
                 {
                     "nom": "message"
+                },
+                {
+                    "nom": "decoupesManquantes",
+                    "statique": true,
+                    "resume": "Formats qui attendent encore leur fichier de découpe (RegleDecoupe) :"
                 },
                 {
                     "nom": "whatsapp",
@@ -91227,7 +91278,7 @@
                 ]
             },
             {
-                "chemin": "^/tablette(/\\d+)?$",
+                "chemin": "^/tablette(/(?:\\d+|[0-9A-Za-z]{9}))?$",
                 "roles": [
                     "PUBLIC_ACCESS"
                 ]
@@ -91239,13 +91290,13 @@
                 ]
             },
             {
-                "chemin": "^/factures/\\d+/pdf-public/",
+                "chemin": "^/factures/(?:\\d+|[0-9A-Za-z]{9})/pdf-public/",
                 "roles": [
                     "PUBLIC_ACCESS"
                 ]
             },
             {
-                "chemin": "^/devis/\\d+/pdf-public/",
+                "chemin": "^/devis/(?:\\d+|[0-9A-Za-z]{9})/pdf-public/",
                 "roles": [
                     "PUBLIC_ACCESS"
                 ]
@@ -91293,7 +91344,7 @@
                 ]
             },
             {
-                "chemin": "^/produits(/?$|/(export|nouveau|\\d+|prix-speciaux|options)(/|$))",
+                "chemin": "^/produits(/?$|/(export|nouveau|(?:\\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))",
                 "roles": [
                     "ROLE_ADMIN",
                     "ROLE_COMMANDE",
@@ -91314,7 +91365,7 @@
                 ]
             },
             {
-                "chemin": "^/articles/\\d+/commande/ajax",
+                "chemin": "^/articles/(?:\\d+|[0-9A-Za-z]{9})/commande/ajax",
                 "roles": [
                     "ROLE_COMMANDE"
                 ]
@@ -91374,19 +91425,19 @@
                 ]
             },
             {
-                "chemin": "^/paiements/\\d+/edit$",
+                "chemin": "^/paiements/(?:\\d+|[0-9A-Za-z]{9})/edit$",
                 "roles": [
                     "ROLE_PAIEMENT_ENCAISSER"
                 ]
             },
             {
-                "chemin": "^/paiements/\\d+/delete$",
+                "chemin": "^/paiements/(?:\\d+|[0-9A-Za-z]{9})/delete$",
                 "roles": [
                     "ROLE_PAIEMENT_ENCAISSER"
                 ]
             },
             {
-                "chemin": "^/paiements/\\d+$",
+                "chemin": "^/paiements/(?:\\d+|[0-9A-Za-z]{9})$",
                 "roles": [
                     "ROLE_PAIEMENT_ENCAISSER"
                 ],
@@ -91420,7 +91471,7 @@
                 ]
             },
             {
-                "chemin": "^/gestion/tresorerie/mouvements/\\d+/(edit|validate|cancel)$",
+                "chemin": "^/gestion/tresorerie/mouvements/(?:\\d+|[0-9A-Za-z]{9})/(edit|validate|cancel)$",
                 "roles": [
                     "ROLE_TRESORERIE_SAISIR"
                 ]
@@ -91459,7 +91510,7 @@
                 ]
             },
             {
-                "chemin": "^/pre-presse/fichier/\\d+/(visualiser|telecharger)$",
+                "chemin": "^/pre-presse/fichier/(\\d+|[0-9A-Za-z]{9})/(visualiser|telecharger)$",
                 "roles": [
                     "ROLE_PREPRESSE",
                     "ROLE_PRODUCTION_VOIR"
@@ -91499,7 +91550,7 @@
                 ]
             },
             {
-                "chemin": "^/livraisons/(planning|bl/\\d+)",
+                "chemin": "^/livraisons/(planning|bl/(?:\\d+|[0-9A-Za-z]{9}))",
                 "roles": [
                     "ROLE_LIVRAISON",
                     "ROLE_COMMANDE"
@@ -91939,9 +91990,9 @@
             },
             {
                 "controleur": "App\\Controller\\ControlePrePresseController",
-                "appels_isCsrfTokenValid": 4,
-                "routes_modifiant": 4,
-                "avec_jeton": 4,
+                "appels_isCsrfTokenValid": 5,
+                "routes_modifiant": 5,
+                "avec_jeton": 5,
                 "sans_jeton": []
             },
             {
@@ -97942,7 +97993,7 @@
             "type": "controleur",
             "module": "atelier",
             "titre": "ControlePrePresseController",
-            "quoi_verifier": "Chaque action de ControlePrePresseController (7 routes) vérifie ses droits (ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR) et le jeton CSRF sur les 4 routes qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
+            "quoi_verifier": "Chaque action de ControlePrePresseController (8 routes) vérifie ses droits (ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR) et le jeton CSRF sur les 5 routes qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/ControlePrePresseController.php"
         },
         {
@@ -101815,6 +101866,14 @@
             "module": "atelier",
             "titre": "GET|POST /pre-presse/travail/{id}",
             "quoi_verifier": "GET|POST /pre-presse/travail/{id} (ControlePrePresseController::controler) n'est ouverte qu'avec ROLE_PREPRESSE (access_control) et vérifie le jeton CSRF (dans l'action).",
+            "fichier": "src/Controller/ControlePrePresseController.php"
+        },
+        {
+            "id": "route:app_controle_pre_presse_decoupe_requise",
+            "type": "route",
+            "module": "atelier",
+            "titre": "POST /pre-presse/travail/{id}/decoupe",
+            "quoi_verifier": "POST /pre-presse/travail/{id}/decoupe (ControlePrePresseController::decoupeRequise) n'est ouverte qu'avec ROLE_PREPRESSE (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/ControlePrePresseController.php"
         },
         {

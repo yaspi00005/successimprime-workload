@@ -50,11 +50,13 @@
 							<rect x="{{ laize - marge }}" y="0" width="{{ marge }}" height="{{ hauteur_plan }}" fill="#9AA6B8" opacity=".35"></rect>
 							{% for p in pieces %}
 								{% set fs = min(max(min(p.l, p.h) / 9, 5), 13) %}
+								{# Le libellé tient dans la largeur de la pièce. #}
+								{% set fs2 = min(fs * 0.75, p.l * 0.92 / max(p.libelle|length * 0.56, 1)) %}
 								<g class="piece" data-cle="{{ p.cle }}" data-l="{{ p.l }}" data-h="{{ p.h }}" data-lo="{{ p.lo }}" data-ho="{{ p.ho }}" data-tourne="{{ p.tourne ? 1 : 0 }}" transform="translate({{ p.x }} {{ p.y }})" tabindex="-1" aria-label="{{ p.libelle }}, {{ p.l|number_format(0, ',', ' ') }} × {{ p.h|number_format(0, ',', ' ') }} cm{{ p.tourne ? ', tournée' }}">
 									<rect class="fond" x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="{{ p.couleur }}"></rect>
 									<rect x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="none" stroke="#DE1028" stroke-width="1" stroke-dasharray="4 3"></rect>
 									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 - fs * 0.3 }}" text-anchor="middle" font-size="{{ fs }}" font-weight="700" fill="#FFFFFF">{{ p.lo|number_format(0, ',', ' ') }} × {{ p.ho|number_format(0, ',', ' ') }}{{ p.tourne ? ' ↻' }}</text>
-									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 + fs * 0.9 }}" text-anchor="middle" font-size="{{ fs * 0.75 }}" fill="#FFFFFF">{{ p.libelle }}</text>
+									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 + fs * 0.9 }}" text-anchor="middle" font-size="{{ fs2 }}" fill="#FFFFFF">{{ p.libelle }}</text>
 								</g>
 							{% endfor %}
 						</svg>
@@ -131,8 +133,8 @@
 
 			<div class="si-fr-note-rip">
 				Le RIP reçoit un seul fichier avec les {{ pieces|length }} pièce{{ pieces|length > 1 ? 's' }}, les repères de coupe et le nom de chaque commande imprimé dans la marge ({{ nomRip }}). Les couleurs sont converties par le RIP avec le profil du support : le serveur ne convertit rien.
-				{% if dossier %}<br>Dossier : <span class="si-fr-code">{{ dossier }}</span>{% endif %}
-				{% if not racine %}<br><b>Dossier de la machine non réglé : le fichier reste dans l'ERP.</b>{% endif %}
+				{% if dossier and racine %}<br>Dossier de la machine : <span class="si-fr-code">{{ dossier }}</span>{% endif %}
+				{% if not racine %}<br><b>Dossier de la machine non réglé : le fichier reste dans l'ERP</b>{% if dossier %} (prévu : <span class="si-fr-code">{{ dossier }}</span>){% endif %}.{% endif %}
 			</div>
 
 			{% if modifiable and peutAgir %}

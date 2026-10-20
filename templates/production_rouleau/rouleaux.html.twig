@@ -22,7 +22,7 @@
 
 	<p class="si-fab-muet">{{ libres }} {{ libres > 1 ? 'travaux au m² attendent' : 'travail au m² attend' }} un rouleau. Plusieurs commandes du même support sont regroupées sur la laize, le plus urgent part en premier.</p>
 
-	<div class="si-fab-grille-3" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+	<div class="si-fab-grille-3" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
 		{% for cle, liste in groupes %}
 			<section class="si-fab-carte" aria-labelledby="si-fr-g-{{ cle }}">
 				<h2 id="si-fr-g-{{ cle }}">{{ titres[cle] }} <small>{{ liste|length }}</small></h2>

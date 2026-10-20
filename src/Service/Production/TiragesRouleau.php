@@ -618,7 +618,9 @@ final class TiragesRouleau
         /** @var JournalMachine|null $j */
         $j = $this->em->createQueryBuilder()->select('j')->from(JournalMachine::class, 'j')
             ->where('j.machine = :m')->andWhere('j.type = :t')->andWhere('j.le >= :debut')->andWhere('j.le < :fin')
-            ->setParameter('m', $machine)->setParameter('t', JournalMachine::TETES)
+            // Seulement les tests (pas un nettoyage ni une tête posée, notés au même type).
+            ->andWhere('j.note LIKE :test')
+            ->setParameter('m', $machine)->setParameter('t', JournalMachine::TETES)->setParameter('test', 'Test de buses%')
             ->setParameter('debut', $maintenant->setTime(0, 0))->setParameter('fin', $maintenant->setTime(0, 0)->modify('+1 day'))
             ->orderBy('j.le', 'DESC')->setMaxResults(1)
             ->getQuery()->getOneOrNullResult();

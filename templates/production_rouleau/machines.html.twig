@@ -50,7 +50,7 @@
 						<span class="si-fab-pastille">{{ m.modeFacturationLabel|default(m.typeMachine)|lower }}</span>
 					{% endif %}
 				</div>
-				<dl class="si-fr-chiffres">
+				<dl class="si-fr-chiffres si-fr-proprietes">
 					<div><dt>Dossier</dt><dd>{% if l.dossier %}<span class="si-fr-code">{{ l.dossier }}</span>{% else %}<span class="si-fab-pastille orange">à régler</span>{% endif %}</dd></div>
 					<div><dt>Tête</dt><dd>{{ a and a.teteImpression ? a.teteImpression : '—' }}</dd></div>
 					<div><dt>Usages</dt><dd>{{ a and a.usages ? a.usages : '—' }}</dd></div>

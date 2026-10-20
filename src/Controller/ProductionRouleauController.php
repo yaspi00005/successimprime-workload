@@ -573,7 +573,8 @@ final class ProductionRouleauController extends AbstractController
             }
         }
         $peutAgir = $this->peutAgirSur($tirage->getMachine(), $request);
-        $machiniste = $tirage->getDemarrePar() ?? $this->moi();
+        // Le machiniste du rouleau : qui l'a démarré, sinon envoyé au RIP, sinon préparé.
+        $machiniste = $tirage->getDemarrePar() ?? $tirage->getEnvoyePar() ?? $tirage->getCreePar() ?? $this->moi();
 
         return [
             'tirage' => $tirage,

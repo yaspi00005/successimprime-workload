@@ -3,6 +3,7 @@
 namespace App\Service\Production;
 
 use App\Entity\OrdreProduction;
+use App\Entity\TirageRouleau;
 use App\Service\Atelier\AtelierProduction;
 use App\Service\Atelier\PosteMachiniste;
 use Doctrine\ORM\EntityManagerInterface;
@@ -22,9 +23,22 @@ final class ParcoursFichier
     ) {
     }
 
-    /** L'ordre le plus récemment envoyé en production. */
+    /**
+     * L'ordre montré d'office : le dernier dont le fichier est parti au RIP
+     * (rouleau envoyé), sinon le plus récemment envoyé en production.
+     */
     public function dernierEnvoye(): ?OrdreProduction
     {
+        $auRip = $this->em->createQueryBuilder()->select('o')->from(OrdreProduction::class, 'o')
+            ->join('o.tirage', 't')
+            ->where('t.envoyeLe IS NOT NULL')->andWhere('t.statut != :tirageAnnule')->andWhere('o.statut != :annule')
+            ->setParameter('tirageAnnule', TirageRouleau::STATUT_ANNULE)->setParameter('annule', OrdreProduction::STATUT_ANNULE)
+            ->orderBy('t.envoyeLe', 'DESC')->addOrderBy('o.id', 'DESC')->setMaxResults(1)
+            ->getQuery()->getOneOrNullResult();
+        if ($auRip instanceof OrdreProduction) {
+            return $auRip;
+        }
+
         return $this->em->createQueryBuilder()->select('o')->from(OrdreProduction::class, 'o')
             ->where('o.transmisLe IS NOT NULL')->andWhere('o.statut != :annule')->setParameter('annule', OrdreProduction::STATUT_ANNULE)
             ->orderBy('o.transmisLe', 'DESC')->addOrderBy('o.id', 'DESC')->setMaxResults(1)

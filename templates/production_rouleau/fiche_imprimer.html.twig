@@ -57,7 +57,7 @@
 				<div>
 					<div class="muet">Fiche de production · {{ 'now'|date('d/m/Y à H:i') }}</div>
 					<h1>Rouleau {{ tirage.numero }}</h1>
-					<div><b>{{ tirage.machine.nom }}</b> · {{ tirage.libelleSupport }} · laize {{ tirage.laizeM|number_format(2, ',', ' ') }} m</div>
+					<div><b>{{ tirage.machine.nom }}</b> · {{ tirage.libelleSupport|split('·')|first|trim }} · laize {{ tirage.laizeM|number_format(2, ',', ' ') }} m</div>
 					<div class="muet">{{ tirage.pieces|length }} pièce{{ tirage.pieces|length > 1 ? 's' }} · {{ tirage.consommeM|number_format(1, ',', ' ') }} m de rouleau · {{ tirage.pourcent }} % utilisé · {{ tirage.libelleStatut }}</div>
 					{% if dossier %}<div class="muet">Dossier : {{ dossier }}</div>{% endif %}
 					{% if tirage.envois is not empty %}<div class="nom">{{ (tirage.envois|first).nom }}</div>{% endif %}

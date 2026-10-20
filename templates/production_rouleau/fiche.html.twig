@@ -58,25 +58,25 @@
 						<div class="contenu">
 							<b>{{ p.libelle }}</b>
 							<span class="detail {{ p.etat == 'bloquant' ? 'bloquant-texte' }}">{{ p.detail }}</span>
+							{% if peutAgir and modifiable and p.cle in aCocher|keys and p.etat == 'ok' %}
+								<form method="post" action="{{ path('app_atelier_production_cocher', {id: tirage.id}) }}" class="si-fr-decocher">
+									<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+									<input type="hidden" name="cle" value="{{ p.cle }}">
+									<input type="hidden" name="fait" value="0">
+									<button type="submit" aria-label="Décocher « {{ p.libelle }} »">décocher</button>
+								</form>
+							{% endif %}
 							{% if peutAgir and modifiable %}
 								{% if p.cle in aCocher|keys %}
+									{% if p.etat == 'afaire' %}
 									<div class="actions">
-										{% if p.etat == 'afaire' %}
 											<form method="post" action="{{ path('app_atelier_production_cocher', {id: tirage.id}) }}">
 												<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
 												<input type="hidden" name="cle" value="{{ p.cle }}">
 												<input type="hidden" name="fait" value="1">
 												<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-check" aria-hidden="true"></i>{{ aCocher[p.cle] }}</button>
 											</form>
-										{% elseif p.etat == 'ok' %}
-											<form method="post" action="{{ path('app_atelier_production_cocher', {id: tirage.id}) }}">
-												<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
-												<input type="hidden" name="cle" value="{{ p.cle }}">
-												<input type="hidden" name="fait" value="0">
-												<button type="submit" class="si-fab-bouton si-fr-petit-bouton" aria-label="Décocher {{ p.libelle|lower }}">Décocher</button>
-											</form>
-										{% endif %}
-										{% if p.cle == 'support' and p.etat == 'afaire' and tirage.support and tirage.support.reference %}
+										{% if p.cle == 'support' and tirage.support and tirage.support.reference %}
 											<form method="post" action="{{ path('app_atelier_production_scanner', {id: tirage.id}) }}">
 												<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
 												<label class="visually-hidden" for="si-fr-code-rouleau">Code lu sur le rouleau</label>
@@ -85,7 +85,8 @@
 											</form>
 										{% endif %}
 									</div>
-								{% elseif p.cle == 'buses' %}
+									{% endif %}
+								{% elseif p.cle == 'buses' and p.etat != 'ok' %}
 									<form method="post" action="{{ path('app_atelier_production_buses', {id: tirage.id}) }}" class="actions">
 										<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
 										<label class="si-fab-muet" for="si-fr-bouchees">Buses bouchées</label>

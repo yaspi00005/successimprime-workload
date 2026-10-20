@@ -6,12 +6,18 @@ use Doctrine\DBAL\Connection;
 
 /**
  * Démonstration des écrans Achats (app:demo, docs/achats.md, maquettes
- * SU01 à SU03) : cinq fournisseurs complétés comme sur les maquettes,
- * douze mois de commandes d'achat avec quelques retards et un rouleau
- * abîmé, une commande en route depuis la Chine, deux factures
+ * SU01 à SU03 et SU05) : cinq fournisseurs complétés comme sur les
+ * maquettes, douze mois de commandes d'achat avec quelques retards et un
+ * rouleau abîmé, une commande en route depuis la Chine, deux factures
  * fournisseurs à payer, et une consommation des 12 dernières semaines
  * qui met le micro-perforé en alerte (avec le vinyle à commander dans
  * les 14 jours, chez le même fournisseur).
+ *
+ * Pour la réception (SU05) : la commande CA-AAAA-0041 de Dakar Signs
+ * (4 rouleaux de vinyle blanc, 2 de micro-perforé) est en route, promise
+ * il y a deux jours, prête à recevoir ; la dernière réception de Dakar
+ * Signs a un rouleau écrasé, une réclamation ouverte et le paiement de
+ * son solde bloqué.
  *
  * Les commandes fictives générées par demo.sql pour ces fournisseurs
  * sont remplacées. Écrit par la connexion de app:demo, dans sa
@@ -24,8 +30,16 @@ final class AchatsDemo
      * sont pas dans demo-purge.sql.
      */
     public const PURGE = [
+        // Réclamations et factures fournisseurs des commandes fictives, celles de la démonstration comme celles saisies en essayant la réception.
+        'DELETE FROM reclamation_fournisseur WHERE achat_id >= 900000',
+        'DELETE FROM depense WHERE achat_id >= 900000',
         'DELETE FROM depense WHERE id >= 905000 AND id < 906000',
     ];
+
+    /*
+     * Numéro de la commande à réceptionner, comme sur la maquette SU05.
+     */
+    private const RANG_A_RECEVOIR = 41;
 
     private const SAHEL = 900001;
     private const DAKAR = 900002;
@@ -99,7 +113,9 @@ final class AchatsDemo
     /**
      * Commandes : fournisseur, jours avant aujourd'hui, jours de transport
      * réels (null : en route), lignes [article, quantité en unité
-     * d'achat, prix, abîmées], transport, transit.
+     * d'achat, prix, abîmées], transport, transit, libellés et bases des
+     * frais, et la réception (SU05) : rang du numéro gardé, nature de la
+     * casse, bon de livraison, facture et réclamation.
      */
     private static function commandes(): array
     {
@@ -120,8 +136,15 @@ final class AchatsDemo
             if ($i % 3 !== 1) {
                 $lignes[] = [self::MICRO, 2, $prixMicro, 0];
             }
-            $commandes[] = [self::DAKAR, $jours, $delai, $lignes, 0, 0, 'Transport camion Dakar → Bamako', 'groupage, 2 colis', 'Transit et frontière', 'transitaire Kayes'];
+            // La dernière réception : un rouleau écrasé, réclamation ouverte, solde bloqué (SU05).
+            $reception = $i === \count($dakar) - 1 ? ['bl' => 'BL-DS-8790', 'facture' => 'FDS-26-1188', 'motif' => 'écrasé', 'reclamation' => true] : ($i === 3 ? ['motif' => 'écrasé'] : []);
+            if ($i === \count($dakar) - 1) {
+                $lignes[0][3] = 1;
+            }
+            $commandes[] = [self::DAKAR, $jours, $delai, $lignes, 0, 0, 'Transport camion Dakar → Bamako', 'groupage, 2 colis', 'Transit et frontière', 'transitaire Kayes', $reception];
         }
+        // … et la commande de la maquette SU05, en route, promise il y a deux jours : à réceptionner.
+        $commandes[] = [self::DAKAR, 9, null, [[self::VINYLE, 4, 159600, 0], [self::MICRO, 2, 226050, 0]], 0, 0, 'Transport camion Dakar → Bamako', 'groupage, 2 colis', 'Transit et frontière', 'transitaire Kayes', ['rang' => self::RANG_A_RECEVOIR]];
 
         // Encres Pro Bamako : deux fois par mois, livrées le lendemain (une fois en 3 jours).
         for ($jours = 352, $i = 0; $jours > 3; $jours -= 15, ++$i) {
@@ -221,11 +244,21 @@ final class AchatsDemo
             $facteurs[$article] = $a[1];
         }
 
-        foreach ($commandes as [$fournisseur, $jours, $delai, $lignes, $transport, $transit, $transportLibelle, $transportBase, $transitLibelle, $transitBase]) {
+        foreach ($commandes as $c) {
+            [$fournisseur, $jours, $delai, $lignes, $transport, $transit, $transportLibelle, $transportBase, $transitLibelle, $transitBase] = $c;
+            $reception = $c[10] ?? [];
             ++$id;
             $commande = $aujourdhui->setTime(9, 30)->modify(sprintf('-%d days', $jours));
             $annee = (int) $commande->format('Y');
-            $rangs[$annee] = ($rangs[$annee] ?? 0) + 1;
+            $rang = $reception['rang'] ?? null;
+            if ($rang === null) {
+                $rangs[$annee] = ($rangs[$annee] ?? 0) + 1;
+                // Le numéro de la maquette est gardé pour la commande à réceptionner.
+                if ($rangs[$annee] === self::RANG_A_RECEVOIR && $annee === (int) $aujourdhui->format('Y')) {
+                    ++$rangs[$annee];
+                }
+                $rang = $rangs[$annee];
+            }
             $promis = self::FOURNISSEURS[$fournisseur][10];
             $recue = $delai !== null ? $commande->setTime(15, 0)->modify(sprintf('+%d days', $delai)) : null;
 
@@ -246,10 +279,15 @@ final class AchatsDemo
             }
             $partsTransport = CalculsAchat::repartirFrais($pourRepartir, $transport);
             $partsTransit = CalculsAchat::repartirFrais($pourRepartir, $transit);
+            // Reçue : coût réel sur les unités en bon état (CalculsReception::coutsReels).
+            $reels = CalculsReception::coutsReels(array_map(static fn (array $p, array $l): array => [
+                'recue' => $p['quantite'], 'bon' => ($l[1] - $l[3]) * $facteurs[$l[0]], 'unite' => $p['unite'], 'montantRecu' => $p['montant'], 'montantBon' => ($l[1] - $l[3]) * $l[2],
+            ], $pourRepartir, $lignes), $transport, $transit);
+            $reclamations = [];
 
             $connexion->insert('achats', [
                 'id' => $id,
-                'numero' => sprintf('CA-%d-%04d', $annee, $rangs[$annee]),
+                'numero' => sprintf('CA-%d-%04d', $annee, $rang),
                 'statut' => $recue !== null ? 'recu' : 'en_route',
                 'date_demande' => $commande->format('Y-m-d H:i:s'),
                 'date_commande' => $commande->format('Y-m-d H:i:s'),
@@ -266,17 +304,80 @@ final class AchatsDemo
             foreach ($lignes as $i => [$article, $quantite, $prix, $abimees]) {
                 $quantiteStock = $pourRepartir[$i]['quantite'];
                 $cout = CalculsAchat::coutRevientUnitaire($quantite * $prix, $partsTransport[$i] + $partsTransit[$i], $quantiteStock);
+                $entree = $quantiteStock - $abimees * $facteurs[$article];
                 $connexion->insert('achat_detail', [
                     'id' => ++$ligneId, 'achat_id' => $id, 'article_id' => $article,
                     'quantite' => $quantite, 'prix_unitaire' => $prix, 'total_ht' => $quantite * $prix,
-                    'quantite_stock' => $quantiteStock, 'cout_revient_unitaire' => $cout, 'quantite_abimee' => $abimees,
+                    'quantite_stock' => $quantiteStock, 'quantite_abimee' => $abimees,
+                    'cout_revient_unitaire' => $recue !== null ? ($reels[$i]['cout'] ?? $cout) : $cout,
+                    'cout_revient_prevu' => $recue !== null ? $cout : null,
+                    'quantite_recue' => $recue !== null ? $quantite : null,
+                    'quantite_facturee' => $recue !== null ? $quantite : null,
+                    'casse_motif' => $abimees > 0 ? ($reception['motif'] ?? 'abîmé') : null,
+                    'quantite_entree' => $recue !== null ? $entree : null,
+                    'stock_entre_le' => $recue?->format('Y-m-d H:i:s'),
                 ]);
-                // Reçue : l'entrée en stock correspondante, au coût de revient.
+                // Reçue : l'entrée en stock des unités en bon état, au coût de revient réel.
                 if ($recue !== null) {
-                    $connexion->insert('stock_entrees', ['id' => $ligneId, 'article_id' => $article, 'quantites' => $quantiteStock - $abimees * $facteurs[$article], 'prix' => (int) $cout, 'date' => $recue->format('Y-m-d H:i:s')]);
+                    $connexion->insert('stock_entrees', ['id' => $ligneId, 'article_id' => $article, 'quantites' => $entree, 'prix' => (int) ($reels[$i]['cout'] ?? $cout), 'date' => $recue->format('Y-m-d H:i:s')]);
+                }
+                if ($recue !== null && $abimees > 0 && ($reception['reclamation'] ?? false)) {
+                    $reclamations[] = ['ligne' => $ligneId, 'article' => $article, 'quantite' => $abimees, 'montant' => $abimees * $prix, 'facturee' => $quantite, 'recue' => $quantite, 'bon' => $quantite - $abimees];
                 }
             }
+
+            if ($recue !== null && isset($reception['facture'])) {
+                self::receptionAvecReclamation($connexion, $id, sprintf('CA-%d-%04d', $annee, $rang), $recue, $reception, $reclamations, $marchandise, self::FOURNISSEURS[$fournisseur]);
+            }
         }
+    }
+
+    /**
+     * Réception SU05 déjà faite : bon de livraison et facture, réclamation
+     * ouverte pour le rouleau écrasé (message envoyé), facture à payer
+     * reliée et solde bloqué jusqu'à l'avoir.
+     *
+     * @param array<string, mixed>       $reception
+     * @param list<array<string, mixed>> $reclamations
+     * @param array<int, mixed>          $fiche
+     */
+    private static function receptionAvecReclamation(Connection $connexion, int $achat, string $numero, \DateTimeImmutable $recue, array $reception, array $reclamations, int $marchandise, array $fiche): void
+    {
+        $facture = $marchandise;
+        $acompte = (int) round($marchandise * $fiche[8] / 100);
+        $lignesBlocage = [];
+
+        foreach ($reclamations as $i => $r) {
+            $nom = trim(explode(' · ', (string) $connexion->fetchOne('SELECT designation FROM articles WHERE id = ?', [$r['article']]))[0]);
+            $unite = self::ARTICLES[$r['article']][0];
+            $connexion->insert('reclamation_fournisseur', [
+                'id' => 905001 + $i, 'achat_id' => $achat, 'ligne_id' => $r['ligne'], 'article_id' => $r['article'],
+                'quantite' => $r['quantite'], 'montant' => $r['montant'], 'photo' => null, 'statut' => 'ouverte',
+                'message' => CalculsReception::messageReclamation($fiche[2], $numero, $recue, $r['quantite'], $unite, $nom, $reception['motif'] ?? null, $r['quantite'], $r['montant'], $reception['facture']),
+                'message_envoye_le' => $recue->modify('+1 hour')->format('Y-m-d H:i:s'),
+                'cree_le' => $recue->format('Y-m-d H:i:s'),
+            ]);
+            $lignesBlocage[] = ['nom' => $nom, 'uniteAchat' => $unite, 'facturee' => $r['facturee'], 'recue' => $r['recue'], 'bonEtat' => $r['bon'], 'ouverte' => true];
+        }
+
+        $connexion->update('achats', [
+            'bl_numero' => $reception['bl'], 'bl_date' => $recue->format('Y-m-d'),
+            'facture_numero' => $reception['facture'], 'facture_montant' => $facture, 'facture_date' => $recue->format('Y-m-d'),
+            'frais_transport_prevu' => $connexion->fetchOne('SELECT frais_transport FROM achats WHERE id = ?', [$achat]),
+            'frais_transit_prevu' => $connexion->fetchOne('SELECT frais_transit FROM achats WHERE id = ?', [$achat]),
+            'paiement_bloque' => $lignesBlocage !== [] ? 1 : 0,
+            'paiement_bloque_motif' => CalculsReception::motifBlocage($lignesBlocage),
+        ], ['id' => $achat]);
+
+        // Le solde de la facture, acompte versé à la commande déduit : une dette bloquée.
+        $connexion->insert('depense', [
+            'id' => 905003, 'objet' => sprintf('Facture %s · %s', $reception['facture'], $numero), 'categorie' => 'matieres',
+            'montant' => CalculsReception::soldeAPayer($facture, $acompte),
+            'date_depense' => $recue->format('Y-m-d'), 'echeance' => $recue->modify('+30 days')->format('Y-m-d'),
+            'justificatif' => '', 'statut' => 'a_payer', 'cree_le' => $recue->format('Y-m-d H:i:s'),
+            'fournisseur_id' => self::DAKAR, 'achat_id' => $achat, 'lie_a' => $numero,
+            'note' => sprintf('Démo : solde de la facture %s, acompte de %s F déduit.', $reception['facture'], number_format($acompte, 0, ',', ' ')),
+        ]);
     }
 
     /**

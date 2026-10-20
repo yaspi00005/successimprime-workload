@@ -1,0 +1,292 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Réception d'une commande d'achat (maquette SU05, docs/achats.md) :
+	commandé, reçu, bon état et facturé ligne par ligne ; casse avec photo
+	et réclamation au fournisseur ; frais réels et coût de revient mis à
+	jour ; contrôle à trois points ; entrée en stock. Avant la validation,
+	tout se recalcule dans le navigateur (achats-reception.js) ; après,
+	l'écran montre ce qui a été enregistré.
+#}
+
+{% set en_cours = achat.estEnCours %}
+{% set u = detail.unite %}
+
+{% block title %}Réception · {{ achat.numero }} · {{ fournisseur.nomCourt }}{% endblock %}
+{% block page_title %}Réception{% endblock %}
+
+{% block header_actions %}
+	{% if en_cours %}
+		<li class="nav-item">
+			<label for="reception-photo" class="btn btn-light btn-sm si-btn-entete mb-0" role="button"><i class="fas fa-camera me-1" aria-hidden="true"></i>Ajouter une photo</label>
+		</li>
+		<li class="nav-item">
+			<button type="submit" form="reception" class="btn btn-danger btn-sm si-btn-entete">Valider la réception</button>
+		</li>
+	{% else %}
+		{% set a_photo = reclamations|filter(r => r.reclamation.estOuverte)|first %}
+		{% if a_photo %}
+			<li class="nav-item">
+				<form method="post" action="{{ path('app_reception_reclamation_photo_ajout', {id: a_photo.reclamation.id}) }}" enctype="multipart/form-data" data-ac-photo-envoi>
+					<input type="hidden" name="_token" value="{{ csrf_token('photo_reclamation' ~ a_photo.reclamation.id) }}">
+					<input type="file" name="photo" id="reception-photo" accept="{{ types_photo }}" class="visually-hidden" data-ac-photo-auto>
+					<label for="reception-photo" class="btn btn-light btn-sm si-btn-entete mb-0" role="button"><i class="fas fa-camera me-1" aria-hidden="true"></i>Ajouter une photo</label>
+				</form>
+			</li>
+		{% endif %}
+		<li class="nav-item">
+			<a href="{{ path('app_achat_show', {id: achat.id}) }}" class="btn btn-light btn-sm si-btn-entete">Commande d'achat</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="ac-page" data-ac-reception data-sans-filtres
+		data-transport-prevu="{{ detail.transportPrevu }}" data-transit-prevu="{{ detail.transitPrevu }}"
+		data-promise="{{ achat.datePromise ? achat.datePromise|date('Y-m-d') }}"
+		data-fournisseur="{{ fournisseur.nomCourt }}" data-contact="{{ fournisseur.contactNom ?: fournisseur.nomCourt }}"
+		data-finances="{{ voit_finances ? 1 : 0 }}">
+
+		<p class="ac-muet mb-1"><a href="{{ path('app_reception_index') }}" class="text-reset">Achats › Réceptions</a></p>
+		<h2 class="ac-titre">Réception · <a href="{{ path('app_achat_show', {id: achat.id}) }}" class="text-reset">{{ achat.numero }}</a> · <a href="{{ path('app_fournisseur_show', {id: fournisseur.id}) }}" class="text-reset">{{ fournisseur.nomCourt }}</a></h2>
+		<p class="ac-muet mb-2">
+			{{ m.statut(achat) }}
+			{% if en_cours and prevue %}<span> · prévue le {{ prevue|date('d/m') }}{% if achat.datePromise %} (promis {{ achat.datePromise|date('d/m') }}){% endif %}</span>{% endif %}
+		</p>
+
+		{% if en_cours %}
+			<form method="post" id="reception" action="{{ path('app_reception_valider', {id: achat.id}) }}" enctype="multipart/form-data" class="ac-grille commande" novalidate
+				data-confirmer="Valider la réception de {{ achat.numero }} ?" data-confirmer-detail="Les unités en bon état entrent en stock au coût de revient réel, les réclamations sont créées. Une réception ne se refait pas." data-confirmer-bouton="Valider">
+			<input type="hidden" name="_token" value="{{ csrf_token('reception' ~ achat.id) }}">
+			<input type="file" name="photo" id="reception-photo" accept="{{ types_photo }}" class="visually-hidden" data-ac-photo data-taille="{{ taille_photo }}">
+		{% else %}
+			<div class="ac-grille commande">
+		{% endif %}
+			<div>
+				<section class="ac-carte" aria-label="Commandé, livré, facturé">
+					<h2>Commandé, livré, facturé</h2>
+					<div class="ac-defile">
+						<table class="ac-table ac-reception{{ en_cours ? ' ac-saisie' }}">
+							<thead>
+								<tr><th>Article</th><th class="num">Commandé</th><th class="num">Reçu</th><th class="num">Bon état</th><th class="num">Facturé</th><th>Écart</th></tr>
+							</thead>
+							<tbody>
+								{% for l in detail.lignes %}
+									{% set id = l.ligne.id %}
+									<tr data-ac-r-ligne data-commande="{{ l.commande }}" data-prix="{{ l.prix }}" data-facteur="{{ l.facteur }}" data-unite="{{ l.unite }}" data-unite-achat="{{ l.uniteAchat }}" data-nom="{{ l.nom }}" data-stock="{{ l.stockAvant ?? '' }}" data-cout-prevu="{{ l.coutPrevu ?? '' }}">
+										<td class="ac-article">
+											<b>{{ l.nom }}</b>{% if l.article.laize and l.article.longueurUniteAchat %} <small class="ac-muet">{{ l.article.laize|number_format(2, ',', ' ') }} × {{ m.q(l.article.longueurUniteAchat) }} m</small>{% endif %}
+											{% if en_cours %}
+												<input type="text" class="ac-motif" name="lignes[{{ id }}][motif]" value="{{ l.motif }}" placeholder="écrasé, mouillé, déchiré…" aria-label="Nature de la casse · {{ l.nom }}" maxlength="60" data-ac-r-motif {{ l.recue > l.bonEtat ? '' : 'hidden' }}>
+											{% endif %}
+										</td>
+										<td class="num" data-libelle="Commandé">{{ l.commande }}</td>
+										{% if en_cours %}
+											<td class="num" data-libelle="Reçu"><input type="text" inputmode="numeric" class="ac-qte" name="lignes[{{ id }}][recue]" value="{{ l.recue }}" aria-label="Reçu · {{ l.nom }}" data-ac-r-recue></td>
+											<td class="num" data-libelle="Bon état"><input type="text" inputmode="numeric" class="ac-qte" name="lignes[{{ id }}][bon]" value="{{ l.bonEtat }}" aria-label="Bon état · {{ l.nom }}" data-ac-r-bon></td>
+											<td class="num" data-libelle="Facturé"><input type="text" inputmode="numeric" class="ac-qte" name="lignes[{{ id }}][facturee]" value="{{ l.facturee }}" aria-label="Facturé · {{ l.nom }}" data-ac-r-facturee></td>
+										{% else %}
+											<td class="num" data-libelle="Reçu">{{ l.recue }}</td>
+											<td class="num{{ l.bonEtat < l.recue ? ' ac-rouge fw-bold' }}" data-libelle="Bon état">{{ l.bonEtat }}</td>
+											<td class="num" data-libelle="Facturé">{{ l.facturee }}</td>
+										{% endif %}
+										<td class="ac-ecart" data-libelle="Écart"><span class="ac-badge {{ l.ecart.classe }}" data-ac-r-ecart>{{ l.ecart.libelle }}</span></td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+					{# Casse et réclamation au fournisseur. #}
+					{% if en_cours %}
+						<div class="ac-casse" data-ac-casse hidden>
+							<label for="reception-photo" class="ac-photo" data-ac-photo-cadre>
+								<img alt="" data-ac-photo-apercu hidden>
+								<span data-ac-photo-vide><i class="fas fa-camera" aria-hidden="true"></i>Ajouter une photo</span>
+								<small data-ac-photo-legende hidden></small>
+							</label>
+							<div class="ac-reclamation">
+								<p class="mb-1"><b>Réclamation fournisseur à la validation :</b> <span data-ac-reclamation-texte></span>.</p>
+								<p class="mb-0 ac-reclamation-suite">Le message pour {{ fournisseur.contactNom ?: fournisseur.nomCourt }} est préparé avec la photo{{ fournisseur.numeroWhatsapp ? ', à envoyer par WhatsApp' : '' }}.</p>
+							</div>
+						</div>
+					{% else %}
+						{% for r in reclamations %}
+							{% set rec = r.reclamation %}
+							<div class="ac-casse">
+								{% if rec.photo %}
+									<a class="ac-photo" href="{{ path('app_reception_reclamation_photo', {id: rec.id}) }}" target="_blank" rel="noopener">
+										<img src="{{ path('app_reception_reclamation_photo', {id: rec.id}) }}" alt="Photo de la casse">
+										<small><i class="fas fa-camera me-1" aria-hidden="true"></i>{{ rec.ligne and rec.ligne.casseMotif ? rec.article.uniteAchat ~ ' ' ~ rec.ligne.casseMotif : 'casse' }}</small>
+									</a>
+								{% else %}
+									<span class="ac-photo"><span><i class="fas fa-camera" aria-hidden="true"></i>pas de photo</span></span>
+								{% endif %}
+								<div class="ac-reclamation{{ rec.estOuverte ? '' : ' reglee' }}">
+									<p class="mb-1">
+										<b>Réclamation fournisseur créée</b> : {{ r.texte }}.
+										{% if rec.messageEnvoyeLe %}Message envoyé à {{ fournisseur.contactNom ?: fournisseur.nomCourt }}{{ rec.photo ? ' avec la photo' }} le {{ rec.messageEnvoyeLe|date('d/m à H:i') }}.{% else %}Message à envoyer à {{ fournisseur.contactNom ?: fournisseur.nomCourt }}{{ rec.photo ? ' avec la photo' }}.{% endif %}
+										<span class="ac-badge {{ rec.classeStatut }}">{{ rec.libelleStatut|lower }}</span>
+									</p>
+									<div class="ac-actions-pied">
+										{% if r.whatsapp %}
+											<a class="ac-bouton" href="{{ r.whatsapp }}" target="_blank" rel="noopener" data-ac-whatsapp="{{ path('app_reception_reclamation_whatsapp', {id: rec.id}) }}" data-jeton="{{ csrf_token('whatsapp_reclamation' ~ rec.id) }}"><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>{{ rec.messageEnvoyeLe ? 'Renvoyer sur WhatsApp' : 'Envoyer sur WhatsApp' }}</a>
+										{% endif %}
+										{% if rec.estOuverte %}
+											{% for statut, libelle in {remplacee: 'Remplacée', deduite: 'Déduite (avoir reçu)', close: 'Close sans suite'} %}
+												<form method="post" action="{{ path('app_reception_reclamation_statut', {id: rec.id}) }}"
+													data-confirmer="Réclamation {{ libelle|lower }} ?"
+													data-confirmer-detail="{{ statut == 'remplacee' ? 'La marchandise de remplacement entre en stock au prix d’achat.' : (statut == 'deduite' ? 'Son montant est retiré de la facture à payer.' : 'Elle est fermée sans remplacement ni avoir.') }} Le paiement du solde est débloqué s’il ne reste aucune réclamation ouverte."
+													data-confirmer-bouton="Confirmer">
+													<input type="hidden" name="_token" value="{{ csrf_token('statut_reclamation' ~ rec.id) }}">
+													<input type="hidden" name="statut" value="{{ statut }}">
+													<button type="submit" class="ac-bouton">{{ libelle }}</button>
+												</form>
+											{% endfor %}
+										{% elseif rec.clotureeLe %}
+											<span class="ac-muet">Réglée le {{ rec.clotureeLe|date('d/m') }}{% if rec.clotureePar %} par {{ rec.clotureePar.employe ? rec.clotureePar.employe.prenom : rec.clotureePar.username }}{% endif %}.</span>
+										{% endif %}
+									</div>
+									{% if rec.message %}
+										<details class="ac-message"><summary>Voir le message</summary><p>{{ rec.message|nl2br }}</p></details>
+									{% endif %}
+								</div>
+							</div>
+						{% endfor %}
+					{% endif %}
+				</section>
+
+				<section class="ac-carte" aria-label="Frais réels">
+					<h2>Frais réels</h2>
+					<div class="ac-defile">
+						<table class="ac-table">
+							<thead><tr><th>Frais</th><th class="num">Prévu</th><th class="num">Réel</th><th class="num">Écart</th></tr></thead>
+							<tbody>
+								{% for frais in [
+									{cle: 'transport', libelle: achat.fraisTransportLibelle ?? 'Transport', prevu: detail.transportPrevu, reel: detail.transportReel},
+									{cle: 'transit', libelle: achat.fraisTransitLibelle ?? 'Transit et frontière', prevu: detail.transitPrevu, reel: detail.transitReel}
+								] %}
+									{% set ecart = frais.reel - frais.prevu %}
+									<tr>
+										<td><b>{{ frais.libelle }}</b></td>
+										<td class="num">{{ m.f(frais.prevu) }}</td>
+										<td class="num">
+											{% if en_cours %}
+												<input type="text" inputmode="numeric" class="ac-montant" name="{{ frais.cle }}_reel" value="" placeholder="{{ frais.prevu|number_format(0, ',', ' ') }}" aria-label="{{ frais.libelle }} réel" data-ac-r-frais="{{ frais.cle }}">
+											{% else %}
+												{{ m.f(frais.reel) }}
+											{% endif %}
+										</td>
+										<td class="num fw-bold {{ ecart > 0 ? 'ac-rouge' : 'ac-vert' }}" data-ac-r-ecart-frais="{{ frais.cle }}">{{ ecart > 0 ? '+ ' : (ecart < 0 ? '− ' : '') }}{{ ecart == 0 ? '0' : m.f(ecart|abs) }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+					<p class="ac-note" data-ac-r-cout>
+						{% for l in detail.lignes|filter(l => l.coutPrevu is not null and l.coutReel is not null and l.coutPrevu != l.coutReel) %}
+							Coût de revient mis à jour · {{ l.nom|lower }} : <b>{{ l.coutPrevu|number_format(0, ',', ' ') }} → {{ l.coutReel|number_format(0, ',', ' ') }} F/{{ l.unite }}</b>.
+						{% else %}
+							{{ en_cours ? 'Les frais réels remplacent les frais prévus : le coût de revient se recalcule, réparti sur les unités arrivées en bon état.' : 'Coût de revient inchangé.' }}
+						{% endfor %}
+					</p>
+				</section>
+			</div>
+
+			<aside>
+				<section class="ac-carte ac-controle" aria-label="Contrôle à 3 points">
+					<h2>Contrôle à 3 points</h2>
+					<div class="ac-point">
+						<span class="ac-coche ok"><i class="fas fa-check" aria-hidden="true"></i></span>
+						<div><b>Bon de commande</b><small>{{ achat.numero }}{% if achat.dateCommande %} · {{ achat.dateCommande|date('d/m') }}{% endif %}</small></div>
+					</div>
+					{% if not en_cours %}<form method="post" action="{{ path('app_reception_controle', {id: achat.id}) }}" class="ac-controle-form"><input type="hidden" name="_token" value="{{ csrf_token('controle_reception' ~ achat.id) }}">{% endif %}
+					<div class="ac-point">
+						<span class="ac-coche {{ achat.blNumero ? 'ok' : 'vide' }}" data-ac-coche-bl><i class="fas {{ achat.blNumero ? 'fa-check' : 'fa-minus' }}" aria-hidden="true"></i></span>
+						<div>
+							<b>Bon de livraison</b>
+							<small>{{ achat.blNumero ? achat.blNumero ~ (achat.blDate ? ' · ' ~ achat.blDate|date('d/m') : '') : 'n° et date du BL du fournisseur' }}</small>
+							<div class="ac-champs">
+								<input type="text" name="bl_numero" value="{{ achat.blNumero }}" placeholder="BL-DS-8812" maxlength="50" aria-label="Numéro du bon de livraison" data-ac-r-bl>
+								<input type="date" name="bl_date" value="{{ achat.blDate ? achat.blDate|date('Y-m-d') : (en_cours ? aujourdhui|date('Y-m-d')) }}" aria-label="Date du bon de livraison">
+							</div>
+						</div>
+					</div>
+					{% set ecart_facture = detail.lignes|filter(l => l.facturee > l.bonEtat)|length > 0 %}
+					<div class="ac-point">
+						<span class="ac-coche {{ not achat.factureNumero ? 'vide' : (ecart_facture and achat.paiementBloque ? 'alerte' : 'ok') }}" data-ac-coche-facture><i class="fas {{ not achat.factureNumero ? 'fa-minus' : (ecart_facture and achat.paiementBloque ? 'fa-exclamation' : 'fa-check') }}" aria-hidden="true"></i></span>
+						<div>
+							<b>Facture fournisseur</b>
+							<small>{{ achat.factureNumero ? achat.factureNumero ~ (voit_finances and achat.factureMontant ? ' · ' ~ m.f(achat.factureMontant) : '') : 'n° et montant de la facture' }}</small>
+							<div class="ac-champs">
+								<input type="text" name="facture_numero" value="{{ achat.factureNumero }}" placeholder="FDS-26-1290" maxlength="50" aria-label="Numéro de la facture fournisseur" data-ac-r-facture>
+								{% if voit_finances %}
+									<input type="text" inputmode="numeric" name="facture_montant" value="{{ achat.factureMontant ? achat.factureMontant|number_format(0, ',', ' ') }}" placeholder="Montant F" aria-label="Montant de la facture fournisseur">
+								{% endif %}
+								<input type="date" name="facture_date" value="{{ achat.factureDate ? achat.factureDate|date('Y-m-d') : (en_cours ? aujourdhui|date('Y-m-d')) }}" aria-label="Date de la facture fournisseur">
+							</div>
+						</div>
+					</div>
+					{% if not en_cours %}
+						{% for l in detail.lignes %}<input type="hidden" name="facturee[{{ l.ligne.id }}]" value="{{ l.facturee }}">{% endfor %}
+						<button type="submit" class="ac-bouton mt-2">Enregistrer BL et facture</button>
+						</form>
+					{% endif %}
+
+					{% if voit_finances %}
+						{% if en_cours %}
+							<div class="ac-avertissement" data-ac-blocage hidden></div>
+						{% elseif achat.paiementBloque %}
+							<div class="ac-avertissement">{{ achat.paiementBloqueMotif }}</div>
+							{% if peut_forcer %}
+								<details class="ac-forcer">
+									<summary>Forcer le paiement du solde</summary>
+									<form method="post" action="{{ path('app_reception_debloquer', {id: achat.id}) }}">
+										<input type="hidden" name="_token" value="{{ csrf_token('debloquer_reception' ~ achat.id) }}">
+										<textarea name="note" class="form-control" rows="2" maxlength="255" required placeholder="Avoir promis par téléphone, rouleau déjà remplacé…" aria-label="Note du déblocage"></textarea>
+										<button type="submit" class="ac-bouton mt-2">Débloquer le paiement</button>
+									</form>
+								</details>
+							{% endif %}
+						{% elseif achat.estPaiementForce %}
+							<p class="ac-note">Paiement débloqué par {{ achat.paiementForcePar ? (achat.paiementForcePar.employe ? achat.paiementForcePar.employe.prenom : achat.paiementForcePar.username) : 'la finance' }} le {{ achat.paiementForceLe|date('d/m') }} : {{ achat.paiementForceNote }}</p>
+						{% endif %}
+						{% if dette %}
+							<p class="ac-note">Solde à payer : <a href="{{ path('app_finances_depenses_voir', {id: dette.id}) }}"><b>{{ m.f(dette.montant) }}</b></a> · {{ dette.libelleStatut|lower }}{{ achat.paiementBloque ? ', bloqué' }}{% if achat.acomptePourcentage > 0 %} (acompte {{ achat.acomptePourcentage }} % déduit){% endif %}.</p>
+						{% endif %}
+					{% endif %}
+				</section>
+
+				<section class="ac-carte" aria-label="Entrée en stock">
+					<h2>Entrée en stock</h2>
+					{% for l in detail.lignes %}
+						<div class="ac-cout ac-entree" data-ac-r-entree="{{ loop.index0 }}">
+							<b class="fs-6">{{ l.nom }}</b>
+							<span class="text-end">
+								<b class="ac-vert" data-ac-r-plus>+ {{ m.q(l.entree) }} {{ l.unite }}</b>
+								<small data-ac-r-avant-apres>{% if l.stockAvant is not null %}{{ m.q(l.stockAvant) }} → {{ m.q(l.stockApres) }} {{ l.unite }}{% endif %}</small>
+							</span>
+						</div>
+					{% endfor %}
+					{% if en_cours %}
+						<div class="ac-arrivee">
+							<label for="date-reception">Arrivée le</label>
+							<input type="date" id="date-reception" name="date_reception" value="{{ aujourdhui|date('Y-m-d') }}" max="{{ aujourdhui|date('Y-m-d') }}" data-ac-r-date>
+						</div>
+						<p class="ac-note" data-ac-r-livraison></p>
+					{% else %}
+						<p class="ac-note">{{ livraison }}</p>
+						{% if achat.receptionnePar %}<p class="ac-note">Réceptionnée par {{ achat.receptionnePar.employe ? achat.receptionnePar.employe.prenom : achat.receptionnePar.username }}.</p>{% endif %}
+					{% endif %}
+					<p class="ac-note">Seules les unités en bon état entrent en stock. {{ en_cours ? 'Ce qui manque reste noté sur la ligne : la commande est close à la validation.' : '' }}</p>
+				</section>
+			</aside>
+		{% if en_cours %}</form>{% else %}</div>{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/achats-reception.js') }}" defer></script>
+{% endblock %}

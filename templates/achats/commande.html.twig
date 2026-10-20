@@ -45,12 +45,9 @@
 				</form>
 			</li>
 		{% endif %}
-		{% if achat.estEnCours %}
+		{% if achat.estEnCours or achat.estRecu %}
 			<li class="nav-item">
-				<form method="post" action="{{ path('app_achat_recevoir', {id: achat.id}) }}" data-confirmer="Réceptionner {{ achat.numero }} ?" data-confirmer-detail="Toute la quantité commandée entre en stock, au coût de revient (transport et transit compris)." data-confirmer-bouton="Valider">
-					<input type="hidden" name="_token" value="{{ csrf_token('recevoir_achat' ~ achat.id) }}">
-					<button type="submit" class="btn btn-danger btn-sm si-btn-entete">Réceptionner</button>
-				</form>
+				<a href="{{ path('app_reception_show', {id: achat.id}) }}" class="btn {{ achat.estRecu ? 'btn-light' : 'btn-danger' }} btn-sm si-btn-entete">{{ achat.estRecu ? 'Voir la réception' : 'Réceptionner' }}</a>
 			</li>
 		{% endif %}
 	{% endif %}

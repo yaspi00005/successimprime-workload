@@ -25,7 +25,7 @@
 				<div class="ac-defile">
 					<table class="ac-table">
 						<thead>
-							<tr><th>N°</th><th>Fournisseur</th><th>Date</th><th class="num">Montant rendu</th><th>Promis</th><th>Arrivée</th><th>Statut</th></tr>
+							<tr><th>N°</th><th>Fournisseur</th><th>Date</th><th class="num">Montant rendu</th><th>Promis</th><th>Arrivée</th><th>Statut</th><th></th></tr>
 						</thead>
 						<tbody>
 							{% for l in lignes %}
@@ -37,7 +37,8 @@
 									<td class="num"><b>{{ m.f(a.totalRendu) }}</b></td>
 									<td class="ac-muet">{{ a.datePromise ? a.datePromise|date('d/m') : '—' }}</td>
 									<td class="ac-muet">{{ a.dateReception ? a.dateReception|date('d/m') : (l.prevue ? 'prévue ' ~ l.prevue|date('d/m') : '—') }}</td>
-									<td>{{ m.statut(a) }}</td>
+									<td>{{ m.statut(a) }}{% if a.paiementBloque and is_granted('ROLE_TRESORERIE_VOIR') %} <span class="ac-badge retard">paiement bloqué</span>{% endif %}</td>
+									<td>{% if a.estEnCours %}<a class="ac-bouton" href="{{ path('app_reception_show', {id: a.id}) }}">Réceptionner</a>{% elseif a.estRecu %}<a class="ac-lien ac-muet" href="{{ path('app_reception_show', {id: a.id}) }}">Réception</a>{% endif %}</td>
 								</tr>
 							{% endfor %}
 						</tbody>

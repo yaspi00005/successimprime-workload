@@ -93,6 +93,15 @@ final class Depenses
     }
 
     /**
+     * Facture fournisseur dont la commande d'achat a son paiement bloqué
+     * (réclamation ouverte à la réception, docs/achats.md SU05).
+     */
+    public static function bloquee(Depense $d): bool
+    {
+        return true === $d->getAchat()?->isPaiementBloque();
+    }
+
+    /**
      * Enregistre une dépense saisie : reçu rangé hors du dossier public,
      * statut selon le seuil, décaissement en attente si elle est payée.
      */
@@ -153,6 +162,9 @@ final class Depenses
     {
         if (!self::payable($d)) {
             throw new \LogicException('Cette dépense n\'est pas à payer.');
+        }
+        if (self::bloquee($d)) {
+            throw new \LogicException('Paiement du solde bloqué : '.$d->getAchat()?->getPaiementBloqueMotif().' Réglez la réclamation (remplacée ou déduite) ou faites forcer le paiement sur la réception.');
         }
         if (!$compte->isActif()) {
             throw new \InvalidArgumentException('Ce compte est désactivé.');

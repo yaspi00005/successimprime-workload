@@ -84,6 +84,15 @@ class Depense implements AppartientASociete
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Articles $article = null;
 
+    /*
+     * Facture fournisseur créée à la réception d'une commande d'achat
+     * (maquette SU05) : son paiement est refusé tant que la commande a
+     * son paiement bloqué.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Achats $achat = null;
+
     /** Quantité achetée, dans l'unité de l'article. */
     #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 3, nullable: true)]
     private ?string $quantite = null;
@@ -180,6 +189,8 @@ class Depense implements AppartientASociete
     public function setLieA(?string $l): static { $l = trim((string) $l); $this->lieA = '' === $l ? null : mb_substr($l, 0, 120); return $this; }
     public function getArticle(): ?Articles { return $this->article; }
     public function setArticle(?Articles $a): static { $this->article = $a; return $this; }
+    public function getAchat(): ?Achats { return $this->achat; }
+    public function setAchat(?Achats $a): static { $this->achat = $a; return $this; }
     public function getQuantite(): ?float { return null === $this->quantite ? null : (float) $this->quantite; }
     public function setQuantite(?float $q): static { $this->quantite = null === $q || $q <= 0 ? null : number_format($q, 3, '.', ''); return $this; }
     public function getEcheance(): ?\DateTimeImmutable { return $this->echeance; }

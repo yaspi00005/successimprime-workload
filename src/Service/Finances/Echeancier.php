@@ -175,7 +175,7 @@ final class Echeancier
      * Dettes fournisseurs : dépenses à payer (et à approuver) regroupées
      * par fournisseur ou bénéficiaire, la plus grosse dette d'abord.
      *
-     * @return list<array{nom: string, achats: list<string>, du: int, a_approuver: int, echeance: ?\DateTimeImmutable, en_retard: bool, depenses: list<Depense>}>
+     * @return list<array{nom: string, achats: list<string>, du: int, a_approuver: int, echeance: ?\DateTimeImmutable, en_retard: bool, depenses: list<Depense>, bloque: int}>
      */
     public function dettes(\DateTimeImmutable $aujourdhui): array
     {
@@ -183,8 +183,10 @@ final class Echeancier
         $dettes = [];
         foreach ([...$this->depensesAPayer(), ...$this->depensesParStatut(Depense::A_APPROUVER)] as $d) {
             $cle = null !== $d->getFournisseur() ? 'f'.$d->getFournisseur()->getId() : ('' !== $d->getPayeA() ? 'b'.mb_strtolower($d->getPayeA()) : 'd'.$d->getId());
-            $dettes[$cle] ??= ['nom' => '' !== $d->getPayeA() ? $d->getPayeA() : $d->getObjet(), 'achats' => [], 'du' => 0, 'a_approuver' => 0, 'echeance' => null, 'en_retard' => false, 'depenses' => []];
+            $dettes[$cle] ??= ['nom' => '' !== $d->getPayeA() ? $d->getPayeA() : $d->getObjet(), 'achats' => [], 'du' => 0, 'a_approuver' => 0, 'echeance' => null, 'en_retard' => false, 'depenses' => [], 'bloque' => 0];
             $dettes[$cle]['achats'][] = $d->getObjet();
+            // Solde d'une commande d'achat bloqué à la réception (réclamation ouverte, docs/achats.md SU05).
+            $dettes[$cle]['bloque'] += true === $d->getAchat()?->isPaiementBloque() ? $d->getMontant() : 0;
             $dettes[$cle]['depenses'][] = $d;
             if (Depense::A_APPROUVER === $d->getStatut()) {
                 $dettes[$cle]['a_approuver'] += $d->getMontant();

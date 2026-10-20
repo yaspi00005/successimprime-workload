@@ -153,6 +153,68 @@ class Achats implements AppartientASociete
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?Articles $origineAlerte = null;
 
+    /*
+     * Réception (maquette SU05) : contrôle à trois points avec le bon de
+     * commande, le bon de livraison et la facture du fournisseur.
+     */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $blNumero = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $blDate = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $factureNumero = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $factureMontant = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $factureDate = null;
+
+    /*
+     * Frais prévus à la commande, gardés quand les frais réels de la
+     * réception les remplacent dans fraisTransport et fraisTransit.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $fraisTransportPrevu = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $fraisTransitPrevu = null;
+
+    /*
+     * Paiement du solde bloqué tant qu'une réclamation au fournisseur est
+     * ouverte (la facture compte de la marchandise abîmée ou manquante).
+     * Les Finances refusent de payer la facture reliée. Un déblocage
+     * forcé garde sa note, son auteur et son heure.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $paiementBloque = false;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $paiementBloqueMotif = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $paiementForceNote = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $paiementForceLe = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $paiementForcePar = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $receptionnePar = null;
+
+    /**
+     * @var Collection<int, ReclamationFournisseur>
+     */
+    #[ORM\OneToMany(targetEntity: ReclamationFournisseur::class, mappedBy: 'achat', cascade: ['persist'])]
+    #[ORM\OrderBy(['id' => 'ASC'])]
+    private Collection $reclamations;
+
     /**
      * @var Collection<int, AchatDetail>
      */
@@ -167,6 +229,7 @@ class Achats implements AppartientASociete
     public function __construct()
     {
         $this->lignes = new ArrayCollection();
+        $this->reclamations = new ArrayCollection();
         $this->dateDemande = new \DateTimeImmutable();
     }
 
@@ -546,6 +609,184 @@ class Achats implements AppartientASociete
         );
 
         return $this;
+    }
+
+    public function getBlNumero(): ?string
+    {
+        return $this->blNumero;
+    }
+
+    public function setBlNumero(?string $blNumero): static
+    {
+        $this->blNumero = self::texte($blNumero !== null ? mb_substr($blNumero, 0, 50) : null);
+
+        return $this;
+    }
+
+    public function getBlDate(): ?\DateTimeImmutable
+    {
+        return $this->blDate;
+    }
+
+    public function setBlDate(?\DateTimeImmutable $blDate): static
+    {
+        $this->blDate = $blDate?->setTime(0, 0);
+
+        return $this;
+    }
+
+    public function getFactureNumero(): ?string
+    {
+        return $this->factureNumero;
+    }
+
+    public function setFactureNumero(?string $factureNumero): static
+    {
+        $this->factureNumero = self::texte($factureNumero !== null ? mb_substr($factureNumero, 0, 50) : null);
+
+        return $this;
+    }
+
+    public function getFactureMontant(): ?int
+    {
+        return $this->factureMontant;
+    }
+
+    public function setFactureMontant(?int $factureMontant): static
+    {
+        $this->factureMontant = $factureMontant !== null && $factureMontant > 0 ? $factureMontant : null;
+
+        return $this;
+    }
+
+    public function getFactureDate(): ?\DateTimeImmutable
+    {
+        return $this->factureDate;
+    }
+
+    public function setFactureDate(?\DateTimeImmutable $factureDate): static
+    {
+        $this->factureDate = $factureDate?->setTime(0, 0);
+
+        return $this;
+    }
+
+    public function getFraisTransportPrevu(): ?int
+    {
+        return $this->fraisTransportPrevu;
+    }
+
+    public function setFraisTransportPrevu(?int $frais): static
+    {
+        $this->fraisTransportPrevu = $frais !== null ? max(0, $frais) : null;
+
+        return $this;
+    }
+
+    public function getFraisTransitPrevu(): ?int
+    {
+        return $this->fraisTransitPrevu;
+    }
+
+    public function setFraisTransitPrevu(?int $frais): static
+    {
+        $this->fraisTransitPrevu = $frais !== null ? max(0, $frais) : null;
+
+        return $this;
+    }
+
+    public function isPaiementBloque(): bool
+    {
+        return $this->paiementBloque;
+    }
+
+    public function getPaiementBloqueMotif(): ?string
+    {
+        return $this->paiementBloqueMotif;
+    }
+
+    /**
+     * Bloque le paiement du solde avec sa raison, ou le débloque (null).
+     */
+    public function bloquerPaiement(?string $motif): static
+    {
+        $this->paiementBloque = $motif !== null;
+        $this->paiementBloqueMotif = $motif !== null ? mb_substr($motif, 0, 255) : null;
+
+        return $this;
+    }
+
+    public function getPaiementForceNote(): ?string
+    {
+        return $this->paiementForceNote;
+    }
+
+    public function getPaiementForceLe(): ?\DateTimeImmutable
+    {
+        return $this->paiementForceLe;
+    }
+
+    public function getPaiementForcePar(): ?User
+    {
+        return $this->paiementForcePar;
+    }
+
+    /**
+     * Déblocage forcé par la finance, avec sa note.
+     */
+    public function forcerPaiement(string $note, ?User $par, \DateTimeImmutable $le): static
+    {
+        $this->bloquerPaiement(null);
+        $this->paiementForceNote = mb_substr(trim($note), 0, 255);
+        $this->paiementForcePar = $par;
+        $this->paiementForceLe = $le;
+
+        return $this;
+    }
+
+    public function estPaiementForce(): bool
+    {
+        return $this->paiementForceLe !== null;
+    }
+
+    public function getReceptionnePar(): ?User
+    {
+        return $this->receptionnePar;
+    }
+
+    public function setReceptionnePar(?User $receptionnePar): static
+    {
+        $this->receptionnePar = $receptionnePar;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, ReclamationFournisseur>
+     */
+    public function getReclamations(): Collection
+    {
+        return $this->reclamations;
+    }
+
+    public function addReclamation(ReclamationFournisseur $reclamation): static
+    {
+        if (!$this->reclamations->contains($reclamation)) {
+            $this->reclamations->add($reclamation);
+            $reclamation->setAchat($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * Réclamations encore ouvertes (ni remplacées, ni déduites, ni closes).
+     *
+     * @return list<ReclamationFournisseur>
+     */
+    public function getReclamationsOuvertes(): array
+    {
+        return array_values($this->reclamations->filter(static fn (ReclamationFournisseur $r): bool => $r->estOuverte())->toArray());
     }
 
     public function __toString(): string

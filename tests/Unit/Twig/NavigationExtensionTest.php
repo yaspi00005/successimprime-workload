@@ -29,6 +29,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'stock' => ['app_stock_etat_index', 'atelier'];
         yield 'fournisseurs (achats)' => ['app_fournisseur_show', 'atelier'];
         yield 'commandes d\'achat' => ['app_achat_edit', 'atelier'];
+        yield 'réceptions (achats)' => ['app_reception_show', 'atelier'];
         yield 'facture' => ['app_factures_show', 'finances'];
         yield 'caisse' => ['app_caisse_index', 'finances'];
         yield 'à valider' => ['app_a_valider_index', 'finances'];
@@ -117,11 +118,12 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(7, $extension->ongletActif('app_actions_voir'));
-        // Achats (docs/achats.md) : « Fournisseurs » et « Commandes d'achat » juste après « Articles et stock ».
+        // Achats (docs/achats.md) : « Fournisseurs », « Commandes d'achat » et « Réceptions » juste après « Articles et stock ».
         self::assertSame(11, $extension->ongletActif('app_stock_articles_fiche'));
         self::assertSame(12, $extension->ongletActif('app_fournisseur_show'));
         self::assertSame(13, $extension->ongletActif('app_achat_new'));
-        self::assertSame(14, $extension->ongletActif('app_machines_index'));
+        self::assertSame(14, $extension->ongletActif('app_reception_valider'));
+        self::assertSame(15, $extension->ongletActif('app_machines_index'));
         self::assertNull($extension->ongletActif('app_ecran_inconnu'));
     }
 
@@ -161,6 +163,7 @@ final class NavigationExtensionTest extends TestCase
         self::assertNotContains('app_stock_articles_index', $caisse, 'stock réservé à la Direction');
         self::assertNotContains('app_fournisseur_index', $caisse, 'achats réservés à la Direction');
         self::assertNotContains('app_achat_index', $caisse, 'achats réservés à la Direction');
+        self::assertNotContains('app_reception_index', $caisse, 'réceptions réservées à la Direction');
         self::assertNotContains('app_livraisons_mes_livraisons', $caisse);
 
         // Prépresse : le suivi des livraisons, sans les écrans du livreur.

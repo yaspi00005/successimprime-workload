@@ -1,6 +1,6 @@
 /*
- * Achats (maquettes SU01 à SU03, docs/achats.md) : liste des
- * fournisseurs, fiche fournisseur, commande d'achat. Même allure que la
+ * Achats (maquettes SU01 à SU03 et SU05, docs/achats.md) : liste des
+ * fournisseurs, fiche fournisseur, commande d'achat, réception. Même allure que la
  * facturation : cartes blanches arrondies, indicateurs, badges.
  */
 .ac-page { --ac-bleu: #0F4590; --ac-rouge: #DE1028; --ac-vert: #1F9D55; --ac-orange: #E95B35; --ac-jaune: #E0A800; --ac-gris: #6B7280; --ac-bord: #E5E9F0; --ac-fond: #F5F7FB; color: #111827; }
@@ -121,6 +121,45 @@
 .ac-page .ac-onglets a { border: 1px solid var(--ac-bord); background: #F1F3F8; color: #1F2937; border-radius: 999px; padding: 6px 14px; font-size: 13px; font-weight: 600; text-decoration: none; }
 .ac-page .ac-onglets a.actif { background: #111827; border-color: #111827; color: #fff; }
 
+/* Réception (SU05) */
+.ac-page .ac-titre { font-size: 20px; font-weight: 800; margin: 0 0 4px; color: #111827; }
+.ac-page .ac-table.ac-reception input.ac-qte { width: 56px; }
+.ac-page .ac-table.ac-reception td.ac-article { min-width: 180px; }
+.ac-page .ac-table.ac-reception input.ac-motif { display: block; margin-top: 6px; font-size: 12px; padding: 3px 8px; max-width: 220px; border-color: #F5C2C8; }
+.ac-page .ac-casse { display: flex; gap: 12px; align-items: stretch; margin-top: 14px; }
+.ac-page .ac-photo { flex: 0 0 150px; height: 100px; border-radius: 10px; background: linear-gradient(135deg, #DCE3EE, #B8C3D6); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; color: #4B5563; font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none; margin: 0; }
+.ac-page .ac-photo > span { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.ac-page .ac-photo > span i { font-size: 18px; }
+.ac-page .ac-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ac-page .ac-photo small { position: absolute; left: 6px; bottom: 6px; color: #fff; font-size: 11px; font-weight: 700; text-shadow: 0 1px 2px rgba(0, 0, 0, .6); }
+.ac-page .ac-reclamation { flex: 1 1 auto; min-width: 0; background: #FDE8EA; border-radius: 10px; padding: 12px 14px; font-size: 13px; color: #9B1022; }
+.ac-page .ac-reclamation b { color: #B3122A; }
+.ac-page .ac-reclamation.reglee { background: #F1F3F8; color: #374151; }
+.ac-page .ac-reclamation.reglee b { color: #111827; }
+.ac-page .ac-reclamation .ac-actions-pied { margin-top: 8px; }
+.ac-page .ac-reclamation .ac-bouton { font-size: 12px; padding: 4px 10px; }
+.ac-page .ac-message { margin-top: 8px; color: #374151; }
+.ac-page .ac-message summary { cursor: pointer; font-size: 12px; color: var(--ac-gris); }
+.ac-page .ac-message p { margin: 6px 0 0; background: #fff; border-radius: 8px; padding: 8px 10px; font-size: 12px; }
+.ac-page .ac-point { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); }
+.ac-page .ac-point b { display: block; font-size: 14px; }
+.ac-page .ac-point small { display: block; color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-point > div { flex: 1 1 auto; min-width: 0; }
+.ac-page .ac-coche { flex: 0 0 24px; width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; margin-top: 2px; }
+.ac-page .ac-coche.ok { background: #E7F6EE; color: var(--ac-vert); }
+.ac-page .ac-coche.alerte { background: #FFF6DB; color: #A87400; }
+.ac-page .ac-coche.vide { background: #F1F3F8; color: var(--ac-gris); }
+.ac-page .ac-champs { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.ac-page .ac-champs input, .ac-page .ac-arrivee input { border: 1px solid var(--ac-bord); border-radius: 8px; padding: 4px 8px; font-size: 13px; background: #fff; flex: 1 1 110px; min-width: 0; }
+.ac-page .ac-champs input:focus, .ac-page .ac-arrivee input:focus { border-color: var(--ac-bleu); outline: none; }
+.ac-page .ac-avertissement { background: #FFF6DB; border-radius: 10px; padding: 10px 12px; font-size: 13px; color: #6B4E00; margin-top: 12px; }
+.ac-page .ac-forcer { margin-top: 10px; font-size: 13px; }
+.ac-page .ac-forcer summary { cursor: pointer; color: var(--ac-bleu); font-weight: 600; }
+.ac-page .ac-forcer form { margin-top: 8px; }
+.ac-page .ac-entree small { display: block; color: var(--ac-gris); font-size: 12px; }
+.ac-page .ac-arrivee { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 13px; color: var(--ac-gris); }
+.ac-page .ac-arrivee label { white-space: nowrap; margin: 0; }
+
 @media (max-width: 1199px) {
 	.ac-page .ac-grille, .ac-page .ac-grille.commande { grid-template-columns: minmax(0, 1fr); }
 }
@@ -143,4 +182,16 @@
 	.ac-page .ac-liste td.num { text-align: left; }
 	.ac-page .ac-banniere { flex-wrap: wrap; }
 	.ac-page .ac-banniere .ac-economie { margin-left: 30px; }
+	.ac-page .ac-casse { flex-direction: column; }
+	.ac-page .ac-photo { flex-basis: auto; height: 140px; }
+	/* Lignes de la réception en cartes : l'article, puis commandé, reçu, bon état, facturé, écart. */
+	.ac-page .ac-table.ac-reception thead { display: none; }
+	.ac-page .ac-table.ac-reception, .ac-page .ac-table.ac-reception tbody { display: block; width: 100%; }
+	.ac-page .ac-table.ac-reception tr { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 8px; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); }
+	.ac-page .ac-table.ac-reception tr:last-child { border-bottom: 0; }
+	.ac-page .ac-table.ac-reception td { display: block; border: 0; padding: 0; text-align: left; min-width: 0; }
+	.ac-page .ac-table.ac-reception td.ac-article, .ac-page .ac-table.ac-reception td.ac-ecart { grid-column: 1 / -1; min-width: 0; }
+	.ac-page .ac-table.ac-reception td[data-libelle]::before { content: attr(data-libelle); display: block; color: var(--ac-gris); font-size: 11px; }
+	.ac-page .ac-table.ac-reception td.ac-ecart::before { display: none; }
+	.ac-page .ac-table.ac-reception input.ac-qte { width: 100%; max-width: 64px; }
 }

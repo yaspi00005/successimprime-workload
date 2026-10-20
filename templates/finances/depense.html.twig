@@ -104,6 +104,14 @@
 					</section>
 				{% endif %}
 
+				{% if bloquee %}
+					<section class="card si-fin-decision" aria-label="Paiement bloqué">
+						<h2><i class="fas fa-lock me-1" aria-hidden="true"></i>Paiement du solde bloqué</h2>
+						<p class="mb-2">{{ d.achat.paiementBloqueMotif }}</p>
+						<p class="si-fin-note mb-0">Le paiement reprend quand la réclamation est réglée (remplacée ou déduite) sur la <a href="{{ path('app_reception_show', {id: d.achat.id}) }}">réception de {{ d.achat.numero }}</a>, ou si la direction financière le force avec une note.</p>
+					</section>
+				{% endif %}
+
 				{% if payable %}
 					<section class="card si-fin-decision" aria-label="Paiement">
 						<h2>Enregistrer le paiement</h2>

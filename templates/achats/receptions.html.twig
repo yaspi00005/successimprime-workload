@@ -1,0 +1,75 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Réceptions (maquette SU05, docs/achats.md) : les commandes en route ou
+	commandées à recevoir, la plus attendue d'abord, puis les réceptions
+	des derniers jours avec leur écart et leurs réclamations.
+#}
+
+{% block title %}Réceptions{% endblock %}
+{% block page_title %}Réceptions{% endblock %}
+
+{% block body %}
+	<div class="ac-page">
+		<section class="ac-carte" aria-label="À recevoir">
+			<h2>À recevoir <small>· en route et commandées</small></h2>
+			{% if a_recevoir is empty %}
+				<p class="ac-muet mb-0">Aucune commande attendue.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table ac-liste">
+						<thead>
+							<tr><th>N°</th><th>Fournisseur</th><th>Commandée</th><th>Promise</th><th>Prévue</th><th>Statut</th><th></th></tr>
+						</thead>
+						<tbody>
+							{% for a in a_recevoir %}
+								{% set prevue = prevues[a.id] ?? null %}
+								<tr>
+									<td data-libelle="N°"><a class="ac-lien" href="{{ path('app_achat_show', {id: a.id}) }}">{{ a.numero }}</a></td>
+									<td data-libelle="Fournisseur"><span class="ac-nom">{{ m.avatar(a.fournisseur) }}<span>{{ a.fournisseur.nomCourt }}</span></span></td>
+									<td data-libelle="Commandée" class="ac-muet">{{ (a.dateCommande ?? a.dateDemande)|date('d/m') }}</td>
+									<td data-libelle="Promise">{{ a.datePromise ? a.datePromise|date('d/m') : '—' }}{% if a.datePromise and a.datePromise < aujourdhui %} <span class="ac-badge retard">+{{ ((aujourdhui|date('U') - a.datePromise|date('U')) / 86400)|round }} j</span>{% endif %}</td>
+									<td data-libelle="Prévue" class="ac-muet">{{ prevue ? prevue|date('d/m') : '—' }}</td>
+									<td data-libelle="Statut">{{ m.statut(a) }}</td>
+									<td class="ac-pleine"><a class="btn btn-danger btn-sm" href="{{ path('app_reception_show', {id: a.id}) }}">Réceptionner</a></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+		</section>
+
+		<section class="ac-carte" aria-label="Réceptions récentes">
+			<h2>Réceptions récentes <small>· {{ jours_recentes }} derniers jours</small></h2>
+			{% if recentes is empty %}
+				<p class="ac-muet mb-0">Aucune réception récente.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table ac-liste">
+						<thead>
+							<tr><th>N°</th><th>Fournisseur</th><th>Reçue</th><th>Écart</th><th>Réclamations</th><th></th></tr>
+						</thead>
+						<tbody>
+							{% for r in recentes %}
+								{% set a = r.achat %}
+								<tr>
+									<td data-libelle="N°"><a class="ac-lien" href="{{ path('app_reception_show', {id: a.id}) }}">{{ a.numero }}</a></td>
+									<td data-libelle="Fournisseur"><span class="ac-nom">{{ m.avatar(a.fournisseur) }}<span>{{ a.fournisseur.nomCourt }}</span></span></td>
+									<td data-libelle="Reçue" class="ac-muet">{{ a.dateReception|date('d/m') }}</td>
+									<td data-libelle="Écart"><span class="ac-badge {{ r.ecart.classe }}">{{ r.ecart.libelle }}</span></td>
+									<td data-libelle="Réclamations">
+										{% if r.ouvertes > 0 %}<span class="ac-badge retard">{{ r.ouvertes }} ouverte{{ r.ouvertes > 1 ? 's' }}</span>{% elseif a.reclamations|length > 0 %}<span class="ac-badge ok">réglée{{ a.reclamations|length > 1 ? 's' }}</span>{% else %}<span class="ac-muet">—</span>{% endif %}
+										{% if a.paiementBloque and is_granted('ROLE_TRESORERIE_VOIR') %} <span class="ac-badge retard"><i class="fas fa-lock me-1" aria-hidden="true"></i>paiement bloqué</span>{% endif %}
+									</td>
+									<td class="ac-pleine"><a class="ac-bouton" href="{{ path('app_reception_show', {id: a.id}) }}">Voir</a></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

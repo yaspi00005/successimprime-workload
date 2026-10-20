@@ -4,17 +4,14 @@ namespace App\Controller;
 
 use App\Entity\AchatDetail;
 use App\Entity\Achats;
-use App\Entity\ArticleFournisseur;
 use App\Entity\Articles;
 use App\Entity\Fournisseurs;
-use App\Entity\StockEntrees;
 use App\Entity\User;
 use App\Repository\ArticlesRepository;
 use App\Repository\FournisseursRepository;
 use App\Service\Achats\CalculsAchat;
 use App\Service\Achats\SuiviAchats;
 use App\Service\Http\Entree;
-use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -230,75 +227,6 @@ final class AchatsController extends AbstractController
             $this->em->flush();
             $this->addFlash('success', sprintf('La commande %s est en route.', $achat->getNumero()));
         }
-
-        return $this->redirectToRoute('app_achat_show', ['id' => $achat->getId()], Response::HTTP_SEE_OTHER);
-    }
-
-    #[Route('/{id}/recevoir', name: 'app_achat_recevoir', requirements: ['id' => '\d+'], methods: ['POST'])]
-    public function recevoir(
-        Request $request,
-        Achats $achat,
-        StockService $stockService
-    ): Response {
-        $this->verifierJeton($request, 'recevoir_achat'.$achat->getId());
-
-        if (!$achat->estEnCours()) {
-            $this->addFlash('error', 'Seule une commande passée et pas encore reçue peut être réceptionnée.');
-
-            return $this->redirectToRoute('app_achat_show', ['id' => $achat->getId()], Response::HTTP_SEE_OTHER);
-        }
-
-        if ($achat->getLignes()->isEmpty()) {
-            $this->addFlash('error', 'Cet achat ne contient aucune ligne à réceptionner.');
-
-            return $this->redirectToRoute('app_achat_show', ['id' => $achat->getId()], Response::HTTP_SEE_OTHER);
-        }
-
-        $maintenant = new \DateTimeImmutable();
-        SuiviAchats::figerCouts($achat);
-
-        /*
-         * Chaque ligne d'achat reçue génère une entrée de stock,
-         * exactement comme l'entrée de stock manuelle sur une fiche
-         * article (StockService additionne StockEntrees - StockSorties).
-         */
-        foreach ($achat->getLignes() as $ligne) {
-            $article = $ligne->getArticle();
-
-            if ($article === null) {
-                continue;
-            }
-
-            /*
-             * L'achat est en unité d'achat (rouleau), le stock en unité
-             * de stock (m²) : on convertit la quantité. Le prix d'entrée
-             * est le coût de revient, transport et transit compris.
-             */
-            $quantiteStock = $ligne->getQuantiteStock() ?? $article->convertirAchatEnStock((float) $ligne->getQuantite());
-            $prixStock = $ligne->getCoutRevientUnitaire() ?? (int) round($ligne->getPrixUnitaire() / $article->getFacteurConversion());
-
-            $stockService->appliquerCoutMoyen($article, $quantiteStock, $prixStock);
-
-            $entree = new StockEntrees();
-            $entree->setArticle($article);
-            $entree->setQuantites($quantiteStock);
-            $entree->setPrix($prixStock);
-            $entree->setDate($maintenant);
-
-            $this->em->persist($entree);
-
-            if ($ligne->getPrixUnitaire() > 0) {
-                $article->setPrixAchat($ligne->getPrixUnitaire());
-                $this->retenirPrixFournisseur($article, $achat->getFournisseur(), $ligne->getPrixUnitaire());
-            }
-        }
-
-        $achat->setStatut(Achats::STATUT_RECU);
-        $achat->setDateReception($maintenant);
-
-        $this->em->flush();
-
-        $this->addFlash('success', sprintf('L’achat %s a été réceptionné, le stock a été mis à jour.', $achat->getNumero()));
 
         return $this->redirectToRoute('app_achat_show', ['id' => $achat->getId()], Response::HTTP_SEE_OTHER);
     }
@@ -621,30 +549,5 @@ final class AchatsController extends AbstractController
     private static function entier(string $valeur): int
     {
         return (int) preg_replace('/\D+/', '', $valeur);
-    }
-
-    /**
-     * Le dernier prix payé devient le prix de ce fournisseur sur la fiche article.
-     */
-    private function retenirPrixFournisseur(Articles $article, ?Fournisseurs $fournisseur, int $prix): void
-    {
-        if ($fournisseur === null) {
-            return;
-        }
-
-        foreach ($article->getFournisseurs() as $lien) {
-            if ($lien->getFournisseur() === $fournisseur) {
-                $lien->setPrixAchat($prix);
-
-                return;
-            }
-        }
-
-        $article->addFournisseur(
-            (new ArticleFournisseur())
-                ->setFournisseur($fournisseur)
-                ->setPrixAchat($prix)
-                ->setPrincipal($article->getFournisseurs()->isEmpty())
-        );
     }
 }

@@ -86,6 +86,7 @@
 									<td class="text-end">
 										{% if d.du > 0 %}<strong class="si-fin-f">{{ d.du|number_format(0, ',', ' ') }} F</strong>{% endif %}
 										{% if d.a_approuver > 0 %}<small class="si-fin-gris">{{ d.a_approuver|number_format(0, ',', ' ') }} F à approuver</small>{% endif %}
+										{% if d.bloque > 0 %}<small class="si-fin-rouge" title="Réclamation ouverte à la réception : le solde attend l'avoir du fournisseur."><i class="fas fa-lock me-1" aria-hidden="true"></i>{{ d.bloque|number_format(0, ',', ' ') }} F bloqués</small>{% endif %}
 									</td>
 									<td class="text-center">
 										{% if d.du == 0 %}

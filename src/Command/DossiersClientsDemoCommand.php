@@ -96,7 +96,8 @@ final class DossiersClientsDemoCommand extends Command
 
             return Command::SUCCESS;
         }
-        $this->police = is_file($this->projet.'/vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf') ? $this->projet.'/vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf' : '';
+        // Sans FreeType dans GD, le texte est écrit avec la police intégrée (imagestring).
+        $this->police = \function_exists('imagettftext') && is_file($this->projet.'/vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf') ? $this->projet.'/vendor/dompdf/dompdf/lib/fonts/DejaVuSans-Bold.ttf' : '';
 
         // Les lignes de la démo prennent des identifiants >= 900001 (recette des accès, purge).
         foreach (self::TABLES as $table) {

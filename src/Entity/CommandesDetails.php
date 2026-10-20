@@ -310,6 +310,13 @@ class CommandesDetails
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionTermineeLe = null;
 
+    /**
+     * Passage « prête pour la livraison » (contrôle final fait, colis
+     * scannés) : c'est la date de l'étape « Prête » vue par le client.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $preteLivraisonLe = null;
+
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(
         name: 'production_debutee_par_id',
@@ -1889,6 +1896,19 @@ public function validerModeCommande(
         return $this->productionTermineeLe;
     }
 
+    public function getPreteLivraisonLe(): ?\DateTimeImmutable
+    {
+        return $this->preteLivraisonLe;
+    }
+
+    /** Synchronisation (site en ligne) : la date arrive de l'ERP. */
+    public function setPreteLivraisonLe(?\DateTimeImmutable $le): static
+    {
+        $this->preteLivraisonLe = $le;
+
+        return $this;
+    }
+
     public function getProductionDebuteePar(): ?User
     {
         return $this->productionDebuteePar;
@@ -2166,6 +2186,45 @@ public function validerModeCommande(
     }
 
     /**
+     * « Refaire une pièce » au contrôle final (PD06) : la ligne terminée
+     * repart en production ; les pièces à refaire passent en rebut.
+     */
+    public function rouvrirPourRefaire(int $pieces): static
+    {
+        if (!$this->productionNecessaire || $this->statutProduction !== self::PRODUCTION_TERMINEE) {
+            throw new \LogicException('Seule une ligne terminée, pas encore prête, peut être refaite.');
+        }
+        if ($pieces < 1) {
+            throw new \InvalidArgumentException('Indiquez au moins une pièce à refaire.');
+        }
+        $this->quantiteRebut += $pieces;
+        $this->statutProduction = self::PRODUCTION_A_PRODUIRE;
+        $this->productionTermineeLe = null;
+        $this->productionTermineePar = null;
+
+        return $this;
+    }
+
+    /**
+     * Démarrage d'une pièce à refaire : sans remettre à zéro ce qui a déjà
+     * été produit (le BAT a été contrôlé au premier démarrage).
+     */
+    public function demarrerReprise(User $utilisateur, ?Machines $machine = null): static
+    {
+        if (!$this->productionNecessaire || $this->statutProduction !== self::PRODUCTION_A_PRODUIRE) {
+            throw new \LogicException('Cette production ne peut pas être reprise dans son état actuel.');
+        }
+        $this->statutProduction = self::PRODUCTION_EN_COURS;
+        $this->productionDebuteLe ??= new \DateTimeImmutable();
+        $this->productionDebuteePar ??= $utilisateur;
+        if ($machine !== null) {
+            $this->machine = $machine;
+        }
+
+        return $this;
+    }
+
+    /**
      * Terminer une production déjà démarrée.
      */
     public function terminerProduction(
@@ -2295,6 +2354,7 @@ public function validerModeCommande(
 
             $this->statutProduction =
                 self::PRODUCTION_PRETE_LIVRAISON;
+            $this->preteLivraisonLe ??= new \DateTimeImmutable();
 
             return $this;
         }
@@ -2321,6 +2381,7 @@ public function validerModeCommande(
 
         $this->statutProduction =
             self::PRODUCTION_PRETE_LIVRAISON;
+        $this->preteLivraisonLe = new \DateTimeImmutable();
 
         foreach ($this->etiquettes as $etiquette) {
             if (
@@ -2733,6 +2794,7 @@ public function validerModeCommande(
         $copie->statutProductionAvantAnnulation = null;
         $copie->productionDebuteLe = null;
         $copie->productionTermineeLe = null;
+        $copie->preteLivraisonLe = null;
         $copie->productionDebuteePar = null;
         $copie->productionTermineePar = null;
         $copie->quantiteProduite = 0;

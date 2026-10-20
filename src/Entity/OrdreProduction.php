@@ -223,6 +223,17 @@ class OrdreProduction
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $estimation = null;
 
+    /**
+     * « Refaire une pièce » au contrôle final (PD06) : pièces à imprimer de
+     * nouveau ; null quand aucune reprise n'est en cours.
+     */
+    #[ORM\Column(name: 'pieces_a_refaire', nullable: true)]
+    private ?int $piecesARefaire = null;
+
+    /** Nombre de reprises : la sortie de stock d'une reprise porte PROD-xxxxxx-R<n>. */
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $reimpressions = 0;
+
     #[ORM\Column(nullable: true)]
     private ?int $nombreColis = null;
 
@@ -684,10 +695,11 @@ class OrdreProduction
         $this->transmisLe ??= $maintenant;
 
         /*
-     * Lors d’une reprise, calcul de la durée de la pause.
+     * Lors d’une reprise, calcul de la durée de la pause (une pièce à
+     * refaire compte le temps passé depuis la première fin comme une pause).
      */
         if (
-            $this->statut === self::STATUT_EN_PAUSE
+            ($this->statut === self::STATUT_EN_PAUSE || $this->piecesARefaire !== null)
             && $this->pauseDebuteLe !== null
         ) {
             $pauseSecondes = max(
@@ -758,6 +770,11 @@ class OrdreProduction
             );
         }
 
+        // Une pièce refaite s'ajoute à ce qui avait été produit la première fois.
+        if ($this->piecesARefaire !== null) {
+            $quantiteProduite += $this->quantiteProduite;
+            $quantiteRebut += $this->quantiteRebut;
+        }
         $quantiteConforme = $quantiteProduite - $quantiteRebut;
 
         if (
@@ -773,6 +790,7 @@ class OrdreProduction
 
         $this->quantiteProduite = $quantiteProduite;
         $this->quantiteRebut = $quantiteRebut;
+        $this->piecesARefaire = null;
         $this->observationFin = $this->nettoyerTexte(
             $observation
         );
@@ -904,6 +922,54 @@ class OrdreProduction
         $this->etiquettesImprimeesLe = $le ?? new \DateTimeImmutable();
 
         return $this;
+    }
+
+    public function getPiecesARefaire(): ?int
+    {
+        return $this->piecesARefaire;
+    }
+
+    public function getReimpressions(): int
+    {
+        return $this->reimpressions;
+    }
+
+    /**
+     * « Refaire une pièce » (PD06) : le travail terminé repart en production
+     * pour $pieces pièces, comptées en rebut. Il réapparaît « Prêt à
+     * démarrer » dans Ma file (fichier déjà vérifié, temps déjà estimé).
+     */
+    public function refaire(int $pieces, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Seul un travail terminé peut être refait.');
+        }
+        if ($this->estPretLivraison()) {
+            throw new \LogicException('Ce travail est déjà prêt pour la livraison.');
+        }
+        if ($pieces < 1 || $pieces > max(1, $this->getQuantiteConforme())) {
+            throw new \InvalidArgumentException(sprintf('Le nombre de pièces à refaire va de 1 à %d.', max(1, $this->getQuantiteConforme())));
+        }
+        $this->piecesARefaire = $pieces;
+        ++$this->reimpressions;
+        $this->quantiteRebut += $pieces;
+        $this->pauseDebuteLe = $this->termineLe ?? $le ?? new \DateTimeImmutable();
+        $this->termineLe = null;
+        $this->terminePar = null;
+        $this->statut = self::STATUT_A_PRODUIRE;
+
+        return $this;
+    }
+
+    /** Référence de la sortie de stock du travail : PROD-000123, puis PROD-000123-R1 pour une reprise. */
+    public function referenceStock(): string
+    {
+        return self::referenceStockDe((int) $this->id, $this->piecesARefaire !== null ? $this->reimpressions : 0);
+    }
+
+    public static function referenceStockDe(int $id, int $reprise): string
+    {
+        return sprintf('PROD-%06d', $id).($reprise > 0 ? '-R'.$reprise : '');
     }
 
     public function getPretLivraisonLe(): ?\DateTimeImmutable

@@ -40,7 +40,12 @@ final class ActionsOrdre
             throw new \LogicException('Seul un travail en attente peut être démarré.');
         }
         $detail = $ordre->getCommandeDetail() ?? throw new \LogicException('Aucune ligne de commande n\'est liée à ce travail.');
-        $detail->demarrerProduction($operateur, $machine);
+        // Une pièce à refaire (contrôle final, PD06) garde ce qui a déjà été produit.
+        if ($ordre->getPiecesARefaire() !== null) {
+            $detail->demarrerReprise($operateur, $machine);
+        } else {
+            $detail->demarrerProduction($operateur, $machine);
+        }
         $ordre->demarrer($operateur, $machine);
         $this->em->flush();
     }
@@ -80,8 +85,10 @@ final class ActionsOrdre
         $libelleMotif = null !== $motif ? (self::MOTIFS_GACHE[$motif] ?? null) : null;
         $note = trim(implode(' · ', array_filter([$gache > 0 && null !== $libelleMotif ? 'Gâche : '.$libelleMotif : null, trim((string) $observation)])));
 
-        $this->stock->consommerPourDetail($detail, StockSorties::ORIGINE_PRODUCTION, sprintf('PROD-%06d', $ordre->getId()), (float) $imprime);
-        $detail->terminerProduction($operateur, $imprime, $gache, $note);
+        // Une reprise sort sa matière sous sa propre référence (PROD-000123-R1) : la sortie du premier passage n'est pas rejouée.
+        $reprise = $ordre->getPiecesARefaire() !== null;
+        $this->stock->consommerPourDetail($detail, StockSorties::ORIGINE_PRODUCTION, $ordre->referenceStock(), (float) $imprime);
+        $detail->terminerProduction($operateur, $imprime + ($reprise ? $detail->getQuantiteProduite() : 0), $gache + ($reprise ? $detail->getQuantiteRebut() : 0), $note);
         $ordre->terminer($operateur, $imprime, $gache, $note);
 
         $machine = $ordre->getMachine();

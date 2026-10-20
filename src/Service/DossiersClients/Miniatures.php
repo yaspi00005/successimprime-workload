@@ -55,6 +55,9 @@ final class Miniatures
         if (null !== $this->chemin($nom)) {
             return $nom;
         }
+        if (!\function_exists('imagejpeg')) {
+            return null; // PHP sans JPEG dans GD : pas de miniature.
+        }
         $jpeg = $this->apercu($chemin);
         if (null === $jpeg) {
             return null;

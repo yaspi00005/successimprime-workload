@@ -266,7 +266,8 @@ final class DossiersClientsDemoCommand extends Command
             $y += (int) ($taille * 1.5);
         }
         ob_start();
-        'png' === $format ? imagepng($im) : imagejpeg($im, null, 82);
+        // Sans JPEG dans GD, l'image de démonstration est écrite en PNG.
+        'png' === $format || !\function_exists('imagejpeg') ? imagepng($im) : imagejpeg($im, null, 82);
 
         return (string) ob_get_clean();
     }
@@ -281,7 +282,7 @@ final class DossiersClientsDemoCommand extends Command
         $r = $max / max(imagesx($src), imagesy($src));
         $dst = imagescale($src, max(1, (int) (imagesx($src) * $r)), max(1, (int) (imagesy($src) * $r)));
         ob_start();
-        imagejpeg(false !== $dst ? $dst : $src, null, 80);
+        \function_exists('imagejpeg') ? imagejpeg(false !== $dst ? $dst : $src, null, 80) : imagepng(false !== $dst ? $dst : $src);
 
         return (string) ob_get_clean();
     }

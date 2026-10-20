@@ -388,7 +388,7 @@ final class MessagerieInterneDemoCommand extends Command
             imagefilledellipse($img, (int) ($l / 2), (int) ($h / 2), (int) ($l * .7), (int) ($h * .7), (int) imagecolorallocate($img, 245, 200, 40));
         }
         ob_start();
-        imagejpeg($img, null, 82);
+        \function_exists('imagejpeg') ? imagejpeg($img, null, 82) : imagepng($img);
 
         return (string) ob_get_clean();
     }

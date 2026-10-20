@@ -9,8 +9,9 @@
  *
  * À lancer sur une base remplie par `php bin/console app:demo` (données de
  * démonstration seulement), jamais sur la base de l'imprimerie : le
- * parcours crée un client, un devis, une commande, un paiement, une
- * facture, et valide une remise de livraison.
+ * parcours crée un client (« Fatoumata Traoré Guide », repris s'il existe
+ * déjà), un devis, une commande, un paiement, une facture, et valide une
+ * remise de livraison.
  *
  * Variables :
  *   BASE_URL       adresse de l'ERP local (défaut http://127.0.0.1:8000)
@@ -189,7 +190,14 @@ await scene(['connexion'], async () => {
 await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaissement', 'caisse-recu', 'commande-fiche', 'facture-fiche', 'acces-espace'], async () => {
     const page = await session('demo.aminata');
 
-    // Nouveau client, puis « Enregistrer et créer un devis ».
+    /*
+     * Nouveau client, puis « Enregistrer et créer un devis ». Le client du
+     * guide n'est créé qu'une fois : s'il existe déjà (parcours rejoué), la
+     * fiche est remplie pour l'image, sans l'enregistrer, et le devis part
+     * de son client existant (pas de doublon dans la base de démonstration).
+     */
+    await aller(page, `/clients?q=${encodeURIComponent(essai.nom)}`);
+    const existant = await page.getByRole('link', { name: new RegExp(`${essai.prenom} ${essai.nom}`) }).first().getAttribute('href', { timeout: 2000 }).catch(() => null);
     await aller(page, '/clients/nouveau');
     await page.click('label:has-text("Particulier")');
     await page.fill('input[name="c[prenom]"]', essai.prenom);
@@ -198,10 +206,16 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await page.locator('input[name="c[telephone]"]').press('Tab');
     await page.waitForTimeout(600);
     await capture(page, 'client-nouveau');
-    await suivre(page, page.getByRole('button', { name: 'Enregistrer et créer un devis' }));
+    if (existant) {
+        // « + Devis » de sa fiche : l'adresse porte le code chiffré du client.
+        await aller(page, existant);
+        await aller(page, await page.locator('a[href*="/devis/new?client="]').first().getAttribute('href'));
+    } else {
+        await suivre(page, page.getByRole('button', { name: 'Enregistrer et créer un devis' }));
+    }
 
-    // Devis : une bâche de 300 × 100 cm avec œillets.
-    await page.getByText('+ Ajouter une ligne').first().click();
+    // Devis : « + Depuis le catalogue », une bâche de 300 × 100 cm avec œillets.
+    await page.click('#add-detail');
     await page.waitForTimeout(600);
     await page.click('#select2-devis_devisDetails_0_produit-container');
     await page.fill('.select2-container--open .select2-search__field', 'Bâche');
@@ -213,18 +227,20 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await page.locator('[name="devis[devisDetails][0][longueur]"]').press('Tab');
     await page.getByText('Œillets tous les 50 cm').click();
     await page.waitForTimeout(1000);
-    await page.locator('[name="devis[devisDetails][0][largeur]"]').scrollIntoViewIfNeeded();
+    // La ligne dans le tableau, le total à droite et le début de sa configuration.
+    await page.evaluate(() => {
+        const lignes = document.querySelector('.si-saisie-lignes');
+        window.scrollTo({ top: lignes.getBoundingClientRect().top + window.scrollY - 330, behavior: 'instant' });
+    });
+    await page.waitForTimeout(300);
     await capture(page, 'devis-saisie');
-    await suivre(page, page.getByRole('button', { name: 'Enregistrer le devis' }));
+    await suivre(page, page.getByRole('button', { name: 'Envoyer au client' }).first());
     ids.devis = codeDe(page, 'devis');
 
-    // Accepté, puis « Valider et créer la commande ».
-    await suivre(page, page.getByRole('link', { name: 'Modifier' }).first());
-    const statut = await page.evaluate(() => [...document.querySelectorAll('select')].find((s) => [...s.options].some((o) => o.text.trim() === 'Accepté'))?.name);
-    await page.selectOption(`select[name="${statut}"]`, { label: 'Accepté' });
-    await suivre(page, page.getByRole('button', { name: 'Enregistrer les modifications' }));
+    // Devis envoyé : le client accepte, « Convertir en commande ».
     await capture(page, 'devis-accepte');
-    await suivre(page, page.getByRole('button', { name: 'Valider et créer la commande' }));
+    await page.getByRole('button', { name: 'Convertir en commande' }).first().click();
+    await suivre(page, page.locator('.si-confirmation__ok'));
     ids.commande = codeDe(page, 'commandes');
 
     // Caisse : le client, sa commande, 5 000 F en espèces.
@@ -232,8 +248,10 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     const valeur = await page.evaluate((nom) => [...document.querySelectorAll('#caisse-client option')].find((o) => o.text.includes(nom))?.value, `${essai.prenom} ${essai.nom}`);
     await Promise.all([page.waitForNavigation(), page.selectOption('#caisse-client', valeur)]);
     await pret(page);
-    await suivre(page, '.si-caisse-table a');
-    await page.fill('.si-caisse-montant input', '5000');
+    // La commande du parcours (le client rejoué peut en avoir d'autres à payer).
+    const ligneCommande = page.locator(`.si-caisse-table a[href*="commande=${ids.commande}"]`);
+    await suivre(page, (await ligneCommande.count()) ? ligneCommande.first() : page.locator('.si-caisse-table a').first());
+    await page.fill('#paiements_montant', '5000');
     await page.click('.si-caisse-mode[data-mode="especes"]');
     await page.waitForTimeout(400);
     await capture(page, 'caisse-encaissement');
@@ -252,8 +270,8 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await suivre(page, page.locator('.si-confirmation__ok'));
 
     // Accès à l'espace client, code masqué sur l'image.
-    await aller(page, `/clients?q=${essai.telephone}`);
-    await suivre(page, page.getByRole('link', { name: new RegExp(essai.nom) }).first());
+    await aller(page, `/clients?q=${encodeURIComponent(essai.nom)}`);
+    await suivre(page, page.getByRole('link', { name: new RegExp(`${essai.prenom} ${essai.nom}`) }).first());
     await suivre(page, page.getByRole('button', { name: 'Envoyer l\'accès à l\'espace client' }));
     await page.evaluate(() => {
         const message = document.getElementById('message-acces');

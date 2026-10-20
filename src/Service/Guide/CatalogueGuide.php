@@ -95,7 +95,7 @@ final class CatalogueGuide
                 'but' => 'Quand le client accepte, créer la commande qui part à l\'atelier.',
                 'droits' => ['ROLE_DEVIS', 'ROLE_COMMANDE'], 'route' => 'app_devis_index', 'ecrans' => ['app_devis_show', 'app_devis_index', 'app_commandes_show'],
                 'captures' => [
-                    ['nom' => 'devis-accepte', 'legende' => 'Devis accepté : « Valider et créer la commande ».'],
+                    ['nom' => 'devis-accepte', 'legende' => 'Devis envoyé : « Convertir en commande » quand le client accepte.'],
                     ['nom' => 'commande-fiche', 'legende' => 'La commande créée et ses étapes.'],
                 ],
             ],

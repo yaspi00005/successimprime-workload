@@ -1,33 +1,33 @@
 {
     "genere_le": {
-        "date": "2026-10-20T01:26:05+00:00",
-        "commit": "bacce5a686f164c9e48ad2fc35d8bf005a2abe8c",
+        "date": "2026-10-20T02:06:39+00:00",
+        "commit": "9cc974d28d8ec0ea6572d524aa1c65a0007a1299",
         "branche": "claude/fix-synchronisation-bloquee-9esn94"
     },
     "stats": {
         "entites": 179,
-        "routes": 1034,
-        "routes_modifiant_des_donnees": 551,
+        "routes": 1039,
+        "routes_modifiant_des_donnees": 554,
         "routes_sans_csrf_signalees": 5,
         "routes_publiques": 72,
-        "controleurs": 189,
-        "services": 443,
-        "commandes": 57,
-        "commandes_planifiees": 27,
+        "controleurs": 190,
+        "services": 446,
+        "commandes": 58,
+        "commandes_planifiees": 28,
         "migrations": 121,
-        "tests_unitaires": 354,
+        "tests_unitaires": 355,
         "droits": 37,
         "voteurs": 9,
         "types_synchronises": 62,
         "tuiles_parametres": 51,
         "chapitres": 9,
-        "audit": 1248,
+        "audit": 1253,
         "audit_par_type": {
-            "controleur": 189,
+            "controleur": 190,
             "entite": 179,
-            "route": 780,
+            "route": 783,
             "securite": 73,
-            "commande": 27
+            "commande": 28
         }
     },
     "modules": [
@@ -599,6 +599,7 @@
                 "App\\Service\\Clients\\FicheClient",
                 "App\\Service\\Clients\\ListeClients",
                 "App\\Service\\CommandeProduitClient",
+                "App\\Service\\FichiersPrives",
                 "App\\Service\\Fidelite\\CalculFidelite",
                 "App\\Service\\Fidelite\\Fidelite",
                 "App\\Service\\Fidelite\\ReglagesFidelite",
@@ -652,53 +653,26 @@
             "libelle": "Atelier",
             "sorte": "menu",
             "entites": [
-                "App\\Entity\\AchatDetail",
-                "App\\Entity\\Achats",
-                "App\\Entity\\ArticleFournisseur",
-                "App\\Entity\\Articles",
                 "App\\Entity\\AtelierMachine",
                 "App\\Entity\\CommandeDetailFichier",
                 "App\\Entity\\Conception",
                 "App\\Entity\\ControlePrePresse",
                 "App\\Entity\\DemandeConception",
                 "App\\Entity\\EntretienMachine",
-                "App\\Entity\\Etiquette",
-                "App\\Entity\\FamilleArticle",
                 "App\\Entity\\FichierAClasser",
                 "App\\Entity\\FichierDossier",
-                "App\\Entity\\Fournisseurs",
                 "App\\Entity\\ImageIa",
                 "App\\Entity\\IncidentMachine",
                 "App\\Entity\\JournalMachine",
-                "App\\Entity\\LotEtiquette",
                 "App\\Entity\\Machines",
                 "App\\Entity\\Maintenance",
                 "App\\Entity\\MouvementCreditIa",
                 "App\\Entity\\OrdreProduction",
-                "App\\Entity\\ReclamationFournisseur",
                 "App\\Entity\\RelanceFichier",
                 "App\\Entity\\RetourPrepresse",
-                "App\\Entity\\StockEntrees",
-                "App\\Entity\\StockReservation",
-                "App\\Entity\\StockSorties",
                 "App\\Entity\\SupportConception"
             ],
             "routes": [
-                "app_achat_annuler",
-                "app_achat_delete",
-                "app_achat_edit",
-                "app_achat_en_route",
-                "app_achat_index",
-                "app_achat_new",
-                "app_achat_refuser",
-                "app_achat_show",
-                "app_achat_valider",
-                "app_article_commande_ajax",
-                "app_article_edit",
-                "app_article_entree_stock",
-                "app_article_index",
-                "app_article_new",
-                "app_article_show",
                 "app_atelier_direct",
                 "app_atelier_encre",
                 "app_atelier_entretien_ajouter",
@@ -762,18 +736,6 @@
                 "app_dossiers_clients_retirer_a_classer",
                 "app_fichier_dossier_partage",
                 "app_fichier_dossier_partage_importer",
-                "app_fournisseur_delete",
-                "app_fournisseur_edit",
-                "app_fournisseur_export",
-                "app_fournisseur_index",
-                "app_fournisseur_new",
-                "app_fournisseur_show",
-                "app_fournisseur_toggle_actif",
-                "app_lot_etiquette_generer",
-                "app_lot_etiquette_index",
-                "app_lot_etiquette_qr",
-                "app_lot_etiquette_telecharger",
-                "app_lot_etiquette_voir",
                 "app_ma_file_agir",
                 "app_ma_file_conforme",
                 "app_ma_file_estimer",
@@ -823,41 +785,16 @@
                 "app_produits_clients_prepresse_delier",
                 "app_produits_clients_prepresse_fichier",
                 "app_produits_clients_prepresse_index",
-                "app_produits_clients_prepresse_lier",
-                "app_reception_controle",
-                "app_reception_debloquer",
-                "app_reception_index",
-                "app_reception_reclamation_photo",
-                "app_reception_reclamation_photo_ajout",
-                "app_reception_reclamation_statut",
-                "app_reception_reclamation_whatsapp",
-                "app_reception_show",
-                "app_reception_valider",
-                "app_stock_articles_a_commander",
-                "app_stock_articles_ajuster",
-                "app_stock_articles_export",
-                "app_stock_articles_fiche",
-                "app_stock_articles_index",
-                "app_stock_articles_inventaire",
-                "app_stock_articles_modifier",
-                "app_stock_articles_nouveau",
-                "app_stock_etat_index",
-                "app_stock_etat_show",
-                "app_suivi_etiquette_public"
+                "app_produits_clients_prepresse_lier"
             ],
             "controleurs": [
-                "App\\Controller\\AchatsController",
-                "App\\Controller\\ArticlesController",
                 "App\\Controller\\AtelierProductionController",
                 "App\\Controller\\AtelierRelevesController",
                 "App\\Controller\\ConceptionController",
                 "App\\Controller\\ConsommablesController",
                 "App\\Controller\\ControlePrePresseController",
                 "App\\Controller\\DemandesConceptionController",
-                "App\\Controller\\EtatStockController",
                 "App\\Controller\\FichierUploadController",
-                "App\\Controller\\FournisseursController",
-                "App\\Controller\\LotEtiquetteController",
                 "App\\Controller\\MaFileController",
                 "App\\Controller\\MachinesController",
                 "App\\Controller\\MontageController",
@@ -865,16 +802,9 @@
                 "App\\Controller\\ProductionController",
                 "App\\Controller\\ProductionKanbanController",
                 "App\\Controller\\ProduitsClientsPrepresseController",
-                "App\\Controller\\ReceptionsController",
-                "App\\Controller\\RetoucheImageController",
-                "App\\Controller\\StockArticlesController"
+                "App\\Controller\\RetoucheImageController"
             ],
             "services": [
-                "App\\Service\\Achats\\AchatsDemo",
-                "App\\Service\\Achats\\CalculsAchat",
-                "App\\Service\\Achats\\CalculsReception",
-                "App\\Service\\Achats\\Receptions",
-                "App\\Service\\Achats\\SuiviAchats",
                 "App\\Service\\AmortissementMachine",
                 "App\\Service\\AnalyseFichierImpression",
                 "App\\Service\\Atelier\\ActionsOrdre",
@@ -887,7 +817,6 @@
                 "App\\Service\\Atelier\\TarifAtelier",
                 "App\\Service\\Atelier\\TempsEstime",
                 "App\\Service\\BonusPlafondClientService",
-                "App\\Service\\CatalogueStock",
                 "App\\Service\\Conception\\CommandesConception",
                 "App\\Service\\Conception\\CreditsIa",
                 "App\\Service\\Conception\\DemandesConception",
@@ -914,8 +843,6 @@
                 "App\\Service\\DossiersClients\\PublicationFichiers",
                 "App\\Service\\DossiersClients\\Rapprochement",
                 "App\\Service\\DossiersClients\\ReglagesDossiers",
-                "App\\Service\\FichiersPrives",
-                "App\\Service\\GenerateurEtiquetteService",
                 "App\\Service\\MachineRentabiliteService",
                 "App\\Service\\Montage",
                 "App\\Service\\ParcMachines",
@@ -934,9 +861,6 @@
                 "App\\Service\\Prepresse\\RangementDossierClient",
                 "App\\Service\\Prepresse\\RegleDecoupe",
                 "App\\Service\\Prepresse\\RelancesFichiers",
-                "App\\Service\\StockService",
-                "App\\Service\\Stock\\ReservationsCommande",
-                "App\\Service\\Stock\\ReservationsCommandeListener",
                 "App\\Service\\SuiviMetiers\\Bareme",
                 "App\\Service\\SuiviMetiers\\Entretien",
                 "App\\Service\\SuiviMetiers\\FileMachine",
@@ -954,6 +878,107 @@
                 "app:poste-machiniste:demo",
                 "app:prepresse:demo",
                 "app:prepresse:relances"
+            ]
+        },
+        {
+            "cle": "stock",
+            "libelle": "Stock et achats",
+            "sorte": "menu",
+            "entites": [
+                "App\\Entity\\AchatDetail",
+                "App\\Entity\\Achats",
+                "App\\Entity\\ArticleFournisseur",
+                "App\\Entity\\Articles",
+                "App\\Entity\\Etiquette",
+                "App\\Entity\\FamilleArticle",
+                "App\\Entity\\Fournisseurs",
+                "App\\Entity\\LotEtiquette",
+                "App\\Entity\\ReclamationFournisseur",
+                "App\\Entity\\StockEntrees",
+                "App\\Entity\\StockReservation",
+                "App\\Entity\\StockSorties"
+            ],
+            "routes": [
+                "app_achat_annuler",
+                "app_achat_delete",
+                "app_achat_edit",
+                "app_achat_en_route",
+                "app_achat_index",
+                "app_achat_new",
+                "app_achat_refuser",
+                "app_achat_show",
+                "app_achat_valider",
+                "app_article_commande_ajax",
+                "app_article_edit",
+                "app_article_entree_stock",
+                "app_article_index",
+                "app_article_new",
+                "app_article_show",
+                "app_fournisseur_delete",
+                "app_fournisseur_edit",
+                "app_fournisseur_export",
+                "app_fournisseur_index",
+                "app_fournisseur_new",
+                "app_fournisseur_show",
+                "app_fournisseur_toggle_actif",
+                "app_lot_etiquette_generer",
+                "app_lot_etiquette_index",
+                "app_lot_etiquette_qr",
+                "app_lot_etiquette_telecharger",
+                "app_lot_etiquette_voir",
+                "app_reappro_brouillon",
+                "app_reappro_index",
+                "app_reappro_prevenir",
+                "app_reappro_proposition",
+                "app_reappro_regle",
+                "app_reception_controle",
+                "app_reception_debloquer",
+                "app_reception_index",
+                "app_reception_reclamation_photo",
+                "app_reception_reclamation_photo_ajout",
+                "app_reception_reclamation_statut",
+                "app_reception_reclamation_whatsapp",
+                "app_reception_show",
+                "app_reception_valider",
+                "app_stock_articles_a_commander",
+                "app_stock_articles_ajuster",
+                "app_stock_articles_export",
+                "app_stock_articles_fiche",
+                "app_stock_articles_index",
+                "app_stock_articles_inventaire",
+                "app_stock_articles_modifier",
+                "app_stock_articles_nouveau",
+                "app_stock_etat_index",
+                "app_stock_etat_show",
+                "app_suivi_etiquette_public"
+            ],
+            "controleurs": [
+                "App\\Controller\\AchatsController",
+                "App\\Controller\\ArticlesController",
+                "App\\Controller\\EtatStockController",
+                "App\\Controller\\FournisseursController",
+                "App\\Controller\\LotEtiquetteController",
+                "App\\Controller\\ReapproController",
+                "App\\Controller\\ReceptionsController",
+                "App\\Controller\\StockArticlesController"
+            ],
+            "services": [
+                "App\\Service\\Achats\\AchatsDemo",
+                "App\\Service\\Achats\\AlertesAchats",
+                "App\\Service\\Achats\\CalculsAchat",
+                "App\\Service\\Achats\\CalculsAlertes",
+                "App\\Service\\Achats\\CalculsReception",
+                "App\\Service\\Achats\\PreparationAchat",
+                "App\\Service\\Achats\\Receptions",
+                "App\\Service\\Achats\\SuiviAchats",
+                "App\\Service\\CatalogueStock",
+                "App\\Service\\GenerateurEtiquetteService",
+                "App\\Service\\StockService",
+                "App\\Service\\Stock\\ReservationsCommande",
+                "App\\Service\\Stock\\ReservationsCommandeListener"
+            ],
+            "commandes": [
+                "app:achats:alertes"
             ]
         },
         {
@@ -2454,7 +2479,7 @@
         {
             "classe": "App\\Entity\\AchatDetail",
             "table": "achat_detail",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/AchatDetail.php",
             "champs": [
@@ -2601,7 +2626,7 @@
         {
             "classe": "App\\Entity\\Achats",
             "table": "achats",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/Achats.php",
             "champs": [
@@ -4406,7 +4431,7 @@
         {
             "classe": "App\\Entity\\ArticleFournisseur",
             "table": "article_fournisseur",
-            "module": "atelier",
+            "module": "stock",
             "role": "Un fournisseur d'un article (maquette S02) : son prix par unité d'achat, son délai de livraison, et s'il est le fournisseur habituel.",
             "fichier": "src/Entity/ArticleFournisseur.php",
             "champs": [
@@ -4497,7 +4522,7 @@
         {
             "classe": "App\\Entity\\Articles",
             "table": "articles",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/Articles.php",
             "champs": [
@@ -15429,7 +15454,7 @@
         {
             "classe": "App\\Entity\\Etiquette",
             "table": "etiquette",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/Etiquette.php",
             "champs": [
@@ -16232,7 +16257,7 @@
         {
             "classe": "App\\Entity\\FamilleArticle",
             "table": "famille_article",
-            "module": "atelier",
+            "module": "stock",
             "role": "Famille d'articles du stock (maquette S01) : Supports, Encres, DTF, Textile, Finition, Papier… Réglable sans développement.",
             "fichier": "src/Entity/FamilleArticle.php",
             "champs": [
@@ -17093,7 +17118,7 @@
         {
             "classe": "App\\Entity\\Fournisseurs",
             "table": "fournisseurs",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/Fournisseurs.php",
             "champs": [
@@ -18869,7 +18894,7 @@
         {
             "classe": "App\\Entity\\LotEtiquette",
             "table": "lot_etiquette",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/LotEtiquette.php",
             "champs": [
@@ -26654,7 +26679,7 @@
         {
             "classe": "App\\Entity\\ReclamationFournisseur",
             "table": "reclamation_fournisseur",
-            "module": "atelier",
+            "module": "stock",
             "role": "Réclamation au fournisseur créée à la réception (maquette SU05, docs/achats.md) : la marchandise facturée mais pas arrivée en bon état (un rouleau écrasé, un rouleau manquant), à remplacer ou à déduire.",
             "fichier": "src/Entity/ReclamationFournisseur.php",
             "champs": [
@@ -28729,7 +28754,7 @@
         {
             "classe": "App\\Entity\\StockEntrees",
             "table": "stock_entrees",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/StockEntrees.php",
             "champs": [
@@ -28805,7 +28830,7 @@
         {
             "classe": "App\\Entity\\StockReservation",
             "table": "stock_reservation",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/StockReservation.php",
             "champs": [
@@ -28922,7 +28947,7 @@
         {
             "classe": "App\\Entity\\StockSorties",
             "table": "stock_sorties",
-            "module": "atelier",
+            "module": "stock",
             "role": "",
             "fichier": "src/Entity/StockSorties.php",
             "champs": [
@@ -31630,7 +31655,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::annuler",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31660,7 +31685,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::delete",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31691,7 +31716,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::edit",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31721,7 +31746,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::enRoute",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31751,7 +31776,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\AchatsController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31782,7 +31807,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::new",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31812,7 +31837,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::refuser",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31844,7 +31869,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\AchatsController::show",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -31874,7 +31899,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\AchatsController::valider",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -32994,7 +33019,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ArticlesController::commandeAjax",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -33025,7 +33050,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ArticlesController::edit",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -33055,7 +33080,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ArticlesController::entreeStock",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -33085,7 +33110,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ArticlesController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -33116,7 +33141,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ArticlesController::new",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -33146,7 +33171,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ArticlesController::show",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48288,7 +48313,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\FournisseursController::delete",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48319,7 +48344,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\FournisseursController::edit",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48349,7 +48374,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\FournisseursController::export",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48383,7 +48408,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\FournisseursController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48414,7 +48439,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\FournisseursController::new",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48444,7 +48469,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\FournisseursController::show",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -48474,7 +48499,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\FournisseursController::toggleActif",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -50827,7 +50852,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::generer",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -50857,7 +50882,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -50887,7 +50912,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::qr",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -50919,7 +50944,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::telecharger",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -50953,7 +50978,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::voir",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58638,13 +58663,163 @@
             ]
         },
         {
+            "nom": "app_reappro_brouillon",
+            "chemin": "/achats/reapprovisionnement/fournisseur/{fournisseur}/brouillon",
+            "methodes": [
+                "POST"
+            ],
+            "controleur": "App\\Controller\\ReapproController::brouillon",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": true,
+            "csrf": true,
+            "csrf_detail": "méthode verifierJeton()",
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
+            "nom": "app_reappro_index",
+            "chemin": "/achats/reapprovisionnement",
+            "methodes": [
+                "GET"
+            ],
+            "controleur": "App\\Controller\\ReapproController::index",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": false,
+            "csrf": false,
+            "csrf_detail": null,
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
+            "nom": "app_reappro_prevenir",
+            "chemin": "/achats/reapprovisionnement/prevenir",
+            "methodes": [
+                "POST"
+            ],
+            "controleur": "App\\Controller\\ReapproController::prevenir",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": true,
+            "csrf": true,
+            "csrf_detail": "méthode verifierJeton()",
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
+            "nom": "app_reappro_proposition",
+            "chemin": "/achats/reapprovisionnement/fournisseur/{fournisseur}",
+            "methodes": [
+                "GET"
+            ],
+            "controleur": "App\\Controller\\ReapproController::proposition",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": false,
+            "csrf": false,
+            "csrf_detail": null,
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
+            "nom": "app_reappro_regle",
+            "chemin": "/achats/reapprovisionnement/regle/{regle}",
+            "methodes": [
+                "POST"
+            ],
+            "controleur": "App\\Controller\\ReapproController::regle",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": true,
+            "csrf": true,
+            "csrf_detail": "méthode verifierJeton()",
+            "sans_csrf": false,
+            "sensibles": []
+        },
+        {
             "nom": "app_reception_controle",
             "chemin": "/achats/receptions/{id}/controle",
             "methodes": [
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::controle",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58676,7 +58851,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::debloquer",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58708,7 +58883,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ReceptionsController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58738,7 +58913,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ReceptionsController::photo",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58770,7 +58945,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::ajouterPhoto",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58802,7 +58977,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::statut",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58832,7 +59007,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::whatsapp",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58862,7 +59037,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\ReceptionsController::show",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -58895,7 +59070,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\ReceptionsController::valider",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62215,7 +62390,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\StockArticlesController::aCommander",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62247,7 +62422,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\StockArticlesController::ajuster",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62279,7 +62454,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\StockArticlesController::export",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62313,7 +62488,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\StockArticlesController::fiche",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62345,7 +62520,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\StockArticlesController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62378,7 +62553,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\StockArticlesController::inventaire",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62411,7 +62586,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\StockArticlesController::modifier",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62444,7 +62619,7 @@
                 "POST"
             ],
             "controleur": "App\\Controller\\StockArticlesController::nouveau",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62476,7 +62651,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\EtatStockController::index",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62506,7 +62681,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\EtatStockController::show",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -62536,7 +62711,7 @@
                 "GET"
             ],
             "controleur": "App\\Controller\\LotEtiquetteController::suiviPublic",
-            "module": "atelier",
+            "module": "stock",
             "acces": {
                 "pare_feu": "main",
                 "access_control": {
@@ -64198,7 +64373,7 @@
         },
         {
             "classe": "App\\Controller\\AchatsController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Achats › Commandes d'achat (maquette SU03, docs/achats.md) : la commande se prépare en brouillon, part directement sous le seuil de validation ou attend la direction au-dessus, puis est en route et reçue.",
             "fichier": "src/Controller/AchatsController.php",
             "is_granted_classe": [],
@@ -64221,6 +64396,10 @@
                 {
                     "nom": "suivi",
                     "type": "App\\Service\\Achats\\SuiviAchats"
+                },
+                {
+                    "nom": "preparation",
+                    "type": "App\\Service\\Achats\\PreparationAchat"
                 }
             ],
             "services_actions": [
@@ -64551,7 +64730,7 @@
         },
         {
             "classe": "App\\Controller\\ArticlesController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "",
             "fichier": "src/Controller/ArticlesController.php",
             "is_granted_classe": [],
@@ -67267,7 +67446,7 @@
         },
         {
             "classe": "App\\Controller\\EtatStockController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "",
             "fichier": "src/Controller/EtatStockController.php",
             "is_granted_classe": [],
@@ -67785,7 +67964,7 @@
         },
         {
             "classe": "App\\Controller\\FournisseursController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Achats › Fournisseurs (maquette SU01) et fiche fournisseur (maquette SU02), docs/achats.md.",
             "fichier": "src/Controller/FournisseursController.php",
             "is_granted_classe": [],
@@ -68102,7 +68281,7 @@
         },
         {
             "classe": "App\\Controller\\LotEtiquetteController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "",
             "fichier": "src/Controller/LotEtiquetteController.php",
             "is_granted_classe": [],
@@ -69712,8 +69891,42 @@
             }
         },
         {
+            "classe": "App\\Controller\\ReapproController",
+            "module": "stock",
+            "resume": "Achats › Réapprovisionnement (maquettes SU06 et SU07, docs/achats.md) : les alertes en cours, le tableau des articles (stock, consommation, jours restants, délai et marge, intervalle habituel, date de commande), la courbe du stock d'un article, les règles d'alerte, et la commande proposée par fournisseur, enregistrée en brouillon d'un geste.",
+            "fichier": "src/Controller/ReapproController.php",
+            "is_granted_classe": [],
+            "routes": [
+                "app_reappro_brouillon",
+                "app_reappro_index",
+                "app_reappro_prevenir",
+                "app_reappro_proposition",
+                "app_reappro_regle"
+            ],
+            "services_constructeur": [
+                {
+                    "nom": "alertes",
+                    "type": "App\\Service\\Achats\\AlertesAchats"
+                },
+                {
+                    "nom": "enLigne",
+                    "type": "bool"
+                }
+            ],
+            "services_actions": [],
+            "entites_chargees": [
+                "App\\Entity\\Fournisseurs"
+            ],
+            "csrf": {
+                "routes_modifiant": 3,
+                "avec_jeton": 3,
+                "appels_isCsrfTokenValid": 1,
+                "sans_jeton": []
+            }
+        },
+        {
             "classe": "App\\Controller\\ReceptionsController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Achats › Réceptions (maquette SU05, docs/achats.md) : les commandes à recevoir et les réceptions récentes, puis l'écran de réception d'une commande (commandé, reçu, bon état, facturé ; casse et réclamation ; frais réels ; contrôle à trois points ; entrée en stock).",
             "fichier": "src/Controller/ReceptionsController.php",
             "is_granted_classe": [],
@@ -70748,7 +70961,7 @@
         },
         {
             "classe": "App\\Controller\\StockArticlesController",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Articles et stock (maquette S01) et fiche article (maquette S02).",
             "fichier": "src/Controller/StockArticlesController.php",
             "is_granted_classe": [
@@ -71235,7 +71448,7 @@
         {
             "classe": "App\\Service\\Achats\\AchatsDemo",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Démonstration des écrans Achats (app:demo, docs/achats.md, maquettes SU01 à SU03 et SU05) : cinq fournisseurs complétés comme sur les maquettes, douze mois de commandes d'achat avec quelques retards et un rouleau abîmé, une commande en route depuis la Chine, deux factures fournisseurs à payer, et une consommation des 12 dernières semaines qui met le micro-perforé en alerte (avec le vinyle à comma…",
             "fichier": "src/Service/Achats/AchatsDemo.php",
             "methodes_publiques": [
@@ -71246,9 +71459,55 @@
             ]
         },
         {
+            "classe": "App\\Service\\Achats\\AlertesAchats",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Réapprovisionnement et alertes d'achat (maquettes SU06 et SU07, docs/achats.md) : le tableau des articles (stock, consommation, jours restants, délai et marge, intervalle habituel, date de commande), la courbe du stock, les quatre règles d'alerte (stock bas, hausse de prix, fournisseur en retard, commande oubliée), la commande proposée par fournisseur et son brouillon.",
+            "fichier": "src/Service/Achats/AlertesAchats.php",
+            "methodes_publiques": [
+                {
+                    "nom": "regles",
+                    "resume": "Les quatre règles : allumée ou non, et leur seuil."
+                },
+                {
+                    "nom": "basculer",
+                    "resume": "Allume ou éteint une règle (tuile « Achats et fournisseurs ») :"
+                },
+                {
+                    "nom": "destinataires",
+                    "resume": "Qui est prévenu : les comptes actifs de la direction, avec leur"
+                },
+                {
+                    "nom": "analyser",
+                    "resume": "Le tableau de l'écran (une ligne par article qui a un fournisseur,"
+                },
+                {
+                    "nom": "proposition",
+                    "resume": "La commande proposée à un fournisseur (maquette SU07) : les articles"
+                },
+                {
+                    "nom": "creerBrouillon",
+                    "resume": "Enregistre la commande proposée en brouillon (numéro, préparée par),"
+                },
+                {
+                    "nom": "courbe",
+                    "resume": "Courbe du stock d'un article : les 30 derniers jours, la prévision,"
+                },
+                {
+                    "nom": "notifier",
+                    "resume": "Met les notifications de l'équipe au niveau des alertes : nouvelles"
+                },
+                {
+                    "nom": "action",
+                    "statique": true,
+                    "resume": "Bouton de la notification : la commande proposée, la commande d'achat"
+                }
+            ]
+        },
+        {
             "classe": "App\\Service\\Achats\\CalculsAchat",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Calculs des écrans Achats (maquettes SU01 à SU03, docs/achats.md) : répartition des frais au m², coût de revient, ponctualité et délai réel des fournisseurs, date de la prochaine commande, suggestion de quantité et seuil de validation.",
             "fichier": "src/Service/Achats/CalculsAchat.php",
             "methodes_publiques": [
@@ -71397,9 +71656,128 @@
             ]
         },
         {
+            "classe": "App\\Service\\Achats\\CalculsAlertes",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Calculs du réapprovisionnement et des alertes d'achat (maquettes SU06 et SU07, docs/achats.md) : hausse de prix, retard du fournisseur, intervalle habituel entre deux commandes et commande oubliée, quantité suggérée, tendance de la consommation, courbe du stock et textes des alertes.",
+            "fichier": "src/Service/Achats/CalculsAlertes.php",
+            "methodes_publiques": [
+                {
+                    "nom": "hausse",
+                    "statique": true,
+                    "resume": "Hausse en % entre le prix précédent et le dernier (une décimale) ;"
+                },
+                {
+                    "nom": "estHausse",
+                    "statique": true,
+                    "resume": "Le prix a monté d'au moins le seuil (5 % par défaut)."
+                },
+                {
+                    "nom": "joursRetard",
+                    "statique": true,
+                    "resume": "Jours de retard d'une commande non reçue : 0 tant que la date"
+                },
+                {
+                    "nom": "intervalleHabituel",
+                    "statique": true,
+                    "resume": "Intervalle moyen en jours entre les commandes d'un article (une"
+                },
+                {
+                    "nom": "estOubliee",
+                    "statique": true,
+                    "resume": "Commande oubliée : depuis la dernière commande, l'intervalle"
+                },
+                {
+                    "nom": "quantiteSuggeree",
+                    "statique": true,
+                    "resume": "Unités d'achat à commander, d'après la consommation moyenne : de"
+                },
+                {
+                    "nom": "tendance",
+                    "statique": true,
+                    "resume": "Tendance de la consommation : les 4 dernières semaines comparées à"
+                },
+                {
+                    "nom": "texteTendance",
+                    "statique": true,
+                    "resume": "« consommation en hausse de 12 % sur 4 semaines », « stable »."
+                },
+                {
+                    "nom": "graviteStock",
+                    "statique": true,
+                    "resume": "Gravité d'une alerte de stock : rouge sous le minimum ou à commander"
+                },
+                {
+                    "nom": "titreStock",
+                    "statique": true,
+                    "resume": "Titre d'une alerte de stock : « Bâche 510 g sous le minimum »,"
+                },
+                {
+                    "nom": "detailStock",
+                    "statique": true,
+                    "resume": "« Stock 24,7 m² · 19 jours restants · Dakar Signs livre en 9 j »."
+                },
+                {
+                    "nom": "titrePrix",
+                    "statique": true,
+                    "resume": "« Prix en hausse : poudre DTF +7 % »."
+                },
+                {
+                    "nom": "detailPrix",
+                    "statique": true,
+                    "resume": "« 182 400 F le rouleau au lieu de 170 400 F · Dakar Signs »."
+                },
+                {
+                    "nom": "titreRetard",
+                    "statique": true,
+                    "resume": "« Dakar Signs en retard : CA-2026-0041 »."
+                },
+                {
+                    "nom": "detailRetard",
+                    "statique": true,
+                    "resume": "« Promise le 18/10 · 2 jours de retard »."
+                },
+                {
+                    "nom": "graviteRetard",
+                    "statique": true,
+                    "resume": "Gravité d'un retard : rouge au-delà d'une semaine."
+                },
+                {
+                    "nom": "titreOubli",
+                    "statique": true,
+                    "resume": "« Commande oubliée ? Structures roll-up »."
+                },
+                {
+                    "nom": "detailOubli",
+                    "statique": true,
+                    "resume": "« Commandé tous les 61 jours chez Kanté · rien depuis 75 jours (06/08) »."
+                },
+                {
+                    "nom": "messageCollegue",
+                    "statique": true,
+                    "resume": "Message WhatsApp pour prévenir un collègue : « Bonjour Kadiatou,"
+                },
+                {
+                    "nom": "messageRelance",
+                    "statique": true,
+                    "resume": "Relance du fournisseur en retard, pour son contact."
+                },
+                {
+                    "nom": "courbe",
+                    "statique": true,
+                    "resume": "Points de la courbe du stock (maquette SU06) : le stock des jours"
+                },
+                {
+                    "nom": "historique",
+                    "statique": true,
+                    "resume": "Stock de chaque jour (fin de journée), de −$avant à aujourd'hui,"
+                }
+            ]
+        },
+        {
             "classe": "App\\Service\\Achats\\CalculsReception",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Calculs de la réception d'une commande d'achat (maquette SU05, docs/achats.md) : badge d'écart de chaque ligne, quantité à réclamer au fournisseur, coût de revient réel avec les frais réels, règle du paiement bloqué, textes de la livraison et du message au fournisseur.",
             "fichier": "src/Service/Achats/CalculsReception.php",
             "methodes_publiques": [
@@ -71465,9 +71843,32 @@
             ]
         },
         {
+            "classe": "App\\Service\\Achats\\PreparationAchat",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Préparation d'une commande d'achat (docs/achats.md) : une ligne au prix du fournisseur, et le transport et le transit repris de sa dernière commande.",
+            "fichier": "src/Service/Achats/PreparationAchat.php",
+            "methodes_publiques": [
+                {
+                    "nom": "ajouterLigne",
+                    "statique": true,
+                    "resume": "Ajoute l'article au prix noté pour ce fournisseur (sinon le prix"
+                },
+                {
+                    "nom": "prix",
+                    "statique": true,
+                    "resume": "Prix d'une unité d'achat chez le fournisseur de la commande."
+                },
+                {
+                    "nom": "preremplirFrais",
+                    "resume": "Transport et transit repris de la dernière commande du fournisseur :"
+                }
+            ]
+        },
+        {
             "classe": "App\\Service\\Achats\\Receptions",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Réception d'une commande d'achat (maquette SU05, docs/achats.md) : commandé, reçu, bon état et facturé ligne par ligne ; frais réels qui remplacent les frais prévus et coût de revient recalculé ; entrée en stock des seules unités en bon état ; réclamation au fournisseur avec photo ; contrôle à trois points et paiement du solde bloqué tant qu'une réclamation est ouverte.",
             "fichier": "src/Service/Achats/Receptions.php",
             "methodes_publiques": [
@@ -71529,7 +71930,7 @@
         {
             "classe": "App\\Service\\Achats\\SuiviAchats",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Chiffres des écrans Achats (maquettes SU01 à SU03, docs/achats.md) : ponctualité et délai réel de chaque fournisseur sur 12 mois, achats de l'année, ce qui lui est dû, prochaine commande calculée sur la consommation, prix d'achat sur 12 mois et coût rendu Bamako.",
             "fichier": "src/Service/Achats/SuiviAchats.php",
             "methodes_publiques": [
@@ -73633,7 +74034,7 @@
         {
             "classe": "App\\Service\\CatalogueStock",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Chiffres du catalogue des articles (maquette S01) et de la fiche article (maquette S02), calculés en quelques requêtes groupées plutôt qu'article par article.",
             "fichier": "src/Service/CatalogueStock.php",
             "methodes_publiques": [
@@ -78222,7 +78623,7 @@
         {
             "classe": "App\\Service\\FichiersPrives",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "clients",
             "resume": "Fichiers envoyés qui ne sont pas publics (audit de sécurité du 15/10/2026, D3, docs/securite.md « Fichiers envoyés ») : chat, pré-presse, étiquettes, justificatifs de remboursement, photos du personnel, logos et cachet des entreprises.",
             "fichier": "src/Service/FichiersPrives.php",
             "methodes_publiques": [
@@ -79033,7 +79434,7 @@
         {
             "classe": "App\\Service\\GenerateurEtiquetteService",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "",
             "fichier": "src/Service/GenerateurEtiquetteService.php",
             "methodes_publiques": [
@@ -87457,7 +87858,7 @@
         {
             "classe": "App\\Service\\StockService",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "",
             "fichier": "src/Service/StockService.php",
             "methodes_publiques": [
@@ -87517,7 +87918,7 @@
         {
             "classe": "App\\Service\\Stock\\ReservationsCommande",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Réservation du stock d'une commande, d'après la nomenclature des produits (ProduitArticleStock, ou l'« article associé au stock » du produit) et l'article des lignes de revente.",
             "fichier": "src/Service/Stock/ReservationsCommande.php",
             "methodes_publiques": [
@@ -87547,7 +87948,7 @@
         {
             "classe": "App\\Service\\Stock\\ReservationsCommandeListener",
             "sorte": "classe",
-            "module": "atelier",
+            "module": "stock",
             "resume": "Réserve ou libère le stock d'une commande dès qu'elle est enregistrée, quel que soit l'écran qui l'a créée ou modifiée : commande validée, remise en brouillon, mise à la corbeille, ligne ajoutée, quantité changée, ligne annulée ou restaurée, ligne livrée.",
             "fichier": "src/Service/Stock/ReservationsCommandeListener.php",
             "methodes_publiques": [
@@ -88521,6 +88922,34 @@
         }
     ],
     "commandes": [
+        {
+            "nom": "app:achats:alertes",
+            "description": "Alertes d'achat : stock bas, prix, retard, commande oubliée.",
+            "classe": "App\\Command\\AchatsAlertesCommand",
+            "fichier": "src/Command/AchatsAlertesCommand.php",
+            "resume": "Alertes d'achat (maquettes SU06 et SU07, docs/achats.md), chaque heure sur l'ERP de l'imprimerie : stock bas, hausse de prix d'un fournisseur, fournisseur en retard, commande oubliée.",
+            "module": "stock",
+            "options": [],
+            "arguments": [],
+            "planification": [
+                {
+                    "frequence": "chaque heure",
+                    "ou": "ERP local (tâche planifiée Windows)",
+                    "source": "scripts/windows/installer_tache_devis_relances.bat → devis_relances.bat"
+                },
+                {
+                    "frequence": "chaque heure",
+                    "ou": "d'après la documentation",
+                    "source": "docs/achats.md"
+                },
+                {
+                    "frequence": "chaque heure à la minute 10",
+                    "ou": "ERP local sous Linux ou Mac (exemple de crontab)",
+                    "source": "docs/deploiement.md (crontab : 10 * * * *)"
+                }
+            ],
+            "planifiee": true
+        },
         {
             "nom": "app:actions-caisse",
             "description": "Crée et met à jour les lignes d'action de la caisse.",
@@ -90345,7 +90774,7 @@
             {
                 "cle": "stock",
                 "libelle": "Stock et achats",
-                "detail": "articles, fournisseurs, prix d'achat",
+                "detail": "articles, inventaire, réapprovisionnement, fournisseurs, commandes d'achat, réceptions",
                 "droits": [],
                 "fixe": "direction",
                 "niveaux_possibles": []
@@ -92613,6 +93042,13 @@
                 "appels_isCsrfTokenValid": 0,
                 "routes_modifiant": 1,
                 "avec_jeton": 1,
+                "sans_jeton": []
+            },
+            {
+                "controleur": "App\\Controller\\ReapproController",
+                "appels_isCsrfTokenValid": 1,
+                "routes_modifiant": 3,
+                "avec_jeton": 3,
                 "sans_jeton": []
             },
             {
@@ -96139,6 +96575,42 @@
                         "libelle": "Regrouper les articles à commander dans les",
                         "type": "nombre",
                         "defaut": 14
+                    },
+                    {
+                        "cle": "alerte_stock_bas",
+                        "libelle": "Alerte stock bas",
+                        "type": "interrupteur",
+                        "defaut": true
+                    },
+                    {
+                        "cle": "alerte_prix",
+                        "libelle": "Alerte hausse de prix",
+                        "type": "interrupteur",
+                        "defaut": true
+                    },
+                    {
+                        "cle": "hausse_prix_pourcent",
+                        "libelle": "Hausse de prix signalée à partir de",
+                        "type": "nombre",
+                        "defaut": 5
+                    },
+                    {
+                        "cle": "alerte_retard",
+                        "libelle": "Alerte fournisseur en retard",
+                        "type": "interrupteur",
+                        "defaut": true
+                    },
+                    {
+                        "cle": "alerte_oubli",
+                        "libelle": "Alerte commande oubliée",
+                        "type": "interrupteur",
+                        "defaut": true
+                    },
+                    {
+                        "cle": "depassement_oubli_pourcent",
+                        "libelle": "Intervalle habituel dépassé de",
+                        "type": "nombre",
+                        "defaut": 20
                     }
                 ],
                 "publique": false
@@ -97711,7 +98183,7 @@
         {
             "id": "controleur:App\\Controller\\AchatsController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "AchatsController",
             "quoi_verifier": "Chaque action de AchatsController (9 routes) vérifie ses droits (ROLE_ADMIN, self::ROLE_VALIDATION) et le jeton CSRF sur les 7 routes qui modifient des données.",
             "fichier": "src/Controller/AchatsController.php"
@@ -97783,7 +98255,7 @@
         {
             "id": "controleur:App\\Controller\\ArticlesController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "ArticlesController",
             "quoi_verifier": "Chaque action de ArticlesController (6 routes) vérifie ses droits (ROLE_COMMANDE, ROLE_ADMIN) et le jeton CSRF sur les 3 routes qui modifient des données.",
             "fichier": "src/Controller/ArticlesController.php"
@@ -98351,7 +98823,7 @@
         {
             "id": "controleur:App\\Controller\\EtatStockController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "EtatStockController",
             "quoi_verifier": "Chaque action de EtatStockController (2 routes) vérifie ses droits (ROLE_ADMIN).",
             "fichier": "src/Controller/EtatStockController.php"
@@ -98487,7 +98959,7 @@
         {
             "id": "controleur:App\\Controller\\FournisseursController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "FournisseursController",
             "quoi_verifier": "Chaque action de FournisseursController (7 routes) vérifie ses droits (ROLE_ADMIN) et le jeton CSRF sur les 4 routes qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/FournisseursController.php"
@@ -98559,7 +99031,7 @@
         {
             "id": "controleur:App\\Controller\\LotEtiquetteController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "LotEtiquetteController",
             "quoi_verifier": "Chaque action de LotEtiquetteController (6 routes) vérifie ses droits (ROLE_ADMIN, FichiersPrivesVoter::ETIQUETTE, ROLE_USER) et le jeton CSRF sur les 1 route qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/LotEtiquetteController.php"
@@ -98877,9 +99349,17 @@
             "fichier": "src/Controller/RapprochementBancaireController.php"
         },
         {
+            "id": "controleur:App\\Controller\\ReapproController",
+            "type": "controleur",
+            "module": "stock",
+            "titre": "ReapproController",
+            "quoi_verifier": "Chaque action de ReapproController (5 routes) vérifie ses droits (ROLE_ADMIN) et le jeton CSRF sur les 3 routes qui modifient des données.",
+            "fichier": "src/Controller/ReapproController.php"
+        },
+        {
             "id": "controleur:App\\Controller\\ReceptionsController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "ReceptionsController",
             "quoi_verifier": "Chaque action de ReceptionsController (9 routes) vérifie ses droits (ROLE_ADMIN, self::ROLE_FORCER) et le jeton CSRF sur les 6 routes qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -99095,7 +99575,7 @@
         {
             "id": "controleur:App\\Controller\\StockArticlesController",
             "type": "controleur",
-            "module": "atelier",
+            "module": "stock",
             "titre": "StockArticlesController",
             "quoi_verifier": "Chaque action de StockArticlesController (8 routes) vérifie ses droits (ROLE_ADMIN) et le jeton CSRF sur les 4 routes qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -99231,7 +99711,7 @@
         {
             "id": "entite:App\\Entity\\AchatDetail",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "AchatDetail (table achat_detail)",
             "quoi_verifier": "La table achat_detail (14 colonnes, 2 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (achat_id CASCADE, article_id sans onDelete) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/AchatDetail.php"
@@ -99239,7 +99719,7 @@
         {
             "id": "entite:App\\Entity\\Achats",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "Achats (table achats)",
             "quoi_verifier": "La table achats (30 colonnes, 9 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (fournisseur_id sans onDelete, cree_par_id SET NULL, valide_par_id SET NULL, origine_alerte_id SET NULL, paiement_force_par_id SET NULL…) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/Achats.php"
@@ -99335,7 +99815,7 @@
         {
             "id": "entite:App\\Entity\\ArticleFournisseur",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "ArticleFournisseur (table article_fournisseur)",
             "quoi_verifier": "La table article_fournisseur (5 colonnes, 2 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (article_id CASCADE, fournisseur_id CASCADE), unicité tenue (uniq_article_fournisseur) ; elle ne quitte pas sa machine (absente de CatalogueSynchro).",
             "fichier": "src/Entity/ArticleFournisseur.php"
@@ -99343,7 +99823,7 @@
         {
             "id": "entite:App\\Entity\\Articles",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "Articles (table articles)",
             "quoi_verifier": "La table articles (22 colonnes, 8 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (fournisseur_id SET NULL, famille_id SET NULL, machine_id SET NULL, societe_id sans onDelete), unicité tenue (uniq_article_reference) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/Articles.php"
@@ -99783,7 +100263,7 @@
         {
             "id": "entite:App\\Entity\\Etiquette",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "Etiquette (table etiquette)",
             "quoi_verifier": "La table etiquette (8 colonnes, 4 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (lot_id CASCADE, commande_id SET NULL, commande_detail_id SET NULL, associe_par_id SET NULL) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/Etiquette.php"
@@ -99807,7 +100287,7 @@
         {
             "id": "entite:App\\Entity\\FamilleArticle",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "FamilleArticle (table famille_article)",
             "quoi_verifier": "La table famille_article (5 colonnes, 0 liens) : colonnes obligatoires et longueurs conformes à la base ; elle ne quitte pas sa machine (absente de CatalogueSynchro).",
             "fichier": "src/Entity/FamilleArticle.php"
@@ -99855,7 +100335,7 @@
         {
             "id": "entite:App\\Entity\\Fournisseurs",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "Fournisseurs (table fournisseurs)",
             "quoi_verifier": "La table fournisseurs (16 colonnes, 1 liens) : colonnes obligatoires et longueurs conformes à la base ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/Fournisseurs.php"
@@ -99967,7 +100447,7 @@
         {
             "id": "entite:App\\Entity\\LotEtiquette",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "LotEtiquette (table lot_etiquette)",
             "quoi_verifier": "La table lot_etiquette (9 colonnes, 2 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (genere_par_id RESTRICT) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/LotEtiquette.php"
@@ -100383,7 +100863,7 @@
         {
             "id": "entite:App\\Entity\\ReclamationFournisseur",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "ReclamationFournisseur (table reclamation_fournisseur)",
             "quoi_verifier": "La table reclamation_fournisseur (9 colonnes, 5 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (achat_id CASCADE, ligne_id SET NULL, article_id SET NULL, cree_par_id SET NULL, cloturee_par_id SET NULL) ; elle ne quitte pas sa machine (absente de CatalogueSynchro).",
             "fichier": "src/Entity/ReclamationFournisseur.php"
@@ -100519,7 +100999,7 @@
         {
             "id": "entite:App\\Entity\\StockEntrees",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "StockEntrees (table stock_entrees)",
             "quoi_verifier": "La table stock_entrees (4 colonnes, 2 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (article_id sans onDelete, societe_id sans onDelete) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/StockEntrees.php"
@@ -100527,7 +101007,7 @@
         {
             "id": "entite:App\\Entity\\StockReservation",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "StockReservation (table stock_reservation)",
             "quoi_verifier": "La table stock_reservation (7 colonnes, 2 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (article_id RESTRICT, commande_detail_id CASCADE) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/StockReservation.php"
@@ -100535,7 +101015,7 @@
         {
             "id": "entite:App\\Entity\\StockSorties",
             "type": "entite",
-            "module": "atelier",
+            "module": "stock",
             "titre": "StockSorties (table stock_sorties)",
             "quoi_verifier": "La table stock_sorties (5 colonnes, 3 liens) : colonnes obligatoires et longueurs conformes à la base, effet des suppressions voulu (article_id sans onDelete, commande_detail_id sans onDelete, societe_id sans onDelete) ; elle ne quitte pas sa machine (absente de CatalogueSynchro) ; la classe n'a pas de docblock qui dise son rôle.",
             "fichier": "src/Entity/StockSorties.php"
@@ -100791,7 +101271,7 @@
         {
             "id": "route:app_achat_annuler",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/{id}/annuler",
             "quoi_verifier": "POST /achats/{id}/annuler (AchatsController::annuler) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100799,7 +101279,7 @@
         {
             "id": "route:app_achat_delete",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/{id}/delete",
             "quoi_verifier": "POST /achats/{id}/delete (AchatsController::delete) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100807,7 +101287,7 @@
         {
             "id": "route:app_achat_edit",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /achats/{id}/edit",
             "quoi_verifier": "GET|POST /achats/{id}/edit (AchatsController::edit) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100815,7 +101295,7 @@
         {
             "id": "route:app_achat_en_route",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/{id}/en-route",
             "quoi_verifier": "POST /achats/{id}/en-route (AchatsController::enRoute) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100823,7 +101303,7 @@
         {
             "id": "route:app_achat_new",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /achats/new",
             "quoi_verifier": "GET|POST /achats/new (AchatsController::new) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100831,7 +101311,7 @@
         {
             "id": "route:app_achat_refuser",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/{id}/refuser",
             "quoi_verifier": "POST /achats/{id}/refuser (AchatsController::refuser) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis self::ROLE_VALIDATION (denyAccessUnlessGranted) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -100839,7 +101319,7 @@
         {
             "id": "route:app_achat_valider",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/{id}/valider",
             "quoi_verifier": "POST /achats/{id}/valider (AchatsController::valider) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis self::ROLE_VALIDATION (denyAccessUnlessGranted) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/AchatsController.php"
@@ -101039,7 +101519,7 @@
         {
             "id": "route:app_article_edit",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /articles/{id}/modifier",
             "quoi_verifier": "GET|POST /articles/{id}/modifier (ArticlesController::edit) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (formulaire Symfony).",
             "fichier": "src/Controller/ArticlesController.php"
@@ -101047,7 +101527,7 @@
         {
             "id": "route:app_article_entree_stock",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /articles/{id}/entree-stock",
             "quoi_verifier": "POST /articles/{id}/entree-stock (ArticlesController::entreeStock) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/ArticlesController.php"
@@ -101055,7 +101535,7 @@
         {
             "id": "route:app_article_new",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /articles/nouveau",
             "quoi_verifier": "GET|POST /articles/nouveau (ArticlesController::new) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (formulaire Symfony).",
             "fichier": "src/Controller/ArticlesController.php"
@@ -103991,7 +104471,7 @@
         {
             "id": "route:app_fournisseur_delete",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /fournisseurs/{id}/delete",
             "quoi_verifier": "POST /fournisseurs/{id}/delete (FournisseursController::delete) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/FournisseursController.php"
@@ -103999,7 +104479,7 @@
         {
             "id": "route:app_fournisseur_edit",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /fournisseurs/{id}/edit",
             "quoi_verifier": "GET|POST /fournisseurs/{id}/edit (FournisseursController::edit) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (formulaire Symfony).",
             "fichier": "src/Controller/FournisseursController.php"
@@ -104007,7 +104487,7 @@
         {
             "id": "route:app_fournisseur_export",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET /fournisseurs/export",
             "quoi_verifier": "GET /fournisseurs/export (FournisseursController::export) n'est ouverte qu'avec ROLE_ADMIN (access_control) ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
             "fichier": "src/Controller/FournisseursController.php"
@@ -104015,7 +104495,7 @@
         {
             "id": "route:app_fournisseur_new",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /fournisseurs/new",
             "quoi_verifier": "GET|POST /fournisseurs/new (FournisseursController::new) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (formulaire Symfony).",
             "fichier": "src/Controller/FournisseursController.php"
@@ -104023,7 +104503,7 @@
         {
             "id": "route:app_fournisseur_toggle_actif",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /fournisseurs/{id}/toggle-actif",
             "quoi_verifier": "POST /fournisseurs/{id}/toggle-actif (FournisseursController::toggleActif) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/FournisseursController.php"
@@ -104431,7 +104911,7 @@
         {
             "id": "route:app_lot_etiquette_generer",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /lot/etiquette/generer",
             "quoi_verifier": "POST /lot/etiquette/generer (LotEtiquetteController::generer) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/LotEtiquetteController.php"
@@ -104439,7 +104919,7 @@
         {
             "id": "route:app_lot_etiquette_telecharger",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET /lot/etiquette/{id}/telecharger",
             "quoi_verifier": "GET /lot/etiquette/{id}/telecharger (LotEtiquetteController::telecharger) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis FichiersPrivesVoter::ETIQUETTE (denyAccessUnlessGranted) ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
             "fichier": "src/Controller/LotEtiquetteController.php"
@@ -105941,9 +106421,33 @@
             "fichier": "src/Controller/RapprochementBancaireController.php"
         },
         {
+            "id": "route:app_reappro_brouillon",
+            "type": "route",
+            "module": "stock",
+            "titre": "POST /achats/reapprovisionnement/fournisseur/{fournisseur}/brouillon",
+            "quoi_verifier": "POST /achats/reapprovisionnement/fournisseur/{fournisseur}/brouillon (ReapproController::brouillon) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
+            "fichier": "src/Controller/ReapproController.php"
+        },
+        {
+            "id": "route:app_reappro_prevenir",
+            "type": "route",
+            "module": "stock",
+            "titre": "POST /achats/reapprovisionnement/prevenir",
+            "quoi_verifier": "POST /achats/reapprovisionnement/prevenir (ReapproController::prevenir) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
+            "fichier": "src/Controller/ReapproController.php"
+        },
+        {
+            "id": "route:app_reappro_regle",
+            "type": "route",
+            "module": "stock",
+            "titre": "POST /achats/reapprovisionnement/regle/{regle}",
+            "quoi_verifier": "POST /achats/reapprovisionnement/regle/{regle} (ReapproController::regle) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
+            "fichier": "src/Controller/ReapproController.php"
+        },
+        {
             "id": "route:app_reception_controle",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/{id}/controle",
             "quoi_verifier": "POST /achats/receptions/{id}/controle (ReceptionsController::controle) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105951,7 +106455,7 @@
         {
             "id": "route:app_reception_debloquer",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/{id}/debloquer",
             "quoi_verifier": "POST /achats/receptions/{id}/debloquer (ReceptionsController::debloquer) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis self::ROLE_FORCER (denyAccessUnlessGranted) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105959,7 +106463,7 @@
         {
             "id": "route:app_reception_reclamation_photo",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET /achats/receptions/reclamations/{id}/photo",
             "quoi_verifier": "GET /achats/receptions/reclamations/{id}/photo (ReceptionsController::photo) n'est ouverte qu'avec ROLE_ADMIN (access_control) ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105967,7 +106471,7 @@
         {
             "id": "route:app_reception_reclamation_photo_ajout",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/reclamations/{id}/photo",
             "quoi_verifier": "POST /achats/receptions/reclamations/{id}/photo (ReceptionsController::ajouterPhoto) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()) ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105975,7 +106479,7 @@
         {
             "id": "route:app_reception_reclamation_statut",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/reclamations/{id}/statut",
             "quoi_verifier": "POST /achats/receptions/reclamations/{id}/statut (ReceptionsController::statut) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105983,7 +106487,7 @@
         {
             "id": "route:app_reception_reclamation_whatsapp",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/reclamations/{id}/whatsapp",
             "quoi_verifier": "POST /achats/receptions/reclamations/{id}/whatsapp (ReceptionsController::whatsapp) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -105991,7 +106495,7 @@
         {
             "id": "route:app_reception_valider",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /achats/receptions/{id}/valider",
             "quoi_verifier": "POST /achats/receptions/{id}/valider (ReceptionsController::valider) n'est ouverte qu'avec ROLE_ADMIN (access_control) et vérifie le jeton CSRF (méthode verifierJeton()).",
             "fichier": "src/Controller/ReceptionsController.php"
@@ -106559,7 +107063,7 @@
         {
             "id": "route:app_stock_articles_ajuster",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "POST /stock/articles/{id}/ajuster",
             "quoi_verifier": "POST /stock/articles/{id}/ajuster (StockArticlesController::ajuster) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -106567,7 +107071,7 @@
         {
             "id": "route:app_stock_articles_export",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET /stock/articles/export",
             "quoi_verifier": "GET /stock/articles/export (StockArticlesController::export) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -106575,7 +107079,7 @@
         {
             "id": "route:app_stock_articles_inventaire",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /stock/articles/inventaire",
             "quoi_verifier": "GET|POST /stock/articles/inventaire (StockArticlesController::inventaire) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -106583,7 +107087,7 @@
         {
             "id": "route:app_stock_articles_modifier",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /stock/articles/{id}/modifier",
             "quoi_verifier": "GET|POST /stock/articles/{id}/modifier (StockArticlesController::modifier) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) et vérifie le jeton CSRF (méthode formulaire()).",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -106591,7 +107095,7 @@
         {
             "id": "route:app_stock_articles_nouveau",
             "type": "route",
-            "module": "atelier",
+            "module": "stock",
             "titre": "GET|POST /stock/articles/nouveau",
             "quoi_verifier": "GET|POST /stock/articles/nouveau (StockArticlesController::nouveau) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) et vérifie le jeton CSRF (méthode formulaire()).",
             "fichier": "src/Controller/StockArticlesController.php"
@@ -107459,6 +107963,14 @@
             "titre": "Routes qui modifient des données sans jeton CSRF détecté",
             "quoi_verifier": "5 route(s) modifient des données sans jeton CSRF trouvé par l'analyse (app_assistant_public_historique, app_assistant_public_message, app_assistant_public_note, app_orange_money_notification, app_planning_echeance_apercu) : pour chacune, ajouter isCsrfTokenValid ou écrire pourquoi elle n'en a pas besoin.",
             "fichier": "src/Controller"
+        },
+        {
+            "id": "commande:app:achats:alertes",
+            "type": "commande",
+            "module": "stock",
+            "titre": "app:achats:alertes",
+            "quoi_verifier": "app:achats:alertes tourne chaque heure (ERP local (tâche planifiée Windows)) ; chaque heure (d'après la documentation) ; chaque heure à la minute 10 (ERP local sous Linux ou Mac (exemple de crontab)) : elle fait ce qu'annonce sa description (« Alertes d'achat : stock bas, prix, retard, commande oubliée. »), ne fait rien quand il n'y a rien à faire, refuse de tourner du mauvais côté (local ou en ligne) si elle ne le concerne pas, et son journal ne contient ni montant ni numéro de téléphone.",
+            "fichier": "src/Command/AchatsAlertesCommand.php"
         },
         {
             "id": "commande:app:actions-caisse",

@@ -58,13 +58,13 @@ Chaque personne suit aussi « Premiers pas » et « Mon espace » (pointage, abs
 
 3. **Faire le devis** (`demo.aminata`)
    - Une ligne « Bâche imprimée (démo) », 300 × 100 cm, « Œillets tous les 50 cm ».
-   - « Enregistrer le devis », puis « Télécharger PDF ».
+   - « Enregistrer le brouillon », puis « Aperçu PDF ».
 
    Résultat attendu : Le devis DEV-… est en « Brouillon », pour 10 500 F, et le PDF s'ouvre.
 
 4. **Passer le devis en commande** (`demo.aminata`)
-   - « Modifier », Statut « Accepté », « Enregistrer les modifications ».
-   - « Valider et créer la commande », puis confirmer.
+   - « Envoyer au client » (le devis passe en « Envoyé »).
+   - Quand le client accepte : « Convertir en commande », puis confirmer.
 
    Résultat attendu : La commande CMD-… s'ouvre avec la frise, de « Confirmée » à « Livrée ».
 
@@ -139,7 +139,7 @@ Seul, sans le formateur et sans le guide ouvert.
 4. Un acompte de 50 % en espèces, le reçu imprimé.
 5. La facture, validée et numérotée.
 
-Résultat attendu : En 20 minutes : client, devis « Accepté », commande CMD-…, message « Paiement de … enregistré », reçu R-…, facture FAC-…. Le formateur vérifie le paiement dans « Encaissements ». Réussi : le jalon J7 est atteint pour cette personne.
+Résultat attendu : En 20 minutes : client, devis envoyé puis converti, commande CMD-…, message « Paiement de … enregistré », reçu R-…, facture FAC-…. Le formateur vérifie le paiement dans « Encaissements ». Réussi : le jalon J7 est atteint pour cette personne.
 
 ## Graphiste PAO
 
@@ -211,7 +211,7 @@ Résultat attendu : En 20 minutes : client, devis « Accepté », commande CMD-�
 
 9. **Faire un devis** (`demo.seydou`)
    - Devis et commandes › « Nouveau devis » pour Salon Espoir.
-   - Un roll-up, « Enregistrer le devis ».
+   - Un roll-up, « Enregistrer le brouillon ».
 
    Résultat attendu : Le devis DEV-… est en « Brouillon ».
 

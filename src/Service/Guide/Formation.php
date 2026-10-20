@@ -95,7 +95,7 @@ final class Formation
                         'compte' => 'demo.aminata',
                         'consigne' => [
                             'Une ligne « Bâche imprimée (démo) », 300 × 100 cm, « Œillets tous les 50 cm ».',
-                            '« Enregistrer le devis », puis « Télécharger PDF ».',
+                            '« Enregistrer le brouillon », puis « Aperçu PDF ».',
                         ],
                         'attendu' => 'Le devis DEV-… est en « Brouillon », pour 10 500 F, et le PDF s\'ouvre.',
                     ],
@@ -103,8 +103,8 @@ final class Formation
                         'titre' => 'Passer le devis en commande',
                         'compte' => 'demo.aminata',
                         'consigne' => [
-                            '« Modifier », Statut « Accepté », « Enregistrer les modifications ».',
-                            '« Valider et créer la commande », puis confirmer.',
+                            '« Envoyer au client » (le devis passe en « Envoyé »).',
+                            'Quand le client accepte : « Convertir en commande », puis confirmer.',
                         ],
                         'attendu' => 'La commande CMD-… s\'ouvre avec la frise, de « Confirmée » à « Livrée ».',
                     ],
@@ -206,7 +206,7 @@ final class Formation
                         'Un acompte de 50 % en espèces, le reçu imprimé.',
                         'La facture, validée et numérotée.',
                     ],
-                    'attendu' => 'En 20 minutes : client, devis « Accepté », commande CMD-…, message « Paiement de … enregistré », reçu R-…, facture FAC-…. Le formateur vérifie le paiement dans « Encaissements ». Réussi : le jalon J7 est atteint pour cette personne.',
+                    'attendu' => 'En 20 minutes : client, devis envoyé puis converti, commande CMD-…, message « Paiement de … enregistré », reçu R-…, facture FAC-…. Le formateur vérifie le paiement dans « Encaissements ». Réussi : le jalon J7 est atteint pour cette personne.',
                 ],
             ],
             'graphiste' => [
@@ -343,7 +343,7 @@ final class Formation
                         'compte' => 'demo.seydou',
                         'consigne' => [
                             'Devis et commandes › « Nouveau devis » pour Salon Espoir.',
-                            'Un roll-up, « Enregistrer le devis ».',
+                            'Un roll-up, « Enregistrer le brouillon ».',
                         ],
                         'attendu' => 'Le devis DEV-… est en « Brouillon ».',
                     ],

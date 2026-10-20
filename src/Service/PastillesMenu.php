@@ -12,7 +12,9 @@ use App\Entity\ConversationClient;
 use App\Security\MessagerieInterneVoter;
 use App\Security\MessagerieVoter;
 use App\Service\MessagerieInterne\MessagesEquipe;
+use App\Entity\Notification;
 use App\Entity\Paiements;
+use App\Service\Achats\AlertesAchats;
 use App\Entity\ReclamationClient;
 use App\Entity\ReponseSondage;
 use App\Entity\User;
@@ -66,6 +68,8 @@ final class PastillesMenu implements ResetInterface
             $compteurs['app_a_valider_index'] = $this->compter(Paiements::class, 'p', 'p.statut = :s', ['s' => Paiements::STATUT_EN_ATTENTE]);
             // Commandes d'achat au-dessus du seuil, à valider par la direction (docs/achats.md).
             $compteurs['app_achat_index'] = $this->compter(Achats::class, 'a', 'a.statut = :s', ['s' => Achats::STATUT_A_VALIDER]);
+            // Alertes d'achat en cours pour soi (app:achats:alertes, SU06) : stock bas, prix, retard, commande oubliée.
+            $compteurs['app_reappro_index'] = $this->compter(Notification::class, 'n', 'n.destinataire = :moi AND n.resolueLe IS NULL AND n.type IN (:types)', ['moi' => $utilisateur, 'types' => array_values(AlertesAchats::TYPES)]);
         }
         if ($this->security->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
             $compteurs['app_actions_index'] = $this->compter(

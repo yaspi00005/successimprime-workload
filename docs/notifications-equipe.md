@@ -58,6 +58,7 @@ Règles anti-bruit :
 | Message d'un client | à faire | conversation en attente, dans les délais | agent assigné, sinon encaissement |
 | Devis à relancer | à faire | action de caisse « devis » à faire | agent de l'action |
 | Stock bas | à faire | article « à commander » | Direction |
+| Achats : stock bas, hausse de prix, fournisseur en retard, commande oubliée | à faire | `app:achats:alertes` chaque heure (docs/achats.md, SU06) | Direction |
 | Commande prête | info | fin de production (`ActionsOrdre`) | livraison, commercial |
 | Retard de pointage | info | pointages du jour en retard | RH |
 

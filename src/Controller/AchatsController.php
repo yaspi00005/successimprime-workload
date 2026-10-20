@@ -10,6 +10,7 @@ use App\Entity\User;
 use App\Repository\ArticlesRepository;
 use App\Repository\FournisseursRepository;
 use App\Service\Achats\CalculsAchat;
+use App\Service\Achats\PreparationAchat;
 use App\Service\Achats\SuiviAchats;
 use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
@@ -46,6 +47,7 @@ final class AchatsController extends AbstractController
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly SuiviAchats $suivi,
+        private readonly PreparationAchat $preparation,
     ) {
     }
 
@@ -384,53 +386,16 @@ final class AchatsController extends AbstractController
 
     private function ajouterLigne(Achats $achat, Articles $article, int $quantite): void
     {
-        $prix = $article->getPrixAchat() ?? 0;
-
-        foreach ($article->getFournisseurs() as $lien) {
-            if ($lien->getFournisseur() === $achat->getFournisseur() && $lien->getPrixAchat() !== null) {
-                $prix = $lien->getPrixAchat();
-            }
-        }
-
-        $ligne = (new AchatDetail())->setArticle($article)->setQuantite(max(1, $quantite))->setPrixUnitaire($prix);
-        $achat->addLigne($ligne);
+        PreparationAchat::ajouterLigne($achat, $article, $quantite);
     }
 
     /**
-     * Transport et transit repris de la dernière commande du fournisseur :
-     * même libellé, même base, et le même montant par unité de stock
-     * appliqué aux quantités de cette commande (arrondi à la centaine).
+     * Transport et transit repris de la dernière commande du fournisseur
+     * (PreparationAchat, partagé avec le réapprovisionnement SU06).
      */
     private function preremplirFrais(Achats $achat): void
     {
-        $precedente = null;
-        foreach ($this->suivi->achats() as $a) {
-            if ($a->getFournisseur() === $achat->getFournisseur() && SuiviAchats::estPassee($a) && ($a->getFraisTransport() > 0 || $a->getFraisTransit() > 0)) {
-                $precedente = $a;
-                break;
-            }
-        }
-
-        if ($precedente === null) {
-            return;
-        }
-
-        $avant = SuiviAchats::detailCommande($precedente);
-        $maintenant = SuiviAchats::detailCommande($achat);
-        $mettreAEchelle = static function (int $frais) use ($avant, $maintenant): int {
-            if ($avant['quantiteTotale'] <= 0 || $maintenant['quantiteTotale'] <= 0 || !$avant['memeUnite'] || $avant['unite'] !== $maintenant['unite']) {
-                return $frais;
-            }
-
-            return (int) (round($frais / $avant['quantiteTotale'] * $maintenant['quantiteTotale'] / 100) * 100);
-        };
-
-        $achat->setFraisTransportLibelle($precedente->getFraisTransportLibelle())
-            ->setFraisTransportBase($precedente->getFraisTransportBase())
-            ->setFraisTransport($mettreAEchelle($precedente->getFraisTransport()))
-            ->setFraisTransitLibelle($precedente->getFraisTransitLibelle())
-            ->setFraisTransitBase($precedente->getFraisTransitBase())
-            ->setFraisTransit($mettreAEchelle($precedente->getFraisTransit()));
+        $this->preparation->preremplirFrais($achat);
     }
 
     /**

@@ -286,7 +286,7 @@ final class CatalogueParametres
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_stock_articles_index', 'champs' => [],
                 'motsCles' => ['Seuil minimum · articles à commander', 'Alertes de stock', 'Inventaire'],
             ],
-            // Achats (docs/achats.md, maquettes SU01 à SU03) : validation des commandes d'achat et alertes.
+            // Achats (docs/achats.md, maquettes SU01 à SU07) : validation des commandes d'achat et règles d'alerte.
             'achats' => [
                 'famille' => 'atelier', 'libelle' => 'Achats et fournisseurs', 'icone' => 'fa-truck',
                 'roles' => ['ROLE_ADMIN'], 'route' => 'app_fournisseur_index',
@@ -294,8 +294,15 @@ final class CatalogueParametres
                     ['cle' => 'seuil_validation', 'type' => 'nombre', 'libelle' => 'Commande d\'achat à faire valider au-delà de', 'aide' => 'Total rendu Bamako ; validée par la direction', 'suffixe' => 'F', 'min' => 0, 'max' => 1000000000, 'defaut' => 500000],
                     ['cle' => 'marge_securite_jours', 'type' => 'nombre', 'libelle' => 'Marge de sécurité', 'aide' => 'Alerte quand les jours restants ≤ délai du fournisseur + cette marge', 'suffixe' => 'jours', 'min' => 0, 'max' => 60, 'defaut' => 5],
                     ['cle' => 'jours_regroupement', 'type' => 'nombre', 'libelle' => 'Regrouper les articles à commander dans les', 'aide' => 'Proposés dans la même commande pour partager le transport', 'suffixe' => 'jours', 'min' => 0, 'max' => 60, 'defaut' => 14],
+                    // Règles d'alerte (SU06, SU07) : app:achats:alertes prévient la direction (application, téléphone, lien WhatsApp).
+                    ['cle' => 'alerte_stock_bas', 'type' => 'interrupteur', 'libelle' => 'Alerte stock bas', 'aide' => 'Sous le minimum, ou quand les jours restants ≤ délai du fournisseur + marge de sécurité', 'defaut' => true],
+                    ['cle' => 'alerte_prix', 'type' => 'interrupteur', 'libelle' => 'Alerte hausse de prix', 'aide' => 'Le dernier prix payé au fournisseur comparé au précédent', 'defaut' => true],
+                    ['cle' => 'hausse_prix_pourcent', 'type' => 'nombre', 'libelle' => 'Hausse de prix signalée à partir de', 'suffixe' => '%', 'min' => 1, 'max' => 100, 'defaut' => 5],
+                    ['cle' => 'alerte_retard', 'type' => 'interrupteur', 'libelle' => 'Alerte fournisseur en retard', 'aide' => 'Dès le lendemain de la date promise, si rien n\'est reçu', 'defaut' => true],
+                    ['cle' => 'alerte_oubli', 'type' => 'interrupteur', 'libelle' => 'Alerte commande oubliée', 'aide' => 'Quand l\'intervalle habituel entre deux commandes d\'un article est dépassé', 'defaut' => true],
+                    ['cle' => 'depassement_oubli_pourcent', 'type' => 'nombre', 'libelle' => 'Intervalle habituel dépassé de', 'suffixe' => '%', 'min' => 0, 'max' => 200, 'defaut' => 20],
                 ],
-                'motsCles' => ['Validation des commandes d\'achat', 'Marge de sécurité · réapprovisionnement', 'Partager le transport'],
+                'motsCles' => ['Validation des commandes d\'achat', 'Marge de sécurité · réapprovisionnement', 'Partager le transport', 'Alertes d\'achat : stock bas, prix, retard, commande oubliée'],
                 'note' => 'Une commande d\'achat dont le total rendu Bamako (marchandise, transport et transit) dépasse le seuil attend la validation de la direction ; en dessous, elle part dès l\'envoi.',
             ],
             'montage' => [

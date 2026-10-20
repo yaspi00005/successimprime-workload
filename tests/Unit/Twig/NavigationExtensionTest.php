@@ -118,12 +118,13 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(7, $extension->ongletActif('app_actions_voir'));
-        // Achats (docs/achats.md) : « Fournisseurs », « Commandes d'achat » et « Réceptions » juste après « Articles et stock ».
+        // Achats (docs/achats.md) : « Fournisseurs », « Commandes d'achat », « Réceptions » et « Réapprovisionnement » juste après « Articles et stock ».
         self::assertSame(11, $extension->ongletActif('app_stock_articles_fiche'));
         self::assertSame(12, $extension->ongletActif('app_fournisseur_show'));
         self::assertSame(13, $extension->ongletActif('app_achat_new'));
         self::assertSame(14, $extension->ongletActif('app_reception_valider'));
-        self::assertSame(15, $extension->ongletActif('app_machines_index'));
+        self::assertSame(15, $extension->ongletActif('app_reappro_proposition'));
+        self::assertSame(16, $extension->ongletActif('app_machines_index'));
         self::assertNull($extension->ongletActif('app_ecran_inconnu'));
     }
 

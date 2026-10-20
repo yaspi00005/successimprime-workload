@@ -203,7 +203,7 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 
 `app:alertes` vérifie l'arrivée de la synchronisation, l'espace disque et la file de messages, puis envoie les alertes système en attente par e-mail et dans l'application (docs/alertes-systeme.md). Mettre dans `.env.local` du serveur `MAILER_DSN`, `MAILER_FROM_ADDRESS` et, au besoin, `ALERTES_EMAIL` (une ou plusieurs adresses, séparées par des virgules, qui reçoivent toutes les alertes en plus de la direction) : sans messagerie, les alertes restent visibles dans Réglages › Alertes système et dans la cloche. La même tâche tourne sur l'ERP local (Windows : `scripts\windows\installer_tache_alertes.bat`).
 
-Les autres tâches (synchronisation, notifications de l'équipe `app:notifications` chaque minute avec la synchronisation ([docs/notifications-equipe.md](notifications-equipe.md)), actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail, expiration et relances des devis) tournent sur l'ERP local.
+Les autres tâches (synchronisation, notifications de l'équipe `app:notifications` chaque minute avec la synchronisation ([docs/notifications-equipe.md](notifications-equipe.md)), actions de caisse, rappels, alerte de trésorerie, rapport de la semaine, crédits SMS et e-mail, rapports par e-mail, expiration et relances des devis, alertes d'achat) tournent sur l'ERP local.
 
 Devis (docs/devis.md) : sur l'ERP local, `app:devis:relances` chaque heure. Sous Windows : `scripts\windows\installer_tache_devis_relances.bat`. Sous Linux ou Mac, `crontab -e` :
 
@@ -216,6 +216,12 @@ Prépresse (docs/prepresse.md) : sur l'ERP local, `app:dossier-partage:importer`
 ```
 * * * * * cd /chemin/du/projet && php bin/console app:dossier-partage:importer -q >> var/log/dossier-partage.log 2>&1
 5 * * * * cd /chemin/du/projet && php bin/console app:prepresse:relances -q >> var/log/prepresse-relances.log 2>&1
+```
+
+Achats (docs/achats.md, SU06) : sur l'ERP local, `app:achats:alertes` chaque heure (stock bas, hausse de prix, fournisseur en retard, commande oubliée : notifications de la direction). Sous Windows, elle est lancée par `scripts\windows\devis_relances.bat`. Sous Linux ou Mac, `crontab -e` :
+
+```
+10 * * * * cd /chemin/du/projet && php bin/console app:achats:alertes -q >> var/log/achats-alertes.log 2>&1
 ```
 
 Rapports du jour, de la semaine et du mois par e-mail ([docs/rapports-mail.md](rapports-mail.md)) : sur l'ERP local, `MAILER_DSN` et `MAILER_FROM_ADDRESS` (la même boîte que ci-dessus) dans son `.env.local`, et la tâche chaque quart d'heure. Sous Windows : `scripts\windows\installer_tache_rapports_mail.bat` ; sous Linux ou Mac, `crontab -e` :

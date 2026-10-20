@@ -40,7 +40,7 @@
 					<small>rien en attente</small>
 				{% endif %}
 			</a>
-			<a class="ac-kpi" href="{{ path('app_stock_articles_a_commander') }}">
+			<a class="ac-kpi" href="{{ path('app_reappro_index') }}">
 				<span>À commander bientôt</span>
 				<b class="{{ kpis.bientot > 0 ? 'ac-rouge' : 'ac-vert' }}">{{ kpis.bientot }} article{{ kpis.bientot > 1 ? 's' }}</b>
 				<small>alertes de réapprovisionnement</small>

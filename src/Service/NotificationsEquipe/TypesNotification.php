@@ -27,6 +27,7 @@ final class TypesNotification
         'messages' => ['Messages', 'far fa-comment-dots'],
         'commandes' => ['Commandes', 'fas fa-box'],
         'stock' => ['Stock', 'fas fa-cube'],
+        'achats' => ['Achats', 'fas fa-truck'],
         'devis' => ['Devis', 'far fa-file-alt'],
         'equipe' => ['Équipe', 'far fa-clock'],
         'systeme' => ['Système', 'fas fa-wifi'],
@@ -53,6 +54,11 @@ final class TypesNotification
         'message_client' => ['libelle' => 'Nouveau message d\'un client', 'niveau' => Notification::A_FAIRE, 'domaine' => 'messages', 'droits' => ['ROLE_CLIENT', 'ROLE_COMMANDE', 'ROLE_DEVIS', 'ROLE_PAIEMENT_ENCAISSER', 'ROLE_FACTURE', 'ROLE_PREPRESSE'], 'droit_action' => null, 'icone' => 'far fa-envelope'],
         'devis_relancer' => ['libelle' => 'Devis à relancer', 'niveau' => Notification::A_FAIRE, 'domaine' => 'devis', 'droits' => ['ROLE_PAIEMENT_ENCAISSER'], 'droit_action' => 'ROLE_PAIEMENT_ENCAISSER', 'icone' => 'far fa-file-alt'],
         'stock_bas' => ['libelle' => 'Stock sous le seuil', 'niveau' => Notification::A_FAIRE, 'domaine' => 'stock', 'droits' => ['ROLE_ADMIN'], 'droit_action' => 'ROLE_ADMIN', 'icone' => 'fas fa-cube'],
+        // Achats (maquettes SU06 et SU07, docs/achats.md) : app:achats:alertes, pour la direction.
+        'achat_stock_bas' => ['libelle' => 'Achats : article à commander (stock bas)', 'niveau' => Notification::A_FAIRE, 'domaine' => 'achats', 'droits' => ['ROLE_ADMIN'], 'droit_action' => 'ROLE_ADMIN', 'icone' => 'fas fa-box-open'],
+        'achat_prix_hausse' => ['libelle' => 'Achats : prix fournisseur en hausse', 'niveau' => Notification::A_FAIRE, 'domaine' => 'achats', 'droits' => ['ROLE_ADMIN'], 'droit_action' => 'ROLE_ADMIN', 'icone' => 'fas fa-chart-line'],
+        'achat_fournisseur_retard' => ['libelle' => 'Achats : fournisseur en retard', 'niveau' => Notification::A_FAIRE, 'domaine' => 'achats', 'droits' => ['ROLE_ADMIN'], 'droit_action' => 'ROLE_ADMIN', 'icone' => 'fas fa-truck'],
+        'achat_commande_oubliee' => ['libelle' => 'Achats : commande oubliée', 'niveau' => Notification::A_FAIRE, 'domaine' => 'achats', 'droits' => ['ROLE_ADMIN'], 'droit_action' => 'ROLE_ADMIN', 'icone' => 'fas fa-redo-alt'],
         'commande_prete' => ['libelle' => 'Commande prête', 'niveau' => Notification::INFO, 'domaine' => 'commandes', 'droits' => ['ROLE_COMMANDE', 'ROLE_LIVRAISON'], 'droit_action' => null, 'icone' => 'fas fa-box'],
         'retard_pointage' => ['libelle' => 'Retard de pointage', 'niveau' => Notification::INFO, 'domaine' => 'equipe', 'droits' => ['ROLE_RH'], 'droit_action' => 'ROLE_RH', 'icone' => 'far fa-clock'],
     ];
@@ -71,7 +77,7 @@ final class TypesNotification
      * @var array<string, list<string>>
      */
     public const PAR_DEFAUT = [
-        'ROLE_ADMIN' => ['machine_panne', 'synchro_coupee', 'caisse_non_cloturee', 'client_sans_reponse', 'bat_retard', 'facture_echue', 'plafond_credit', 'mention', 'bat_valide', 'acompte_recu', 'devis_relancer', 'stock_bas', 'commande_prete', 'retard_pointage'],
+        'ROLE_ADMIN' => ['machine_panne', 'synchro_coupee', 'caisse_non_cloturee', 'client_sans_reponse', 'bat_retard', 'facture_echue', 'plafond_credit', 'mention', 'bat_valide', 'acompte_recu', 'devis_relancer', 'stock_bas', 'achat_stock_bas', 'achat_prix_hausse', 'achat_fournisseur_retard', 'achat_commande_oubliee', 'commande_prete', 'retard_pointage'],
         'ROLE_CAISSE_COMMANDE' => ['synchro_coupee', 'caisse_non_cloturee', 'client_sans_reponse', 'facture_echue', 'mention', 'acompte_recu', 'message_client', 'devis_relancer', 'commande_prete'],
         'ROLE_GRAPHISTE' => ['synchro_coupee', 'client_sans_reponse', 'bat_retard', 'mention', 'bat_valide', 'message_client'],
         'ROLE_PRODUCTION' => ['machine_panne', 'synchro_coupee', 'mention'],

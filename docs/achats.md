@@ -9,9 +9,9 @@ Yaya a envoyé les maquettes le 19/10/2026. Elles sont dans `/mnt/project-files/
 - SU06 Fréquence des commandes et alertes ;
 - SU07 Alertes sur téléphone.
 
-La première étape a construit SU01, SU02 et SU03 ; la deuxième, SU05 (réception). Ce sont des écrans neufs : on garde les données (`Fournisseurs`, `Achats`, `AchatDetail`, `ArticleFournisseur`, les entrées et sorties de stock) et les calculs qui marchent, pas l'ancienne présentation.
+La première étape a construit SU01, SU02 et SU03 ; la deuxième, SU05 (réception) ; la troisième, SU06 et SU07 (réapprovisionnement et alertes). Ce sont des écrans neufs : on garde les données (`Fournisseurs`, `Achats`, `AchatDetail`, `ArticleFournisseur`, les entrées et sorties de stock) et les calculs qui marchent, pas l'ancienne présentation.
 
-Les écrans sont dans le menu Atelier, juste après « Articles et stock » : « Fournisseurs », « Commandes d'achat » et « Réceptions ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
+Les écrans sont dans le menu Atelier, juste après « Articles et stock » : « Fournisseurs », « Commandes d'achat », « Réceptions » et « Réapprovisionnement ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
 
 ## SU01 Fournisseurs
 
@@ -19,7 +19,7 @@ Quatre indicateurs en haut :
 - **Achats du mois** : les commandes passées ce mois-ci, au total rendu Bamako (marchandise, transport et transit), et leur nombre ;
 - **Dû aux fournisseurs** : les factures fournisseurs à payer, avec la prochaine échéance. C'est le même calcul que l'écran Finances › Fournisseurs (`Echeancier::dettes`) ;
 - **En route** : les commandes passées et pas encore reçues, avec la plus proche arrivée prévue ;
-- **À commander bientôt** : le nombre d'articles en alerte (règle plus bas). La carte ouvre le bon de commande du stock.
+- **À commander bientôt** : le nombre d'articles en alerte (règle plus bas). La carte ouvre le réapprovisionnement (SU06).
 
 Le tableau donne, pour chaque fournisseur :
 - son nom, avec une pastille à ses initiales dans sa couleur (choisie sur la fiche, sinon tirée du nom) ;
@@ -167,6 +167,56 @@ Comme les achats : la direction (`ROLE_ADMIN`, `access_control` sur `/achats`). 
 
 `App\Service\Achats\CalculsReception` (statique, testé sans base : `tests/Unit/Service/Achats/CalculsReceptionTest.php`) : badge d'écart, quantité à réclamer, coût réel, règle du blocage et sa raison, solde, textes de la livraison et du message, lien wa.me. L'écran et la validation sont dans `App\Service\Achats\Receptions`, les routes dans `ReceptionsController`.
 
+## SU06 Fréquence des commandes et alertes
+
+Menu Atelier › « Réapprovisionnement » (`/achats/reapprovisionnement`, `ReapproController`), après « Réceptions ». La pastille du menu compte ses alertes d'achat non réglées (ses notifications). Réservé à la direction comme les autres écrans Achats (`ROLE_ADMIN`, `access_control` sur `/achats`).
+
+### Alertes
+
+En haut, les alertes en cours, les plus graves d'abord (rouge : sous le minimum ou à commander aujourd'hui, retard de plus d'une semaine ; orange : à commander cette semaine, retard ; jaune : à regarder). Chacune a son bouton :
+- **Commander** (stock bas, commande oubliée) : la commande proposée au fournisseur (SU07, plus bas). S'il existe déjà un brouillon pour l'article : « Voir le brouillon » ;
+- **Voir la commande** (prix, retard) : la commande d'achat ;
+- **WhatsApp** : des liens wa.me avec le message prêt, un par personne prévenue qui a un numéro sur sa fiche employé (sauf soi), et pour un retard « Relancer Dakar Signs » vers le contact du fournisseur (« notre commande CA-2026-0041 devait arriver le 18/10… »). Sans numéro, « Partager sur WhatsApp » ouvre WhatsApp pour choisir le destinataire. Le message aux collègues ne contient pas de montant. Pas d'API Meta.
+
+### Les quatre règles
+
+| Règle | Quand | Détail |
+|---|---|---|
+| **Stock bas** | disponible au minimum (ou à zéro), ou jours restants ≤ délai du fournisseur + marge de sécurité (5 jours) | pas d'alerte si une commande de l'article est déjà partie ou à valider : le tableau dit « en route · arrivée 28/10 » |
+| **Hausse de prix** | le dernier prix payé au fournisseur pour un article monte d'au moins 5 % sur le précédent | signalée 30 jours après la commande qui l'a montrée ; comparée chez le même fournisseur |
+| **Fournisseur en retard** | commande partie, date promise passée (dès le lendemain), pas reçue | avec le nombre de jours et les articles |
+| **Commande oubliée** | depuis la dernière commande de l'article, l'intervalle habituel est dépassé de plus de 20 % | intervalle habituel : la moyenne des écarts entre ses commandes sur 12 mois, avec trois commandes au moins (deux le même jour comptent pour une) ; pas d'alerte si l'article est déjà en stock bas ou en commande |
+
+Chaque règle s'allume ou s'éteint par son interrupteur sur l'écran, ou dans Réglages › Paramètres › « Achats et fournisseurs » (champs `alerte_stock_bas`, `alerte_prix`, `alerte_retard`, `alerte_oubli`), avec ses seuils : hausse de prix à partir de 5 % (`hausse_prix_pourcent`), intervalle dépassé de 20 % (`depassement_oubli_pourcent`) ; la marge de sécurité est celle de la tuile. Depuis le site en ligne, le changement est proposé à l'ERP, comme les autres tuiles. Une règle éteinte retire ses notifications au passage suivant.
+
+### Tableau
+
+Une ligne par article actif qui a un fournisseur et une consommation (ou une alerte), la plus pressée d'abord, les articles déjà en commande à la fin : stock disponible, consommation par semaine (12 semaines), jours restants, délai + sécurité (« 9 + 5 j »), « commande tous les » (intervalle habituel), et « Commander » : « maintenant · sous le minimum » (rouge), « avant le 24/10 · dans 5 j » (orange, dans la semaine), « avant le 02/11 » (jaune, à regrouper avec un autre article du fournisseur), « avant le 06/11 » (vert), ou « en route · arrivée 28/10 » (bleu). En dessous, la quantité suggérée (« 2 rouleaux · commander ») ouvre la commande proposée. Les articles sans sortie depuis 12 semaines ni alerte sont seulement comptés.
+
+### Courbe du stock
+
+Un clic sur un article (`?article=`, numéro chiffré) montre sa courbe sur 60 jours : le stock des 30 derniers jours (reconstitué depuis le stock d'aujourd'hui et les entrées et sorties ; quand il deviendrait négatif, des mouvements manquent et la courbe commence après), la prévision au rythme de consommation (pointillés), la ligne du minimum, le jour de commande, la fenêtre du transport (délai du fournisseur) et l'arrivée. Dessous : les dernières commandes passées, la prochaine prévue, l'intervalle moyen et la tendance (« consommation en hausse de 12 % sur 4 semaines » : les 4 dernières semaines contre la moyenne des 12 ; « stable » à moins de 5 %).
+
+### Quantité suggérée
+
+De quoi tenir pendant le délai du fournisseur, la marge et une couverture (l'intervalle habituel de l'article, sinon 30 jours), au rythme de consommation des 12 dernières semaines, moins le disponible ; au moins de quoi revenir au minimum à l'arrivée ; sans dépasser le stock maximum à l'arrivée quand il est noté. Arrondie à l'unité d'achat supérieure, une au moins (`CalculsAlertes::quantiteSuggeree`).
+
+### Qui est prévenu, et quand
+
+`app:achats:alertes`, **chaque heure sur l'ERP local** (sur le site en ligne elle refuse de tourner) : chaque alerte nouvelle devient une notification de l'équipe « À faire » (domaine « Achats ») pour les comptes de la direction (`ROLE_ADMIN`, Kadiatou sur la démonstration) : dans la cloche et le centre de notifications, et sur le téléphone par la PWA, pas pendant les heures calmes. Une alerte qui dure n'est pas renvoyée ; celle qui cesse (article commandé, commande reçue, règle éteinte) disparaît toute seule. Les sortes sont `achat_stock_bas`, `achat_prix_hausse`, `achat_fournisseur_retard` et `achat_commande_oubliee` (`TypesNotification`), réglables par rôle dans Réglages › Notifications de l'équipe. Le bouton « Prévenir maintenant » de l'écran fait le même passage tout de suite.
+
+Il n'existe pas de rôle « Achats » séparé : les écrans Achats sont à la direction, ce sont donc ses comptes qui reçoivent. La source « Stock sous le seuil » des notifications de l'équipe (articles sous leur seuil, écran du stock) existe toujours à côté.
+
+## SU07 Alertes sur téléphone
+
+Sur téléphone (390 px), le même écran met les alertes en cartes, bouton « Commander » et WhatsApp sous le texte, puis le tableau en cartes, la courbe et les règles. La notification sur le téléphone (« Bâche 510 g frontlit sous le minimum · Stock 19,4 m² · 2 jours restants · Sahel Supplies livre en 3 j ») ouvre la commande proposée.
+
+**Commande proposée** (`/achats/reapprovisionnement/fournisseur/{fournisseur}`) : pour un fournisseur, les articles en stock bas ou en commande oubliée, plus ses autres articles à commander dans les jours de regroupement (14), aux quantités suggérées et à son prix ; transport et transit repris de sa dernière commande (même règle que SU03) ; total rendu et acompte ; « Grouper les deux économise ≈ 15 000 F de transport » (`CalculsAchat::economieRegroupement`). « Préparer le brouillon pour Sahel Supplies » enregistre la commande d'achat en **brouillon** (numérotée, préparée par soi) et ouvre son écran : on y corrige les quantités, puis « Envoyer » la fait partir ou valider selon le seuil. Rien ne part chez le fournisseur sans ce dernier geste.
+
+### Calculs
+
+`App\Service\Achats\CalculsAlertes` (statique, testé sans base : `tests/Unit/Service/Achats/CalculsAlertesTest.php`) : hausse de prix, jours de retard, intervalle habituel, commande oubliée, quantité suggérée, tendance, textes des alertes et des messages WhatsApp, historique et points de la courbe. Les chiffres et les alertes sont dans `AlertesAchats`, la préparation d'une commande (ligne au prix du fournisseur, frais repris) dans `PreparationAchat`, partagée avec SU03.
+
 ## Règles de réapprovisionnement
 
 Pour chaque article actif qui a un fournisseur (le principal de la fiche article) :
@@ -183,7 +233,8 @@ Les calculs sont dans `App\Service\Achats\CalculsAchat`, statiques et testés sa
 Réglages › Paramètres, tuile « Achats et fournisseurs » :
 - commande à faire valider au-delà de : 500 000 F ;
 - marge de sécurité : 5 jours ;
-- regrouper les articles à commander dans les : 14 jours.
+- regrouper les articles à commander dans les : 14 jours ;
+- règles d'alerte (SU06) : stock bas, hausse de prix (à partir de 5 %), fournisseur en retard, commande oubliée (intervalle dépassé de 20 %), toutes allumées.
 
 ## Données
 
@@ -200,13 +251,12 @@ Migration `Version20261020050000` (réception, SU05) :
 
 ## Démonstration
 
-`php bin/console app:demo` complète les fournisseurs des maquettes (`AchatsDemo`) : Sahel Supplies (bâches, Bamako, 2 jours), Dakar Signs (vinyles et micro-perforé, camion depuis Dakar, promis en 7 jours, 8 en moyenne), Encres Pro Bamako (encres solvant, 1 jour), Yinghe Distribution (film, poudre et encres DTF, fret aérien depuis la Chine, 18 jours promis) et Kanté Bois & Alu (structures de roll-up). Un an de commandes avec des retards et un rouleau abîmé, une commande en route depuis la Chine, deux factures fournisseurs à payer, et une consommation qui met le micro-perforé à commander avant quelques jours, avec le vinyle à commander dans les 14 jours. Pour la réception (SU05) : la commande **CA-AAAA-0041** de Dakar Signs (4 rouleaux de vinyle blanc, 2 de micro-perforé, transport et transit prévus 114 700 F et 39 700 F) est en route, promise il y a deux jours, prête à recevoir ; la dernière réception de Dakar Signs a un rouleau écrasé, une réclamation ouverte avec son message envoyé, sa facture à payer (solde après l'acompte de 50 %) et son paiement bloqué. Tout part avec la purge (les réclamations et les dettes reliées aux commandes fictives aussi, même saisies en essayant l'écran), la commande peut être relancée.
+`php bin/console app:demo` complète les fournisseurs des maquettes (`AchatsDemo`) : Sahel Supplies (bâches, Bamako, 2 jours), Dakar Signs (vinyles et micro-perforé, camion depuis Dakar, promis en 7 jours, 8 en moyenne), Encres Pro Bamako (encres solvant, 1 jour), Yinghe Distribution (film, poudre et encres DTF, fret aérien depuis la Chine, 18 jours promis) et Kanté Bois & Alu (structures de roll-up). Un an de commandes avec des retards et un rouleau abîmé, une commande en route depuis la Chine, deux factures fournisseurs à payer, et une consommation qui met le micro-perforé à commander avant quelques jours, avec le vinyle à commander dans les 14 jours. Pour la réception (SU05) : la commande **CA-AAAA-0041** de Dakar Signs (4 rouleaux de vinyle blanc, 2 de micro-perforé, transport et transit prévus 114 700 F et 39 700 F) est en route, promise il y a deux jours, prête à recevoir ; la dernière réception de Dakar Signs a un rouleau écrasé, une réclamation ouverte avec son message envoyé, sa facture à payer (solde après l'acompte de 50 %) et son paiement bloqué. Pour les alertes (SU06, SU07) : bâche 510 g et encre noire sous le minimum, bâche 440 g à regrouper chez Sahel (un seul transport), CA-AAAA-0041 en retard de deux jours, poudre DTF en hausse de 7 % chez Yinghe (10 200 F le sac au lieu de 9 500 F), structures de roll-up commandées tous les deux mois chez Kanté et oubliées depuis 75 jours. Les notifications naissent au premier passage de `app:achats:alertes`. Tout part avec la purge (les réclamations et les dettes reliées aux commandes fictives aussi, même saisies en essayant l'écran), la commande peut être relancée.
 
 ## Et ensuite
 
 - **SU04 Coûts, marges et bénéfices** : coût de revient complet par produit (achat, transport, encre, gâche, machine), prix de vente moyen, marge et bénéfice du mois, en partant du coût rendu enregistré sur chaque ligne d'achat.
-- **SU06 Fréquence des commandes et alertes** : écran de réapprovisionnement avec la courbe de stock et la prévision, et des règles d'alerte réglables (stock bas, hausse de prix, fournisseur en retard, commande oubliée). Les calculs de jours restants et de date de commande sont prêts dans `CalculsAchat`.
-- **SU07** : ces alertes sur téléphone.
+- Alertes d'achat : pas d'envoi WhatsApp automatique (API Meta) ; les messages sont préparés en liens wa.me.
 - L'acompte n'est pas encore une dépense à payer dans les Finances : il s'affiche sur la commande, et la réception le déduit de la facture pour faire le solde.
 - Les frais réels de transport et de transit ne deviennent pas des dépenses à payer au transporteur : ils servent au coût de revient.
 - Une commande partiellement reçue est close ; une seconde réception sur la même commande n'existe pas.

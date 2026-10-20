@@ -13,6 +13,11 @@ use Doctrine\DBAL\Connection;
  * qui met le micro-perforé en alerte (avec le vinyle à commander dans
  * les 14 jours, chez le même fournisseur).
  *
+ * Pour les alertes (SU06, SU07) : bâche 510 g et encre noire sous le
+ * minimum, bâche 440 g à regrouper chez Sahel, CA-AAAA-0041 en retard
+ * de deux jours, poudre DTF en hausse de 7 % chez Yinghe, structures de
+ * roll-up commandées tous les deux mois et oubliées depuis 75 jours.
+ *
  * Pour la réception (SU05) : la commande CA-AAAA-0041 de Dakar Signs
  * (4 rouleaux de vinyle blanc, 2 de micro-perforé) est en route, promise
  * il y a deux jours, prête à recevoir ; la dernière réception de Dakar
@@ -98,7 +103,8 @@ final class AchatsDemo
      */
     private const STOCK = [
         self::BACHE_510 => [38.4, 22.0],
-        self::BACHE_440 => [260.0, 15.0],
+        // Bâche 440 : à commander dans les 14 jours, proposée avec la 510 chez Sahel (un seul transport, SU07).
+        self::BACHE_440 => [57.0, 15.0],
         self::VINYLE => [57.8, 14.5],
         self::MICRO => [24.7, 9.0],
         self::ENCRE_CYAN => [6.0, 0.3],
@@ -107,7 +113,7 @@ final class AchatsDemo
         self::ENCRE_NOIR => [0.8, 0.35],
         self::FILM_DTF => [300.0, 50.0],
         self::POUDRE_DTF => [14.0, 1.5],
-        self::ROLL_UP => [134.0, 4.0],
+        self::ROLL_UP => [24.0, 4.0],
     ];
 
     /**
@@ -155,11 +161,11 @@ final class AchatsDemo
         foreach ([[330, 18], [270, 24], [210, 18], [150, 21], [95, 17], [45, 22]] as [$jours, $delai]) {
             $commandes[] = [self::YINGHE, $jours, $delai, [[self::FILM_DTF, 3, 165000, 0], [self::POUDRE_DTF, 10, 9500, 0]], 0, 0, 'Fret aérien Canton → Bamako', 'au kilo, 1 colis', 'Dédouanement aéroport', 'transitaire Sénou'];
         }
-        // … et une commande en route, passée il y a 10 jours.
-        $commandes[] = [self::YINGHE, 10, null, [[self::FILM_DTF, 2, 168000, 0], [self::POUDRE_DTF, 10, 9500, 0]], 0, 0, 'Fret aérien Canton → Bamako', 'au kilo, 1 colis', 'Dédouanement aéroport', 'transitaire Sénou'];
+        // … et une commande en route, passée il y a 10 jours : la poudre a pris 7 % (alerte « hausse de prix », SU06).
+        $commandes[] = [self::YINGHE, 10, null, [[self::FILM_DTF, 2, 168000, 0], [self::POUDRE_DTF, 10, 10200, 0]], 0, 0, 'Fret aérien Canton → Bamako', 'au kilo, 1 colis', 'Dédouanement aéroport', 'transitaire Sénou'];
 
-        // Kanté Bois & Alu : structures de roll-up, retirées en 3 jours.
-        foreach ([[300, 3], [240, 3], [180, 4], [120, 3], [60, 3], [12, 3]] as [$jours, $delai]) {
+        // Kanté Bois & Alu : structures de roll-up tous les deux mois, retirées en 3 jours ; rien depuis 75 jours (alerte « commande oubliée », SU06).
+        foreach ([[320, 3], [255, 3], [195, 4], [135, 3], [75, 3]] as [$jours, $delai]) {
             $commandes[] = [self::KANTE, $jours, $delai, [[self::ROLL_UP, 20, 16000, 0]], 0, 0, null, null, null, null];
         }
 

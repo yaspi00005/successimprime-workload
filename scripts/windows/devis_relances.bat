@@ -22,3 +22,7 @@ if not exist "%PROJET%\var\log" mkdir "%PROJET%\var\log"
 :: Prepresse (docs/prepresse.md) : relances des fichiers manquants
 :: (J+1, J+3, J+7, J+15), meme tache, chaque heure.
 "%PHP%" "%PROJET%\bin\console" app:prepresse:relances >> "%LOG_FILE%" 2>&1
+
+:: Achats (docs/achats.md, SU06) : alertes de reapprovisionnement, de prix,
+:: de retard et de commande oubliee pour la direction, meme tache, chaque heure.
+"%PHP%" "%PROJET%\bin\console" app:achats:alertes >> "%LOG_FILE%" 2>&1

@@ -1,0 +1,20 @@
+{# Fiche du guide « prepresse-relances » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Dans la prépresse, touchez « Relances » en haut. Les commandes à qui il manque un fichier sont rangées de la plus ancienne à la plus récente.</li>
+	<li>Chaque ligne dit l'attente, ce qui manque (« 3 fichiers sur 6 »), les relances faites (J+1 ✓ · J+3 ✓ · J+7) et la réponse du client.</li>
+	<li>Cochez les commandes, puis touchez « Relancer la sélection ».</li>
+	<li>WhatsApp s'ouvre avec le message prêt : il liste les formats qui manquent et le lien d'envoi. Envoyez-le, puis revenez pour la commande suivante.</li>
+	<li>Notez la réponse du client sur la ligne (« je passe samedi »).</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Chaque message ouvert est noté : date, étape et personne.</li>
+	<li>Relances automatiques : J+1 un WhatsApp préparé ; J+3 aussi un message dans l'espace client ; J+7 la caisse appelle le client (« Mes actions ») ; J+15 la commande est mise en pause et sa date de livraison retirée.</li>
+	<li>Dès qu'un fichier arrive, la pause est levée et la date de livraison revient.</li>
+	<li>« impossible : pas de numéro » : associez d'abord un client qui a un téléphone.</li>
+	<li>Les étapes se règlent dans Réglages › Atelier › « Relances des fichiers ».</li>
+</ul>
+{% endblock %}

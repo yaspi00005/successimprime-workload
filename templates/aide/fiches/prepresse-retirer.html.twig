@@ -1,0 +1,18 @@
+{# Fiche du guide « prepresse-retirer » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Dans la liste de la prépresse, sur une commande sans fichier, touchez « Retirer ». Pour un seul format, dépliez la commande et touchez l'œil barré.</li>
+	<li>Confirmez avec « Retirer ». Les lignes sans fichier quittent la liste.</li>
+	<li>Pour les revoir, touchez « Retirées · N » sous la liste.</li>
+	<li>Sur la page « Retirées », touchez « Remettre dans la liste » pour ramener une ligne.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>La commande n'est ni clôturée ni supprimée : elle reste ouverte, seule la ligne quitte la prépresse.</li>
+	<li>Seules les lignes encore sans fichier et pas commencées au contrôle peuvent être retirées.</li>
+	<li>Une ligne retirée n'est plus relancée et ne reçoit plus les fichiers du dossier partagé : remettez-la d'abord dans la liste.</li>
+	<li>La date et la personne qui a retiré la ligne sont gardées.</li>
+</ul>
+{% endblock %}

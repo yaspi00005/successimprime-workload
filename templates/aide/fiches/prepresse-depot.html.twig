@@ -1,0 +1,21 @@
+{# Fiche du guide « prepresse-depot » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Dans la liste de la prépresse, touchez « Déposer » sur la commande. La fenêtre « Déposer les fichiers » s'ouvre.</li>
+	<li>Glissez tous les fichiers d'un coup dans « Glissez les fichiers ici » (ou choisissez-les depuis l'ordinateur).</li>
+	<li>Attendez la fin des envois. Chaque fichier reçoit un format de la commande ; « Associé par » dit comment : le nom, les dimensions, les proportions.</li>
+	<li>Lisez le résumé : sûrs, à vérifier, à choisir. Corrigez le format dans la liste si besoin.</li>
+	<li>Onglet « Dossier partagé » : cochez les fichiers lourds déjà posés sur le serveur pour cette commande.</li>
+	<li>Touchez « Enregistrer · passer en « À contrôler » ». La commande passe dans l'onglet « À contrôler ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Des dimensions dans le nom du fichier (« 55x70mm », « 1.2x3m ») donnent le format le plus sûr.</li>
+	<li>Un fichier laissé sans format n'est pas gardé. Fermer la fenêtre sans enregistrer retire aussi les fichiers envoyés.</li>
+	<li>Un fichier peut aussi se glisser directement sur un format, quand la commande est dépliée.</li>
+	<li>Dans le dossier partagé, un fichier nommé « CMD-numéro_format » se rattache tout seul à sa commande en une minute. Les autres vont dans « Fichiers à classer ».</li>
+	<li>Une copie de chaque fichier est rangée dans le dossier du client, sans rien écraser.</li>
+</ul>
+{% endblock %}

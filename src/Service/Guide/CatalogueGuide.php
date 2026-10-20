@@ -127,6 +127,14 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'statistiques-activite', 'groupe' => 'direction', 'titre' => 'Statistiques : imprimerie et hors imprimerie',
+                'but' => 'Juger l\'activité d\'impression sans les ventes de matériel, puis voir le total.',
+                'droits' => ['ROLE_STATS_GLOBAL'], 'route' => 'app_statistiques_index', 'ecrans' => ['app_statistiques_'], 'consultation' => true,
+                'captures' => [
+                    ['nom' => 'statistiques-activite', 'legende' => 'Statistiques et rapports : la carte « Imprimerie / Hors imprimerie / Total ».'],
+                ],
+            ],
+            [
                 'cle' => 'a-valider', 'groupe' => 'direction', 'titre' => 'Valider les opérations « À valider »',
                 'but' => 'Contrôler puis valider ou rejeter les paiements et mouvements en attente.',
                 'droits' => ['ROLE_ADMIN'], 'route' => 'app_a_valider_index', 'ecrans' => ['app_a_valider_'],
@@ -167,6 +175,32 @@ final class CatalogueGuide
                 'route' => 'app_finances_vue_ensemble', 'ecrans' => ['app_finances_vue_ensemble', 'app_finances_du_jour'], 'consultation' => true,
                 'captures' => [
                     ['nom' => 'finances', 'legende' => 'Finances › Vue d\'ensemble.'],
+                ],
+            ],
+            [
+                'cle' => 'fournisseurs', 'groupe' => 'direction', 'titre' => 'Suivre les fournisseurs',
+                'but' => 'Voir ce qui est dû, ce qui arrive, qui livre à l\'heure et quoi commander bientôt.',
+                'droits' => ['ROLE_ADMIN'], 'route' => 'app_fournisseur_index', 'ecrans' => ['app_fournisseur_'], 'consultation' => true,
+                'captures' => [
+                    ['nom' => 'fournisseurs', 'legende' => 'Atelier › Fournisseurs.'],
+                    ['nom' => 'fournisseur-fiche', 'legende' => 'La fiche d\'un fournisseur : conditions, performance, prix.'],
+                ],
+            ],
+            [
+                'cle' => 'commande-achat', 'groupe' => 'direction', 'titre' => 'Passer une commande d\'achat',
+                'but' => 'Commander la marchandise avec son transport, et connaître son coût rendu à Bamako.',
+                'droits' => ['ROLE_ADMIN'], 'route' => 'app_achat_index', 'ecrans' => ['app_achat_'],
+                'captures' => [
+                    ['nom' => 'commande-achat', 'legende' => 'Une commande d\'achat préparée depuis une alerte.'],
+                ],
+            ],
+            [
+                'cle' => 'reception-achat', 'groupe' => 'direction', 'titre' => 'Réceptionner une commande d\'achat',
+                'but' => 'Compter ce qui arrive, réclamer la casse, saisir les frais réels et mettre en stock.',
+                'droits' => ['ROLE_ADMIN'], 'route' => 'app_reception_index', 'ecrans' => ['app_reception_'],
+                'captures' => [
+                    ['nom' => 'reception-achat', 'legende' => 'La réception : commandé, reçu, bon état, facturé.'],
+                    ['nom' => 'reception-reclamation', 'legende' => 'Un rouleau écrasé : réclamation au fournisseur et paiement bloqué.'],
                 ],
             ],
             [
@@ -221,6 +255,14 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'hors-imprimerie', 'groupe' => 'caisse', 'titre' => 'Vendre du matériel : « Hors imprimerie »',
+                'but' => 'Marquer une vente de tablettes, d\'ordinateurs… pour la compter à part de l\'imprimerie.',
+                'droits' => [['ROLE_DEVIS', 'ROLE_COMMANDE']], 'route' => 'app_ventes_index', 'ecrans' => ['app_devis_new', 'app_devis_edit', 'app_commandes_new', 'app_commandes_edit'],
+                'captures' => [
+                    ['nom' => 'hors-imprimerie', 'legende' => 'La case « Hors imprimerie », sous l\'objet du devis.'],
+                ],
+            ],
+            [
                 'cle' => 'commande-en-ligne', 'groupe' => 'caisse', 'titre' => 'Confirmer une commande passée en ligne',
                 'but' => 'Vérifier la commande du client dans son espace, puis la confirmer.',
                 'droits' => ['ROLE_COMMANDE'], 'route' => 'app_ventes_index', 'ecrans' => ['app_commandes_show', 'app_commandes_edit'],
@@ -269,6 +311,39 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'factures-liste', 'groupe' => 'caisse', 'titre' => 'La liste des factures et les nouveaux documents',
+                'but' => 'Retrouver une facture, un avoir, un reçu ou un devis, et créer un nouveau document.',
+                'droits' => ['ROLE_FACTURE'], 'route' => 'app_factures_index', 'ecrans' => ['app_factures_index', 'app_factures_export'],
+                'captures' => [
+                    ['nom' => 'factures-liste', 'legende' => 'Documents de facturation : les chiffres du mois et la liste.'],
+                    ['nom' => 'facture-nouveau-document', 'legende' => '« + Nouveau document » : le type, puis le point de départ.'],
+                ],
+            ],
+            [
+                'cle' => 'facture-paiement', 'groupe' => 'caisse', 'titre' => 'Encaisser depuis la facture',
+                'but' => 'Enregistrer le paiement d\'une facture validée et envoyer le reçu sur WhatsApp.',
+                'droits' => ['ROLE_FACTURE', 'ROLE_PAIEMENT_ENCAISSER'], 'route' => 'app_factures_index', 'ecrans' => ['app_factures_show'],
+                'captures' => [
+                    ['nom' => 'facture-paiement', 'legende' => '« Enregistrer un paiement » : Orange Money reçu à distance, à confirmer.'],
+                ],
+            ],
+            [
+                'cle' => 'avoir-faire', 'groupe' => 'caisse', 'titre' => 'Corriger une facture validée : l\'avoir',
+                'but' => 'Créditer tout ou partie d\'une facture déjà numérotée, sans la modifier.',
+                'droits' => ['ROLE_FACTURE'], 'route' => 'app_factures_index', 'ecrans' => ['app_factures_avoir'],
+                'captures' => [
+                    ['nom' => 'avoir-saisie', 'legende' => 'Nouvel avoir : pourquoi, les lignes à créditer, que faire de l\'avoir.'],
+                ],
+            ],
+            [
+                'cle' => 'documents-lies', 'groupe' => 'caisse', 'titre' => 'Les documents liés d\'une commande',
+                'but' => 'Voir sur une page le devis, la commande, le BAT, le bon de livraison, les factures et les paiements.',
+                'droits' => ['ROLE_FACTURE', 'ROLE_COMMANDE'], 'route' => 'app_factures_index', 'ecrans' => ['app_factures_documents_lies'], 'consultation' => true,
+                'captures' => [
+                    ['nom' => 'documents-lies', 'legende' => 'Documents liés : la chaîne du dossier et son équilibre.'],
+                ],
+            ],
+            [
                 'cle' => 'encaissement-livreur', 'groupe' => 'caisse', 'titre' => 'Valider l\'argent rapporté par le livreur',
                 'but' => 'Recevoir l\'argent encaissé à la livraison et le valider.',
                 'droits' => ['ROLE_PAIEMENT_ENCAISSER', ['ROLE_COMMANDE', 'ROLE_LIVRAISON']], 'route' => 'app_livraisons_planning', 'ecrans' => ['app_livraisons_planning', 'app_livraisons_bl'],
@@ -302,6 +377,38 @@ final class CatalogueGuide
                 'captures' => [
                     ['nom' => 'prepresse', 'legende' => 'Contrôle prépresse : les travaux à contrôler.'],
                     ['nom' => 'prepresse-controle', 'legende' => 'Le contrôle d\'un travail : la liste des points à vérifier.'],
+                ],
+            ],
+            [
+                'cle' => 'prepresse-depot', 'groupe' => 'graphiste', 'titre' => 'Déposer les fichiers d\'une commande',
+                'but' => 'Envoyer tous les fichiers d\'un coup : chacun va tout seul au bon format.',
+                'droits' => ['ROLE_PREPRESSE'], 'route' => 'app_controle_pre_presse_index', 'ecrans' => ['app_controle_pre_presse_depot', 'app_fichier_dossier_partage'],
+                'captures' => [
+                    ['nom' => 'prepresse-depot', 'legende' => 'La fenêtre « Déposer les fichiers » d\'une commande.'],
+                ],
+            ],
+            [
+                'cle' => 'prepresse-tableau', 'groupe' => 'graphiste', 'titre' => 'Le tableau de la prépresse',
+                'but' => 'Voir en quatre colonnes où en est chaque commande, du fichier à la production.',
+                'droits' => ['ROLE_PREPRESSE'], 'route' => 'app_controle_pre_presse_tableau', 'consultation' => true,
+                'captures' => [
+                    ['nom' => 'prepresse-tableau', 'legende' => 'Prépresse › Tableau.'],
+                ],
+            ],
+            [
+                'cle' => 'prepresse-relances', 'groupe' => 'graphiste', 'titre' => 'Relancer les fichiers manquants',
+                'but' => 'Demander au client les fichiers qui manquent, avec la liste des formats.',
+                'droits' => ['ROLE_PREPRESSE'], 'route' => 'app_controle_pre_presse_relances', 'ecrans' => ['app_controle_pre_presse_relance'],
+                'captures' => [
+                    ['nom' => 'prepresse-relances', 'legende' => 'Prépresse › Relances : J+1, J+3, J+7 et la réponse du client.'],
+                ],
+            ],
+            [
+                'cle' => 'prepresse-retirer', 'groupe' => 'graphiste', 'titre' => 'Retirer de la liste une ligne sans fichier',
+                'but' => 'Enlever de la prépresse ce qui n\'aura pas de fichier, sans clôturer la commande.',
+                'droits' => ['ROLE_PREPRESSE'], 'route' => 'app_controle_pre_presse_retirees', 'ecrans' => ['app_controle_pre_presse_retirees', 'app_controle_pre_presse_retirer', 'app_controle_pre_presse_remettre'],
+                'captures' => [
+                    ['nom' => 'prepresse-retirees', 'legende' => 'Prépresse › Retirées : « Remettre dans la liste ».'],
                 ],
             ],
             [

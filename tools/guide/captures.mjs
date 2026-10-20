@@ -86,11 +86,18 @@ async function session(compte, { mobile = false, ip = null } = {}) {
     return page;
 }
 
-/** Attend la page prête : préchargeur parti, barre de débogage cachée, pas d'animation. */
+/**
+ * Attend la page prête : préchargeur parti, barre de débogage et bandeau
+ * des alertes critiques du poste (synchronisation…) cachés, pas d'animation.
+ */
 async function pret(page) {
     await page.waitForLoadState('load').catch(() => {});
     await page.waitForFunction(() => !document.getElementById('preloader'), null, { timeout: 10000 }).catch(() => {});
-    await page.addStyleTag({ content: '.sf-toolbar,.sf-toolbarreset,.sf-minitoolbar{display:none!important} *,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}' }).catch(() => {});
+    await page.addStyleTag({ content: '.sf-toolbar,.sf-toolbarreset,.sf-minitoolbar,[data-si-banniere]{display:none!important} *,*::before,*::after{transition:none!important;animation:none!important;caret-color:transparent!important}' }).catch(() => {});
+    // Aperçus en cadre (facture) : sans la barre de débogage non plus.
+    for (const cadre of page.frames().slice(1)) {
+        await cadre.addStyleTag({ content: '.sf-toolbar,.sf-toolbarreset,.sf-minitoolbar{display:none!important}' }).catch(() => {});
+    }
     await page.waitForTimeout(400);
 }
 
@@ -148,6 +155,18 @@ async function scene(noms, jouer) {
     }
 }
 
+/** Code de la fiche dans l'adresse (/commandes/ADWlzbNUR, docs/ids-chiffres.md). */
+function codeDe(page, dossier) {
+    return page.url().match(new RegExp(`/${dossier}/([0-9A-Za-z]+)`))[1];
+}
+
+/** Lien d'une ligne de tableau qui contient un texte (null s'il n'y en a pas). */
+async function lienDe(page, ligne, lien = 'a[href]') {
+    const cible = page.locator('tr', { hasText: ligne }).locator(lien).first();
+
+    return (await cible.count()) ? cible.getAttribute('href') : null;
+}
+
 /** Zone de l'écran visible au-dessus d'un élément (pour laisser une liste hors de l'image). */
 async function auDessusDe(page, selecteur) {
     const boite = await page.locator(selecteur).first().boundingBox();
@@ -197,7 +216,7 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await page.locator('[name="devis[devisDetails][0][largeur]"]').scrollIntoViewIfNeeded();
     await capture(page, 'devis-saisie');
     await suivre(page, page.getByRole('button', { name: 'Enregistrer le devis' }));
-    ids.devis = page.url().match(/\/devis\/(\d+)/)[1];
+    ids.devis = codeDe(page, 'devis');
 
     // Accepté, puis « Valider et créer la commande ».
     await suivre(page, page.getByRole('link', { name: 'Modifier' }).first());
@@ -206,7 +225,7 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     await suivre(page, page.getByRole('button', { name: 'Enregistrer les modifications' }));
     await capture(page, 'devis-accepte');
     await suivre(page, page.getByRole('button', { name: 'Valider et créer la commande' }));
-    ids.commande = page.url().match(/\/commandes\/(\d+)/)[1];
+    ids.commande = codeDe(page, 'commandes');
 
     // Caisse : le client, sa commande, 5 000 F en espèces.
     await aller(page, '/caisse');
@@ -224,12 +243,13 @@ await scene(['client-nouveau', 'devis-saisie', 'devis-accepte', 'caisse-encaisse
     if (!(await page.getByText(/Paiement de .* enregistré/).count())) throw new Error('pas de message « Paiement … enregistré »');
     await capture(page, 'caisse-recu');
 
-    // Facture officielle depuis la commande.
+    // Facture depuis la commande : le brouillon, puis « Valider et numéroter ».
     await aller(page, `/commandes/${ids.commande}`);
-    await suivre(page, page.getByRole('link', { name: 'Facturer' }).first());
-    await page.selectOption('[name="factures[typeDocument]"]', { label: 'Facture officielle' });
-    await suivre(page, page.getByRole('button', { name: 'Enregistrer le document' }));
-    ids.facture = page.url().match(/\/factures\/(\d+)/)[1];
+    await page.getByRole('button', { name: 'Autres actions' }).click();
+    await suivre(page, page.getByRole('button', { name: 'Facturer' }));
+    ids.facture = codeDe(page, 'factures');
+    await page.getByRole('button', { name: 'Valider et numéroter' }).click();
+    await suivre(page, page.locator('.si-confirmation__ok'));
 
     // Accès à l'espace client, code masqué sur l'image.
     await aller(page, `/clients?q=${essai.telephone}`);
@@ -257,8 +277,14 @@ await scene(['clients-liste', 'client-fiche', 'commande-fiche', 'facture-fiche',
         await aller(page, `/commandes/${ids.commande}`);
         await capture(page, 'commande-fiche');
     }
-    if (ids.facture) {
-        await aller(page, `/factures/${ids.facture}`);
+    // La facture validée du parcours, sinon une facture validée de la démonstration.
+    let facture = ids.facture ? `/factures/${ids.facture}` : null;
+    if (!facture && (!SEULES.length || SEULES.includes('facture-fiche'))) {
+        await aller(page, '/factures/?type=facture');
+        facture = await lienDe(page, /F-D\d+[\s\S]*Validée · échéance/, 'td:nth-child(2) a');
+    }
+    if (facture) {
+        await aller(page, facture);
         await capture(page, 'facture-fiche');
     }
     await aller(page, '/ventes');
@@ -283,7 +309,8 @@ await scene(['prepresse', 'prepresse-controle', 'pao-tableau', 'pao-poste', 'mon
     const page = await session('demo.seydou');
     await aller(page, '/pre-presse/');
     await capture(page, 'prepresse');
-    await suivre(page, page.getByRole('link', { name: 'Contrôler' }).first());
+    await aller(page, '/pre-presse/?onglet=a_controler');
+    await suivre(page, page.locator('.pq-actions a', { hasText: 'Contrôler' }).first());
     await page.getByText('Contrôle de l\'infographiste').scrollIntoViewIfNeeded();
     await capture(page, 'prepresse-controle');
     await aller(page, '/atelier/pao');
@@ -298,6 +325,45 @@ await scene(['prepresse', 'prepresse-controle', 'pao-tableau', 'pao-poste', 'mon
     await capture(page, 'demandes-conception');
     await aller(page, '/ventes/creations-atelier');
     await capture(page, 'creations');
+});
+
+// Prépresse (docs/prepresse.md) : dépôt groupé, tableau, relances, lignes retirées.
+await scene(['prepresse-depot', 'prepresse-tableau', 'prepresse-relances', 'prepresse-retirees'], async () => {
+    const page = await session('demo.seydou');
+
+    // Dépôt : trois images sans contenu, dont deux avec un format dans le nom. Fermé sans enregistrer : rien n'est rattaché.
+    if (!SEULES.length || SEULES.includes('prepresse-depot')) {
+        await aller(page, '/pre-presse/?onglet=sans_fichier');
+        const commande = page.locator('[data-depot-url]', { has: page.locator('.pq-actions [data-pq-deposer]') });
+        const choisie = (await commande.filter({ hasText: 'formats' }).count()) ? commande.filter({ hasText: 'formats' }).first() : commande.first();
+        await choisie.locator('.pq-actions [data-pq-deposer]').click();
+        await page.locator('#pq-depot').waitFor();
+        const formats = await choisie.evaluate((e) => [...e.querySelectorAll('button[data-pq-ligne]')].map((b) => (b.getAttribute('aria-label') || '').replace(/^.*format\s+/, '')));
+        const nom = (f, i) => `visuel-${i + 1}_${(f || '').replace(/\s*×\s*/g, 'x').replace(/[^0-9,x.a-z]/gi, '') || 'a3'}.png`;
+        const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
+        const fichiers = [...formats.slice(0, 2).map((f, i) => ({ name: nom(f, i), mimeType: 'image/png', buffer: png })), { name: 'photo-client.png', mimeType: 'image/png', buffer: png }];
+        await page.locator('#pq-depot [data-pq-fichiers]').setInputFiles(fichiers);
+        await page.locator('#pq-depot [data-pq-depot-table]:not([hidden])').waitFor({ timeout: 30000 }).catch(() => {});
+        await page.waitForTimeout(2500);
+        await capture(page, 'prepresse-depot');
+        await page.locator('#pq-depot .pq-fermer').click();
+        await page.waitForTimeout(1500);
+    }
+
+    await aller(page, '/pre-presse/tableau');
+    await capture(page, 'prepresse-tableau');
+    await aller(page, '/pre-presse/relances');
+    await capture(page, 'prepresse-relances');
+
+    // Une ligne retirée puis remise : la page « Retirées » n'est pas vide sur l'image.
+    if (!SEULES.length || SEULES.includes('prepresse-retirees')) {
+        await aller(page, '/pre-presse/?onglet=sans_fichier');
+        await page.locator('.pq-actions button', { hasText: 'Retirer' }).last().click();
+        await suivre(page, page.locator('.si-confirmation__ok'));
+        await aller(page, '/pre-presse/retirees');
+        await capture(page, 'prepresse-retirees');
+        await suivre(page, page.getByRole('button', { name: 'Remettre dans la liste' }).first());
+    }
 });
 
 /* ---------- Caisse et commercial ---------- */
@@ -336,6 +402,51 @@ await scene(['aide-index', 'commande-nouvelle', 'mes-actions', 'caisse-cloture',
     await capture(page, 'encaissements');
 });
 
+// Facturation (FD01 à FD07) avec la caisse : liste, nouveau document, paiement, avoir, documents liés ; la case « Hors imprimerie ».
+await scene(['factures-liste', 'facture-nouveau-document', 'facture-paiement', 'avoir-saisie', 'documents-lies', 'hors-imprimerie'], async () => {
+    const page = await session('demo.aminata');
+    await aller(page, '/factures/');
+    await capture(page, 'factures-liste');
+    await page.getByRole('button', { name: '+ Nouveau document' }).click();
+    await page.waitForTimeout(500);
+    await capture(page, 'facture-nouveau-document');
+
+    // Une facture validée qui attend un paiement : celle du parcours, sinon une de la liste. Rien n'est enregistré.
+    let facture = ids.facture ? `/factures/${ids.facture}` : null;
+    if (!facture) {
+        await aller(page, '/factures/?type=facture');
+        facture = await lienDe(page, /F-D\d+[\s\S]*Validée · échéance/, 'td:nth-child(2) a');
+    }
+    if (!facture) throw new Error('aucune facture validée à encaisser');
+    await aller(page, facture);
+    await page.getByRole('button', { name: 'Enregistrer un paiement' }).click();
+    await page.locator('#fd-paiement .fd-mode', { hasText: 'Orange Money' }).click();
+    await page.fill('#fd-paiement [name$="[reference]"]', 'MP261020.1015.B12345');
+    await page.waitForTimeout(500);
+    await capture(page, 'facture-paiement');
+
+    await aller(page, `${facture}/avoir`);
+    await page.locator('input[name="motif"][value="erreur_prix"], label:has-text("Erreur de prix") input').first().check().catch(() => {});
+    const quantite = page.locator('input.fd-qte:not([disabled])').first();
+    await quantite.fill('1');
+    await quantite.dispatchEvent('input');
+    await quantite.dispatchEvent('change');
+    await page.waitForTimeout(500);
+    await capture(page, 'avoir-saisie');
+
+    await aller(page, facture);
+    await suivre(page, page.getByRole('link', { name: 'Voir tous les documents liés' }));
+    await capture(page, 'documents-lies');
+
+    await aller(page, '/devis/new');
+    const caseHors = page.locator('input[name="devis[horsImprimerie]"]');
+    await caseHors.check();
+    await caseHors.scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -160));
+    await page.waitForTimeout(300);
+    await capture(page, 'hors-imprimerie');
+});
+
 /* ---------- Direction ---------- */
 
 await scene(['tableau-de-bord', 'a-valider', 'utilisateurs', 'utilisateur-nouveau', 'utilisateur-droits', 'parametres', 'finances', 'sauvegardes', 'import'], async () => {
@@ -361,6 +472,49 @@ await scene(['tableau-de-bord', 'a-valider', 'utilisateurs', 'utilisateur-nouvea
     await capture(page, 'sauvegardes');
     await aller(page, '/reglages/systeme/import');
     await capture(page, 'import');
+});
+
+// Statistiques par activité (docs/hors-imprimerie.md) et achats (docs/achats.md) : rien n'est enregistré.
+await scene(['statistiques-activite', 'fournisseurs', 'fournisseur-fiche', 'commande-achat', 'reception-achat', 'reception-reclamation'], async () => {
+    const page = await session('demo.kadiatou');
+    await aller(page, '/statistiques?activite=tout');
+    await page.locator('th', { hasText: 'Hors imprimerie' }).first().scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, 200));
+    await page.waitForTimeout(300);
+    await capture(page, 'statistiques-activite');
+
+    await aller(page, '/fournisseurs');
+    await capture(page, 'fournisseurs');
+    const alerte = await page.locator('a[href*="/achats/new?article="]', { hasText: /sous le minimum|maintenant/ }).first().getAttribute('href');
+    await suivre(page, page.getByRole('link', { name: 'Dakar Signs' }).first());
+    await capture(page, 'fournisseur-fiche');
+    await aller(page, alerte);
+    await capture(page, 'commande-achat');
+
+    // Réception d'une commande en route : un rouleau écrasé, non validée.
+    await aller(page, '/achats/receptions');
+    const recevoir = page.locator('a', { hasText: 'Réceptionner' });
+    if (await recevoir.count()) {
+        await suivre(page, recevoir.first());
+        const bon = page.locator('[data-ac-r-bon]').first();
+        await bon.fill(String(Math.max(0, Number(await bon.inputValue()) - 1)));
+        await bon.dispatchEvent('input');
+        await page.locator('[data-ac-r-motif]').first().fill('écrasé');
+        await page.waitForTimeout(500);
+        await capture(page, 'reception-achat');
+    } else if (!SEULES.length || SEULES.includes('reception-achat')) {
+        erreurs.push('reception-achat : aucune commande d\'achat à réceptionner (relancer app:demo)');
+    }
+
+    // Une réception avec réclamation ouverte : le paiement du solde est bloqué.
+    await aller(page, '/achats/receptions');
+    const bloquee = await lienDe(page, 'paiement bloqué', 'a:has-text("Voir")');
+    if (!bloquee) throw new Error('aucune réception avec paiement bloqué');
+    await aller(page, bloquee);
+    await page.getByText('Réclamation fournisseur créée').first().scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -120));
+    await page.waitForTimeout(300);
+    await capture(page, 'reception-reclamation');
 });
 
 // Crédits SMS et e-mail : solde saisi à la main (pas de clés Orange en démonstration), image coupée avant « Derniers envois ».

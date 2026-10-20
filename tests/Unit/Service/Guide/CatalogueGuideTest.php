@@ -212,6 +212,46 @@ final class CatalogueGuideTest extends TestCase
         self::assertSame(['se-connecter'], array_values(array_filter($entretien, static fn (string $c): bool => 'premiers-pas' === CatalogueGuide::fiche($c)['groupe'])));
     }
 
+    /** Fiches du 19-20/10 : facturation, hors imprimerie, achats, prépresse par commande. */
+    public function testFichesDesNouveauxEcransParRole(): void
+    {
+        $caisse = self::cles(self::CAISSE);
+        foreach (['factures-liste', 'facture-paiement', 'avoir-faire', 'documents-lies', 'hors-imprimerie'] as $attendue) {
+            self::assertContains($attendue, $caisse);
+        }
+        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'statistiques-activite', 'prepresse-depot', 'prepresse-relances'] as $refusee) {
+            self::assertNotContains($refusee, $caisse);
+        }
+
+        // Le graphiste facture sans encaisser : la liste, l'avoir et les documents liés, pas le paiement.
+        $graphiste = self::cles(self::GRAPHISTE);
+        foreach (['prepresse-depot', 'prepresse-tableau', 'prepresse-relances', 'prepresse-retirer', 'factures-liste', 'documents-lies', 'hors-imprimerie'] as $attendue) {
+            self::assertContains($attendue, $graphiste);
+        }
+        foreach (['facture-paiement', 'fournisseurs', 'reception-achat'] as $refusee) {
+            self::assertNotContains($refusee, $graphiste);
+        }
+
+        foreach ([self::PRODUCTION, self::LIVREUR] as $droits) {
+            $cles = self::cles($droits);
+            foreach (['factures-liste', 'facture-paiement', 'avoir-faire', 'hors-imprimerie', 'prepresse-depot', 'fournisseurs', 'commande-achat', 'reception-achat', 'statistiques-activite'] as $refusee) {
+                self::assertNotContains($refusee, $cles);
+            }
+        }
+
+        // Achats : la Direction seule ; les statistiques par activité avec les statistiques globales.
+        $direction = self::cles([], true);
+        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'statistiques-activite'] as $attendue) {
+            self::assertContains($attendue, $direction);
+            self::assertSame('direction', CatalogueGuide::fiche($attendue)['groupe']);
+        }
+        self::assertContains('statistiques-activite', self::cles(['ROLE_STATS_GLOBAL']));
+
+        // « ? Aide » depuis l'avoir ou la prépresse propose la bonne fiche.
+        self::assertContains('avoir-faire', array_column(CatalogueGuide::pourEcran(CatalogueGuide::visibles(self::accorde(self::CAISSE), self::CAISSE), 'app_factures_avoir'), 'cle'));
+        self::assertContains('prepresse-retirer', array_column(CatalogueGuide::pourEcran(CatalogueGuide::visibles(self::accorde(self::GRAPHISTE), self::GRAPHISTE), 'app_controle_pre_presse_retirees'), 'cle'));
+    }
+
     public function testMonEspaceDemandeUneFicheEmploye(): void
     {
         self::assertContains('pointer', self::cles(self::LIVREUR));

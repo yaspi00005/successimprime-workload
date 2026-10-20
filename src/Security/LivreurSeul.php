@@ -39,6 +39,8 @@ final class LivreurSeul
         'app_livraisons_tournee',
         'app_livraisons_tournee_',
         'app_livraisons_remise',
+        // QR d'une étiquette de colis : renvoie le livreur à la remise de sa livraison (docs/production-colis.md).
+        'app_colis_qr',
         'app_livraisons_mes_livraisons',
         // Photo ou signature d'une de ses livraisons (TourneeController::preuve vérifie le livreur).
         'app_livraisons_bl_preuve',

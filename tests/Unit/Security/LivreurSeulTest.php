@@ -53,13 +53,14 @@ final class LivreurSeulTest extends TestCase
 
     public function testPagesPermises(): void
     {
-        foreach (['app_livraisons_tournee', 'app_livraisons_tournee_etape', 'app_livraisons_tournee_echec', 'app_livraisons_tournee_terminee', 'app_livraisons_remise', 'app_livraisons_mes_livraisons', 'app_livraisons_bl_preuve',
+        foreach (['app_livraisons_tournee', 'app_livraisons_tournee_etape', 'app_livraisons_tournee_echec', 'app_livraisons_tournee_terminee', 'app_livraisons_remise', 'app_livraisons_mes_livraisons', 'app_livraisons_bl_preuve', 'app_colis_qr',
             'app_home', 'app_mon_espace_index', 'app_pointer_index', 'app_user_change_password', 'app_aide_index', 'app_notification_index', 'app_logout', 'app_verification', '_wdt'] as $route) {
             self::assertTrue(LivreurSeul::routePermise($route), $route);
         }
         foreach (['app_livraisons_index', 'app_livraisons_a_retirer', 'app_livraisons_planning', 'app_livraisons_bl', 'app_livraisons_suivi', 'app_bons_livraison_index',
             'app_clients_index', 'app_commandes_show', 'app_ventes_index', 'app_statistiques_index', 'app_mes_statistiques', 'app_rapport_semaine', 'app_recherche',
-            'app_messages_clients_index', 'app_planning_index', 'app_reclamation_index', 'app_user_index', 'app_verification_x', null, ''] as $route) {
+            'app_messages_clients_index', 'app_planning_index', 'app_reclamation_index', 'app_user_index', 'app_verification_x',
+            'app_atelier_production_etiquettes', 'app_atelier_production_controle', 'app_atelier_production_colis_scanner', 'app_atelier_operateur_scanner', 'app_colis_qr_x', null, ''] as $route) {
             self::assertFalse(LivreurSeul::routePermise($route), (string) $route);
         }
         foreach (LivreurSeul::MENU as $route) {

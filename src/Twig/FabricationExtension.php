@@ -18,6 +18,8 @@ final class FabricationExtension extends AbstractExtension
     /** @var list<array{cle: string, libelle: string, route: string}> */
     public const ENTREES = [
         ['cle' => 'tableau', 'libelle' => 'Tableau', 'route' => 'app_atelier_production'],
+        ['cle' => 'etiquettes', 'libelle' => 'Étiquettes', 'route' => 'app_atelier_production_etiquettes'],
+        ['cle' => 'controle', 'libelle' => 'Contrôle final', 'route' => 'app_atelier_production_controle'],
     ];
 
     public function __construct(private readonly RouterInterface $router)

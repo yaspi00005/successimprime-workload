@@ -1,7 +1,12 @@
 {% extends 'base.html.twig' %}
 
-{# OP05 : suivi de production, étiquettes des colis avec QR, puis « Prêt pour livraison ». #}
-{% block title %}{{ livraison.numero }} · étiquettes et livraison{% endblock %}
+{#
+	OP05 : suivi de production et colis de la commande. Les étiquettes (une
+	par colis, 100 × 60 mm, QR) s'impriment dans Production › Étiquettes ;
+	la commande passe « Prête » au contrôle final quand tous ses colis sont
+	scannés (docs/production-colis.md).
+#}
+{% block title %}{{ livraison.numero }} · colis et livraison{% endblock %}
 {% block page_title %}Poste machiniste{% endblock %}
 
 {% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
@@ -11,12 +16,11 @@
 {% endblock %}
 
 {% block body %}
-	{% set imprimees = o.etiquettesImprimeesLe is not null %}
 	<div class="si-pm">
 		<header class="si-pm-tete-ligne">
 			<div>
 				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ livraison.numero }}</span>
-				<h1>{{ livraison.numero }} · {{ o.estPretLivraison ? 'prêt pour livraison' : 'terminé' }}<span class="si-pm-bureau-inline"> · étiquettes et livraison</span></h1>
+				<h1>{{ livraison.numero }} · {{ o.estPretLivraison ? 'prêt pour livraison' : 'terminé' }}<span class="si-pm-bureau-inline"> · colis et livraison</span></h1>
 				<p class="si-pm-mobile-sous">{{ livraison.client }} · {{ livraison.contenu }}</p>
 			</div>
 		</header>
@@ -35,32 +39,33 @@
 				<p class="si-pm-bilan"><b>{{ livraison.conformes ?? 0 }} bon{{ (livraison.conformes ?? 0) > 1 ? 's' }} · {{ livraison.rebut ?? 0 }} en gâche</b>{{ livraison.observation }}</p>
 			</section>
 
-			<section class="si-pm-planche">
-				<small>Aperçu des étiquettes · 100 × 70 mm</small>
-				<div class="si-pm-planche-etiquettes">
-					{% for n in 1..colis %}
-						{% include 'ma_file/_etiquette.html.twig' with {n: n, total: colis} %}
-					{% endfor %}
-				</div>
+			<section class="si-pm-panneau">
+				<h2>Colis de la commande</h2>
+				{% if colis is null or colis.actifs is empty %}
+					<p class="si-pm-note">Pas encore d'étiquette : une étiquette par colis, avec son QR.</p>
+				{% else %}
+					<ul class="si-pm-suivi">
+						{% for c in colis.actifs %}
+							<li class="{{ c.estScanne ? '' : 'a-faire' }}">
+								<i aria-hidden="true">{% if c.estScanne %}<span class="fas fa-check"></span>{% endif %}</i>
+								<span><b>Colis {{ c.rang }}/{{ c.total }} · {{ c.code }}</b><small>{{ c.contenuTexte }}{{ c.estScanne ? ' · scanné ' ~ c.scanneLe|date('H:i') : ' · à scanner' }}</small></span>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-pm-note mb-0">{{ colis.scannes }} colis sur {{ colis.total }} scannés{{ colis.controle and colis.controle.estValide ? ' · contrôle final validé' : ' · contrôle final à faire' }}.</p>
+				{% endif %}
 			</section>
 
 			<div class="si-pm-pile">
 				<section class="si-pm-panneau">
-					<h2>Étiquettes</h2>
-					{% if peutAgir and not o.estPretLivraison %}
-						<form method="post" action="{{ path('app_ma_file_etiquettes_imprimer', {id: o.id}) }}" target="_blank" data-si-pm-imprimer>
-							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
-							<div class="si-pm-champs">
-								<label>Nombre de colis<input type="number" name="colis" min="1" max="99" value="{{ colis }}" class="form-control" data-si-pm-colis></label>
-								<label>Format<span class="si-pm-champ-unite"><input class="form-control" value="100 × 70" readonly aria-readonly="true"><span>mm</span></span></label>
-							</div>
-							<p class="si-pm-note mt-2 mb-2">Imprimante : celle de l'ordinateur (format 100 × 70 mm).</p>
-							<button class="btn si-pm-btn-nuit w-100"><i class="fas fa-print me-1"></i>{{ imprimees ? 'Réimprimer' : 'Imprimer' }} {{ colis }} étiquette{{ colis > 1 ? 's' }}</button>
-						</form>
-					{% else %}
-						<p class="si-pm-note">{{ o.nombreColis ?? colis }} colis{{ imprimees ? ' · imprimées le ' ~ o.etiquettesImprimeesLe|date('d/m à H:i') }}.</p>
+					<h2>Étiquettes et contrôle</h2>
+					{% if ligne and ligne.commande %}
+						{% if not o.estPretLivraison %}
+							<a href="{{ path('app_atelier_production_etiquettes', {commande: ligne.commande.id}) }}" class="btn si-pm-btn-nuit w-100 mb-2"><i class="fas fa-tag me-1"></i>{{ colis and colis.total > 0 ? 'Étiquettes des colis' : 'Étiqueter les colis' }}</a>
+						{% endif %}
+						<a href="{{ path('app_atelier_production_controle_commande', {id: ligne.commande.id}) }}" class="btn si-pm-btn-bleu w-100"><i class="fas fa-clipboard-check me-1"></i>Contrôle final</a>
 					{% endif %}
-					<p class="si-pm-note mt-2 mb-0">Le QR ouvre la commande pour le livreur et confirme la remise au client.</p>
+					<p class="si-pm-note mt-2 mb-0">Imprimante d'étiquettes 100 × 60 mm. Scanné à l'atelier, le QR d'un colis le marque collé ; pour le livreur, il ouvre sa remise.</p>
 				</section>
 
 				<section class="si-pm-panneau">
@@ -78,12 +83,8 @@
 
 				{% if o.estPretLivraison %}
 					<p class="si-pm-alerte info"><i class="fas fa-check me-1"></i>Prêt pour livraison depuis {{ o.pretLivraisonLe|date('d/m H:i') }}.</p>
-				{% elseif peutAgir %}
-					<form method="post" action="{{ path('app_ma_file_pret', {id: o.id}) }}" class="si-pm-gros">
-						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
-						<button class="btn si-pm-btn-bleu"{{ not imprimees ? ' disabled' }}><i class="fas fa-check"></i>Prêt pour livraison</button>
-					</form>
-					<p class="si-pm-note text-center">{{ not imprimees ? 'Imprimez d\'abord les étiquettes. ' }}{{ livraison.aLivrer ? (livraison.livreur ? livraison.livreur ~ ' et le client sont prévenus' : 'Le bureau et le client sont prévenus') : 'Le client voit « Prête à retirer »' }} · la commande passe « Prête ».</p>
+				{% else %}
+					<p class="si-pm-note text-center">La commande passe « Prête » au contrôle final, quand tous ses colis sont scannés ; {{ livraison.aLivrer ? 'le livreur ou le bureau est alors prévenu' : 'le client voit alors « Prête à retirer »' }}.</p>
 				{% endif %}
 			</div>
 		</div>

@@ -122,20 +122,6 @@
 		}, 1000);
 	}
 
-	// --- Étiquettes (OP05) : l'impression s'ouvre dans un onglet, la page se met à jour ---
-	const impression = document.querySelector('[data-si-pm-imprimer]');
-	if (impression) {
-		impression.addEventListener('submit', () => setTimeout(() => location.reload(), 1500));
-	}
-	const colis = document.querySelector('[data-si-pm-colis]');
-	if (colis) {
-		colis.addEventListener('change', () => {
-			const n = Math.max(1, Math.min(99, parseInt(colis.value, 10) || 1));
-			const url = new URL(location.href);
-			url.searchParams.set('colis', n);
-			location.href = url.toString();
-		});
-	}
 	// --- Estimation (OP03) : total et heure de fin recalculés pendant la saisie ---
 	const estimer = document.querySelector('[data-si-pm-estimer]');
 	if (estimer) {

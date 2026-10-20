@@ -1,0 +1,333 @@
+{% extends 'fabrication/_base.html.twig' %}
+
+{#
+	PD06 Contrôle final d'une commande (maquette du 20/10/2026,
+	docs/production-colis.md) : comparer au BAT avec la photo de la pièce,
+	cases par ligne, scan des colis collés, temps réel vs estimé, consommé ;
+	« Refaire une pièce » et « Prêt pour la livraison ». Une fois prête : la
+	tournée (bureau) et le message WhatsApp préparé (jamais de montant ; le
+	code de réception n'est jamais montré au livreur de cette livraison).
+#}
+
+{% block title %}Contrôle final · {{ commande.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-colis.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block fab_actif %}controle{% endblock %}
+
+{% block fab_contenu %}
+	{% set jeton = csrf_token('production-colis') %}
+	{% set photo = controle and controle.photo %}
+	{% set aujourdhui = maintenant|date('Ymd') %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane"><a href="{{ path('app_atelier_production_controle') }}">Atelier › Production › Contrôle</a></p>
+			<h1 class="si-fab-titre">Contrôle final · {{ commande.numero }} · {{ client.nom }}</h1>
+		</div>
+		<div class="si-fab-actions">
+			{% if peutAgir and not prete and lignes is not empty %}
+				<details class="si-ctl-refaire">
+					<summary class="si-fab-bouton"><i class="fas fa-undo" aria-hidden="true"></i>Refaire une pièce</summary>
+					<div class="si-ctl-refaire-panneau">
+						{% for l in lignes %}
+							<form method="post" action="{{ path('app_atelier_production_controle_refaire', {id: l.ordre.id}) }}" class="si-ctl-form" data-confirmer="Renvoyer {{ l.nom }} en production ?" data-confirmer-detail="Le travail revient dans Ma file. La réimpression est notée au journal de la machine, due à l'opérateur ; le contrôle final sera à refaire." data-confirmer-bouton="Renvoyer en production" data-confirmer-danger>
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<b>{{ l.nom }} <span class="si-fab-muet">· {{ l.ordre.quantiteConforme }} bonne{{ l.ordre.quantiteConforme > 1 ? 's' }}</span></b>
+								<label>Pièces à refaire<input type="number" name="pieces" min="1" max="{{ max(1, l.ordre.quantiteConforme) }}" value="1" required></label>
+								<label>Ce qui ne va pas<textarea name="motif" rows="2" maxlength="200" required placeholder="Rayure sur la 2e bâche"></textarea></label>
+								<button class="si-fab-bouton sombre">Renvoyer en production</button>
+							</form>
+						{% endfor %}
+					</div>
+				</details>
+			{% endif %}
+			{% if prete %}
+				<span class="si-fab-pastille vert"><i class="fas fa-check" aria-hidden="true"></i>Prête pour la livraison</span>
+			{% elseif peutAgir and peutValider %}
+				<button type="submit" form="si-controle" class="si-fab-bouton si-ctl-bouton-vert"><i class="fas fa-check" aria-hidden="true"></i>Prêt pour la livraison</button>
+			{% endif %}
+		</div>
+	</header>
+
+	<div class="si-ctl-grille">
+		<div>
+			<section class="si-fab-carte">
+				<h2>Comparer au BAT</h2>
+				<div class="si-ctl-figures">
+					{% for l in lignes %}
+						<figure>
+							<div class="si-ctl-vignette">
+								{% if l.bat.fichier and l.bat.image %}
+									<img src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: l.bat.fichier.id}) }}" alt="BAT de {{ l.nom }}" loading="lazy">
+								{% elseif l.bat.fichier %}
+									<span class="vide">Fichier sans aperçu · <a href="{{ path('app_controle_pre_presse_visualiser_fichier', {id: l.bat.fichier.id}) }}" target="_blank" rel="noopener">ouvrir</a></span>
+								{% else %}
+									<span class="vide">Pas de BAT pour ce travail</span>
+								{% endif %}
+							</div>
+							<figcaption>BAT{{ l.bat.valide ? ' validé' }}{{ l.bat.version ? ' · V' ~ l.bat.version }}{% if lignes|length > 1 %}<small>{{ l.nom }}</small>{% endif %}</figcaption>
+						</figure>
+					{% endfor %}
+					<figure>
+						<div class="si-ctl-vignette">
+							{% if photo %}
+								<img src="{{ path('app_atelier_production_controle_photo_voir', {id: commande.id}) }}?v={{ controle.photoLe|date('U') }}" alt="Photo de la pièce imprimée">
+								<span class="si-ctl-heure"><i class="fas fa-camera" aria-hidden="true"></i> {{ controle.photoLe|date('H:i') }}</span>
+							{% else %}
+								<span class="vide">Pas encore de photo</span>
+							{% endif %}
+						</div>
+						<figcaption>Photo de la pièce imprimée{% if photo %}<small>prise à {{ controle.photoLe|date('H:i') }}{{ controle.photoLe|date('Ymd') != aujourdhui ? ' le ' ~ controle.photoLe|date('d/m') }}</small>{% endif %}</figcaption>
+					</figure>
+				</div>
+				{% if peutAgir and not prete and lignes is not empty %}
+					<form method="post" enctype="multipart/form-data" action="{{ path('app_atelier_production_controle_photo', {id: commande.id}) }}" class="si-ctl-photo" data-si-ctl-photo>
+						<input type="hidden" name="_token" value="{{ jeton }}">
+						<label class="si-fab-bouton"><i class="fas fa-camera" aria-hidden="true"></i>{{ photo ? 'Reprendre la photo' : 'Photographier la pièce' }}<input type="file" name="photo" accept="image/*" capture="environment" data-si-ctl-fichier></label>
+						<button type="button" class="si-fab-bouton" data-si-ctl-camera hidden>Caméra de la page</button>
+						<noscript><button class="si-fab-bouton">Envoyer la photo</button></noscript>
+					</form>
+					<div class="si-ctl-camera" data-si-ctl-video hidden>
+						<video playsinline muted></video>
+						<div class="si-fab-actions mt-2">
+							<button type="button" class="si-fab-bouton principal" data-si-ctl-prendre>Prendre la photo</button>
+							<button type="button" class="si-fab-bouton" data-si-ctl-fermer>Fermer</button>
+						</div>
+					</div>
+				{% endif %}
+
+				{% if lignes is empty %}
+					<p class="si-fab-muet mb-0">{{ enProduction ? 'Les travaux de cette commande sont encore en production.' : 'Aucun travail terminé à contrôler pour cette commande.' }}</p>
+				{% else %}
+					<form id="si-controle" method="post" action="{{ path('app_atelier_production_controle_valider', {id: commande.id}) }}">
+						<input type="hidden" name="_token" value="{{ jeton }}">
+						<fieldset{{ not peutAgir or not peutValider ? ' disabled' }}>
+							<legend class="visually-hidden">Contrôle de chaque travail</legend>
+							{% for l in lignes %}
+								{% if lignes|length > 1 %}<p class="si-ctl-ligne-titre">{{ l.nom }} × {{ l.quantite }}</p>{% endif %}
+								<ul class="si-ctl-cases">
+									{% for point, libelle in l.points %}
+										<li>
+											<label class="case"><input type="checkbox" name="lignes[{{ l.id }}][{{ point }}]" value="1"{{ (l.verif[point] ?? false) ? ' checked' }} required>{{ libelle }}</label>
+											{% if point == 'taille' and l.taille %}
+												{% set m = l.verif.mesure ?? {l: l.taille.l, h: l.taille.h} %}
+												{% set ecart = l.verif.ecart ?? false %}
+												<span class="si-ctl-mesure{{ ecart ? ' ecart' }}" data-si-ctl-mesure data-l="{{ l.taille.l }}" data-h="{{ l.taille.h }}">
+													mesuré
+													<input name="lignes[{{ l.id }}][mesure_l]" inputmode="decimal" value="{{ m.l|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Largeur mesurée en cm">
+													×
+													<input name="lignes[{{ l.id }}][mesure_h]" inputmode="decimal" value="{{ m.h|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Hauteur mesurée en cm">
+													cm
+												</span>
+												<label class="si-ctl-ecart" data-si-ctl-ecart{{ not ecart ? ' hidden' }}><input type="checkbox" name="lignes[{{ l.id }}][ecart_confirme]" value="1"{{ ecart ? ' checked required' }}> Plus de 1 % (ou 1 cm) d'écart avec la commande : je confirme que la pièce convient.</label>
+											{% endif %}
+										</li>
+									{% endfor %}
+								</ul>
+							{% endfor %}
+						</fieldset>
+						{% if controle and controle.valideLe %}
+							<p class="si-fab-note">Contrôle validé à {{ controle.valideLe|date('H:i') }}{{ controle.valideLe|date('Ymd') != aujourdhui ? ' le ' ~ controle.valideLe|date('d/m') }}{{ controle.validePar ? ' par ' ~ (controle.validePar|nom_equipe) }}.</p>
+						{% elseif not peutAgir %}
+							<p class="si-fab-note">Valider le contrôle demande le droit « Statuts de production ».</p>
+						{% endif %}
+						{% if enProduction and not prete %}
+							<p class="si-fab-note">{{ enProduction }} travail encore en production : le contrôle se valide quand tout est terminé.</p>
+						{% endif %}
+					</form>
+				{% endif %}
+			</section>
+		</div>
+
+		<div>
+			<section class="si-fab-carte">
+				<h2>Scanner les étiquettes collées</h2>
+				{% if etat.actifs is empty %}
+					<p class="si-fab-muet">Aucune étiquette imprimée pour cette commande.</p>
+					{% if lignes is not empty and not prete %}
+						<a class="si-fab-bouton principal" href="{{ path('app_atelier_production_etiquettes', {commande: commande.id}) }}"><i class="fas fa-tag" aria-hidden="true"></i>Étiqueter les colis</a>
+					{% endif %}
+				{% else %}
+					<div class="si-ctl-colis">
+						{% for c in etat.actifs %}
+							<div class="{{ c.estScanne ? 'scanne' }}">
+								{% if c.estScanne %}<i class="fas fa-check" aria-hidden="true"></i>{% endif %}
+								Colis {{ c.rang }}/{{ c.total }}
+								<small>{{ c.estScanne ? 'scanné ' ~ c.scanneLe|date('H:i') : 'à scanner' }}</small>
+							</div>
+						{% endfor %}
+					</div>
+					<p class="si-fab-muet">
+						{{ etat.scannes >= etat.total ? 'Tous les colis scannés' : etat.scannes ~ ' colis sur ' ~ etat.total ~ ' scanné' ~ (etat.scannes > 1 ? 's') }} :
+						{{ prete ? 'la commande est « Prête ».' : 'la commande passe « Prête » quand le contrôle est validé et tous les colis scannés.' }}
+					</p>
+					{% if peutAgir and not prete and etat.scannes < etat.total %}
+						<form method="post" action="{{ path('app_atelier_production_colis_scanner', {commande: commande.id}) }}" class="si-ctl-scan">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<input type="hidden" name="retour" value="controle">
+							<input name="saisie" placeholder="Code sous le QR ou douchette" autocomplete="off" required maxlength="300" aria-label="Code de l'étiquette">
+							<button class="si-fab-bouton sombre">Scanner</button>
+						</form>
+					{% endif %}
+					<p class="si-fab-note"><a href="{{ path('app_atelier_operateur_scanner') }}">Scanner avec le téléphone</a> · <a href="{{ path('app_atelier_production_etiquettes', {commande: commande.id}) }}">Étiquettes</a></p>
+				{% endif %}
+			</section>
+
+			{% include 'production_colis/_temps.html.twig' with {temps: temps} only %}
+			{% include 'production_colis/_consomme.html.twig' with {consomme: consomme} only %}
+		</div>
+
+		<div>
+			{% if prete and apres %}
+				<div class="si-ctl-prete">
+					<i class="fas fa-box" aria-hidden="true"></i>
+					<b>Prête pour la livraison</b>
+					<span>
+						{% if apres.livraison.retrait %}Retrait à l'imprimerie
+						{% elseif apres.tournee %}{{ apres.tournee.prenom }} · {{ apres.tournee.jourCourt }}{{ apres.tournee.creneau ? ' · ' ~ apres.tournee.creneau }}
+						{% else %}Livraison à planifier{% endif %}
+					</span>
+				</div>
+
+				{% set w = apres.whatsapp %}
+				{% if w.demo %}
+					<div class="si-ctl-message demo"><p class="mb-0"><i class="fab fa-whatsapp" aria-hidden="true"></i> Fiche de démonstration : aucun message.</p></div>
+				{% elseif not w.cache %}
+					<div class="si-ctl-message">
+						<p><i class="fab fa-whatsapp" aria-hidden="true"></i> <b>Message pour {{ w.prenomClient }} :</b> « {{ w.texte }} »</p>
+						{% if w.journal %}
+							<p>Message préparé à {{ w.journal.le|date('H:i') }}{{ w.journal.le|date('Ymd') != aujourdhui ? ' le ' ~ w.journal.le|date('d/m') }} par {{ w.journal.par }}.</p>
+						{% endif %}
+						{% if not w.possible %}
+							<p class="mb-0">Pas de numéro WhatsApp pour ce client : appelez-le.</p>
+						{% elseif peutAgir %}
+							<form method="post" action="{{ path('app_atelier_production_controle_whatsapp', {id: commande.id}) }}" target="_blank">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<button class="si-fab-bouton si-ctl-bouton-vert"><i class="fab fa-whatsapp" aria-hidden="true"></i>{{ w.journal ? 'Préparer de nouveau' : 'Prévenir sur WhatsApp' }}</button>
+							</form>
+						{% endif %}
+					</div>
+				{% endif %}
+
+				<section class="si-fab-carte">
+					{% if apres.livraison.retrait %}
+						<p class="mb-0">À retirer à l'imprimerie : le client voit « Prête à retirer » dans son espace.</p>
+					{% elseif apres.tournee %}
+						<div class="si-ctl-tournee">
+							<span class="si-ctl-avatar" aria-hidden="true">{{ apres.tournee.prenom|first|upper }}</span>
+							<div>
+								<b>Ajoutée à la tournée de {{ apres.tournee.prenom }}</b>
+								<small>{{ apres.tournee.arrets }} arrêt{{ apres.tournee.arrets > 1 ? 's' }} {{ apres.tournee.quand }}</small>
+							</div>
+						</div>
+					{% elseif apres.peutPlanifier %}
+						<h2>Ajouter à la tournée</h2>
+						<form method="post" action="{{ path('app_atelier_production_controle_tournee', {id: commande.id}) }}" class="si-ctl-form">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<label>Livreur
+								<select name="livreur" required>
+									<option value="">Choisir…</option>
+									{% for u in apres.livreurs %}
+										<option value="{{ u.id }}"{{ u.id == apres.defaut.livreur or (apres.defaut.livreur is null and loop.first) ? ' selected' }}>{{ u|nom_equipe }}</option>
+									{% endfor %}
+								</select>
+							</label>
+							<label>Jour<input type="date" name="jour" value="{{ apres.defaut.jour|date('Y-m-d') }}" min="{{ maintenant|date('Y-m-d') }}" required></label>
+							<label>Créneau
+								<select name="creneau" required>
+									{% for libelle in apres.creneaux %}
+										<option value="{{ libelle }}"{{ libelle == apres.defaut.creneau ? ' selected' }}>{{ libelle }}</option>
+									{% endfor %}
+								</select>
+							</label>
+							<button class="si-fab-bouton sombre"><i class="fas fa-truck" aria-hidden="true"></i>Ajouter à la tournée</button>
+							<p class="si-fab-note mb-0">Crée le bon de livraison des lignes prêtes, le valide et le place en fin de tournée du jour.</p>
+						</form>
+					{% else %}
+						<p class="mb-0">Le bureau l'ajoute à une tournée{{ apres.bon ? ' (bon ' ~ apres.bon.numero ~ ')' }}.</p>
+					{% endif %}
+				</section>
+			{% else %}
+				<section class="si-fab-carte">
+					<h2>Avant « Prête »</h2>
+					{% set controleFait = controle and controle.valideLe %}
+					{% set colisFaits = etat.total > 0 and etat.scannes >= etat.total %}
+					<ul class="si-ctl-attente">
+						<li><span class="si-fab-etat {{ controleFait ? 'ok' }}" aria-hidden="true">{{ controleFait ? '✓' : '1' }}</span>Contrôle final validé</li>
+						<li><span class="si-fab-etat {{ colisFaits ? 'ok' }}" aria-hidden="true">{{ colisFaits ? '✓' : '2' }}</span>{{ etat.total > 0 ? 'Colis scannés : ' ~ etat.scannes ~ ' sur ' ~ etat.total : 'Étiquettes à imprimer et coller' }}</li>
+						{% if enProduction %}
+							<li><span class="si-fab-etat surveiller" aria-hidden="true">!</span>{{ enProduction }} travail encore en production</li>
+						{% endif %}
+					</ul>
+					{% for o in aRefaire %}
+						<p class="si-fab-note">{{ o.piecesARefaire }} pièce{{ o.piecesARefaire > 1 ? 's' }} à refaire : {{ o.numero }} est revenu dans Ma file.</p>
+					{% endfor %}
+					<p class="si-fab-note mb-0">Ensuite le client est prévenu{{ livraison.retrait ? ' (« Prête à retirer »)' : ' et la livraison s\'ajoute à une tournée' }}.</p>
+				</section>
+			{% endif %}
+		</div>
+	</div>
+
+	<script>
+		(function () {
+			// Taille mesurée : écart de plus de 1 % (au moins 1 cm) = orange, et une confirmation à cocher.
+			document.querySelectorAll('[data-si-ctl-mesure]').forEach(function (bloc) {
+				var champs = bloc.querySelectorAll('input');
+				var confirmation = bloc.parentNode.querySelector('[data-si-ctl-ecart]');
+				var attendus = [parseFloat(bloc.getAttribute('data-l')), parseFloat(bloc.getAttribute('data-h'))];
+				var verifier = function () {
+					var ecart = false;
+					champs.forEach(function (champ, i) {
+						var v = parseFloat(String(champ.value).replace(',', '.').replace(/\s/g, ''));
+						var tolerance = Math.max(1, attendus[i] / 100);
+						if (!isNaN(v) && Math.abs(v - attendus[i]) > tolerance + 1e-9) { ecart = true; }
+					});
+					bloc.classList.toggle('ecart', ecart);
+					confirmation.hidden = !ecart;
+					confirmation.querySelector('input').required = ecart;
+				};
+				champs.forEach(function (champ) { champ.addEventListener('input', verifier); });
+			});
+
+			// Photo : envoyée dès qu'elle est prise ; caméra de la page quand le navigateur l'offre (HTTPS).
+			var formPhoto = document.querySelector('[data-si-ctl-photo]');
+			if (!formPhoto) { return; }
+			var fichier = formPhoto.querySelector('[data-si-ctl-fichier]');
+			fichier.addEventListener('change', function () { if (fichier.files.length) { formPhoto.submit(); } });
+			var bouton = formPhoto.querySelector('[data-si-ctl-camera]');
+			var bloc = document.querySelector('[data-si-ctl-video]');
+			if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.isSecureContext) { return; }
+			bouton.hidden = false;
+			var flux = null;
+			var video = bloc.querySelector('video');
+			var fermer = function () {
+				if (flux) { flux.getTracks().forEach(function (t) { t.stop(); }); flux = null; }
+				bloc.hidden = true;
+			};
+			bouton.addEventListener('click', function () {
+				navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function (f) {
+					flux = f;
+					video.srcObject = f;
+					video.play();
+					bloc.hidden = false;
+				}).catch(function () { bouton.hidden = true; });
+			});
+			bloc.querySelector('[data-si-ctl-fermer]').addEventListener('click', fermer);
+			bloc.querySelector('[data-si-ctl-prendre]').addEventListener('click', function () {
+				var toile = document.createElement('canvas');
+				toile.width = video.videoWidth;
+				toile.height = video.videoHeight;
+				toile.getContext('2d').drawImage(video, 0, 0);
+				toile.toBlob(function (image) {
+					fermer();
+					var donnees = new FormData(formPhoto);
+					donnees.set('photo', image, 'piece.png');
+					fetch(formPhoto.action, {method: 'POST', body: donnees, credentials: 'same-origin'}).then(function () { window.location.reload(); });
+				}, 'image/png');
+			});
+		})();
+	</script>
+{% endblock %}

@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\AtelierMachine;
+use App\Entity\ColisProduction;
 use App\Entity\JournalMachine;
 use App\Entity\Machines;
 use App\Entity\OrdreProduction;
@@ -16,27 +17,23 @@ use App\Service\Atelier\PosteMachiniste;
 use App\Service\Atelier\TempsEstime;
 use App\Service\Parametres\Parametres;
 use App\Service\Atelier\ActionsOrdre;
+use App\Service\Production\ColisCommandes;
 use App\Service\Http\Entree;
 use App\Twig\ProduitsClientsExtension;
 use App\Service\SuiviMetiers\FileMachine;
 use Doctrine\ORM\EntityManagerInterface;
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\RoundBlockSizeMode;
-use Endroid\QrCode\Writer\PngWriter;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Poste machiniste (maquettes OP01 à OP06, docs/poste-machiniste.md) :
  * la file en colonnes, vérifier le fichier, retour au prépresse, machine
- * et temps estimé, travail en cours, étiquettes des colis et « Prêt pour
- * livraison ». Bureau et téléphone. Aucun montant n'est montré, sauf le
+ * et temps estimé, travail en cours, suivi et colis de la commande (les
+ * étiquettes par colis et « Prête » : Production › Étiquettes et Contrôle
+ * final, docs/production-colis.md). Bureau et téléphone. Aucun montant n'est montré, sauf le
  * reste à encaisser pour qui a le droit Paiements.
  *
  * Démarrer, terminer et signaler : depuis le poste de la machine (adresse
@@ -94,11 +91,19 @@ final class MaFileController extends AbstractController
         ]);
     }
 
-    /** « Scanner un bon » : numéro de commande, d'ordre ou d'étiquette (douchette ou saisie). */
+    /** « Scanner un bon » : numéro de commande, d'ordre, d'étiquette ou de colis (douchette ou saisie). */
     #[Route('/scanner', name: 'scanner', methods: ['GET'])]
     public function scanner(Request $request): Response
     {
         $code = strtoupper(trim((string) $request->query->get('code')));
+        // Étiquette de colis (QR ou code CMD-000183-C2) : la fiche du colis (docs/production-colis.md).
+        $lu = ColisProduction::lireSaisie($code);
+        $colis = null !== $lu ? $this->em->getRepository(ColisProduction::class)->trouver($lu) : null;
+        if ($colis instanceof ColisProduction) {
+            return $this->isGranted('ROLE_PRODUCTION_GERER')
+                ? $this->redirectToRoute('app_colis_qr', ['jeton' => $colis->getJeton()])
+                : $this->redirectToRoute('app_atelier_production_controle_commande', ['id' => $colis->getCommande()->getId()]);
+        }
         if (preg_match('#/colis/([A-Z0-9\-]+)#', $code, $m)) {
             $code = $m[1];
         }
@@ -387,8 +392,12 @@ final class MaFileController extends AbstractController
             $motif = (string) $request->request->get('motif_gache');
             $this->actions->terminer($ordre, $this->moi(), Entree::entier($request->request, 'quantite_produite'), Entree::entier($request->request, 'quantite_rebut'), isset(ActionsOrdre::MOTIFS_GACHE[$motif]) ? $motif : null, (string) $request->request->get('observation'));
             $this->addFlash('success', \sprintf('Terminé : %d bon%s, %d en gâche. Imprimez les étiquettes des colis.', $ordre->getQuantiteConforme(), $ordre->getQuantiteConforme() > 1 ? 's' : '', $ordre->getQuantiteRebut()));
+            $commande = $ordre->getCommandeDetail()?->getCommande();
 
-            return $this->redirectToRoute('app_ma_file_etiquettes', ['id' => $ordre->getId()]);
+            // Étiquettes par colis de la commande (PD05, docs/production-colis.md).
+            return null !== $commande
+                ? $this->redirectToRoute('app_atelier_production_etiquettes', ['commande' => $commande->getId()])
+                : $this->redirectToRoute('app_ma_file_etiquettes', ['id' => $ordre->getId()]);
         } catch (\LogicException|\InvalidArgumentException|\DomainException $e) {
             $this->addFlash('danger', $e->getMessage());
 
@@ -433,68 +442,28 @@ final class MaFileController extends AbstractController
             : $this->redirectToRoute('app_ma_file_index');
     }
 
-    /** OP05 : suivi de production, étiquettes des colis avec QR, puis « Prêt pour livraison ». */
+    /**
+     * OP05 : suivi de production et colis de la commande. Les étiquettes
+     * (100 × 60 mm, une par colis) s'impriment dans Production ›
+     * Étiquettes ; la commande passe « Prête » au contrôle final, quand
+     * tous ses colis sont scannés (docs/production-colis.md).
+     */
     #[Route('/{id}/etiquettes', name: 'etiquettes', requirements: ['id' => '\d+'], methods: ['GET'])]
-    public function etiquettes(OrdreProduction $ordre, Request $request): Response
+    public function etiquettes(OrdreProduction $ordre, ColisCommandes $colis): Response
     {
         if (!$ordre->estTermine()) {
             return $this->redirectToRoute('app_ma_file_travail', ['id' => $ordre->getId()]);
         }
-        $colis = max(1, min(99, Entree::entier($request->query, 'colis', $ordre->getNombreColis() ?? 1)));
+        $commande = $ordre->getCommandeDetail()?->getCommande();
 
         return $this->render('ma_file/etiquettes.html.twig', [
             'o' => $ordre,
             'ligne' => $ordre->getCommandeDetail(),
             'suivi' => $this->poste->suivi($ordre),
             'livraison' => $this->poste->livraison($ordre, $this->isGranted('ROLE_PAIEMENT_VOIR')),
-            'colis' => $colis,
-            'qr' => $this->qr($ordre),
-            'peutAgir' => $this->isGranted('ROLE_PRODUCTION_GERER'),
-            'maintenant' => new \DateTimeImmutable(),
-            'jeton' => self::CSRF,
-        ]);
-    }
-
-    /** Enregistre le nombre de colis et rend la page d'impression (100 × 70 mm, une étiquette par page). */
-    #[Route('/{id}/etiquettes', name: 'etiquettes_imprimer', requirements: ['id' => '\d+'], methods: ['POST'])]
-    #[IsGranted('ROLE_PRODUCTION_GERER')]
-    public function imprimerEtiquettes(OrdreProduction $ordre, Request $request): Response
-    {
-        $this->jeton($request);
-        try {
-            $this->poste->etiqueter($ordre, Entree::entier($request->request, 'colis', 1), $this->moi(), new \DateTimeImmutable());
-        } catch (\LogicException|\InvalidArgumentException $e) {
-            $this->addFlash('danger', $e->getMessage());
-
-            return $this->redirectToRoute('app_ma_file_etiquettes', ['id' => $ordre->getId()]);
-        }
-
-        return $this->render('ma_file/impression_etiquettes.html.twig', [
-            'o' => $ordre,
-            'livraison' => $this->poste->livraison($ordre, false),
-            'colis' => (int) $ordre->getNombreColis(),
-            'qr' => $this->qr($ordre),
+            'colis' => null !== $commande ? $colis->etat($commande) : null,
             'maintenant' => new \DateTimeImmutable(),
         ]);
-    }
-
-    #[Route('/{id}/pret-livraison', name: 'pret', requirements: ['id' => '\d+'], methods: ['POST'])]
-    #[IsGranted('ROLE_PRODUCTION_GERER')]
-    public function pret(OrdreProduction $ordre, Request $request): Response
-    {
-        $this->jeton($request);
-        try {
-            $this->poste->pretPourLivraison($ordre, $this->moi(), new \DateTimeImmutable());
-            $aLivrer = $ordre->getCommandeDetail()?->getCommande()?->estALivrer() ?? false;
-            $livreur = $this->poste->livraison($ordre, false)['livreur'];
-            $this->addFlash('success', $aLivrer ? \sprintf('Prêt pour livraison : %s et le client sont prévenus.', $livreur ?? 'le bureau') : 'Prêt : le client voit « Prête à retirer » dans son espace.');
-
-            return $this->redirectToRoute('app_ma_file_index');
-        } catch (\LogicException|\InvalidArgumentException $e) {
-            $this->addFlash('danger', $e->getMessage());
-
-            return $this->redirectToRoute('app_ma_file_etiquettes', ['id' => $ordre->getId()]);
-        }
     }
 
     private function demarrer(OrdreProduction $ordre): void
@@ -559,16 +528,6 @@ final class MaFileController extends AbstractController
         $ip = $request->getClientIp();
 
         return $ip !== null ? $this->machines->findOneByAdresseIp($ip) : null;
-    }
-
-    /** QR de l'étiquette : ouvre le colis pour le livreur (sa remise) ou le bureau. */
-    private function qr(OrdreProduction $ordre): string
-    {
-        // Avant l'impression, le numéro que l'étiquette recevra (PosteMachiniste::etiqueter).
-        $numero = $ordre->getNumeroEtiquette() ?? \sprintf('ETQ-%s-%06d', (new \DateTimeImmutable())->format('Y'), $ordre->getId());
-        $url = $this->generateUrl('app_livraisons_tournee_colis', ['numero' => $numero], UrlGeneratorInterface::ABSOLUTE_URL);
-
-        return (new PngWriter())->write(new QrCode(data: $url, encoding: new Encoding('UTF-8'), errorCorrectionLevel: ErrorCorrectionLevel::Medium, size: 240, margin: 4, roundBlockSizeMode: RoundBlockSizeMode::Margin))->getDataUri();
     }
 
     private function jeton(Request $request): void

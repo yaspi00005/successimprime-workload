@@ -117,5 +117,7 @@
 		{% endif %}
 		<p class="si-ap-op-qr">Un autre travail : ouvrez la machine dans Files d'attente ; le chef d'atelier change l'ordre de passage.</p>
 	{% endif %}
+	{# Colis étiquetés (PD07 écran 2, docs/production-colis.md). #}
+	<a href="{{ path('app_atelier_operateur_scanner') }}" class="btn btn-light border w-100 mt-2"><i class="fas fa-qrcode me-1" aria-hidden="true"></i>Scanner une étiquette de colis</a>
 </div>
 {% endblock %}

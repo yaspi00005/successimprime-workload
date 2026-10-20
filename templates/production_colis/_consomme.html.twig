@@ -1,0 +1,21 @@
+{#
+	Consommé (PD06) : ce qui est sorti du stock pour les lignes de la
+	commande à « Terminé » (ActionsOrdre::terminer), en quantités. Jamais de
+	prix. Bloc à part : chute du rouleau, encre et œillets s'ajouteront ici.
+	Variable consomme : ControlesFinaux::consomme().
+#}
+<section class="si-fab-carte" data-bloc="consomme">
+	<h2>Consommé</h2>
+	{% if consomme is empty %}
+		<p class="si-fab-muet mb-0">Rien n'est sorti du stock pour cette commande (la matière sort à « Terminé » quand le produit a sa recette).</p>
+	{% else %}
+		<table class="si-ctl-table">
+			<tbody>
+				{% for c in consomme %}
+					<tr><td>{{ c.article }}</td><td class="num"><b>{{ c.quantite }}</b></td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		<p class="si-fab-note">Déduit du stock automatiquement.</p>
+	{% endif %}
+</section>

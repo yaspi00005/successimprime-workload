@@ -4,8 +4,8 @@ namespace App\Service\Production;
 
 /**
  * Règles du contrôle final (PD06, docs/production-colis.md), pures et
- * testées : nombre d'œillets d'une pièce, écart de taille toléré, passage
- * de la commande à « Prête ».
+ * testées : nombre d'œillets d'une pièce, écart de taille toléré, couleur
+ * à surveiller, passage de la commande à « Prête ».
  */
 final class ReglesControleFinal
 {
@@ -60,6 +60,33 @@ final class ReglesControleFinal
         $tolerance = max(self::TOLERANCE_CM, $attenduCm * self::TOLERANCE_POURCENT / 100);
 
         return abs($mesureCm - $attenduCm) > $tolerance + 1e-9;
+    }
+
+    /** Couleurs qu'on nomme dans une note (« le rouge Awa Mode », « bleu roi »). */
+    private const COULEURS = ['rouge', 'bleu', 'vert', 'jaune', 'orange', 'noir', 'blanc', 'violet', 'rose', 'marron', 'gris', 'doré', 'argent', 'turquoise', 'bordeaux', 'beige', 'magenta', 'cyan'];
+
+    /**
+     * La couleur à surveiller citée dans les notes de la ligne, du BAT ou
+     * de la commande : « Pantone 186 C », sinon le premier nom de couleur
+     * (« rouge ») ; null si aucune note n'en parle.
+     */
+    public static function couleurSensible(?string ...$notes): ?string
+    {
+        $texte = mb_strtolower(implode(' ', array_filter($notes, static fn (?string $n): bool => null !== $n && '' !== trim($n))));
+        if ('' === $texte) {
+            return null;
+        }
+        if (preg_match('/pantone\s*([0-9]{2,4}(?:\s*[cu])?)(?!\p{L})/u', $texte, $m) === 1) {
+            return 'Pantone '.mb_strtoupper(trim($m[1]));
+        }
+        $premier = null;
+        foreach (self::COULEURS as $couleur) {
+            if (preg_match('/(?<!\p{L})'.preg_quote($couleur, '/').'s?(?!\p{L})/u', $texte, $m, \PREG_OFFSET_CAPTURE) === 1 && (null === $premier || $m[0][1] < $premier[1])) {
+                $premier = [$couleur, $m[0][1]];
+            }
+        }
+
+        return $premier[0] ?? null;
     }
 
     /**

@@ -20,6 +20,8 @@ final class AtelierHorsLigneSubscriber implements EventSubscriberInterface
         'app_atelier_direct', 'app_atelier_tv', 'app_atelier_files', 'app_atelier_operateurs', 'app_atelier_encre',
         'app_atelier_planning', 'app_atelier_maintenance', 'app_atelier_incident_', 'app_atelier_entretien_',
         'app_atelier_tetes', 'app_atelier_operateur', 'app_tv_atelier',
+        // Colis et contrôle final (docs/production-colis.md) : tables locales, photos des pièces.
+        'app_atelier_production_', 'app_colis_qr',
     ];
 
     public function __construct(private readonly AccesEnLigne $acces)

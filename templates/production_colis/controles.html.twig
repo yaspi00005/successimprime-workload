@@ -1,0 +1,57 @@
+{% extends 'fabrication/_base.html.twig' %}
+
+{#
+	PD06 Contrôle final, la liste (docs/production-colis.md) : commandes dont
+	tous les travaux sont terminés et pas encore prêtes, la livraison la plus
+	proche d'abord. Aucun montant.
+#}
+
+{% block title %}Contrôle final{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-colis.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block fab_actif %}controle{% endblock %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › Contrôle</p>
+			<h1 class="si-fab-titre">Contrôle final</h1>
+		</div>
+		<div class="si-fab-actions">
+			<a class="si-fab-bouton" href="{{ path('app_atelier_production_etiquettes') }}"><i class="fas fa-tag" aria-hidden="true"></i>Étiquettes</a>
+			<a class="si-fab-bouton" href="{{ path('app_atelier_operateur_scanner') }}"><i class="fas fa-qrcode" aria-hidden="true"></i>Scanner les étiquettes</a>
+		</div>
+	</header>
+
+	<section class="si-fab-carte">
+		<h2>Commandes terminées à contrôler <small>{{ liste|length }}</small></h2>
+		{% if liste is empty %}
+			<p class="si-fab-muet mb-0">Aucune commande à contrôler : une commande arrive ici quand tous ses travaux sont terminés.</p>
+		{% else %}
+			<ul class="si-ctl-liste">
+				{% for l in liste %}
+					<li>
+						<a href="{{ path('app_atelier_production_controle_commande', {id: l.commande.id}) }}">
+							<span>
+								<b>{{ l.commande.numero }} · {{ l.client.nom }}</b>
+								<small>{{ l.resume }} · {{ l.livraison.retrait ? 'retrait à l\'imprimerie' : 'livraison ' ~ (l.livraison.jourCourt ?? 'à planifier') ~ (l.livraison.zone ? ', ' ~ l.livraison.zone) }}</small>
+							</span>
+							<span class="etats">
+								{% if l.etat.total == 0 %}
+									<span class="si-fab-pastille orange">sans étiquette</span>
+								{% else %}
+									<span class="si-fab-pastille {{ l.etat.scannes >= l.etat.total ? 'vert' : 'bleu' }}">{{ l.etat.scannes }}/{{ l.etat.total }} colis scanné{{ l.etat.scannes > 1 ? 's' }}</span>
+								{% endif %}
+								<span class="si-fab-pastille {{ l.controle ? 'vert' : '' }}">{{ l.controle ? 'contrôle validé' : 'contrôle à faire' }}</span>
+							</span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+	</section>
+{% endblock %}

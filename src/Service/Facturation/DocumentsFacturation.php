@@ -62,7 +62,7 @@ final class DocumentsFacturation
      *
      * @return list<array{type: string, libelle: string, numero: string, client: string, date: \DateTimeInterface, montant: int|null, montantTexte: ?string, statut: string, classe: string, commande: ?string, commandeUrl: ?string, url: ?string, pdf: ?string}>
      */
-    public function documents(\DateTimeImmutable $mois, array $types, ?string $recherche = null): array
+    public function documents(\DateTimeImmutable $mois, array $types, ?string $recherche = null, bool $voirPaiements = true): array
     {
         [$debut, $fin] = self::bornes($mois);
         $lignes = [];
@@ -79,7 +79,7 @@ final class DocumentsFacturation
                 if (!\in_array($type, $types, true)) {
                     continue;
                 }
-                [$statut, $classe] = self::statutFacture($f, $aujourdhui);
+                [$statut, $classe] = self::statutFacture($f, $aujourdhui, $voirPaiements);
                 $lignes[] = $this->ligne($type, $f->getNumero() ?? 'Brouillon', $f->getCommande(), $f->isFacturerAUnTiers() ? $f->getNomFacturation() : null, $f->getDateFacture() ?? $aujourdhui, $f->getTotalTtc(), null, $statut, $classe,
                     $this->urls->generate('app_factures_show', ['id' => $f->getId()]), $this->urls->generate('app_factures_pdf', ['id' => $f->getId()]));
             }
@@ -222,8 +222,10 @@ final class DocumentsFacturation
      *
      * @return array{0: string, 1: string} libellé, classe du badge
      */
-    public static function statutFacture(Factures $f, \DateTimeImmutable $aujourdhui): array
+    public static function statutFacture(Factures $f, \DateTimeImmutable $aujourdhui, bool $voirPaiements = true): array
     {
+        // Sans « Voir les paiements », ni payé ni reste : seulement validée ou échue.
+        $voir = $voirPaiements;
         if ($f->estAnnulee()) {
             return ['Annulée', 'brouillon'];
         }
@@ -235,13 +237,13 @@ final class DocumentsFacturation
         }
         $reste = $f->getResteAPayer();
         if ($reste <= 0) {
-            return ['Payée', 'ok'];
+            return $voir ? ['Payée', 'ok'] : ['Validée', 'envoye'];
         }
         $echeance = $f->getDateEcheance();
         if (null !== $echeance && $echeance < $aujourdhui) {
-            return ['Échue · reste '.number_format($reste, 0, ',', ' ').' F', 'retard'];
+            return [$voir ? 'Échue · reste '.number_format($reste, 0, ',', ' ').' F' : 'Échue', 'retard'];
         }
-        if ($f->getMontantPaye() > 0) {
+        if ($voir && $f->getMontantPaye() > 0) {
             return ['Payée en partie · reste '.number_format($reste, 0, ',', ' ').' F', 'attente'];
         }
 

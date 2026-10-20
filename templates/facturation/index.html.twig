@@ -42,12 +42,12 @@
 			{% endif %}
 			<div class="fd-kpi">
 				<span>À encaisser</span>
-				<b class="fd-bleu">{{ chiffres.aEncaisser|number_format(0, ',', ' ') }} F</b>
+				<b class="fd-bleu">{{ voirEncaisse ? chiffres.aEncaisser|number_format(0, ',', ' ') ~ ' F' : chiffres.nbOuvertes }}</b>
 				<small>{{ chiffres.nbOuvertes }} facture{{ chiffres.nbOuvertes > 1 ? 's' }} ouverte{{ chiffres.nbOuvertes > 1 ? 's' }}</small>
 			</div>
 			<div class="fd-kpi">
 				<span>Échu</span>
-				<b class="fd-rouge">{{ chiffres.echu|number_format(0, ',', ' ') }} F</b>
+				<b class="fd-rouge">{{ voirEncaisse ? chiffres.echu|number_format(0, ',', ' ') ~ ' F' : chiffres.nbEchues }}</b>
 				<small>{{ chiffres.nbEchues }} facture{{ chiffres.nbEchues > 1 ? 's' }}{% if chiffres.nbEchues > 0 %} · relance auto{% endif %}</small>
 			</div>
 		</div>

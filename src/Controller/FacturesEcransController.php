@@ -189,7 +189,7 @@ final class FacturesEcransController extends AbstractController
     public function apercu(Factures $facture, DocumentsEntreprise $documents): Response
     {
         $commande = $facture->getCommande() ?? throw $this->createNotFoundException();
-        $html = $this->renderView('factures/pdf.html.twig', ['facture' => $facture, 'commande' => $commande, 'client' => $commande->getClients()] + $documents->vueFacture($facture));
+        $html = $this->renderView('factures/pdf.html.twig', ['facture' => $facture, 'commande' => $commande, 'client' => $commande->getClients(), 'masquerPaiements' => !$this->isGranted('ROLE_PAIEMENT_VOIR')] + $documents->vueFacture($facture));
         $style = '<style>html{background:#fff}body{width:760px;margin:0 auto;padding:28px 24px;box-sizing:content-box}</style>';
         $html = str_contains($html, '</head>') ? str_replace('</head>', $style.'</head>', $html) : $style.$html;
 

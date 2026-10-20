@@ -111,6 +111,7 @@ final class AvoirsController extends AbstractController
             'compteChoisi' => $r->getString('compte'),
             'observation' => $r->getString('observation'),
             'soldeAvant' => $soldeAvant,
+            'voirPaiements' => $this->isGranted('ROLE_PAIEMENT_VOIR'),
             'creditClient' => null === $client ? 0 : $solde->disponiblePour($client),
             'dejaAvoirs' => $this->avoirs->avoirs($facture),
             'peutValider' => $this->isGranted('ROLE_TRESORERIE_SAISIR'),

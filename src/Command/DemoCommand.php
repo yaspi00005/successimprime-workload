@@ -41,6 +41,8 @@ final class DemoCommand extends Command
         "DELETE a FROM promotion_anniversaire a JOIN clients c ON c.id = a.client_id WHERE c.code LIKE 'DEMO-%' OR c.id >= 900000",
         "DELETE p FROM promotion p JOIN promotion_client pc ON pc.promotion_id = p.id JOIN clients c ON c.id = pc.clients_id WHERE p.origine = 'anniversaire' AND (c.code LIKE 'DEMO-%' OR c.id >= 900000)",
         "DELETE FROM promotion WHERE note LIKE 'Démo : %'",
+        // Avoirs (FD04) sur les factures fictives, et ceux restés sans facture après un rechargement.
+        'DELETE FROM avoir WHERE facture_id >= 900000 OR facture_id NOT IN (SELECT id FROM factures)',
         // Patrimoine et primes : dotations et évaluations calculées après le chargement.
         'DELETE FROM dotation_amortissement WHERE immobilisation_id >= 900000',
         'DELETE FROM evaluation_prime WHERE agent_id >= 900000',

@@ -39,7 +39,7 @@ final class DocumentsFacturationController extends AbstractController
         $q = trim($request->query->getString('q'));
 
         return $this->render('facturation/index.html.twig', [
-            'documents' => $this->documents->documents($mois, $types, $q),
+            'documents' => $this->documents->documents($mois, $types, $q, $this->isGranted('ROLE_PAIEMENT_VOIR')),
             'chiffres' => $this->documents->chiffres($mois, $this->isGranted('ROLE_PAIEMENT_VOIR')),
             'onglets' => $permis,
             'type' => isset($permis[$type]) ? $type : '',
@@ -58,7 +58,7 @@ final class DocumentsFacturationController extends AbstractController
         $mois = $this->mois($request);
         $permis = $this->typesPermis();
         $type = $request->query->getString('type');
-        $lignes = $this->documents->documents($mois, isset($permis[$type]) ? [$type] : array_keys($permis));
+        $lignes = $this->documents->documents($mois, isset($permis[$type]) ? [$type] : array_keys($permis), null, $this->isGranted('ROLE_PAIEMENT_VOIR'));
         $reponse = new StreamedResponse(static function () use ($lignes): void {
             $out = fopen('php://output', 'w');
             fwrite($out, "\u{FEFF}");

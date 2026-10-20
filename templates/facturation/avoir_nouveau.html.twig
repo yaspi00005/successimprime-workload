@@ -16,7 +16,7 @@
 
 {% block body %}
 	{% set f = 'F' %}
-	<form method="post" class="fd-page" id="fd-avoir" data-confirmer="Valider l'avoir ? Il reçoit son numéro et ne se modifie plus." data-remise="{{ facture.remise }}" data-total-ht="{{ facture.totalHt }}" data-solde="{{ soldeAvant }}" data-reste="{{ facture.commande ? facture.commande.resteAPayer : 0 }}">
+	<form method="post" class="fd-page" id="fd-avoir" data-confirmer="Valider l'avoir ? Il reçoit son numéro et ne se modifie plus." data-remise="{{ facture.remise }}" data-total-ht="{{ facture.totalHt }}" data-solde="{{ voirPaiements ? soldeAvant : 0 }}" data-reste="{{ voirPaiements and facture.commande ? facture.commande.resteAPayer : 0 }}">
 		<input type="hidden" name="_token" value="{{ csrf_token('avoir-facture-' ~ facture.id) }}">
 		<div class="fd-entete">
 			<div>
@@ -95,9 +95,13 @@
 			<div>
 				<div class="fd-carte">
 					<h2>Effet sur le compte client</h2>
+					{% if voirPaiements %}
 					<div class="fd-ligne-solde"><span>Solde dû avant</span><b>{{ soldeAvant|number_format(0, ',', ' ') }} F</b></div>
 					<div class="fd-ligne-solde"><span>Avoir</span><b class="fd-violet" data-effet-avoir>− 0 F</b></div>
 					<div class="fd-ligne-solde"><span data-effet-libelle>Solde dû après</span><b data-solde-apres>{{ soldeAvant|number_format(0, ',', ' ') }} F</b></div>
+					{% else %}
+					<div class="fd-ligne-solde"><span>Avoir</span><b class="fd-violet" data-effet-avoir>− 0 F</b></div>
+					{% endif %}
 					<p class="fd-muet mt-2 mb-0">L'avoir apparaît dans le relevé du client, relié à la facture{{ reclamation ? ' et à la réclamation' }}.{% if creditClient > 0 %} Crédit déjà sur son compte : {{ creditClient|number_format(0, ',', ' ') }} F.{% endif %}</p>
 				</div>
 				<div class="fd-carte fd-regle">

@@ -226,8 +226,8 @@
 					{# Facture : total, déjà payé (même 0) et reste à payer, comme l'ancien modèle. #}
 					{% if facture.comptabilisee or facture.estAcompte %}
 						<tr><td class="fort">Total TTC</td><td class="droite fort">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
-						<tr><td>Déjà payé</td><td class="droite">{{ facture.montantPaye > 0 ? '− ' }}{{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
-						<tr class="final"><td>Reste à payer</td><td class="droite">{{ (facture.resteAPayer)|number_format(0, ',', ' ') }} F</td></tr>
+						{% if not (masquerPaiements ?? false) %}<tr><td>Déjà payé</td><td class="droite">{{ facture.montantPaye > 0 ? '− ' }}{{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
+						<tr class="final"><td>Reste à payer</td><td class="droite">{{ (facture.resteAPayer)|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
 					{% else %}
 						<tr class="final"><td>Total TTC{{ facture.estProforma ? '' : ' à payer' }}</td><td class="droite">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
 					{% endif %}

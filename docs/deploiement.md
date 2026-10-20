@@ -93,6 +93,7 @@ Fichier `/srv/successimprim/.env.local` (droits 600, propriétaire `succes`). Le
 |---|---|
 | APP_ENV | prod |
 | APP_SECRET | 32 caractères au hasard, propres à ce serveur : `php -r 'echo bin2hex(random_bytes(16)), PHP_EOL;'` |
+| ID_CLE | Clé qui chiffre les numéros des fiches dans les URL : **la même** sur l'ERP local et sur le site, à ne plus changer ensuite (docs/ids-chiffres.md). `php -r 'echo bin2hex(random_bytes(32)), PHP_EOL;'` |
 | APP_EN_LIGNE | 1 |
 | DEFAULT_URI | https://succesimprim.com |
 | DATABASE_URL | mysql://succes:<mot de passe>@127.0.0.1:3306/succesimprim?serverVersion=10.11-MariaDB&charset=utf8mb4 |

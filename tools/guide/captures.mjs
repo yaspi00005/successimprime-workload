@@ -517,6 +517,17 @@ await scene(['statistiques-activite', 'fournisseurs', 'fournisseur-fiche', 'comm
     await capture(page, 'reception-reclamation');
 });
 
+// Coûts et marges (SU04, docs/achats.md) : le tableau du mois, puis la cascade et « À retenir ». Rien n'est enregistré.
+await scene(['couts-marges', 'couts-marges-cascade'], async () => {
+    const page = await session('demo.kadiatou');
+    await aller(page, '/achats/couts-marges');
+    await capture(page, 'couts-marges');
+    await page.locator('#cascade').scrollIntoViewIfNeeded();
+    await page.evaluate(() => window.scrollBy(0, -80));
+    await page.waitForTimeout(300);
+    await capture(page, 'couts-marges-cascade');
+});
+
 // Crédits SMS et e-mail : solde saisi à la main (pas de clés Orange en démonstration), image coupée avant « Derniers envois ».
 await scene(['credits-messages'], async () => {
     const page = await session('demo.kadiatou');

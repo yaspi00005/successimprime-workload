@@ -658,7 +658,7 @@ final class Formation
                     [
                         'heure' => '10:30',
                         'titre' => 'Pause, puis fournisseurs et achats',
-                        'fiches' => ['fournisseurs', 'commande-achat', 'reception-achat'],
+                        'fiches' => ['fournisseurs', 'commande-achat', 'reception-achat', 'couts-marges'],
                         'faire' => 'Exercices 7 à 9.',
                     ],
                     [

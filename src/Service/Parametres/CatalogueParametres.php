@@ -301,9 +301,15 @@ final class CatalogueParametres
                     ['cle' => 'alerte_retard', 'type' => 'interrupteur', 'libelle' => 'Alerte fournisseur en retard', 'aide' => 'Dès le lendemain de la date promise, si rien n\'est reçu', 'defaut' => true],
                     ['cle' => 'alerte_oubli', 'type' => 'interrupteur', 'libelle' => 'Alerte commande oubliée', 'aide' => 'Quand l\'intervalle habituel entre deux commandes d\'un article est dépassé', 'defaut' => true],
                     ['cle' => 'depassement_oubli_pourcent', 'type' => 'nombre', 'libelle' => 'Intervalle habituel dépassé de', 'suffixe' => '%', 'min' => 0, 'max' => 200, 'defaut' => 20],
+                    // Coûts et marges (SU04) : gâche comptée tant qu'elle n'est pas mesurée pour l'article ; la gâche
+                    // mesurée de chaque article et le coût machine et main-d'œuvre au m² de chaque machine se saisissent
+                    // sur Stock et achats › Coûts et marges › « Régler les coûts » (champs « ecran »).
+                    ['cle' => 'gache_defaut_pourcent', 'type' => 'nombre', 'libelle' => 'Gâche comptée par défaut', 'aide' => 'Chutes, ratés et essais, en % de la matière, tant qu\'elle n\'est pas mesurée pour l\'article', 'suffixe' => '%', 'min' => 0, 'max' => 50, 'defaut' => 8],
+                    ['cle' => 'gache_articles', 'type' => 'liste', 'libelle' => 'Gâche mesurée par article', 'defaut' => null, 'ecran' => true],
+                    ['cle' => 'couts_machine_m2', 'type' => 'liste', 'libelle' => 'Coût machine et main-d\'œuvre au m² par machine', 'defaut' => null, 'ecran' => true],
                 ],
-                'motsCles' => ['Validation des commandes d\'achat', 'Marge de sécurité · réapprovisionnement', 'Partager le transport', 'Alertes d\'achat : stock bas, prix, retard, commande oubliée'],
-                'note' => 'Une commande d\'achat dont le total rendu Bamako (marchandise, transport et transit) dépasse le seuil attend la validation de la direction ; en dessous, elle part dès l\'envoi.',
+                'motsCles' => ['Validation des commandes d\'achat', 'Marge de sécurité · réapprovisionnement', 'Partager le transport', 'Alertes d\'achat : stock bas, prix, retard, commande oubliée', 'Gâche · coût machine et main-d\'œuvre au m²', 'Coûts, marges et bénéfice brut par produit'],
+                'note' => 'Une commande d\'achat dont le total rendu Bamako (marchandise, transport et transit) dépasse le seuil attend la validation de la direction ; en dessous, elle part dès l\'envoi. La gâche mesurée de chaque article et le coût machine et main-d\'œuvre au m² de chaque machine se règlent sur Stock et achats › Coûts et marges › « Régler les coûts ».',
             ],
             'montage' => [
                 'famille' => 'atelier', 'libelle' => 'Montage PAO', 'icone' => 'fa-th-large',

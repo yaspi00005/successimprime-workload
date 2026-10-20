@@ -1,0 +1,101 @@
+{% extends 'achats/_base.html.twig' %}
+
+{#
+	Régler les coûts (maquette SU04, docs/achats.md) : la gâche par défaut,
+	la gâche mesurée de chaque article et le coût machine et main-d'œuvre
+	au m² de chaque machine. Les valeurs vont dans la tuile « Achats et
+	fournisseurs » des Réglages ; depuis le site en ligne, elles sont
+	proposées à l'ERP.
+#}
+
+{% block title %}Régler les coûts{% endblock %}
+{% block page_title %}Coûts et marges{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/achats-marges.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="ac-page cm-page">
+		<div class="cm-entete">
+			<div>
+				<p class="cm-fil"><a href="{{ path('app_couts_marges_index') }}">Coûts et marges</a> › Régler les coûts</p>
+				<h1 class="cm-titre">Régler les coûts de l'atelier</h1>
+			</div>
+		</div>
+		{% if en_ligne %}
+			<p class="ac-conseil">Depuis le site en ligne, le changement est proposé : il s'applique quand la direction le valide sur l'ERP.</p>
+		{% endif %}
+
+		<form method="post">
+			<input type="hidden" name="_token" value="{{ csrf_token('couts_marges_reglages') }}">
+
+			<div class="cm-reglages">
+				<section class="ac-carte" aria-label="Machine et main-d'œuvre">
+					<h2>Machine et main-d'œuvre au m² <small>· par machine</small></h2>
+					<p class="ac-muet">L'usure, l'entretien et le temps de l'opérateur pour imprimer un m². Vide : le coût horaire divisé par la vitesse, tirés de Réglages › Coûts de revient. L'encre au m² se règle aussi là-bas.</p>
+					<div class="ac-defile">
+						<table class="ac-table">
+							<thead><tr><th>Machine</th><th class="num">Encre</th><th class="num">Calculé</th><th class="num">Machine et main-d'œuvre</th></tr></thead>
+							<tbody>
+								{% for l in machines %}
+									<tr>
+										<td><b>{{ l.machine.nom }}</b></td>
+										<td class="num ac-muet">{{ l.encre is null ? '—' : l.encre|number_format(0, ',', ' ') ~ ' F/m²' }}</td>
+										<td class="num ac-muet">{{ l.deduit is null ? '—' : l.deduit|number_format(0, ',', ' ') ~ ' F/m²' }}</td>
+										<td class="num">
+											<span class="cm-champ-ligne">
+												<input class="form-control form-control-sm cm-champ" type="text" inputmode="numeric" name="machines[{{ l.machine.id }}]" value="{{ l.saisi }}" placeholder="{{ l.deduit }}" aria-label="Machine et main-d'œuvre au m² de {{ l.machine.nom }}">
+												<span class="ac-muet">F/m²</span>
+											</span>
+										</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="4" class="ac-muet">Aucune machine.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</section>
+
+				<section class="ac-carte" aria-label="Gâche">
+					<h2>Gâche <small>· chutes, ratés et essais, en % de la matière</small></h2>
+					<div class="ac-ligne">
+						<span>Gâche comptée par défaut</span>
+						<span class="cm-champ-ligne">
+							<input class="form-control form-control-sm cm-champ" type="text" inputmode="decimal" name="gache_defaut" value="{{ gacheDefaut|number_format(0, ',', '') }}" aria-label="Gâche comptée par défaut">
+							<span class="ac-muet">%</span>
+						</span>
+					</div>
+					<p class="ac-muet">Mesurez la gâche en production (matière sortie du stock comparée aux m² vendus sur un mois) et notez-la pour l'article. Vide : la gâche par défaut.</p>
+					<div class="ac-defile">
+						<table class="ac-table">
+							<thead><tr><th>Article</th><th class="num">Gâche mesurée</th></tr></thead>
+							<tbody>
+								{% for l in articles %}
+									<tr>
+										<td><b>{{ l.article.designation|split(' · ')|first }}</b>{% if l.article.fournisseur %}<small class="cm-sous">{{ l.article.fournisseur.nomCourt }}</small>{% endif %}</td>
+										<td class="num">
+											<span class="cm-champ-ligne">
+												<input class="form-control form-control-sm cm-champ" type="text" inputmode="decimal" name="gaches[{{ l.article.id }}]" value="{{ l.saisie is null ? '' : l.saisie|number_format(1, ',', '')|replace({',0': ''}) }}" placeholder="{{ gacheDefaut|number_format(0, ',', '') }}" aria-label="Gâche mesurée de {{ l.article.designation }}">
+												<span class="ac-muet">%</span>
+											</span>
+										</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="2" class="ac-muet">Aucun produit n'a de matière liée.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</section>
+			</div>
+
+			<div class="cm-enregistrer">
+				<a class="btn btn-light" href="{{ path('app_couts_marges_index') }}">Retour aux marges</a>
+				<button class="btn btn-primary"><i class="fas fa-check me-1"></i>Enregistrer</button>
+			</div>
+		</form>
+	</div>
+{% endblock %}

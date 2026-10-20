@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Service\Catalogue\ProduitsDemo;
 use App\Service\Achats\AchatsDemo;
+use App\Service\Achats\CoutsMargesDemo;
 use App\Service\Commandes\HorsImprimerieDemo;
 use App\Service\NotificationsEquipe\NotificationsDemo;
 use App\Service\Site\EquipeDemo;
@@ -126,6 +127,8 @@ final class DemoCommand extends Command
                 HorsImprimerieDemo::charger($this->connexion);
                 // Achats (docs/achats.md) : fournisseurs des maquettes SU01 à SU03, un an de commandes d'achat, retards, casse, dettes.
                 AchatsDemo::charger($this->connexion);
+                // Coûts et marges (SU04) : transfert DTF A4 à la pièce, gros travaux de vinyle et de micro-perforé.
+                CoutsMargesDemo::charger($this->connexion);
             }
             $this->connexion->commit();
         } catch (\Throwable $e) {

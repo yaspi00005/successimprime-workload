@@ -204,6 +204,16 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'couts-marges', 'groupe' => 'direction', 'titre' => 'Coûts, marges et bénéfice par produit',
+                'but' => 'Savoir ce que coûte vraiment chaque produit vendu, ce qu\'il rapporte, et où part l\'argent.',
+                // Coûts et marges : la direction seulement, jamais montrés aux clients.
+                'droits' => ['ROLE_ADMIN'], 'route' => 'app_couts_marges_index', 'ecrans' => ['app_couts_marges_'], 'consultation' => true,
+                'captures' => [
+                    ['nom' => 'couts-marges', 'legende' => 'Stock et achats › Coûts et marges : le coût de revient et le bénéfice brut de chaque produit du mois.'],
+                    ['nom' => 'couts-marges-cascade', 'legende' => 'Où part l\'argent d\'un m² vendu, et ce qu\'il faut retenir.'],
+                ],
+            ],
+            [
                 'cle' => 'sauvegardes-synchro', 'groupe' => 'direction', 'titre' => 'Sauvegardes et synchronisation',
                 'but' => 'Vérifier que les données sont copiées et que le site suit l\'ERP.',
                 'droits' => ['ROLE_ADMIN'], 'route' => 'app_sauvegardes_index', 'ecrans' => ['app_sauvegardes_', 'app_synchronisation_'],

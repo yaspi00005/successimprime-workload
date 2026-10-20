@@ -30,6 +30,7 @@ final class NavigationExtensionTest extends TestCase
         yield 'fournisseurs (achats)' => ['app_fournisseur_show', 'stock'];
         yield 'commandes d\'achat' => ['app_achat_edit', 'stock'];
         yield 'réceptions (achats)' => ['app_reception_show', 'stock'];
+        yield 'coûts et marges (achats)' => ['app_couts_marges_reglages', 'stock'];
         yield 'facture' => ['app_factures_show', 'finances'];
         yield 'caisse' => ['app_caisse_index', 'finances'];
         yield 'à valider' => ['app_a_valider_index', 'finances'];
@@ -137,7 +138,7 @@ final class NavigationExtensionTest extends TestCase
     {
         // « Stock et achats » à part de l'Atelier (demande de Yaya du 20/10/2026).
         self::assertSame(['accueil', 'ventes', 'clients', 'atelier', 'stock', 'finances', 'equipe', 'reglages'], array_keys(NavigationExtension::SECTIONS));
-        foreach (['app_stock_articles_index', 'app_article_show', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index', 'app_reappro_index', 'app_lot_etiquette_index'] as $route) {
+        foreach (['app_stock_articles_index', 'app_article_show', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index', 'app_reappro_index', 'app_couts_marges_index', 'app_lot_etiquette_index'] as $route) {
             self::assertSame('stock', (new NavigationExtension())->sectionPourRoute($route), $route);
         }
     }
@@ -155,7 +156,7 @@ final class NavigationExtensionTest extends TestCase
         // Reglages s'ouvre d'un clic sur ses tuiles, sans volet.
         self::assertSame([], $menu['entrees'][7]['items']);
         // Stock et achats : son volet, entre l'Atelier et les Finances.
-        self::assertSame(['app_stock_articles_index', 'app_stock_articles_inventaire', 'app_reappro_index', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index'], array_column($menu['entrees'][4]['items'], 'route'));
+        self::assertSame(['app_stock_articles_index', 'app_stock_articles_inventaire', 'app_reappro_index', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index', 'app_couts_marges_index'], array_column($menu['entrees'][4]['items'], 'route'));
     }
 
     public function testMenuCourtSelonLesDroits(): void

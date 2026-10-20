@@ -1,0 +1,190 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Coûts, marges et bénéfices (maquette SU04, docs/achats.md) : pour
+	chaque produit vendu dans le mois, achat + transport + encre + gâche +
+	machine → coût de revient, prix de vente moyen, marge et bénéfice
+	brut. Dessous : la cascade « où part l'argent » d'un produit et ce
+	qu'il faut retenir. Direction seulement : jamais montré aux clients.
+#}
+
+{% block title %}Coûts et marges{% endblock %}
+{% block page_title %}Coûts et marges{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/achats-marges.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set total = analyse.total %}
+	{% set produits = analyse.produits %}
+	<div class="ac-page cm-page">
+		<div class="cm-entete">
+			<div>
+				<h1 class="cm-titre">Coût de revient, prix de vente et bénéfice · {{ libelle_mois }}</h1>
+			</div>
+			<div class="cm-actions">
+				<details class="cm-mois">
+					<summary class="btn btn-sm cm-btn">{{ libelle_mois|split(' ')|first|capitalize }} <i class="fas fa-chevron-down ms-1"></i></summary>
+					<div>
+						{% for l in liste_mois %}
+							<a href="{{ path('app_couts_marges_index', {mois: l.valeur}) }}" class="{{ l.valeur == mois|date('Y-m') ? 'actif' }}">{{ l.libelle }}</a>
+						{% endfor %}
+					</div>
+				</details>
+				<a class="btn btn-sm cm-btn" href="{{ path('app_couts_marges_export', {mois: mois|date('Y-m')}) }}"><i class="fas fa-download me-1"></i>Exporter</a>
+				<a class="btn btn-sm cm-btn" href="{{ path('app_couts_marges_reglages') }}"><i class="fas fa-sliders-h me-1"></i>Régler les coûts</a>
+			</div>
+		</div>
+
+		{# ---------- Tableau par produit ---------- #}
+		<section class="ac-carte" aria-label="Coût de revient par produit">
+			{% if produits is empty %}
+				<p class="ac-muet mb-0">Aucune vente de l'imprimerie en {{ libelle_mois }} avec un produit du catalogue.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table ac-liste cm-table">
+						<thead>
+							<tr>
+								<th>Produit</th>
+								<th class="num">Achat</th>
+								<th class="num">Transport + frais</th>
+								<th class="num">Encre, gâche, machine</th>
+								<th class="num">Coût de revient</th>
+								<th class="num">Prix de vente moyen</th>
+								<th class="num">Marge unitaire</th>
+								<th class="num">Marge</th>
+								<th class="num">Vendu</th>
+								<th class="num">Bénéfice brut</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for p in produits %}
+								{% set b = p.bilan %}
+								{% set choisi = detail and detail.produit.id == p.produit.id %}
+								{% set ton = b.taux is null ? '' : (b.taux < 0 ? 'rouge' : (b.taux < seuil ? 'orange' : (b.taux < 40 ? 'jaune' : 'vert'))) %}
+								<tr class="{{ choisi ? 'cm-choisi' }}">
+									<td class="ac-pleine">
+										<a class="ac-lien" href="{{ path('app_couts_marges_index', {mois: mois|date('Y-m'), produit: p.produit.id}) }}#cascade" title="Voir où part l'argent">{{ p.nom }}</a>
+										<small class="cm-sous">{{ p.fournisseur ? p.fournisseur.nomCourt ~ ' · ' }}par {{ p.unite }}</small>
+										{% if p.manquants is not empty %}
+											<span class="ac-badge attente cm-incomplet" title="Manque : {{ p.manquants|join(', ') }}">coût incomplet</span>
+											<small class="cm-manque">manque : {{ p.manquants|join(', ') }}</small>
+										{% elseif p.source == 'stock' %}
+											<span class="ac-badge cm-incomplet" title="Pas de réception récente : coût moyen du stock, sans transport">coût du stock</span>
+										{% endif %}
+									</td>
+									<td class="num" data-libelle="Achat">{{ b.unitaires.achat|number_format(0, ',', ' ') }}</td>
+									<td class="num" data-libelle="Transport + frais">{{ p.frais|number_format(0, ',', ' ') }}</td>
+									<td class="num" data-libelle="Encre, machine…" title="Encre {{ b.unitaires.encre|number_format(0, ',', ' ') }} · gâche {{ b.unitaires.gache|number_format(0, ',', ' ') }}{{ p.gache ? ' (' ~ p.gache.pourcent|number_format(1, ',', ' ')|replace({',0': ''}) ~ ' %' ~ (p.gache.mesuree ? ' mesurée' : ' par défaut') ~ ')' }} · machine et main-d'œuvre {{ b.unitaires.machine|number_format(0, ',', ' ') }}{{ b.unitaires.autres > 0 ? ' · finitions et accessoires ' ~ b.unitaires.autres|number_format(0, ',', ' ') }}">{{ p.atelier|number_format(0, ',', ' ') }}</td>
+									<td class="num" data-libelle="Coût de revient"><b>{{ b.coutUnitaire is null ? '—' : b.coutUnitaire|number_format(0, ',', ' ') }}</b></td>
+									<td class="num" data-libelle="Prix de vente moyen">{{ b.prixMoyen is null ? '—' : b.prixMoyen|number_format(0, ',', ' ') }}</td>
+									<td class="num" data-libelle="Marge unitaire"><b class="cm-{{ ton }}">{{ b.margeUnitaire is null ? '—' : b.margeUnitaire|number_format(0, ',', ' ') }}</b></td>
+									<td class="num" data-libelle="Marge"><b class="cm-{{ ton }}">{{ b.taux is null ? '—' : b.taux|round ~ ' %' }}</b></td>
+									<td class="num" data-libelle="Vendu">{{ m.q(b.quantite) }} {{ p.unite == 'pièce' ? 'pc' : p.unite }}</td>
+									<td class="num" data-libelle="Bénéfice brut"><b class="{{ b.benefice < 0 ? 'cm-rouge' }}">{{ m.f(b.benefice) }}</b></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+						<tfoot>
+							<tr class="cm-total">
+								<td class="ac-pleine" colspan="7"><b>Total des {{ produits|length }} produit{{ produits|length > 1 ? 's' }}</b> <span class="ac-muet">· avant loyer, salaires fixes et électricité</span></td>
+								<td class="num" data-libelle="Marge"><b>{{ total.taux is null ? '—' : total.taux|round ~ ' %' }}</b></td>
+								<td class="num" data-libelle="Vendu (HT)"><small class="ac-muet">CA HT</small> {{ m.f(total.ca) }}</td>
+								<td class="num" data-libelle="Bénéfice brut"><b class="{{ total.benefice < 0 ? 'cm-rouge' : 'cm-vert' }} cm-gros">{{ m.f(total.benefice) }}</b></td>
+							</tr>
+						</tfoot>
+					</table>
+				</div>
+			{% endif %}
+			<ul class="cm-notes">
+				<li>
+					{{ libelle_precedent|capitalize }}{{ precedent.jusquAu ? ', du 1er au ' ~ precedent.jusquAu }} : {{ m.f(precedent.benefice) }} de bénéfice brut
+					{%- if evolution is not null %} · <b class="{{ evolution < 0 ? 'cm-rouge' : 'cm-vert' }}">{{ evolution > 0 ? '+' : (evolution < 0 ? '−') }}{{ evolution|abs|number_format(1, ',', ' ')|replace({',0': ''}) }} %</b> {{ precedent.jusquAu ? 'sur les mêmes jours' : 'en ' ~ libelle_mois }}{% endif %}.
+				</li>
+				{% if analyse.hors.lignes > 0 %}
+					<li>Ventes hors imprimerie (matériel revendu) : {{ m.f(analyse.hors.ca) }} sur {{ analyse.hors.lignes }} ligne{{ analyse.hors.lignes > 1 ? 's' }}, comptées à part, pas dans ces marges.</li>
+				{% endif %}
+				{% if analyse.libres.lignes > 0 %}
+					<li>{{ analyse.libres.lignes }} ligne{{ analyse.libres.lignes > 1 ? 's' }} sans produit du catalogue (pose, déplacement, saisie libre) : {{ m.f(analyse.libres.ca) }}, sans coût calculable.</li>
+				{% endif %}
+				{% if analyse.incomplets > 0 %}
+					<li class="cm-orange">{{ analyse.incomplets }} produit{{ analyse.incomplets > 1 ? 's' }} au coût incomplet (le badge dit ce qui manque) : leur bénéfice est surestimé. <a href="{{ path('app_couts_marges_reglages') }}">Régler les coûts</a>.</li>
+				{% endif %}
+			</ul>
+		</section>
+
+		<div class="cm-grille">
+			{# ---------- Cascade d'un produit ---------- #}
+			<section class="ac-carte cm-cascade" id="cascade" aria-label="Où part l'argent">
+				{% if detail and detail.bilan.prixMoyen %}
+					{% set unite = detail.unite %}
+					<h2>Où part l'argent {{ unite == 'pièce' ? 'd\'une pièce' : 'd\'un ' ~ unite }} de « {{ detail.nom }} » vendu{{ unite == 'pièce' ? 'e' }} {{ m.f(detail.bilan.prixMoyen) }} <small class="float-end">en F par {{ unite }}</small></h2>
+					{# Toujours la même échelle (huit places), les barres réparties sur la largeur. #}
+					{% set n = cascade|length %}
+					{% set total_largeur = 8 * 92 %}
+					{% set largeur = total_largeur / n %}
+					{% set barre_l = min(56, largeur - 24) %}
+					{% set hauteur = 200 %}
+					<svg class="cm-svg" viewBox="0 0 {{ total_largeur }} {{ hauteur + 56 }}" role="img" aria-label="Prix de vente moyen, coûts poste par poste et marge de {{ detail.nom }}">
+						<line class="cm-axe" x1="0" x2="{{ total_largeur }}" y1="{{ hauteur + 18 }}" y2="{{ hauteur + 18 }}"></line>
+						{% for barre in cascade %}
+							{% set x = loop.index0 * largeur + (largeur - barre_l) / 2 %}
+							{% set haut = 18 + hauteur * (1 - barre.haut) %}
+							{% set epaisseur = max(hauteur * (barre.haut - barre.bas), 3) %}
+							<rect class="cm-barre {{ barre.cle }}{{ barre.cle == 'marge' and barre.valeur < 0 ? ' perte' }}" x="{{ x }}" y="{{ haut }}" width="{{ barre_l }}" height="{{ epaisseur }}" rx="3"></rect>
+							<text class="cm-valeur {{ barre.cle }}{{ barre.cle == 'marge' and barre.valeur < 0 ? ' perte' }}" x="{{ x + barre_l / 2 }}" y="{{ haut - 6 }}" text-anchor="middle">{{ barre.valeur > 0 and barre.cle != 'prix' and barre.cle != 'marge' ? '+' }}{{ barre.valeur|number_format(0, ',', ' ')|replace({'-': '−'}) }}</text>
+							{% set mots = barre.libelle|split(' ') %}
+							{% if mots|length > 2 %}
+								<text class="cm-libelle" x="{{ x + barre_l / 2 }}" y="{{ hauteur + 36 }}" text-anchor="middle">{{ mots|slice(0, 2)|join(' ') }}</text>
+								<text class="cm-libelle" x="{{ x + barre_l / 2 }}" y="{{ hauteur + 50 }}" text-anchor="middle">{{ mots|slice(2)|join(' ') }}</text>
+							{% else %}
+								<text class="cm-libelle" x="{{ x + barre_l / 2 }}" y="{{ hauteur + 36 }}" text-anchor="middle">{{ barre.libelle }}</text>
+							{% endif %}
+						{% endfor %}
+					</svg>
+					{# Téléphone : la même cascade en barres couchées, plus lisible qu'un dessin réduit. #}
+					<ul class="cm-cascade-liste">
+						{% for barre in cascade %}
+							<li class="{{ barre.cle }}{{ barre.cle == 'marge' and barre.valeur < 0 ? ' perte' }}">
+								<span>{{ barre.libelle }}</span>
+								<i style="margin-left: {{ (barre.bas * 100)|round(1) }}%; width: {{ max((barre.haut - barre.bas) * 100, 1)|round(1) }}%"></i>
+								<b>{{ barre.valeur|number_format(0, ',', ' ')|replace({'-': '−'}) }}</b>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="ac-note">
+						{{ m.q(detail.bilan.quantite) }} {{ unite == 'pièce' ? 'pièces' : unite }} vendu{{ unite == 'pièce' ? 'e' }}s en {{ libelle_mois }} sur {{ detail.lignes }} ligne{{ detail.lignes > 1 ? 's' }}
+						{%- if detail.article %} · matière : {{ detail.article.designation|split(' · ')|first }}{% endif %}
+						{%- if detail.gache %} · gâche {{ detail.gache.pourcent|number_format(1, ',', ' ')|replace({',0': ''}) }} % {{ detail.gache.mesuree ? 'mesurée' : 'par défaut' }}{% endif %}
+						{%- if detail.machines is not empty %} · {{ detail.machines|join(', ') }}{% endif %}.
+					</p>
+				{% else %}
+					<h2>Où part l'argent</h2>
+					<p class="ac-muet mb-0">Choisissez un produit vendu dans le tableau.</p>
+				{% endif %}
+			</section>
+
+			{# ---------- À retenir ---------- #}
+			<section class="ac-carte cm-retenir" aria-label="À retenir">
+				<h2>À retenir</h2>
+				{% set icones = {transport: 'fa-truck', alerte: 'fa-exclamation-triangle', faible: 'fa-level-down-alt', meilleur: 'fa-star'} %}
+				{% if a_retenir is empty %}
+					<p class="ac-muet">Rien à signaler : pas encore de vente chiffrée ce mois-ci.</p>
+				{% else %}
+					<ul>
+						{% for c in a_retenir %}
+							<li class="{{ c.sorte }}">
+								<span class="cm-icone" aria-hidden="true"><i class="fas {{ icones[c.sorte] }}"></i></span>
+								<div><b>{{ c.titre }}</b><small>{{ c.detail }}</small></div>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+				<p class="cm-pied">Coût de revient mis à jour à chaque réception : prix réellement payé, transport et transit réels, répartis sur les unités en bon état. Gâche mesurée en production quand elle est saisie, sinon {{ gache_defaut|number_format(1, ',', ' ')|replace({',0': ''}) }} %. Machine et main-d'œuvre au m² par machine.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

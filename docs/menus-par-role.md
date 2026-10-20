@@ -33,8 +33,8 @@ Depuis le 20/10/2026 (demande de Yaya : « un menu différent d'atelier pour
 les stock, achat, tout qui n'ont pas de relation directe avec l'atelier »),
 le module « Stock et achats » est à part de l'Atelier : « Articles et
 stock », « Inventaire », « Réapprovisionnement » (alertes SU06, et l'ancien
-bon de commande du stock), « Fournisseurs », « Commandes d'achat » et
-« Réceptions ». Réservé à la direction comme avant (`ROLE_ADMIN` ; dans la
+bon de commande du stock), « Fournisseurs », « Commandes d'achat »,
+« Réceptions » et « Coûts et marges » (SU04, bénéfice brut par produit). Réservé à la direction comme avant (`ROLE_ADMIN` ; dans la
 matrice Rôles et menus, la ligne « Stock et achats » est fixée à la
 Direction). L'Atelier garde la production, la prépresse, les machines et les
 consommables de production (rangés sous « Production »). Dans le menu court,

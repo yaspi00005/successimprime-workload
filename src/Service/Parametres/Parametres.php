@@ -648,12 +648,39 @@ final class Parametres
                 'valeur' => 'demandé par '.$a->getNomUtilisateur().' · à approuver',
             ], $this->em->getRepository(AppareilAutorise::class)->findBy(['etat' => AppareilAutorise::ETAT_EN_ATTENTE], ['id' => 'DESC'], 5)),
             'points_pointage' => $this->detailsPointsPointage(),
+            'achats' => $this->detailsAchats(),
             'relances' => array_map(static fn (RegleRappelPaiement $r): array => [
                 'libelle' => $r->getNom(),
                 'valeur' => ($r->isRetrait() ? 'commande prête non retirée' : 'paiement') . ' · tous les '.$r->getDelaiJours().' j',
             ], $this->em->getRepository(RegleRappelPaiement::class)->findBy(['actif' => true])),
             default => [],
         };
+    }
+
+    /**
+     * Tuile « Achats et fournisseurs » : les coûts machine et main-d'œuvre
+     * au m² et les gâches mesurées saisis sur Coûts et marges (SU04).
+     *
+     * @return list<array{libelle: string, valeur: string}>
+     */
+    private function detailsAchats(): array
+    {
+        $valeurs = $this->valeursStockees('achats');
+        $details = [];
+        foreach ((array) ($valeurs['couts_machine_m2'] ?? []) as $id => $cout) {
+            $machine = $this->em->find(Machines::class, (int) $id);
+            if (null !== $machine && is_numeric($cout)) {
+                $details[] = ['libelle' => (string) $machine->getNom(), 'valeur' => 'machine et main-d\'œuvre '.number_format((int) $cout, 0, ',', ' ').' F/m²'];
+            }
+        }
+        foreach ((array) ($valeurs['gache_articles'] ?? []) as $id => $gache) {
+            $article = $this->em->find(Articles::class, (int) $id);
+            if (null !== $article && is_numeric($gache)) {
+                $details[] = ['libelle' => trim(explode(' · ', (string) $article->getDesignation())[0]), 'valeur' => 'gâche mesurée '.str_replace('.', ',', (string) round((float) $gache, 1)).' %'];
+            }
+        }
+
+        return $details;
     }
 
     /**

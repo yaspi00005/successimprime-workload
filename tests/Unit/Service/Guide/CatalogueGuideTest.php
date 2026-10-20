@@ -219,7 +219,7 @@ final class CatalogueGuideTest extends TestCase
         foreach (['factures-liste', 'facture-paiement', 'avoir-faire', 'documents-lies', 'hors-imprimerie'] as $attendue) {
             self::assertContains($attendue, $caisse);
         }
-        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'statistiques-activite', 'prepresse-depot', 'prepresse-relances'] as $refusee) {
+        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'couts-marges', 'statistiques-activite', 'prepresse-depot', 'prepresse-relances'] as $refusee) {
             self::assertNotContains($refusee, $caisse);
         }
 
@@ -228,7 +228,7 @@ final class CatalogueGuideTest extends TestCase
         foreach (['prepresse-depot', 'prepresse-tableau', 'prepresse-relances', 'prepresse-retirer', 'factures-liste', 'documents-lies', 'hors-imprimerie'] as $attendue) {
             self::assertContains($attendue, $graphiste);
         }
-        foreach (['facture-paiement', 'fournisseurs', 'reception-achat'] as $refusee) {
+        foreach (['facture-paiement', 'fournisseurs', 'reception-achat', 'couts-marges'] as $refusee) {
             self::assertNotContains($refusee, $graphiste);
         }
 
@@ -241,7 +241,7 @@ final class CatalogueGuideTest extends TestCase
 
         // Achats : la Direction seule ; les statistiques par activité avec les statistiques globales.
         $direction = self::cles([], true);
-        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'statistiques-activite'] as $attendue) {
+        foreach (['fournisseurs', 'commande-achat', 'reception-achat', 'couts-marges', 'statistiques-activite'] as $attendue) {
             self::assertContains($attendue, $direction);
             self::assertSame('direction', CatalogueGuide::fiche($attendue)['groupe']);
         }

@@ -123,7 +123,7 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Relevés de compteurs', 'route' => 'app_atelier_releves', 'role' => ['ROLE_PRODUCTION_GERER', 'ROLE_COMPTABILITE'], 'prefixes' => ['app_atelier_releves']],
         ],
         // Stock et achats (demande de Yaya du 20/10/2026 : à part de l'atelier) : articles, inventaire, fournisseurs,
-        // commandes d'achat, réceptions et réapprovisionnement (docs/achats.md, SU01 à SU03, SU05 à SU07), la Direction.
+        // commandes d'achat, réceptions, réapprovisionnement, coûts et marges (docs/achats.md, SU01 à SU07), la Direction.
         'stock' => [
             ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
             ['libelle' => 'Inventaire', 'route' => 'app_stock_articles_inventaire', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_articles_inventaire']],
@@ -131,6 +131,8 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Fournisseurs', 'route' => 'app_fournisseur_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_fournisseur_']],
             ['libelle' => 'Commandes d\'achat', 'route' => 'app_achat_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_achat_']],
             ['libelle' => 'Réceptions', 'route' => 'app_reception_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_reception_']],
+            // Coûts, marges et bénéfice brut par produit (SU04) : la direction seulement.
+            ['libelle' => 'Coûts et marges', 'route' => 'app_couts_marges_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_couts_marges_']],
         ],
         'finances' => [
             ['libelle' => 'Vue d\'ensemble', 'route' => 'app_finances_vue_ensemble', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_STATS_GLOBAL', 'ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE'], 'prefixes' => ['app_finances_vue_ensemble', 'app_finances_du_jour']],
@@ -289,6 +291,7 @@ final class NavigationExtension extends AbstractExtension
         'app_fournisseur_' => 'stock',
         'app_reception_' => 'stock',
         'app_reappro_' => 'stock',
+        'app_couts_marges_' => 'stock',
         'app_machines_' => 'atelier',
         'app_lot_etiquette_' => 'stock',
         'app_suivi_etiquette' => 'stock',

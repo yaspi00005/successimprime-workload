@@ -9,9 +9,9 @@ Yaya a envoyé les maquettes le 19/10/2026. Elles sont dans `/mnt/project-files/
 - SU06 Fréquence des commandes et alertes ;
 - SU07 Alertes sur téléphone.
 
-La première étape a construit SU01, SU02 et SU03 ; la deuxième, SU05 (réception) ; la troisième, SU06 et SU07 (réapprovisionnement et alertes). Ce sont des écrans neufs : on garde les données (`Fournisseurs`, `Achats`, `AchatDetail`, `ArticleFournisseur`, les entrées et sorties de stock) et les calculs qui marchent, pas l'ancienne présentation.
+La première étape a construit SU01, SU02 et SU03 ; la deuxième, SU05 (réception) ; la troisième, SU06 et SU07 (réapprovisionnement et alertes) ; la quatrième, SU04 (coûts, marges et bénéfices). Ce sont des écrans neufs : on garde les données (`Fournisseurs`, `Achats`, `AchatDetail`, `ArticleFournisseur`, les entrées et sorties de stock) et les calculs qui marchent, pas l'ancienne présentation.
 
-Les écrans sont dans le menu « Stock et achats » (à part de l'Atelier depuis le 20/10/2026, demande de Yaya), avec « Articles et stock » et « Inventaire » : « Réapprovisionnement », « Fournisseurs », « Commandes d'achat » et « Réceptions ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
+Les écrans sont dans le menu « Stock et achats » (à part de l'Atelier depuis le 20/10/2026, demande de Yaya), avec « Articles et stock » et « Inventaire » : « Réapprovisionnement », « Fournisseurs », « Commandes d'achat », « Réceptions » et « Coûts et marges ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
 
 ## SU01 Fournisseurs
 
@@ -167,6 +167,48 @@ Comme les achats : la direction (`ROLE_ADMIN`, `access_control` sur `/achats`). 
 
 `App\Service\Achats\CalculsReception` (statique, testé sans base : `tests/Unit/Service/Achats/CalculsReceptionTest.php`) : badge d'écart, quantité à réclamer, coût réel, règle du blocage et sa raison, solde, textes de la livraison et du message, lien wa.me. L'écran et la validation sont dans `App\Service\Achats\Receptions`, les routes dans `ReceptionsController`.
 
+## SU04 Coûts, marges et bénéfices
+
+Menu Stock et achats › « Coûts et marges » (`/achats/couts-marges`, `CoutsMargesController`). Réservé à la direction (`ROLE_ADMIN`, `access_control` sur `/achats` et l'attribut du contrôleur) : les coûts et les marges ne sont jamais montrés aux clients.
+
+### Ce que dit l'écran
+
+Titre : « Coût de revient, prix de vente et bénéfice · octobre 2026 ». Le bouton du mois ouvre les 12 derniers mois (`?mois=2026-09` ; jamais un mois futur), « Exporter » donne le tableau en CSV pour Excel, « Régler les coûts » ouvre les réglages (plus bas).
+
+**Une ligne par produit du catalogue vendu dans le mois**, le plus gros bénéfice d'abord :
+- le produit, son fournisseur (celui de sa matière) et son unité : « par m² » (produit au m²), « par m » (au mètre) ou « par pièce » ;
+- par unité vendue : **Achat**, **Transport + frais** (transport et transit), **Encre, gâche, machine** (le détail au survol, avec les finitions et accessoires), **Coût de revient**, **Prix de vente moyen** (hors taxes, remises comprises), **Marge unitaire** et **Marge** en % du prix, en vert (40 % et plus), jaune (25 à 39 %), orange (sous 25 %) ou rouge (perte) ;
+- **Vendu** (m², m ou pièces) et **Bénéfice brut** du mois (ventes HT − coût de revient de tout ce qui est vendu) ;
+- un badge « coût incomplet » quand une donnée manque (matière non liée au produit, machine de la ligne, encre au m² ou coût machine d'une machine) : le bénéfice est alors surestimé ; « coût du stock » quand la matière n'a pas de réception (coût moyen du stock, sans transport).
+
+**Total** : « Total des 14 produits · avant loyer, salaires fixes et électricité », la marge en %, le chiffre d'affaires HT et le bénéfice brut. Dessous : le bénéfice du mois d'avant (pour le mois en cours, du 1er au même jour du mois d'avant) et l'évolution ; les ventes **hors imprimerie** du mois, comptées à part (`docs/hors-imprimerie.md`) ; les lignes sans produit du catalogue (pose, déplacement), sans coût calculable ; le nombre de produits au coût incomplet.
+
+**Où part l'argent** : pour le produit touché dans le tableau (`?produit=`, numéro chiffré), sinon celui où le transport pèse le plus dans le prix, une cascade : prix de vente moyen, puis achat, transport, transit, encre, gâche, machine et main-d'œuvre (finitions et accessoires s'il y en a), et la marge qui reste. Sur téléphone, la même cascade en barres couchées ; le tableau passe en cartes.
+
+**À retenir** : le transport (le produit où transport et transit mangent la plus grande part de la marge : « Le transport depuis Dakar coûte 408 F/m² · soit 25 % de la marge de vinyle adhésif ») ; la marge la plus faible (en rouge sous 25 %, le seuil de la rentabilité des devis) ; le produit le plus rentable (meilleur taux).
+
+### Le calcul : bénéfice brut
+
+Lignes comptées : commandes du mois (date de commande), ni supprimées ni soldes d'ouverture, lignes non annulées, comme les statistiques. Les commandes « hors imprimerie » sont comptées à part. Une ligne sans produit du catalogue n'a pas de coût.
+
+Pour chaque ligne :
+- **Matière** : l'article principal du produit (celui de la fiche produit, sinon la première matière liée), en quantité consommée selon la liaison au produit (m² vendus × coefficient, ou pièces × coefficient), sans les chutes (comptées dans la gâche). Son coût d'une unité de stock vient des **réceptions** des 90 jours avant la fin du mois (sinon la dernière réception) : prix d'achat ramené à l'unité de stock, plus ce que le coût de revient réel ajoute (transport et transit, partagés comme sur la commande), pondérés par les unités **en bon état** entrées en stock. Les frais d'une réception sont donc portés par les unités utilisables, comme dans SU05.
+- **Gâche** : un % de la matière rendue Bamako (achat, transport, transit) : la gâche **mesurée** de l'article si elle est notée, sinon **8 %** (réglage).
+- **Encre** : surface imprimée (faces comprises) × encre au m² de la machine (Réglages › Coûts de revient). Pour une pièce sans dimensions (kakémono), la surface est celle de sa matière au m².
+- **Machine et main-d'œuvre** : surface imprimée × le coût au m² de la machine, saisi dans « Régler les coûts », sinon son coût horaire divisé par sa vitesse (Réglages › Coûts de revient ; à défaut de coût horaire, l'amortissement réparti sur 200 heures par mois).
+- **Finitions et accessoires** : les autres matières liées au produit (au coût rendu, sans gâche) et le coût unitaire des finitions de la ligne.
+- Machine : celle de la ligne, sinon celle du produit, sinon celle de l'article.
+
+Les montants par unité sont les totaux du produit divisés par la quantité vendue. Loyer, salaires fixes et électricité restent dans les Finances : ils ne sont pas répartis ici.
+
+### Régler les coûts
+
+`/achats/couts-marges/reglages` : la gâche comptée par défaut, la **gâche mesurée** de chaque article principal (vide : le défaut) et le **coût machine et main-d'œuvre au m²** de chaque machine (vide : le calcul ci-dessus, affiché à côté avec l'encre). Les valeurs sont rangées dans la tuile « Achats et fournisseurs » (champs `gache_defaut_pourcent`, et `gache_articles`, `couts_machine_m2` saisis sur cet écran, listés dans le panneau de la tuile) ; depuis le site en ligne, le changement est proposé à l'ERP comme les autres tuiles.
+
+### Calculs
+
+`App\Service\Achats\CalculsMarges` (statique, testé sans base : `tests/Unit/Service/Achats/CalculsMargesTest.php`) : coût rendu d'après les réceptions, réceptions retenues, coût machine au m², gâche, quantité vendue, coût d'une ligne poste par poste, bilan d'un produit, cascade, « À retenir », mois et évolution. Les lignes, les réceptions et les réglages sont lus par `CoutsMarges`.
+
 ## SU06 Fréquence des commandes et alertes
 
 Menu Stock et achats › « Réapprovisionnement » (`/achats/reapprovisionnement`, `ReapproController`). L'ancien bon de commande du stock (`/stock/articles/a-commander`) est rangé sous cet onglet. La pastille du menu compte ses alertes d'achat non réglées (ses notifications). Réservé à la direction comme les autres écrans Achats (`ROLE_ADMIN`, `access_control` sur `/achats`).
@@ -234,7 +276,8 @@ Réglages › Paramètres, tuile « Achats et fournisseurs » :
 - commande à faire valider au-delà de : 500 000 F ;
 - marge de sécurité : 5 jours ;
 - regrouper les articles à commander dans les : 14 jours ;
-- règles d'alerte (SU06) : stock bas, hausse de prix (à partir de 5 %), fournisseur en retard, commande oubliée (intervalle dépassé de 20 %), toutes allumées.
+- règles d'alerte (SU06) : stock bas, hausse de prix (à partir de 5 %), fournisseur en retard, commande oubliée (intervalle dépassé de 20 %), toutes allumées ;
+- gâche comptée par défaut (SU04) : 8 % ; la gâche mesurée de chaque article et le coût machine et main-d'œuvre au m² de chaque machine se saisissent sur Coûts et marges › « Régler les coûts ».
 
 ## Données
 
@@ -251,11 +294,11 @@ Migration `Version20261020050000` (réception, SU05) :
 
 ## Démonstration
 
-`php bin/console app:demo` complète les fournisseurs des maquettes (`AchatsDemo`) : Sahel Supplies (bâches, Bamako, 2 jours), Dakar Signs (vinyles et micro-perforé, camion depuis Dakar, promis en 7 jours, 8 en moyenne), Encres Pro Bamako (encres solvant, 1 jour), Yinghe Distribution (film, poudre et encres DTF, fret aérien depuis la Chine, 18 jours promis) et Kanté Bois & Alu (structures de roll-up). Un an de commandes avec des retards et un rouleau abîmé, une commande en route depuis la Chine, deux factures fournisseurs à payer, et une consommation qui met le micro-perforé à commander avant quelques jours, avec le vinyle à commander dans les 14 jours. Pour la réception (SU05) : la commande **CA-AAAA-0041** de Dakar Signs (4 rouleaux de vinyle blanc, 2 de micro-perforé, transport et transit prévus 114 700 F et 39 700 F) est en route, promise il y a deux jours, prête à recevoir ; la dernière réception de Dakar Signs a un rouleau écrasé, une réclamation ouverte avec son message envoyé, sa facture à payer (solde après l'acompte de 50 %) et son paiement bloqué. Pour les alertes (SU06, SU07) : bâche 510 g et encre noire sous le minimum, bâche 440 g à regrouper chez Sahel (un seul transport), CA-AAAA-0041 en retard de deux jours, poudre DTF en hausse de 7 % chez Yinghe (10 200 F le sac au lieu de 9 500 F), structures de roll-up commandées tous les deux mois chez Kanté et oubliées depuis 75 jours. Les notifications naissent au premier passage de `app:achats:alertes`. Tout part avec la purge (les réclamations et les dettes reliées aux commandes fictives aussi, même saisies en essayant l'écran), la commande peut être relancée.
+`php bin/console app:demo` complète les fournisseurs des maquettes (`AchatsDemo`) : Sahel Supplies (bâches, Bamako, 2 jours), Dakar Signs (vinyles et micro-perforé, camion depuis Dakar, promis en 7 jours, 8 en moyenne), Encres Pro Bamako (encres solvant, 1 jour), Yinghe Distribution (film, poudre et encres DTF, fret aérien depuis la Chine, 18 jours promis) et Kanté Bois & Alu (structures de roll-up). Un an de commandes avec des retards et un rouleau abîmé, une commande en route depuis la Chine, deux factures fournisseurs à payer, et une consommation qui met le micro-perforé à commander avant quelques jours, avec le vinyle à commander dans les 14 jours. Pour la réception (SU05) : la commande **CA-AAAA-0041** de Dakar Signs (4 rouleaux de vinyle blanc, 2 de micro-perforé, transport et transit prévus 114 700 F et 39 700 F) est en route, promise il y a deux jours, prête à recevoir ; la dernière réception de Dakar Signs a un rouleau écrasé, une réclamation ouverte avec son message envoyé, sa facture à payer (solde après l'acompte de 50 %) et son paiement bloqué. Pour les alertes (SU06, SU07) : bâche 510 g et encre noire sous le minimum, bâche 440 g à regrouper chez Sahel (un seul transport), CA-AAAA-0041 en retard de deux jours, poudre DTF en hausse de 7 % chez Yinghe (10 200 F le sac au lieu de 9 500 F), structures de roll-up commandées tous les deux mois chez Kanté et oubliées depuis 75 jours. Les notifications naissent au premier passage de `app:achats:alertes`. Pour les coûts et marges (SU04, `CoutsMargesDemo`) : le produit « Transfert DTF A4 » (film DTF de Yinghe, 0,15 m par transfert, et 6 g de poudre, vendu à la pièce comme sur la maquette) et six commandes ce mois-ci et le mois d'avant (CMD-CM0601 à 0606 : lettrage et habillage en vinyle, vitrophanie en micro-perforé, kakémonos, transferts DTF). Tout part avec la purge (les réclamations et les dettes reliées aux commandes fictives aussi, même saisies en essayant l'écran), la commande peut être relancée.
 
 ## Et ensuite
 
-- **SU04 Coûts, marges et bénéfices** : coût de revient complet par produit (achat, transport, encre, gâche, machine), prix de vente moyen, marge et bénéfice du mois, en partant du coût rendu enregistré sur chaque ligne d'achat.
+- Coûts et marges : la gâche se mesure à la main (sortie de stock comparée aux m² vendus) ; les sorties de production enregistrées aujourd'hui suivent la consommation théorique et ne la mesurent pas. Le coût d'une machine au m² ne distingue pas les heures creuses.
 - Alertes d'achat : pas d'envoi WhatsApp automatique (API Meta) ; les messages sont préparés en liens wa.me.
 - L'acompte n'est pas encore une dépense à payer dans les Finances : il s'affiche sur la commande, et la réception le déduit de la facture pour faire le solde.
 - Les frais réels de transport et de transit ne deviennent pas des dépenses à payer au transporteur : ils servent au coût de revient.

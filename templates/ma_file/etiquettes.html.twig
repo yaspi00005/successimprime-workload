@@ -3,7 +3,7 @@
 {#
 	OP05 : suivi de production et colis de la commande. Les étiquettes (une
 	par colis, 100 × 60 mm, QR) s'impriment dans Production › Étiquettes ;
-	la commande passe « Prête » au contrôle final quand tous ses colis sont
+	la commande passe « Prête » au contrôle final quand tous ses colis sont
 	scannés (docs/production-colis.md).
 #}
 {% block title %}{{ livraison.numero }} · colis et livraison{% endblock %}
@@ -84,7 +84,7 @@
 				{% if o.estPretLivraison %}
 					<p class="si-pm-alerte info"><i class="fas fa-check me-1"></i>Prêt pour livraison depuis {{ o.pretLivraisonLe|date('d/m H:i') }}.</p>
 				{% else %}
-					<p class="si-pm-note text-center">La commande passe « Prête » au contrôle final, quand tous ses colis sont scannés ; {{ livraison.aLivrer ? 'le livreur ou le bureau est alors prévenu' : 'le client voit alors « Prête à retirer »' }}.</p>
+					<p class="si-pm-note text-center">La commande passe « Prête » au contrôle final, quand tous ses colis sont scannés ; {{ livraison.aLivrer ? 'le livreur ou le bureau est alors prévenu' : 'le client voit alors « Prête à retirer »' }}.</p>
 				{% endif %}
 			</div>
 		</div>

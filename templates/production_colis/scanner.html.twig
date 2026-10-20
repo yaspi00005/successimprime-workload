@@ -27,7 +27,7 @@
 
 		{% if peutAgir %}
 			<button type="button" class="si-scan-bouton" data-si-scan-camera hidden><i class="fas fa-camera" aria-hidden="true"></i>Ouvrir la caméra</button>
-			<p class="si-scan-aide" data-si-scan-aide>Ou tapez le code écrit sous le QR (CMD-000183-C2), ou scannez-le à la douchette.</p>
+			<p class="si-scan-aide" data-si-scan-aide>Ou tapez le code écrit sous le QR (le numéro de la commande suivi de -C1, -C2…), ou scannez-le à la douchette.</p>
 			<form method="post" action="{{ path('app_atelier_production_colis_scanner') }}" class="si-scan-saisie" data-si-scan-form>
 				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
 				<label class="visually-hidden" for="si-scan-code">Code de l'étiquette</label>
@@ -35,7 +35,7 @@
 				<button class="si-scan-bouton">Valider</button>
 			</form>
 		{% else %}
-			<p class="si-scan-aide">Scanner un colis demande le droit « Statuts de production ».</p>
+			<p class="si-scan-aide">Scanner un colis demande le droit « Statuts de production ».</p>
 		{% endif %}
 
 		<div class="si-scan-resultat" data-si-scan-resultat hidden aria-live="polite">
@@ -47,7 +47,7 @@
 			<button type="button" class="si-scan-bouton" data-si-scan-suivant>Scanner le suivant</button>
 		</div>
 
-		<p class="si-scan-note">Sur iPhone, ouvrez l'appareil photo et visez le QR : le lien ouvre la fiche du colis, où un bouton confirme « Colis collé et scanné ». <a href="{{ path('app_atelier_production_controle') }}">Contrôle final</a></p>
+		<p class="si-scan-note">Sur iPhone, ouvrez l'appareil photo et visez le QR : le lien ouvre la fiche du colis, où un bouton confirme « Colis collé et scanné ». <a href="{{ path('app_atelier_production_controle') }}">Contrôle final</a></p>
 	</div>
 
 	<script>

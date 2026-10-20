@@ -447,7 +447,7 @@ final class ControlesFinaux
         $whatsapp = [
             'demo' => $client['demo'],
             'cache' => $livreurDuBon,
-            'texte' => $client['demo'] || $livreurDuBon ? null : $texte,
+            'texte' => $livreurDuBon ? null : $texte,
             'possible' => !$client['demo'] && !$livreurDuBon && null !== MessagePrete::lien($client['telephone'], $texte, false),
             'journal' => $this->dernierMessage($commande),
             'prenomClient' => trim((string) $commande->getClients()?->getPrenom()) ?: $client['nom'],

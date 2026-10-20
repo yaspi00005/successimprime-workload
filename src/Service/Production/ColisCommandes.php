@@ -71,7 +71,8 @@ final class ColisCommandes
                 'livraison' => $this->livraison($commande),
             ];
         }
-        usort($cartes, static fn (array $a, array $b): int => [$a['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $a['commande']->getId()] <=> [$b['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $b['commande']->getId()]);
+        // Les commandes entièrement terminées d'abord (une commande dont un travail tourne encore sera réétiquetée), puis la livraison la plus proche.
+        usort($cartes, static fn (array $a, array $b): int => [$a['enProduction'] > 0, $a['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $a['commande']->getId()] <=> [$b['enProduction'] > 0, $b['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $b['commande']->getId()]);
 
         return $cartes;
     }
@@ -344,9 +345,18 @@ final class ColisCommandes
         $l = (float) ($d->getLargeur() ?? 0);
         $h = (float) ($d->getLongueur() ?? 0);
         $f = static fn (float $v): string => rtrim(rtrim(number_format($v * 100, 1, ',', ' '), '0'), ',');
-        $taille = $l > 0 && $h > 0 ? $f($l).' × '.$f($h).' cm' : $d->getFormat()?->getNom();
+        $taille = $l > 0 && $h > 0 ? $f($l).' × '.$f($h).' cm' : self::sansRedite($nom, (string) $d->getFormat()?->getNom());
 
         return trim($nom.' '.(string) $taille);
+    }
+
+    /** Format sans le mot déjà dit : « Cartes de visite » + « Carte 85 × 55 » → « 85 × 55 ». */
+    public static function sansRedite(string $nom, string $format): string
+    {
+        $premier = static fn (string $t): string => rtrim(mb_strtolower(explode(' ', trim($t))[0]), 's');
+        $mots = explode(' ', trim($format), 2);
+
+        return '' !== $nom && \count($mots) > 1 && $premier($nom) === $premier($format) ? $mots[1] : trim($format);
     }
 
     /** « Œillets tous les 50 cm » → « œillets » ; le reste en minuscules. */

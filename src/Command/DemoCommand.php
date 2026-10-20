@@ -163,6 +163,8 @@ final class DemoCommand extends Command
             $this->lancer('app:poste-machiniste:demo', [], $output);
             // Prépresse : Fofana 2 fichiers sur 6, relances, BAT chez Samaké, vinyle prêt (docs/prepresse.md).
             $this->lancer('app:prepresse:demo', [], $output);
+            // Colis et contrôle final : 4 commandes à étiqueter, 1 à contrôler, 3 prêtes dans la tournée de demo.bakary (docs/production-colis.md).
+            $this->lancer('app:production-colis:demo', [], $output);
             // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).
             $this->lancer('app:fiche-client:demo', [], $output);
             // Dossiers clients : faux serveur sous var/dossiers-demo, liés, proposés et à classer (docs/dossiers-clients.md).

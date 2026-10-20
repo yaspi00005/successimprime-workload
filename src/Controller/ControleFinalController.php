@@ -79,8 +79,8 @@ final class ControleFinalController extends AbstractController
             } else {
                 $etat = $this->colis->etat($commande);
                 $this->addFlash('success', 0 === $etat['total']
-                    ? 'Contrôle validé. Imprimez et collez les étiquettes des colis : la commande passera « Prête » au dernier scan.'
-                    : \sprintf('Contrôle validé. %d colis sur %d scannés : la commande passera « Prête » au dernier scan.', $etat['scannes'], $etat['total']));
+                    ? 'Contrôle validé. Imprimez et collez les étiquettes des colis : la commande passera « Prête » au dernier scan.'
+                    : \sprintf('Contrôle validé. %d colis sur %d scannés : la commande passera « Prête » au dernier scan.', $etat['scannes'], $etat['total']));
             }
         } catch (\LogicException|\InvalidArgumentException $e) {
             $this->addFlash('danger', $e->getMessage());
@@ -136,7 +136,7 @@ final class ControleFinalController extends AbstractController
             try {
                 $pieces = Entree::entier($request->request, 'pieces', 1);
                 $this->controles->refaire($ordre, $pieces, (string) $request->request->get('motif'), $this->moi(), new \DateTimeImmutable());
-                $this->addFlash('success', \sprintf('%d pièce%s à refaire : le travail est revenu dans Ma file (colonne « Prêt »), le chef d\'atelier est prévenu.', $pieces, $pieces > 1 ? 's' : ''));
+                $this->addFlash('success', \sprintf('%d pièce%s à refaire : le travail est revenu dans Ma file (colonne « Prêt »), le chef d\'atelier est prévenu.', $pieces, $pieces > 1 ? 's' : ''));
             } catch (\LogicException|\InvalidArgumentException $e) {
                 $this->addFlash('danger', $e->getMessage());
             }

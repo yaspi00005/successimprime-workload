@@ -4,7 +4,7 @@
 	PD06 Contrôle final d'une commande (maquette du 20/10/2026,
 	docs/production-colis.md) : comparer au BAT avec la photo de la pièce,
 	cases par ligne, scan des colis collés, temps réel vs estimé, consommé ;
-	« Refaire une pièce » et « Prêt pour la livraison ». Une fois prête : la
+	« Refaire une pièce » et « Prêt pour la livraison ». Une fois prête : la
 	tournée (bureau) et le message WhatsApp préparé (jamais de montant ; le
 	code de réception n'est jamais montré au livreur de cette livraison).
 #}
@@ -132,7 +132,7 @@
 						{% if controle and controle.valideLe %}
 							<p class="si-fab-note">Contrôle validé à {{ controle.valideLe|date('H:i') }}{{ controle.valideLe|date('Ymd') != aujourdhui ? ' le ' ~ controle.valideLe|date('d/m') }}{{ controle.validePar ? ' par ' ~ (controle.validePar|nom_equipe) }}.</p>
 						{% elseif not peutAgir %}
-							<p class="si-fab-note">Valider le contrôle demande le droit « Statuts de production ».</p>
+							<p class="si-fab-note">Valider le contrôle demande le droit « Statuts de production ».</p>
 						{% endif %}
 						{% if enProduction and not prete %}
 							<p class="si-fab-note">{{ enProduction }} travail encore en production : le contrôle se valide quand tout est terminé.</p>
@@ -162,7 +162,7 @@
 					</div>
 					<p class="si-fab-muet">
 						{{ etat.scannes >= etat.total ? 'Tous les colis scannés' : etat.scannes ~ ' colis sur ' ~ etat.total ~ ' scanné' ~ (etat.scannes > 1 ? 's') }} :
-						{{ prete ? 'la commande est « Prête ».' : 'la commande passe « Prête » quand le contrôle est validé et tous les colis scannés.' }}
+						{{ prete ? 'la commande est « Prête ».' : 'la commande passe « Prête » quand le contrôle est validé et tous les colis scannés.' }}
 					</p>
 					{% if peutAgir and not prete and etat.scannes < etat.total %}
 						<form method="post" action="{{ path('app_atelier_production_colis_scanner', {commande: commande.id}) }}" class="si-ctl-scan">
@@ -193,15 +193,15 @@
 				</div>
 
 				{% set w = apres.whatsapp %}
-				{% if w.demo %}
-					<div class="si-ctl-message demo"><p class="mb-0"><i class="fab fa-whatsapp" aria-hidden="true"></i> Fiche de démonstration : aucun message.</p></div>
-				{% elseif not w.cache %}
+				{% if not w.cache %}
 					<div class="si-ctl-message">
-						<p><i class="fab fa-whatsapp" aria-hidden="true"></i> <b>Message pour {{ w.prenomClient }} :</b> « {{ w.texte }} »</p>
+						<p><i class="fab fa-whatsapp" aria-hidden="true"></i> <b>Message pour {{ w.prenomClient }} :</b> « {{ w.texte }} »</p>
 						{% if w.journal %}
 							<p>Message préparé à {{ w.journal.le|date('H:i') }}{{ w.journal.le|date('Ymd') != aujourdhui ? ' le ' ~ w.journal.le|date('d/m') }} par {{ w.journal.par }}.</p>
 						{% endif %}
-						{% if not w.possible %}
+						{% if w.demo %}
+							<p class="mb-0">Fiche de démonstration : aucun message.</p>
+						{% elseif not w.possible %}
 							<p class="mb-0">Pas de numéro WhatsApp pour ce client : appelez-le.</p>
 						{% elseif peutAgir %}
 							<form method="post" action="{{ path('app_atelier_production_controle_whatsapp', {id: commande.id}) }}" target="_blank">
@@ -214,7 +214,7 @@
 
 				<section class="si-fab-carte">
 					{% if apres.livraison.retrait %}
-						<p class="mb-0">À retirer à l'imprimerie : le client voit « Prête à retirer » dans son espace.</p>
+						<p class="mb-0">À retirer à l'imprimerie : le client voit « Prête à retirer » dans son espace.</p>
 					{% elseif apres.tournee %}
 						<div class="si-ctl-tournee">
 							<span class="si-ctl-avatar" aria-hidden="true">{{ apres.tournee.prenom|first|upper }}</span>
@@ -252,7 +252,7 @@
 				</section>
 			{% else %}
 				<section class="si-fab-carte">
-					<h2>Avant « Prête »</h2>
+					<h2>Avant « Prête »</h2>
 					{% set controleFait = controle and controle.valideLe %}
 					{% set colisFaits = etat.total > 0 and etat.scannes >= etat.total %}
 					<ul class="si-ctl-attente">
@@ -265,7 +265,7 @@
 					{% for o in aRefaire %}
 						<p class="si-fab-note">{{ o.piecesARefaire }} pièce{{ o.piecesARefaire > 1 ? 's' }} à refaire : {{ o.numero }} est revenu dans Ma file.</p>
 					{% endfor %}
-					<p class="si-fab-note mb-0">Ensuite le client est prévenu{{ livraison.retrait ? ' (« Prête à retirer »)' : ' et la livraison s\'ajoute à une tournée' }}.</p>
+					<p class="si-fab-note mb-0">Ensuite le client est prévenu{{ livraison.retrait ? ' (« Prête à retirer »)' : ' et la livraison s\'ajoute à une tournée' }}.</p>
 				</section>
 			{% endif %}
 		</div>

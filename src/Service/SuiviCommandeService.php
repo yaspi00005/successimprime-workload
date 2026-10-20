@@ -2,11 +2,13 @@
 
 namespace App\Service;
 
+use App\Entity\BonLivraison;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
 use App\Entity\Paiements;
 use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Fiche d'une commande (maquette C02) : etapes de suivi, etat de chaque
@@ -24,6 +26,11 @@ final class SuiviCommandeService
         'en_livraison' => 5,
         'livree' => 6,
     ];
+
+    /** $em : pour savoir si le livreur est vraiment parti (étape « en route » du client) ; sans lui, comme avant. */
+    public function __construct(private readonly ?EntityManagerInterface $em = null)
+    {
+    }
 
     /**
      * Les 7 étapes de la fiche admin (maquette DT02) : créée, acompte,
@@ -92,6 +99,8 @@ final class SuiviCommandeService
         $batLe = $dates(array_map(fn (CommandesDetails $l): ?\DateTimeInterface => $this->dernierControle($l)?->getValideLe(), $valides));
         $debuts = $dates(array_map(static fn (CommandesDetails $l): ?\DateTimeInterface => $l->getProductionDebuteLe(), $lignes));
         $fins = $dates(array_map(static fn (CommandesDetails $l): ?\DateTimeInterface => $l->getProductionTermineeLe(), $lignes));
+        // « Prête » : contrôle final fait et colis scannés (PD06) ; avant cette date, la fin d'impression.
+        $pretes = $dates(array_map(static fn (CommandesDetails $l): ?\DateTimeInterface => $l->getPreteLivraisonLe() ?? $l->getProductionTermineeLe(), $lignes));
         $retrait = !$commande->estALivrer();
         $prevue = $commande->getDateLivraison();
 
@@ -102,11 +111,11 @@ final class SuiviCommandeService
                 'faite' => [] !== $lignes && \count($valides) === \count($avecBat) && $rangMin >= 2],
             ['cle' => 'impression', 'libelle' => 'Impression', 'court' => 'Impression', 'date' => [] !== $debuts ? min($debuts) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 3],
             ['cle' => 'finition', 'libelle' => 'Finition', 'court' => 'Finition', 'date' => [] !== $fins ? max($fins) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 4],
-            ['cle' => 'prete', 'libelle' => $retrait ? 'Prête à retirer' : 'Prête à livrer', 'court' => 'Prête', 'date' => [] !== $fins && $rangMin >= 4 ? max($fins) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 4],
+            ['cle' => 'prete', 'libelle' => $retrait ? 'Prête à retirer' : 'Prête à livrer', 'court' => 'Prête', 'date' => [] !== $pretes && $rangMin >= 4 ? max($pretes) : null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 4],
             ['cle' => 'livree', 'libelle' => $retrait ? 'Retirée' : 'Livrée', 'court' => $retrait ? 'Retirée' : 'Livrée', 'date' => null, 'detail' => null, 'faite' => [] !== $lignes && $rangMin >= 6],
         ];
         if ($rangMin === 5) {
-            $etapes[5]['detail'] = 'en route';
+            $etapes[5]['detail'] = self::detailEnLivraison($this->dernierBon($commande), $prevue);
         }
 
         $courante = null;
@@ -303,6 +312,35 @@ final class SuiviCommandeService
                 $this->dernierControle($ligne)?->getStatut(),
             ),
         };
+    }
+
+    /**
+     * Lignes parties en livraison : un bon validé la veille pour le
+     * lendemain ne doit pas dire « en route » au client avant que le livreur
+     * parte (enRouteLe) ; il dit « prévue le 21/10 ». Sans bon connu, comme avant.
+     */
+    public static function detailEnLivraison(?BonLivraison $bon, ?\DateTimeInterface $prevue): string
+    {
+        if (null === $bon || null !== $bon->getEnRouteLe() || null !== $bon->getArriveLe()) {
+            return 'en route';
+        }
+        $jour = $bon->getPrevuLe() ?? $prevue;
+
+        return null !== $jour ? 'prévue le '.$jour->format('d/m') : 'en préparation';
+    }
+
+    private function dernierBon(Commandes $commande): ?BonLivraison
+    {
+        if (null === $this->em || null === $commande->getId()) {
+            return null;
+        }
+        foreach ($this->em->getRepository(BonLivraison::class)->findBy(['commande' => $commande], ['id' => 'DESC'], 5) as $bon) {
+            if (BonLivraison::STATUT_ANNULE !== $bon->getStatut()) {
+                return $bon;
+            }
+        }
+
+        return null;
     }
 
     private function batValide(CommandesDetails $ligne): bool

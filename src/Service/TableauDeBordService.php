@@ -185,7 +185,8 @@ final class TableauDeBordService
         ?string $statutDernierControle,
     ): string {
         return match ($statutProduction) {
-            CommandesDetails::PRODUCTION_TERMINEE,
+            // Imprimée mais pas encore contrôlée ni étiquetée (PD06) : « Finition / contrôle ».
+            CommandesDetails::PRODUCTION_TERMINEE => 'finition',
             CommandesDetails::PRODUCTION_PRETE_LIVRAISON => 'prete',
             CommandesDetails::PRODUCTION_EN_COURS => 'impression',
             default => match (true) {

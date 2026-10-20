@@ -1,0 +1,98 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Parcours d'un fichier{% endblock %}
+{% block fab_actif %}parcours{% endblock %}
+
+{% set couleurs_etapes = {bat: '#1F9D55', fichier: '#1E4FA3', imposition: '#7C3AED', dossier: '#E95B35', impression: '#DE1028', finition: '#13787A', etiquette: '#14213D'} %}
+{% set roles = {commande: 'commande', ligne: 'ligne de la commande', support: 'support à charger', taille: 'taille en cm', quantite: 'quantité', finition: 'finition', decoupe: 'fichier de découpe'} %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production</p>
+			<h1 class="si-fab-titre">Le parcours d'un fichier, du BAT au colis</h1>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production_nommage') }}" class="si-fab-bouton"><i class="fas fa-font" aria-hidden="true"></i>Règles de nommage</a>
+		</div>
+	</header>
+
+	<section class="si-fab-carte" aria-label="Chercher un travail">
+		<form method="get" class="si-fr-recherche" role="search">
+			<label class="visually-hidden" for="si-fr-q">Commande ou client</label>
+			<input id="si-fr-q" type="search" name="q" value="{{ recherche }}" placeholder="N° de commande ou client (ex. CMD-000183, Awa Diarra)" maxlength="80">
+			<button type="submit" class="si-fab-bouton sombre"><i class="fas fa-search" aria-hidden="true"></i>Chercher</button>
+		</form>
+		{% if recherche and resultats is empty %}
+			<p class="si-fab-note">Aucun travail envoyé en production pour « {{ recherche }} ».</p>
+		{% elseif resultats|length > 1 %}
+			<ul class="si-fr-liste mt-2">
+				{% for r in resultats %}
+					{% set l = r.commandeDetail %}
+					<li>
+						<span><b>{{ l.commande.numero }}</b> · {{ l.commande.clients ? l.commande.clients.nomComplet }} · {{ l.designation|default(r.numero) }}</span>
+						<a href="{{ path('app_atelier_production_parcours', {ordre: r.id, q: recherche}) }}" class="si-fab-bouton si-fr-petit-bouton">Voir le parcours</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+	</section>
+
+	{% if ordre is null %}
+		<p class="si-fab-carte si-fab-muet">Aucun travail n'a encore été envoyé en production.</p>
+		{% include 'production_rouleau/_machines.html.twig' with {machines: machines} only %}
+	{% else %}
+		{% set ligne = ordre.commandeDetail %}
+		<section class="si-fab-carte" aria-labelledby="si-fr-frise-titre">
+			<h2 id="si-fr-frise-titre">{{ ligne.commande.numero }} · {{ ligne.commande.clients ? ligne.commande.clients.nomComplet }} <small>{{ ligne.designation }} · ordre {{ ordre.numero }}</small></h2>
+			<ol class="si-fr-frise">
+				{% for e in etapes %}
+					<li class="{{ e.etat }}" style="--fr-couleur: {{ couleurs_etapes[e.cle] }}">
+						<span class="icone" aria-hidden="true"><i class="fas {{ e.icone }}"></i></span>
+						<span class="etape">Étape {{ e.numero }}{% if e.etat == 'encours' %} · en cours{% endif %}</span>
+						<b>{{ e.titre }}</b>
+						<span class="sous">{{ e.sous }}</span>
+						<span class="detail">{{ e.detail }}</span>
+						{% if e.le %}<span class="quand">{{ e.le|date('d/m H:i') }}</span>{% endif %}
+					</li>
+				{% endfor %}
+			</ol>
+		</section>
+
+		<div class="si-fab-grille">
+			<section class="si-fab-carte" aria-labelledby="si-fr-nom-titre">
+				<h2 id="si-fr-nom-titre">Le fichier de production, nommé tout seul</h2>
+				{% include 'production_rouleau/_nom.html.twig' with {parties: parties, nom: nom, chemin: dossier} only %}
+				<div class="si-fr-parties">
+					{% for p in parties %}
+						<div class="p-{{ p.role }}"><code>{{ p.texte }}</code>{{ roles[p.role] ?? p.role }}</div>
+					{% endfor %}
+				</div>
+				<p class="si-fab-note">Le machiniste reconnaît le travail sans ouvrir le fichier. Le nom vient de l'ERP, personne ne le tape à la main ; le fichier du client n'est ni déplacé ni renommé.</p>
+				{% if not racine %}
+					<p class="si-fr-alerte mt-2">Dossier de la machine non réglé : le fichier reste dans l'ERP. Téléchargez-le sous son nom de production.</p>
+				{% endif %}
+				<div class="si-fr-ligne mt-2">
+					<a href="{{ path('app_atelier_production_fichier', {id: ordre.id, quoi: 'impression'}) }}" class="si-fab-bouton"><i class="fas fa-download" aria-hidden="true"></i>Télécharger sous ce nom</a>
+					{% if ordre.nomFichierDecoupe %}
+						<a href="{{ path('app_atelier_production_fichier', {id: ordre.id, quoi: 'decoupe'}) }}" class="si-fab-bouton"><i class="fas fa-cut" aria-hidden="true"></i>Fichier de découpe</a>
+					{% endif %}
+					{% if racine and peutCopier and ordre.tirage is null %}
+						<form method="post" action="{{ path('app_atelier_production_copier', {id: ordre.id}) }}" class="si-fr-inline">
+							<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+							<button type="submit" class="si-fab-bouton sombre"><i class="fas fa-folder-open" aria-hidden="true"></i>Copier dans le dossier de la machine</button>
+						</form>
+					{% endif %}
+					{% if ordre.tirage and not ordre.tirage.estAnnule %}
+						<a href="{{ path('app_atelier_production_imposition', {id: ordre.tirage.id}) }}" class="si-fab-bouton"><i class="fas fa-th-large" aria-hidden="true"></i>Rouleau {{ ordre.tirage.numero }}</a>
+					{% endif %}
+				</div>
+				{% if ordre.fichierMachineLe %}
+					<p class="si-fab-note">Copié dans le dossier de la machine le {{ ordre.fichierMachineLe|date('d/m à H:i') }}{% if ordre.fichierMachinePar %} par {{ ordre.fichierMachinePar.employe ? ordre.fichierMachinePar.employe.prenom : ordre.fichierMachinePar.userIdentifier }}{% endif %}.</p>
+				{% endif %}
+			</section>
+
+			{% include 'production_rouleau/_machines.html.twig' with {machines: machines} only %}
+		</div>
+	{% endif %}
+{% endblock %}

@@ -1,0 +1,49 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Rouleaux{% endblock %}
+{% block fab_actif %}rouleaux{% endblock %}
+
+{% set titres = {prepare: 'Préparés', envoye: 'Envoyés au RIP', impression: 'En impression', faits: 'Terminés ou annulés aujourd\'hui'} %}
+{% set pastilles = {prepare: '', envoye: 'bleu', impression: 'orange', faits: 'vert'} %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production</p>
+			<h1 class="si-fab-titre">Rouleaux</h1>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production') }}" class="si-fab-bouton"><i class="fas fa-columns" aria-hidden="true"></i>Tableau</a>
+			{% if peutGerer and machines is not empty %}
+				<a href="{{ path('app_atelier_production_nouveau') }}" class="si-fab-bouton principal"><i class="fas fa-plus" aria-hidden="true"></i>Nouveau rouleau</a>
+			{% endif %}
+		</div>
+	</header>
+
+	<p class="si-fab-muet">{{ libres }} {{ libres > 1 ? 'travaux au m² attendent' : 'travail au m² attend' }} un rouleau. Plusieurs commandes du même support sont regroupées sur la laize, le plus urgent part en premier.</p>
+
+	<div class="si-fab-grille-3" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+		{% for cle, liste in groupes %}
+			<section class="si-fab-carte" aria-labelledby="si-fr-g-{{ cle }}">
+				<h2 id="si-fr-g-{{ cle }}">{{ titres[cle] }} <small>{{ liste|length }}</small></h2>
+				<ul class="si-fr-liste">
+					{% for t in liste %}
+						<li class="si-fr-rouleau">
+							<div>
+								<a class="titre" href="{{ path(t.statut in ['prepare'] ? 'app_atelier_production_imposition' : 'app_atelier_production_fiche', {id: t.id}) }}">{{ t.numero }}</a>
+								<span class="si-fab-pastille {{ pastilles[cle] }}">{{ t.libelleStatut }}</span><br>
+								<small class="si-fab-muet">{{ t.machine.nom }} · {{ t.libelleSupport }} · {{ t.pieces|length }} pièce{{ t.pieces|length > 1 ? 's' }} · {{ t.consommeM|number_format(1, ',', ' ') }} m · {{ t.pourcent }} %</small>
+							</div>
+							<div class="si-fr-ligne">
+								<a href="{{ path('app_atelier_production_imposition', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton">Imposition</a>
+								<a href="{{ path('app_atelier_production_fiche', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton">Fiche</a>
+							</div>
+						</li>
+					{% else %}
+						<li><span class="si-fab-muet">Aucun rouleau.</span></li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endfor %}
+	</div>
+{% endblock %}

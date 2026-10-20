@@ -1,0 +1,7 @@
+{# Nom du fichier de production en couleurs (parties de NomFichierProduction::parties). #}
+<div class="si-fr-nom">
+	{% if chemin|default(null) %}<span class="chemin">{{ chemin }}\</span>{% endif %}
+	{%- for p in parties -%}
+		{%- if not loop.first %}_{% endif %}<span class="p-{{ p.role }}">{{ p.texte }}</span>
+	{%- endfor -%}.{{ nom|split('.')|last }}
+</div>

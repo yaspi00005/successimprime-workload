@@ -1,0 +1,24 @@
+{# « Chaque machine a son dossier et son profil » (maquette PD01) : machines avec dossier d'abord. #}
+{% set couleurs_machines = ['#1E4FA3', '#2F9BE0', '#13787A', '#E95B35', '#7C3AED', '#CA8A04', '#475569'] %}
+<section class="si-fab-carte" aria-labelledby="si-fr-machines-titre">
+	<h2 id="si-fr-machines-titre">Chaque machine a son dossier et son profil</h2>
+	<ul class="si-fr-machines">
+		{% for l in machines %}
+			{% set a = l.atelier %}
+			<li style="--fr-couleur: {{ couleurs_machines[loop.index0 % couleurs_machines|length] }}">
+				<div>
+					<b>{{ l.machine.nom }}</b>{% if a and a.teteImpression %} <small>{{ a.teteImpression }}</small>{% endif %}<br>
+					<small>{{ a and a.usages ? a.usages : l.machine.typeMachine }}</small>
+				</div>
+				{% if a and a.codeDossier %}
+					<span class="si-fr-code">{{ a.codeDossier }}\IN</span>
+				{% else %}
+					<span class="si-fab-pastille orange">dossier à régler</span>
+				{% endif %}
+			</li>
+		{% else %}
+			<li><span class="si-fab-muet">Aucune machine active.</span></li>
+		{% endfor %}
+	</ul>
+	<p class="si-fab-note"><a href="{{ path('app_atelier_production_machines') }}">Machines et dossiers</a> : têtes, usages, profils d'impression.</p>
+</section>

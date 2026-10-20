@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+{#
+	Fiche de production imprimable (A4, maquette PD03) : à poser sur la
+	machine avec le rouleau. Aucun montant.
+#}
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<meta name="robots" content="noindex">
+		<title>Fiche {{ tirage.numero }}</title>
+		<style>
+			@page { size: A4 portrait; margin: 12mm; }
+			* { box-sizing: border-box; }
+			html, body { margin: 0; padding: 0; background: #eef0f4; color: #111827; font-family: Arial, Helvetica, sans-serif; font-size: 11pt; }
+			.barre { display: flex; justify-content: center; gap: 10px; padding: 14px; }
+			.barre button, .barre a { padding: 10px 18px; border: 0; border-radius: 8px; color: #fff; background: #14213D; font-size: 14px; text-decoration: none; cursor: pointer; }
+			.barre a { background: #6B7280; }
+			.feuille { width: 210mm; min-height: 297mm; margin: 0 auto 20px; padding: 12mm; background: #fff; }
+			header { display: grid; grid-template-columns: 1fr 34mm; gap: 6mm; align-items: start; border-bottom: 2px solid #14213D; padding-bottom: 4mm; }
+			h1 { font-size: 18pt; margin: 0 0 2mm; color: #14213D; }
+			h2 { font-size: 12pt; margin: 6mm 0 2mm; color: #14213D; }
+			.muet { color: #4B5563; font-size: 10pt; }
+			.qr { text-align: center; font-size: 8pt; color: #4B5563; }
+			.qr img { width: 32mm; height: 32mm; display: block; margin: 0 auto 1mm; image-rendering: pixelated; }
+			table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+			th { text-align: left; font-size: 9pt; color: #4B5563; border-bottom: 1px solid #9CA3AF; padding: 1.5mm 1.5mm; }
+			td { border-bottom: 1px solid #E5E7EB; padding: 1.8mm 1.5mm; vertical-align: top; }
+			.case { display: inline-block; width: 4.5mm; height: 4.5mm; border: 1.5px solid #111827; border-radius: 1mm; text-align: center; line-height: 4mm; font-size: 9pt; font-weight: 700; }
+			.etat { font-size: 8pt; font-weight: 700; text-transform: uppercase; white-space: nowrap; }
+			.etat.ok { color: #13703C; }
+			.etat.bloquant { color: #B00D20; }
+			.etat.afaire { color: #0F4590; }
+			.etat.surveiller { color: #8A6100; }
+			.nom { font-family: "DejaVu Sans Mono", Consolas, monospace; font-size: 8pt; color: #374151; word-break: break-all; }
+			.rouge { color: #B00D20; font-weight: 700; }
+			dl { margin: 0; }
+			dl div { padding: 1.2mm 0; border-bottom: 1px solid #E5E7EB; }
+			dt { display: inline; font-weight: 700; }
+			dd { display: inline; margin: 0; }
+			.signatures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4mm; margin-top: 8mm; }
+			.signatures div { border: 1px solid #9CA3AF; border-radius: 2mm; height: 18mm; padding: 1.5mm 2mm; font-size: 9pt; color: #4B5563; }
+			@media print {
+				html, body { background: #fff; }
+				.barre { display: none; }
+				.feuille { width: auto; min-height: 0; margin: 0; padding: 0; }
+			}
+		</style>
+	</head>
+	<body>
+		<div class="barre">
+			<button type="button" onclick="window.print()">Imprimer la fiche</button>
+			<a href="{{ path('app_atelier_production_fiche', {id: tirage.id}) }}">Retour à la fiche</a>
+		</div>
+		<main class="feuille">
+			<header>
+				<div>
+					<div class="muet">Fiche de production · {{ 'now'|date('d/m/Y à H:i') }}</div>
+					<h1>Rouleau {{ tirage.numero }}</h1>
+					<div><b>{{ tirage.machine.nom }}</b> · {{ tirage.libelleSupport }} · laize {{ tirage.laizeM|number_format(2, ',', ' ') }} m</div>
+					<div class="muet">{{ tirage.pieces|length }} pièce{{ tirage.pieces|length > 1 ? 's' }} · {{ tirage.consommeM|number_format(1, ',', ' ') }} m de rouleau · {{ tirage.pourcent }} % utilisé · {{ tirage.libelleStatut }}</div>
+					{% if dossier %}<div class="muet">Dossier : {{ dossier }}</div>{% endif %}
+					{% if tirage.envois is not empty %}<div class="nom">{{ (tirage.envois|first).nom }}</div>{% endif %}
+				</div>
+				<div class="qr">
+					<img src="{{ qr }}" alt="QR de la fiche du rouleau {{ tirage.numero }}">
+					Scanner le rouleau {{ tirage.numero }}
+				</div>
+			</header>
+
+			<h2>Avant d'appuyer sur « Imprimer »</h2>
+			<table>
+				<thead><tr><th style="width:8mm"></th><th>Point</th><th>À vérifier</th><th style="width:22mm">État</th></tr></thead>
+				<tbody>
+					{% for p in points %}
+						<tr>
+							<td><span class="case">{{ p.etat == 'ok' ? '✓' }}</span></td>
+							<td><b>{{ p.libelle }}</b></td>
+							<td class="{{ p.etat == 'bloquant' ? 'rouge' }}">{{ p.detail }}</td>
+							<td><span class="etat {{ p.etat }}">{{ {ok: 'bon', bloquant: 'bloquant', afaire: 'à faire', surveiller: 'à surveiller'}[p.etat] }}</span></td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+
+			<h2>Les travaux du rouleau, dans l'ordre d'impression</h2>
+			<table>
+				<thead><tr><th>#</th><th>Commande</th><th>Travail</th><th>Finitions</th><th>Livraison</th></tr></thead>
+				<tbody>
+					{% for t in travaux %}
+						<tr>
+							<td><b>{{ t.rang }}</b></td>
+							<td><b>{{ t.numero }}</b><br>{{ t.client }}</td>
+							<td>{{ t.produit }}{% if t.taille %} {{ t.taille }} cm{% endif %} × {{ t.quantite }}<br><span class="nom">{{ t.nomFichier }}</span></td>
+							<td>{{ t.finitions is empty ? '—' : t.finitions|join(' + ') }}</td>
+							<td>{% if t.promis %}<span class="{{ t.promis|date('Y-m-d') == maintenant|date('Y-m-d') ? 'rouge' }}">{{ jour_court(t.promis) }}{% if t.promis|date('H:i') != '00:00' %} {{ t.promis|date('H:i') }}{% endif %}</span>{% endif %}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+
+			<h2>Après l'impression</h2>
+			<dl>
+				{% for c in apres %}
+					<div><dt>{{ c.titre }} :</dt> <dd>{{ c.texte }}</dd></div>
+				{% endfor %}
+			</dl>
+
+			<div class="signatures">
+				<div>Machiniste<br><b style="color:#111827">{{ machinistePrenom|default('') }}</b></div>
+				<div>Démarré à{% if tirage.demarreLe %}<br><b style="color:#111827">{{ tirage.demarreLe|date('H:i') }}</b>{% endif %}</div>
+				<div>Coupé et contrôlé par</div>
+			</div>
+		</main>
+	</body>
+</html>

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+{#
+	Feuille de placement (Dompdf, A4) jointe quand les fichiers partent
+	séparés au RIP : le plan du rouleau à l'échelle et la position de chaque
+	pièce, pour la placer à la main dans le RIP. Aucun montant.
+#}
+<html lang="fr">
+	<head>
+		<meta charset="UTF-8">
+		<title>Placement {{ tirage.numero }}</title>
+		<style>
+			@page { size: A4 portrait; margin: 12mm; }
+			body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #111827; }
+			h1 { font-size: 15pt; margin: 0 0 1mm; color: #14213D; }
+			h2 { font-size: 11pt; margin: 5mm 0 2mm; color: #14213D; }
+			.muet { color: #4B5563; font-size: 8pt; }
+			table { width: 100%; border-collapse: collapse; }
+			th { text-align: left; font-size: 7.5pt; color: #4B5563; border-bottom: 1px solid #9CA3AF; padding: 1mm; }
+			td { border-bottom: 1px solid #E5E7EB; padding: 1.2mm 1mm; vertical-align: top; }
+			.nom { font-family: 'DejaVu Sans Mono', monospace; font-size: 6.5pt; }
+			.plan { position: relative; border: 0.3mm solid #9AA6B8; background: #FFFFFF; margin: 2mm 0 0; }
+			.marge { position: absolute; top: 0; bottom: 0; background: #D9DEE6; }
+			.piece { position: absolute; border: 0.3mm dashed #DE1028; color: #FFFFFF; font-size: 6pt; font-weight: bold; text-align: center; overflow: hidden; }
+			.pastille { display: inline-block; width: 3mm; height: 3mm; border-radius: 1.5mm; }
+		</style>
+	</head>
+	<body>
+		{% set laize = tirage.laizeCm %}
+		{% set longueur = max(tirage.consommeM * 100, 1) %}
+		{# Échelle en mm par cm : le plan tient dans 180 × 150 mm. #}
+		{% set echelle = min(180 / laize, 150 / longueur) %}
+		{% set couleurs = {} %}
+		{% for t in travaux %}{% set couleurs = couleurs|merge({('o' ~ t.ordre.id): t.couleur}) %}{% endfor %}
+
+		<h1>Feuille de placement · rouleau {{ tirage.numero }}</h1>
+		<div>{{ tirage.machine.nom }} · {{ tirage.libelleSupport }} · laize {{ tirage.laizeM|number_format(2, ',', ' ') }} m · marge {{ tirage.margeCm|number_format(0) }} cm · {{ tirage.espaceCm|number_format(0) }} cm entre les pièces</div>
+		<div class="muet">{{ le|date('d/m/Y à H:i') }} · {{ pieces|length }} pièce{{ pieces|length > 1 ? 's' }} · {{ tirage.consommeM|number_format(2, ',', ' ') }} m de rouleau. Chaque fichier est envoyé sous son nom de production ; placez-le dans le RIP aux positions ci-dessous (en cm depuis le bord gauche du rouleau et depuis le début). Les couleurs sont converties par le RIP avec le profil du support.</div>
+
+		<h2>Plan du rouleau <span class="muet">(vue de dessus, le rouleau avance vers le bas)</span></h2>
+		<div class="plan" style="width: {{ (laize * echelle)|number_format(2, '.', '') }}mm; height: {{ (longueur * echelle)|number_format(2, '.', '') }}mm;">
+			<div class="marge" style="left: 0; width: {{ (tirage.margeCm * echelle)|number_format(2, '.', '') }}mm;"></div>
+			<div class="marge" style="right: 0; width: {{ (tirage.margeCm * echelle)|number_format(2, '.', '') }}mm;"></div>
+			{% for p in pieces %}
+				<div class="piece" style="left: {{ (p.xCm * echelle)|number_format(2, '.', '') }}mm; top: {{ (p.yCm * echelle)|number_format(2, '.', '') }}mm; width: {{ (p.largeurCm * echelle)|number_format(2, '.', '') }}mm; height: {{ (p.hauteurCm * echelle)|number_format(2, '.', '') }}mm; background: {{ couleurs['o' ~ p.ordre.id] ?? '#475569' }};">{% if p.largeurCm * echelle > 6 and p.hauteurCm * echelle > 4 %}{{ loop.index }}{% endif %}</div>
+			{% endfor %}
+		</div>
+
+		<h2>Position des pièces</h2>
+		<table>
+			<thead><tr><th>#</th><th>Commande</th><th>Gauche</th><th>Début</th><th>Taille posée</th><th>Sens</th><th>Fichier</th></tr></thead>
+			<tbody>
+				{% for p in pieces %}
+					{% set ligne = p.ordre.commandeDetail %}
+					<tr>
+						<td><span class="pastille" style="background: {{ couleurs['o' ~ p.ordre.id] ?? '#475569' }}"></span> {{ loop.index }}</td>
+						<td><b>{{ ligne ? ligne.commande.numero : p.ordre.numero }}</b><br><span class="muet">{{ ligne and ligne.commande.clients ? ligne.commande.clients.nomComplet }} · ex. {{ p.exemplaire }}</span></td>
+						<td>{{ p.xCm|number_format(1, ',', ' ') }} cm</td>
+						<td>{{ p.yCm|number_format(1, ',', ' ') }} cm</td>
+						<td>{{ p.largeurCm|number_format(1, ',', ' ') }} × {{ p.hauteurCm|number_format(1, ',', ' ') }} cm</td>
+						<td>{{ p.tourne ? 'tournée d\'un quart' : 'normal' }}</td>
+						<td class="nom">{{ p.ordre.nomFichierProduction|default('') }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</body>
+</html>

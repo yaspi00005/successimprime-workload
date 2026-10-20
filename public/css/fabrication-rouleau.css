@@ -1,0 +1,207 @@
+/*
+ * PD01-PD03 : parcours d'un fichier, rouleaux et imposition, fiche de
+ * production, machines et dossiers, règles de nommage
+ * (docs/production-rouleau.md). Chargée après fabrication.css, tout est
+ * rangé sous .si-fab ; préfixe .si-fr-.
+ */
+.si-fab { --fr-violet: #7C3AED; --fr-sarcelle: #13787A; --fr-orange: #E95B35; --fr-code: #0B1220; }
+
+/* ---------- Commun ---------- */
+.si-fab .si-fr-recherche { display: flex; gap: 8px; flex-wrap: wrap; }
+.si-fab .si-fr-recherche input { flex: 1 1 220px; min-height: 40px; border-radius: 10px; border: 1px solid var(--fab-bord); padding: 6px 12px; }
+.si-fab .si-fr-liste { list-style: none; margin: 0; padding: 0; }
+.si-fab .si-fr-liste > li { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-liste > li:last-child { border-bottom: 0; }
+.si-fab .si-fr-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; background: var(--fab-fond); border: 1px solid var(--fab-bord); border-radius: 6px; padding: 2px 7px; white-space: nowrap; }
+.si-fab .si-fr-ligne { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.si-fab .si-fr-rouge { color: var(--fab-rouge); font-weight: 700; }
+.si-fab .si-fr-vert { color: var(--fab-vert); font-weight: 700; }
+.si-fab .si-fr-alerte { background: #FFF4D6; color: #6B4B00; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin: 0 0 12px; }
+.si-fab .si-fr-alerte.rouge { background: #FDE3E6; color: #8F0A1A; }
+.si-fab .si-fr-alerte.vert { background: #E3F5EA; color: #13703C; }
+.si-fab .si-fr-carte-entete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.si-fab .si-fr-carte-entete h2 { font-size: 15px; font-weight: 700; margin: 0; color: var(--fab-nuit); }
+.si-fab .si-fr-carte-entete h2 small { font-weight: 500; color: var(--fab-gris); font-size: 12px; }
+.si-fab .si-fr-petit-bouton { min-height: 32px; padding: 4px 10px; font-size: 13px; }
+.si-fab form.si-fr-inline { display: inline; margin: 0; }
+.si-fab .si-fr-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.si-fab .si-fr-table th { font-size: 11px; text-transform: uppercase; letter-spacing: .03em; color: var(--fab-gris); font-weight: 700; text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-table td { padding: 8px; border-bottom: 1px solid var(--fab-bord); vertical-align: top; }
+.si-fab .si-fr-table tr:last-child td { border-bottom: 0; }
+
+/* ---------- PD01 · Frise ---------- */
+.si-fab .si-fr-frise { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 0; margin: 0; padding: 0; list-style: none; }
+.si-fab .si-fr-frise > li { position: relative; text-align: center; padding: 0 6px; font-size: 12px; }
+.si-fab .si-fr-frise > li::before { content: ''; position: absolute; top: 22px; left: 0; right: 0; height: 3px; background: var(--fab-bord); z-index: 0; }
+.si-fab .si-fr-frise > li:first-child::before { left: 50%; }
+.si-fab .si-fr-frise > li:last-child::before { right: 50%; }
+.si-fab .si-fr-frise > li.fait::before { background: var(--fab-vert); }
+.si-fab .si-fr-frise .icone { position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; border-radius: 12px; color: #fff; font-size: 18px; background: #C5CEDC; box-shadow: 0 2px 6px rgba(20, 33, 61, .15); }
+.si-fab .si-fr-frise > li.fait .icone, .si-fab .si-fr-frise > li.encours .icone { background: var(--fr-couleur, var(--fab-bleu)); }
+.si-fab .si-fr-frise > li.encours .icone { outline: 3px solid #fff; box-shadow: 0 0 0 5px var(--fr-couleur, var(--fab-bleu)); }
+.si-fab .si-fr-frise .etape { display: block; margin-top: 8px; font-size: 10px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--fr-couleur, var(--fab-gris)); }
+.si-fab .si-fr-frise b { display: block; font-size: 13px; color: var(--fab-nuit); line-height: 1.25; }
+.si-fab .si-fr-frise .sous { display: block; color: var(--fab-gris); font-size: 11px; }
+.si-fab .si-fr-frise .detail { display: block; margin-top: 8px; background: var(--fab-fond); border-radius: 8px; padding: 6px; font-weight: 600; font-size: 11px; color: var(--fab-nuit); overflow-wrap: anywhere; }
+.si-fab .si-fr-frise .quand { display: block; margin-top: 4px; color: var(--fab-gris); font-size: 11px; }
+
+/* Nom du fichier de production */
+.si-fab .si-fr-nom { background: var(--fr-code); color: #E5E7EB; border-radius: 12px; padding: 12px 14px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; overflow-wrap: anywhere; }
+.si-fab .si-fr-nom .chemin { display: block; color: #8B95A7; font-size: 12px; margin-bottom: 4px; }
+.si-fab .si-fr-nom .p-commande { color: #F5B83D; }
+.si-fab .si-fr-nom .p-ligne { color: #60A5FA; }
+.si-fab .si-fr-nom .p-support { color: #F87171; }
+.si-fab .si-fr-nom .p-taille { color: #4ADE80; }
+.si-fab .si-fr-nom .p-quantite { color: #C084FC; }
+.si-fab .si-fr-nom .p-finition, .si-fab .si-fr-nom .p-decoupe { color: #E5E7EB; }
+.si-fab .si-fr-parties { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 12px; }
+.si-fab .si-fr-parties > div { border: 1px solid var(--fab-bord); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--fab-gris); }
+.si-fab .si-fr-parties code { display: block; font-size: 13px; font-weight: 700; color: var(--fab-nuit); background: none; padding: 0; overflow-wrap: anywhere; }
+.si-fab .si-fr-parties .p-commande code { color: #B7791F; }
+.si-fab .si-fr-parties .p-ligne code { color: #2563EB; }
+.si-fab .si-fr-parties .p-support code { color: var(--fab-rouge); }
+.si-fab .si-fr-parties .p-taille code { color: var(--fab-vert); }
+.si-fab .si-fr-parties .p-quantite code { color: var(--fr-violet); }
+
+/* Cartes des machines */
+.si-fab .si-fr-machines { list-style: none; margin: 0; padding: 0; }
+.si-fab .si-fr-machines > li { display: flex; gap: 10px; align-items: center; justify-content: space-between; padding: 10px 0 10px 12px; border-bottom: 1px solid var(--fab-bord); position: relative; }
+.si-fab .si-fr-machines > li::before { content: ''; position: absolute; left: 0; top: 10px; bottom: 10px; width: 4px; border-radius: 4px; background: var(--fr-couleur, var(--fab-bleu)); }
+.si-fab .si-fr-machines > li:last-child { border-bottom: 0; }
+.si-fab .si-fr-machines b { font-size: 14px; color: var(--fab-nuit); }
+.si-fab .si-fr-machines small { color: var(--fab-gris); }
+
+/* ---------- PD02 · Rouleaux et imposition ---------- */
+.si-fab .si-fr-rouleau { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+.si-fab .si-fr-rouleau a.titre { font-weight: 800; color: var(--fab-nuit); text-decoration: none; }
+.si-fab .si-fr-placement { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 16px; align-items: start; }
+.si-fab .si-fr-plan { max-height: 74vh; overflow: auto; background: var(--fab-fond); border-radius: 10px; padding: 10px; }
+.si-fab .si-fr-plan svg { display: block; width: 100%; height: auto; max-width: 560px; margin: 0 auto; touch-action: none; user-select: none; }
+.si-fab .si-fr-plan .piece { cursor: default; }
+.si-fab .si-fr-plan.manuel .piece { cursor: grab; }
+.si-fab .si-fr-plan.manuel .piece:focus { outline: none; }
+.si-fab .si-fr-plan.manuel .piece:focus rect.fond, .si-fab .si-fr-plan .piece.choisie rect.fond { stroke: #F5B83D; stroke-width: 3px; }
+.si-fab .si-fr-plan .piece.conflit rect.fond { stroke: var(--fab-rouge); stroke-width: 4px; }
+.si-fab .si-fr-legende { font-size: 12px; color: var(--fab-nuit); }
+.si-fab .si-fr-legende h3 { font-size: 12px; font-weight: 800; margin: 0 0 6px; }
+.si-fab .si-fr-legende ul { list-style: none; margin: 0 0 14px; padding: 0; }
+.si-fab .si-fr-legende li { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.si-fab .si-fr-trait { display: inline-block; width: 18px; border-top: 2px dashed var(--fab-rouge); }
+.si-fab .si-fr-carre { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: #9AA6B8; }
+.si-fab .si-fr-ordre { list-style: none; margin: 0; padding: 0; counter-reset: ordre; }
+.si-fab .si-fr-ordre li { display: flex; gap: 6px; align-items: center; justify-content: space-between; padding: 4px 0; }
+.si-fab .si-fr-ordre li .pastille-couleur { flex: 0 0 10px; height: 10px; border-radius: 3px; }
+.si-fab .si-fr-ordre li span.texte { flex: 1 1 auto; }
+.si-fab .si-fr-fleches { display: inline-flex; gap: 2px; }
+.si-fab .si-fr-fleches button { border: 1px solid var(--fab-bord); background: #fff; border-radius: 6px; width: 26px; height: 26px; font-size: 11px; color: var(--fab-nuit); cursor: pointer; }
+.si-fab .si-fr-fleches button[disabled] { opacity: .3; cursor: default; }
+.si-fab .si-fr-mode { display: inline-flex; background: var(--fab-fond); border-radius: 999px; padding: 3px; gap: 2px; }
+.si-fab .si-fr-mode button { border: 0; background: none; border-radius: 999px; padding: 4px 12px; font-size: 12px; font-weight: 700; color: var(--fab-gris); cursor: pointer; }
+.si-fab .si-fr-mode button.actif { background: var(--fab-nuit); color: #fff; }
+.si-fab .si-fr-carte-entete { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.si-fab .si-fr-carte-entete h2 { font-size: 15px; font-weight: 700; margin: 0; color: var(--fab-nuit); }
+.si-fab .si-fr-carte-entete h2 small { font-weight: 500; color: var(--fab-gris); font-size: 12px; }
+.si-fab .si-fr-manuel-barre { display: none; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; font-size: 12px; }
+.si-fab .si-fr-plan.manuel + .si-fr-manuel-barre, .si-fab .si-fr-manuel-barre.visible { display: flex; }
+
+/* Bilan (anneau) et estimation */
+.si-fab .si-fr-bilan { display: flex; gap: 14px; align-items: center; }
+.si-fab .si-fr-anneau { flex: 0 0 96px; width: 96px; height: 96px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: conic-gradient(var(--fab-vert) calc(var(--pc) * 1%), var(--fab-fond) 0); }
+.si-fab .si-fr-anneau > span { width: 74px; height: 74px; border-radius: 50%; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 20px; font-weight: 800; color: var(--fab-nuit); line-height: 1; }
+.si-fab .si-fr-anneau small { font-size: 10px; font-weight: 600; color: var(--fab-gris); margin-top: 3px; }
+.si-fab .si-fr-bilan dl, .si-fab .si-fr-chiffres { margin: 0; font-size: 13px; }
+.si-fab .si-fr-bilan dl div { display: flex; gap: 6px; }
+.si-fab .si-fr-bilan dt { font-weight: 500; color: var(--fab-gris); }
+.si-fab .si-fr-bilan dd { margin: 0; font-weight: 700; }
+.si-fab .si-fr-chiffres div { display: flex; justify-content: space-between; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-chiffres div:last-child { border-bottom: 0; }
+.si-fab .si-fr-chiffres dt { font-weight: 500; color: var(--fab-gris); }
+.si-fab .si-fr-chiffres dd { margin: 0; font-weight: 800; white-space: nowrap; }
+.si-fab .si-fr-note-rip { background: var(--fab-fond); border-radius: 12px; padding: 12px 14px; font-size: 12px; color: var(--fab-gris); margin-bottom: 16px; }
+.si-fab .si-fr-progression { height: 8px; background: var(--fab-fond); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+.si-fab .si-fr-progression > span { display: block; height: 100%; width: 0; background: var(--fab-bleu); transition: width .2s; }
+
+/* ---------- PD03 · Fiche ---------- */
+.si-fab .si-fr-fiche { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr) minmax(0, .8fr); gap: 16px; align-items: start; }
+.si-fab .si-fr-points > li { scroll-margin-top: 90px; }
+.si-fab .si-fr-points .si-fab-etat.afaire { background: #E3ECF8; color: var(--fab-bleu); }
+.si-fab .si-fr-points .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.si-fab .si-fr-points .actions input[type=text], .si-fab .si-fr-points .actions input[type=number] { min-height: 32px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 2px 8px; font-size: 13px; }
+.si-fab .si-fr-points .actions input[type=number] { width: 70px; }
+.si-fab .si-fr-points .actions input[type=text] { width: 150px; }
+.si-fab .si-fr-points .contenu { flex: 1 1 auto; min-width: 0; }
+.si-fab .si-fr-compte { font-size: 12px; font-weight: 800; color: var(--fab-rouge); }
+.si-fab .si-fr-compte.vert { color: var(--fab-vert); }
+.si-fab .si-fr-travaux { list-style: none; margin: 0; padding: 0; }
+.si-fab .si-fr-travaux > li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-travaux > li:last-child { border-bottom: 0; }
+.si-fab .si-fr-rang { flex: 0 0 24px; height: 24px; border-radius: 50%; background: var(--fab-nuit); color: #fff; font-size: 12px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; margin-top: 8px; }
+.si-fab .si-fr-vignette { flex: 0 0 44px; width: 44px; height: 44px; border-radius: 8px; object-fit: cover; display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 12px; }
+.si-fab .si-fr-travaux .texte { flex: 1 1 auto; min-width: 0; font-size: 12px; color: var(--fab-gris); }
+.si-fab .si-fr-travaux .texte b { display: block; font-size: 13px; color: var(--fab-nuit); }
+.si-fab .si-fr-travaux .quand { font-size: 12px; font-weight: 700; white-space: nowrap; }
+.si-fab .si-fr-apres { margin: 0; font-size: 13px; }
+.si-fab .si-fr-apres div { padding: 6px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-apres div:last-child { border-bottom: 0; }
+.si-fab .si-fr-apres dt { display: inline; font-weight: 800; }
+.si-fab .si-fr-apres dd { display: inline; margin: 0; color: #374151; }
+.si-fab .si-fr-encres { display: flex; gap: 10px; align-items: flex-end; height: 70px; margin: 8px 0; }
+.si-fab .si-fr-encres > div { flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 4px; height: 100%; justify-content: flex-end; font-size: 11px; color: var(--fab-gris); }
+.si-fab .si-fr-encres .tube { width: 16px; flex: 1 1 auto; background: var(--fab-fond); border-radius: 4px; position: relative; overflow: hidden; }
+.si-fab .si-fr-encres .tube > span { position: absolute; left: 0; right: 0; bottom: 0; border-radius: 4px; }
+.si-fab .si-fr-encres .bas b { color: var(--fab-rouge); }
+.si-fab .si-fr-encres .bas .tube { outline: 2px solid var(--fab-rouge); }
+.si-fab .si-fr-encre-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; margin-top: 8px; font-size: 12px; }
+.si-fab .si-fr-encre-form label { display: flex; flex-direction: column; gap: 2px; }
+.si-fab .si-fr-encre-form input { width: 58px; min-height: 32px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 2px 6px; }
+.si-fab .si-fr-personne { display: flex; gap: 10px; align-items: center; }
+.si-fab .si-fr-initiales { flex: 0 0 40px; width: 40px; height: 40px; border-radius: 50%; color: #fff; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; background: var(--fr-orange); }
+.si-fab .si-fr-qr { text-align: center; font-size: 12px; color: var(--fab-gris); }
+.si-fab .si-fr-qr img { width: 150px; height: 150px; image-rendering: pixelated; }
+
+/* ---------- Machines et dossiers, règles de nommage ---------- */
+.si-fab .si-fr-cartes { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.si-fab .si-fr-cartes .si-fab-carte { border-left: 5px solid var(--fr-couleur, var(--fab-bleu)); margin-bottom: 0; }
+.si-fab .si-fr-profils { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 8px; }
+.si-fab .si-fr-profils th { text-align: left; color: var(--fab-gris); font-weight: 700; padding: 3px 4px; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-profils td { padding: 3px 4px; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fr-formulaire { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
+.si-fab .si-fr-formulaire label { display: flex; flex-direction: column; gap: 2px; font-size: 12px; font-weight: 600; color: var(--fab-nuit); }
+.si-fab .si-fr-formulaire input, .si-fab .si-fr-formulaire select, .si-fab .si-fr-profil-saisie input { min-height: 34px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 4px 8px; font-size: 13px; width: 100%; }
+.si-fab .si-fr-formulaire .large { grid-column: 1 / -1; }
+.si-fab .si-fr-profil-saisie { width: 100%; border-collapse: collapse; font-size: 12px; }
+.si-fab .si-fr-profil-saisie td, .si-fab .si-fr-profil-saisie th { padding: 3px; text-align: left; }
+.si-fab .si-fr-profil-saisie th { color: var(--fab-gris); font-weight: 700; }
+.si-fab details.si-fr-modifier > summary { cursor: pointer; font-weight: 700; color: var(--fab-bleu); font-size: 13px; margin-top: 10px; }
+.si-fab .si-fr-codes input { width: 140px; min-height: 32px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 2px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; }
+
+@media (max-width: 1199.98px) {
+	.si-fab .si-fr-fiche { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+	.si-fab .si-fr-fiche > .colonne-machine { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+	.si-fab .si-fr-fiche > .colonne-machine > .si-fab-carte { margin-bottom: 0; }
+	.si-fab .si-fr-frise { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 18px; }
+	.si-fab .si-fr-frise > li::before { display: none; }
+}
+@media (max-width: 767.98px) {
+	.si-fab .si-fr-frise { grid-template-columns: minmax(0, 1fr); row-gap: 0; }
+	.si-fab .si-fr-frise > li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 0 12px; text-align: left; padding: 0 0 14px; }
+	.si-fab .si-fr-frise > li::before { display: block; top: 0; bottom: 0; left: 22px; right: auto; width: 3px; height: auto; }
+	.si-fab .si-fr-frise > li:first-child::before { left: 22px; top: 23px; }
+	.si-fab .si-fr-frise > li:last-child::before { right: auto; bottom: auto; height: 23px; }
+	.si-fab .si-fr-frise .icone { grid-row: 1 / span 5; }
+	.si-fab .si-fr-frise .etape { margin-top: 0; }
+	.si-fab .si-fr-frise .detail { margin-top: 4px; }
+	.si-fab .si-fr-parties { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+	.si-fab .si-fr-placement { grid-template-columns: minmax(0, 1fr); }
+	.si-fab .si-fr-plan { max-height: 60vh; }
+	.si-fab .si-fr-fiche, .si-fab .si-fr-fiche > .colonne-machine { grid-template-columns: minmax(0, 1fr); }
+	.si-fab .si-fr-formulaire { grid-template-columns: minmax(0, 1fr); }
+	.si-fab .si-fr-cartes { grid-template-columns: minmax(0, 1fr); }
+	.si-fab .si-fr-table thead { display: none; }
+	.si-fab .si-fr-table tr { display: block; border-bottom: 1px solid var(--fab-bord); padding: 6px 0; }
+	.si-fab .si-fr-table td { display: block; border: 0; padding: 2px 0; }
+	.si-fab .si-fr-profil-saisie-boite { overflow-x: auto; }
+}
+@media print {
+	.si-fab .si-fab-nav, .si-fab .si-fab-actions { display: none !important; }
+}

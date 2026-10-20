@@ -251,6 +251,8 @@ final class Aiguillage
                 $lien = ($a['fichier']['lien'] ?? $a['fichier']) + ['l' => 0, 'h' => 0];
                 $ligne->setFichierLie(['l' => self::tailleMm($ligne)[0], 'h' => self::tailleMm($ligne)[1]] + \App\Service\CommandeProduitClient::referenceLien($lien));
             }
+            // Nom du fichier de production (docs/production-rouleau.md) : le fichier lié n'est ni déplacé ni renommé.
+            \App\Service\Production\FichierProduction::preparer($ordre);
             $this->em->persist($ordre);
             ++$crees;
         }

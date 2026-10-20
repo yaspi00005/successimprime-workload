@@ -236,6 +236,33 @@ class OrdreProduction
     #[ORM\JoinColumn(name: 'pret_livraison_par_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $pretLivraisonPar = null;
 
+    /*
+     * Production au rouleau (maquettes PD01 à PD03, docs/production-rouleau.md) :
+     * le nom du fichier de production fabriqué par l'ERP (FichierProduction),
+     * la copie dans le dossier de la machine et le tirage qui porte l'ordre.
+     */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $nomFichierProduction = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $nomFichierDecoupe = null;
+
+    /** Tirage (rouleau) où sont posées les pièces de l'ordre ; null hors rouleau ou après annulation du tirage. */
+    #[ORM\ManyToOne(targetEntity: TirageRouleau::class)]
+    #[ORM\JoinColumn(name: 'tirage_id', nullable: true, onDelete: 'SET NULL')]
+    private ?TirageRouleau $tirage = null;
+
+    /** Copie du fichier de production dans le dossier de la machine, telle que les postes la voient. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fichierMachineChemin = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $fichierMachineLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'fichier_machine_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $fichierMachinePar = null;
+
     public function __construct()
     {
         $this->fichiers = new ArrayCollection();
@@ -1052,5 +1079,60 @@ class OrdreProduction
             ?? new \DateTimeImmutable();
 
         return $dateComparaison > $this->finPrevueLe;
+    }
+
+    public function getNomFichierProduction(): ?string
+    {
+        return $this->nomFichierProduction;
+    }
+
+    public function getNomFichierDecoupe(): ?string
+    {
+        return $this->nomFichierDecoupe;
+    }
+
+    /** Noms fabriqués par l'ERP (NomFichierProduction) : le fichier du client n'est ni déplacé ni renommé. */
+    public function nommerFichiers(?string $production, ?string $decoupe): static
+    {
+        $this->nomFichierProduction = null !== $production ? mb_substr($production, 0, 160) : null;
+        $this->nomFichierDecoupe = null !== $decoupe ? mb_substr($decoupe, 0, 160) : null;
+
+        return $this;
+    }
+
+    public function getTirage(): ?TirageRouleau
+    {
+        return $this->tirage;
+    }
+
+    public function setTirage(?TirageRouleau $tirage): static
+    {
+        $this->tirage = $tirage;
+
+        return $this;
+    }
+
+    public function getFichierMachineChemin(): ?string
+    {
+        return $this->fichierMachineChemin;
+    }
+
+    public function getFichierMachineLe(): ?\DateTimeImmutable
+    {
+        return $this->fichierMachineLe;
+    }
+
+    public function getFichierMachinePar(): ?User
+    {
+        return $this->fichierMachinePar;
+    }
+
+    public function noterCopieMachine(string $chemin, ?User $par, \DateTimeImmutable $le): static
+    {
+        $this->fichierMachineChemin = mb_substr($chemin, 0, 255);
+        $this->fichierMachineLe = $le;
+        $this->fichierMachinePar = $par;
+
+        return $this;
     }
 }

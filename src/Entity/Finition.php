@@ -14,6 +14,7 @@ class Finition implements AUnNomCommercial
 {
     // Nom commercial (Yaya, 18/10/2026, docs/noms-commerciaux.md).
     use \App\Entity\Trait\NomCommercialTrait;
+    use \App\Entity\Trait\CodeProductionTrait;
 
     use PublicIdTrait;
 

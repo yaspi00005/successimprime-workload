@@ -267,7 +267,7 @@ final class PosteMachinisteDemoCommand extends Command
             imagefilledellipse($im, 230, 300, 300, 300, $bleu);
             imagefilledrectangle($im, 200, 200, 260, 400, $blanc);
             imagefilledrectangle($im, 130, 270, 330, 330, $blanc);
-            if (is_file($police)) {
+            if (\function_exists('imagettftext') && is_file($police)) {
                 imagettftext($im, 46, 0, 430, 250, $nuit, $police, 'CLINIQUE');
                 imagettftext($im, 46, 0, 430, 315, $nuit, $police, 'KAYES');
                 imagettftext($im, 22, 0, 432, 360, $rouge, $police, 'URGENCES 24 h / 24');
@@ -281,7 +281,7 @@ final class PosteMachinisteDemoCommand extends Command
             imagefilledrectangle($im, 0, 0, 300, 800, $haut);
             imagefilledrectangle($im, 0, 420, 300, 800, $bas);
             imagefilledellipse($im, 150, 330, 160, 160, imagecolorallocatealpha($im, 255, 255, 255, 80));
-            if (is_file($police)) {
+            if (\function_exists('imagettftext') && is_file($police)) {
                 $blanc = imagecolorallocate($im, 255, 255, 255);
                 imagettftext($im, 24, 0, 6, 40, $blanc, $police, 'ÉCOLE');
                 imagettftext($im, 24, 0, 6, 72, $blanc, $police, 'MISSABOUGOU');

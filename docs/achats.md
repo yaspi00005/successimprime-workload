@@ -11,7 +11,7 @@ Yaya a envoyé les maquettes le 19/10/2026. Elles sont dans `/mnt/project-files/
 
 La première étape a construit SU01, SU02 et SU03 ; la deuxième, SU05 (réception) ; la troisième, SU06 et SU07 (réapprovisionnement et alertes). Ce sont des écrans neufs : on garde les données (`Fournisseurs`, `Achats`, `AchatDetail`, `ArticleFournisseur`, les entrées et sorties de stock) et les calculs qui marchent, pas l'ancienne présentation.
 
-Les écrans sont dans le menu Atelier, juste après « Articles et stock » : « Fournisseurs », « Commandes d'achat », « Réceptions » et « Réapprovisionnement ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
+Les écrans sont dans le menu « Stock et achats » (à part de l'Atelier depuis le 20/10/2026, demande de Yaya), avec « Articles et stock » et « Inventaire » : « Réapprovisionnement », « Fournisseurs », « Commandes d'achat » et « Réceptions ». Comme avant, ils sont réservés à la direction (`ROLE_ADMIN`, règle `access_control` sur `/fournisseurs` et `/achats`). Le montant dû aux fournisseurs ne s'affiche qu'avec le droit « Trésorerie et soldes » (`ROLE_TRESORERIE_VOIR`), que la direction a.
 
 ## SU01 Fournisseurs
 
@@ -91,7 +91,7 @@ Le bouton « Réceptionner » d'une commande passée ouvre l'écran de réceptio
 
 ## SU05 Réception
 
-Menu Atelier › « Réceptions » (`/achats/receptions`) : d'abord les commandes à recevoir (en route d'abord, puis par date promise, avec le retard sur la date promise), puis les réceptions des 60 derniers jours avec leur écart (« à l'heure », « +2 j · 1 rouleau abîmé »), leurs réclamations et, avec le droit trésorerie, « paiement bloqué ». On y arrive aussi par « Réceptionner » sur la commande d'achat et dans la liste des commandes en cours.
+Menu Stock et achats › « Réceptions » (`/achats/receptions`) : d'abord les commandes à recevoir (en route d'abord, puis par date promise, avec le retard sur la date promise), puis les réceptions des 60 derniers jours avec leur écart (« à l'heure », « +2 j · 1 rouleau abîmé »), leurs réclamations et, avec le droit trésorerie, « paiement bloqué ». On y arrive aussi par « Réceptionner » sur la commande d'achat et dans la liste des commandes en cours.
 
 ### Commandé, livré, facturé
 
@@ -169,7 +169,7 @@ Comme les achats : la direction (`ROLE_ADMIN`, `access_control` sur `/achats`). 
 
 ## SU06 Fréquence des commandes et alertes
 
-Menu Atelier › « Réapprovisionnement » (`/achats/reapprovisionnement`, `ReapproController`), après « Réceptions ». La pastille du menu compte ses alertes d'achat non réglées (ses notifications). Réservé à la direction comme les autres écrans Achats (`ROLE_ADMIN`, `access_control` sur `/achats`).
+Menu Stock et achats › « Réapprovisionnement » (`/achats/reapprovisionnement`, `ReapproController`). L'ancien bon de commande du stock (`/stock/articles/a-commander`) est rangé sous cet onglet. La pastille du menu compte ses alertes d'achat non réglées (ses notifications). Réservé à la direction comme les autres écrans Achats (`ROLE_ADMIN`, `access_control` sur `/achats`).
 
 ### Alertes
 

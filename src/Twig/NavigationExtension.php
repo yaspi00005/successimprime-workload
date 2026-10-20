@@ -15,8 +15,9 @@ use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
 
 /**
- * Range chaque ecran de l'admin dans l'un des 7 modules du menu
- * (Accueil, Ventes, Clients, Atelier, Finances, Equipe, Reglages),
+ * Range chaque ecran de l'admin dans l'un des 8 modules du menu
+ * (Accueil, Ventes, Clients, Atelier, Stock et achats, Finances, Equipe,
+ * Reglages),
  * d'apres le prefixe de sa route. Sert a construire le menu selon le
  * role (maquettes R01 a R05), a allumer l'entree active et a afficher
  * le fil d'Ariane de l'en-tete.
@@ -28,6 +29,7 @@ final class NavigationExtension extends AbstractExtension
         'ventes' => 'Ventes',
         'clients' => 'Clients',
         'atelier' => 'Atelier',
+        'stock' => 'Stock et achats',
         'finances' => 'Finances',
         'equipe' => 'Équipe',
         'reglages' => 'Réglages',
@@ -38,6 +40,7 @@ final class NavigationExtension extends AbstractExtension
         'ventes' => 'fas fa-tag',
         'clients' => 'fas fa-users',
         'atelier' => 'fas fa-print',
+        'stock' => 'fas fa-boxes',
         'finances' => 'fas fa-wallet',
         'equipe' => 'fas fa-user-friends',
         'reglages' => 'fas fa-sliders-h',
@@ -108,21 +111,26 @@ final class NavigationExtension extends AbstractExtension
             ['libelle' => 'Planning', 'route' => 'app_atelier_planning', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_planning']],
             ['libelle' => 'Maintenance', 'route' => 'app_atelier_maintenance', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_maintenance', 'app_atelier_incident_', 'app_atelier_entretien_', 'app_atelier_tetes']],
             ['libelle' => 'Mon travail', 'route' => 'app_atelier_operateur', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_operateur']],
-            ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_']],
+            // Consommables de production (colle, encre, film) : sortis du stock par l'atelier, rangés avec la production.
+            ['libelle' => 'Production', 'route' => 'app_atelier_production', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_atelier_production', 'app_production_', 'app_consommables_']],
             ['libelle' => 'Prépresse et BAT', 'route' => 'app_controle_pre_presse_index', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_controle_pre_presse_', 'app_produits_clients_prepresse_', 'app_fichier_dossier_partage']],
             ['libelle' => 'Conception PAO', 'route' => 'app_conception_tableau', 'role' => 'ROLE_PREPRESSE', 'prefixes' => ['app_conception_']],
             ['libelle' => 'Demandes de conception', 'route' => 'app_demandes_conception_index', 'role' => ['ROLE_PREPRESSE', 'ROLE_COMMANDE'], 'prefixes' => ['app_demandes_conception_']],
             // Dossiers clients (docs/dossiers-clients.md, DS03) : graphiste et caisse par défaut (matrice « Qui voit quoi »).
             ['libelle' => 'Fichiers à classer', 'route' => 'app_dossiers_clients_a_classer', 'role' => 'DOSSIERS_CLASSER', 'prefixes' => ['app_dossiers_clients_a_classer', 'app_dossiers_clients_classer', 'app_dossiers_clients_retirer_a_classer', 'app_dossiers_clients_analyser_a_classer']],
             ['libelle' => 'Ma file machine', 'route' => 'app_ma_file_index', 'role' => 'ROLE_PRODUCTION_VOIR', 'prefixes' => ['app_ma_file_']],
-            ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_consommables_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
-            // Achats (docs/achats.md, SU01 à SU03, SU05 à SU07) : fournisseurs, commandes d'achat, réceptions et réapprovisionnement, la Direction. Les coûts viendront (SU04).
+            ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
+            ['libelle' => 'Relevés de compteurs', 'route' => 'app_atelier_releves', 'role' => ['ROLE_PRODUCTION_GERER', 'ROLE_COMPTABILITE'], 'prefixes' => ['app_atelier_releves']],
+        ],
+        // Stock et achats (demande de Yaya du 20/10/2026 : à part de l'atelier) : articles, inventaire, fournisseurs,
+        // commandes d'achat, réceptions et réapprovisionnement (docs/achats.md, SU01 à SU03, SU05 à SU07), la Direction.
+        'stock' => [
+            ['libelle' => 'Articles et stock', 'route' => 'app_stock_articles_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_', 'app_article_', 'app_lot_etiquette_', 'app_suivi_etiquette']],
+            ['libelle' => 'Inventaire', 'route' => 'app_stock_articles_inventaire', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_stock_articles_inventaire']],
+            ['libelle' => 'Réapprovisionnement', 'route' => 'app_reappro_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_reappro_', 'app_stock_articles_a_commander']],
             ['libelle' => 'Fournisseurs', 'route' => 'app_fournisseur_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_fournisseur_']],
             ['libelle' => 'Commandes d\'achat', 'route' => 'app_achat_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_achat_']],
             ['libelle' => 'Réceptions', 'route' => 'app_reception_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_reception_']],
-            ['libelle' => 'Réapprovisionnement', 'route' => 'app_reappro_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_reappro_']],
-            ['libelle' => 'Machines et maintenance', 'route' => 'app_machines_index', 'role' => 'ROLE_ADMIN', 'prefixes' => ['app_machines_']],
-            ['libelle' => 'Relevés de compteurs', 'route' => 'app_atelier_releves', 'role' => ['ROLE_PRODUCTION_GERER', 'ROLE_COMPTABILITE'], 'prefixes' => ['app_atelier_releves']],
         ],
         'finances' => [
             ['libelle' => 'Vue d\'ensemble', 'route' => 'app_finances_vue_ensemble', 'role' => ['ROLE_TRESORERIE_VOIR', 'ROLE_STATS_GLOBAL', 'ROLE_PAIEMENT_VOIR', 'ROLE_COUT_MARGE'], 'prefixes' => ['app_finances_vue_ensemble', 'app_finances_du_jour']],
@@ -275,15 +283,15 @@ final class NavigationExtension extends AbstractExtension
         'app_atelier_' => 'atelier',
         'app_controle_pre_presse_' => 'atelier',
         'app_consommables_' => 'atelier',
-        'app_stock_' => 'atelier',
-        'app_article_' => 'atelier',
-        'app_achat_' => 'atelier',
-        'app_fournisseur_' => 'atelier',
-        'app_reception_' => 'atelier',
-        'app_reappro_' => 'atelier',
+        'app_stock_' => 'stock',
+        'app_article_' => 'stock',
+        'app_achat_' => 'stock',
+        'app_fournisseur_' => 'stock',
+        'app_reception_' => 'stock',
+        'app_reappro_' => 'stock',
         'app_machines_' => 'atelier',
-        'app_lot_etiquette_' => 'atelier',
-        'app_suivi_etiquette' => 'atelier',
+        'app_lot_etiquette_' => 'stock',
+        'app_suivi_etiquette' => 'stock',
         'app_fichier_upload_' => 'atelier',
         'app_finances_' => 'finances',
         'app_caisse_' => 'finances',

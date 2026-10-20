@@ -725,14 +725,14 @@ final class Formation
                     [
                         'titre' => 'Lire un fournisseur',
                         'compte' => 'demo.kadiatou',
-                        'consigne' => ['Atelier › « Fournisseurs » › Dakar Signs.'],
+                        'consigne' => ['Stock et achats › « Fournisseurs » › Dakar Signs.'],
                         'attendu' => 'La personne dit son délai réel moyen, sa part à l\'heure, ce qui lui est dû, et lit le « Conseil » sur le délai.',
                     ],
                     [
                         'titre' => 'Préparer une commande d\'achat',
                         'compte' => 'demo.kadiatou',
                         'consigne' => [
-                            'Atelier › « Fournisseurs » : touchez une « Prochaine commande » en rouge.',
+                            'Stock et achats › « Fournisseurs » : touchez une « Prochaine commande » en rouge.',
                             'Lisez le total rendu Bamako, le coût de revient et la livraison prévue, puis « Brouillon ».',
                         ],
                         'attendu' => 'La commande CA-… est enregistrée en brouillon chez le bon fournisseur, avec l\'article en alerte ; rien n\'est envoyé.',
@@ -740,7 +740,7 @@ final class Formation
                     [
                         'titre' => 'Lire une réception avec casse',
                         'compte' => 'demo.kadiatou',
-                        'consigne' => ['Atelier › « Réceptions » : « Voir » sur la réception de Dakar Signs marquée « paiement bloqué ».'],
+                        'consigne' => ['Stock et achats › « Réceptions » : « Voir » sur la réception de Dakar Signs marquée « paiement bloqué ».'],
                         'attendu' => 'La personne lit le rouleau écrasé, la réclamation ouverte et « paiement du solde bloqué » ; elle sait qu\'il se débloque quand la réclamation est remplacée, déduite ou close.',
                     ],
                     [

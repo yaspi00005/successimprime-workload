@@ -74,7 +74,7 @@ final class ModulesRoles
             ],
             'stock' => [
                 'libelle' => 'Stock et achats',
-                'detail' => 'articles, fournisseurs, prix d\'achat',
+                'detail' => 'articles, inventaire, réapprovisionnement, fournisseurs, commandes d\'achat, réceptions',
                 'droits' => [],
                 'fixe' => self::FIXE_DIRECTION,
             ],

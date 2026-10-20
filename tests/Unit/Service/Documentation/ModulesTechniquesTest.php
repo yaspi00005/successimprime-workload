@@ -27,7 +27,8 @@ final class ModulesTechniquesTest extends TestCase
 
     public function testServiceParSonDossier(): void
     {
-        self::assertSame('atelier', ModulesTechniques::moduleService('App\Service\Achats\SuiviAchats'));
+        self::assertSame('stock', ModulesTechniques::moduleService('App\Service\Achats\SuiviAchats'), 'Stock et achats, à part de l\'atelier');
+        self::assertSame('atelier', ModulesTechniques::moduleService('App\Service\Atelier\Files'));
         self::assertNull(ModulesTechniques::moduleService('App\Service\EnLigne'));
     }
 

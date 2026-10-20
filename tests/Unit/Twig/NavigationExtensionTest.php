@@ -26,10 +26,10 @@ final class NavigationExtensionTest extends TestCase
         yield 'devis' => ['app_devis_new', 'ventes'];
         yield 'commande' => ['app_commandes_show', 'ventes'];
         yield 'production' => ['app_production_index', 'atelier'];
-        yield 'stock' => ['app_stock_etat_index', 'atelier'];
-        yield 'fournisseurs (achats)' => ['app_fournisseur_show', 'atelier'];
-        yield 'commandes d\'achat' => ['app_achat_edit', 'atelier'];
-        yield 'réceptions (achats)' => ['app_reception_show', 'atelier'];
+        yield 'stock' => ['app_stock_etat_index', 'stock'];
+        yield 'fournisseurs (achats)' => ['app_fournisseur_show', 'stock'];
+        yield 'commandes d\'achat' => ['app_achat_edit', 'stock'];
+        yield 'réceptions (achats)' => ['app_reception_show', 'stock'];
         yield 'facture' => ['app_factures_show', 'finances'];
         yield 'caisse' => ['app_caisse_index', 'finances'];
         yield 'à valider' => ['app_a_valider_index', 'finances'];
@@ -118,19 +118,28 @@ final class NavigationExtensionTest extends TestCase
         self::assertSame(3, $extension->ongletActif('app_demandes_conges'));
         self::assertSame(5, $extension->ongletActif('app_actions_equipe_journal'));
         self::assertSame(7, $extension->ongletActif('app_actions_voir'));
-        // Achats (docs/achats.md) : « Fournisseurs », « Commandes d'achat », « Réceptions » et « Réapprovisionnement » juste après « Articles et stock ».
-        self::assertSame(11, $extension->ongletActif('app_stock_articles_fiche'));
-        self::assertSame(12, $extension->ongletActif('app_fournisseur_show'));
-        self::assertSame(13, $extension->ongletActif('app_achat_new'));
-        self::assertSame(14, $extension->ongletActif('app_reception_valider'));
-        self::assertSame(15, $extension->ongletActif('app_reappro_proposition'));
-        self::assertSame(16, $extension->ongletActif('app_machines_index'));
+        // Stock et achats (docs/menus-par-role.md, docs/achats.md) : un module à part de l'Atelier.
+        self::assertSame(0, $extension->ongletActif('app_stock_articles_fiche'));
+        self::assertSame(1, $extension->ongletActif('app_stock_articles_inventaire'));
+        self::assertSame(2, $extension->ongletActif('app_reappro_proposition'));
+        self::assertSame(2, $extension->ongletActif('app_stock_articles_a_commander'), 'l\'ancien bon de commande du stock, sous Réapprovisionnement');
+        self::assertSame(3, $extension->ongletActif('app_fournisseur_show'));
+        self::assertSame(4, $extension->ongletActif('app_achat_new'));
+        self::assertSame(5, $extension->ongletActif('app_reception_valider'));
+        self::assertSame(11, $extension->ongletActif('app_machines_index'));
+        // Les consommables de production restent à l'atelier, sous « Production ».
+        self::assertSame('atelier', $extension->sectionPourRoute('app_consommables_index'));
+        self::assertSame(5, $extension->ongletActif('app_consommables_index'));
         self::assertNull($extension->ongletActif('app_ecran_inconnu'));
     }
 
-    public function testSeptModulesDansLOrdreDesMaquettes(): void
+    public function testHuitModulesDansLOrdreDesMaquettes(): void
     {
-        self::assertSame(['accueil', 'ventes', 'clients', 'atelier', 'finances', 'equipe', 'reglages'], array_keys(NavigationExtension::SECTIONS));
+        // « Stock et achats » à part de l'Atelier (demande de Yaya du 20/10/2026).
+        self::assertSame(['accueil', 'ventes', 'clients', 'atelier', 'stock', 'finances', 'equipe', 'reglages'], array_keys(NavigationExtension::SECTIONS));
+        foreach (['app_stock_articles_index', 'app_article_show', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index', 'app_reappro_index', 'app_lot_etiquette_index'] as $route) {
+            self::assertSame('stock', (new NavigationExtension())->sectionPourRoute($route), $route);
+        }
     }
 
     public function testMenuEnVoletsPourLaDirection(): void
@@ -140,11 +149,13 @@ final class NavigationExtensionTest extends TestCase
 
         self::assertSame('volets', $menu['style']);
         self::assertSame(array_keys(NavigationExtension::SECTIONS), array_column($menu['entrees'], 'cle'));
-        $finances = $menu['entrees'][4];
+        $finances = $menu['entrees'][5];
         self::assertTrue($finances['actif']);
         self::assertContains('app_finances_encaissements', array_column(array_filter($finances['items'], static fn (array $i): bool => $i['actif']), 'route'));
         // Reglages s'ouvre d'un clic sur ses tuiles, sans volet.
-        self::assertSame([], $menu['entrees'][6]['items']);
+        self::assertSame([], $menu['entrees'][7]['items']);
+        // Stock et achats : son volet, entre l'Atelier et les Finances.
+        self::assertSame(['app_stock_articles_index', 'app_stock_articles_inventaire', 'app_reappro_index', 'app_fournisseur_index', 'app_achat_index', 'app_reception_index'], array_column($menu['entrees'][4]['items'], 'route'));
     }
 
     public function testMenuCourtSelonLesDroits(): void

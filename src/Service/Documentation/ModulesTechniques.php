@@ -27,6 +27,7 @@ final class ModulesTechniques
         'ventes' => ['libelle' => 'Ventes', 'sorte' => 'menu'],
         'clients' => ['libelle' => 'Clients', 'sorte' => 'menu'],
         'atelier' => ['libelle' => 'Atelier', 'sorte' => 'menu'],
+        'stock' => ['libelle' => 'Stock et achats', 'sorte' => 'menu'],
         'finances' => ['libelle' => 'Finances', 'sorte' => 'menu'],
         'equipe' => ['libelle' => 'Équipe', 'sorte' => 'menu'],
         'reglages' => ['libelle' => 'Réglages', 'sorte' => 'menu'],
@@ -46,7 +47,7 @@ final class ModulesTechniques
     /** Module de la matrice « Rôles et menus » => module du guide. */
     private const MODULES_ROLES = [
         'ventes' => 'ventes', 'clients' => 'clients', 'livraisons' => 'ventes', 'atelier' => 'atelier',
-        'pao' => 'atelier', 'stock' => 'atelier', 'finances' => 'finances', 'equipe' => 'equipe',
+        'pao' => 'atelier', 'stock' => 'stock', 'finances' => 'finances', 'equipe' => 'equipe',
         'entretien' => 'accueil', 'site' => 'reglages', 'messagerie' => 'clients', 'corbeille' => 'reglages',
         'reglages' => 'reglages', 'mon_espace' => 'equipe',
     ];
@@ -71,8 +72,8 @@ final class ModulesTechniques
     private const MOTS_CONTROLEURS = [
         'Espace' => 'espace_client', 'Site' => 'site_public', 'Synchro' => 'synchronisation',
         'Security' => 'securite', 'Appareil' => 'securite', 'Acces' => 'securite', 'Verification' => 'securite',
-        'Stock' => 'atelier', 'Atelier' => 'atelier', 'Production' => 'atelier', 'Prepresse' => 'atelier', 'PrePresse' => 'atelier',
-        'Conception' => 'atelier', 'Machine' => 'atelier', 'Achat' => 'atelier', 'Reception' => 'atelier', 'Fournisseur' => 'atelier',
+        'Stock' => 'stock', 'Atelier' => 'atelier', 'Production' => 'atelier', 'Prepresse' => 'atelier', 'PrePresse' => 'atelier',
+        'Conception' => 'atelier', 'Machine' => 'atelier', 'Achat' => 'stock', 'Reception' => 'stock', 'Fournisseur' => 'stock', 'Reappro' => 'stock',
         'Tresorerie' => 'finances', 'Comptabilite' => 'finances', 'Paie' => 'equipe', 'Pointage' => 'equipe', 'Employe' => 'equipe',
         'Prime' => 'equipe', 'Devis' => 'ventes', 'Commande' => 'ventes', 'Facture' => 'finances', 'Paiement' => 'finances',
         'Caisse' => 'ventes', 'Livraison' => 'ventes', 'Client' => 'clients', 'Statistique' => 'accueil', 'Rapport' => 'accueil',
@@ -86,7 +87,7 @@ final class ModulesTechniques
         'Clients' => 'clients', 'Messagerie' => 'clients', 'Sondages' => 'clients', 'Assistant' => 'clients',
         'Fidelite' => 'clients', 'ProduitsClient' => 'clients',
         'Atelier' => 'atelier', 'Conception' => 'atelier', 'Prepresse' => 'atelier', 'DossiersClients' => 'atelier',
-        'Stock' => 'atelier', 'Achats' => 'atelier', 'SuiviMetiers' => 'atelier',
+        'Stock' => 'stock', 'Achats' => 'stock', 'SuiviMetiers' => 'atelier',
         'Finances' => 'finances', 'Immobilisations' => 'finances',
         'Equipe' => 'equipe', 'EspaceEmploye' => 'equipe', 'MessagerieInterne' => 'equipe', 'Pointage' => 'equipe', 'Primes' => 'equipe',
         'Statistiques' => 'accueil', 'Rapports' => 'accueil', 'Planning' => 'accueil', 'NotificationsEquipe' => 'accueil',
@@ -115,8 +116,8 @@ final class ModulesTechniques
         'DemandeDevis' => 'site_public', 'CreationAtelier' => 'site_public', 'ModeleAtelier' => 'site_public',
         'Reglage' => 'reglages', 'Corbeille' => 'reglages', 'ImportDonnees' => 'reglages', 'Societe' => 'reglages',
         'Entreprise' => 'reglages', 'AlerteSysteme' => 'reglages', 'ParametresPaiement' => 'reglages',
-        'Achats' => 'atelier', 'AchatDetail' => 'atelier', 'Fournisseurs' => 'atelier', 'ArticleFournisseur' => 'atelier',
-        'ReclamationFournisseur' => 'atelier', 'Stock' => 'atelier', 'Articles' => 'atelier', 'FamilleArticle' => 'atelier',
+        'Achats' => 'stock', 'AchatDetail' => 'stock', 'Fournisseurs' => 'stock', 'ArticleFournisseur' => 'stock',
+        'ReclamationFournisseur' => 'stock', 'Stock' => 'stock', 'Articles' => 'stock', 'FamilleArticle' => 'stock',
         'Pointage' => 'equipe', 'PointPointage' => 'equipe', 'AppareilPointage' => 'equipe', 'Employes' => 'equipe',
         'BulletinPaie' => 'equipe', 'CongeEmploye' => 'equipe', 'DemandeEmploye' => 'equipe', 'PrimeAgent' => 'equipe',
         'EvaluationPrime' => 'equipe', 'BaremePrime' => 'equipe',

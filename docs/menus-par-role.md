@@ -7,7 +7,7 @@ règle par rôle dans Réglages › Utilisateurs et droits › Rôles et menus.
 
 | Forme | Pour qui (par défaut) | Ce qu'on voit |
 |---|---|---|
-| Volets | Direction (toujours) | Les 7 modules (Accueil, Ventes, Clients, Atelier, Finances, Équipe, Réglages). Un seul volet ouvert à la fois ; la barre d'onglets au-dessus de la page est masquée tant que le menu est ouvert. |
+| Volets | Direction (toujours) | Les 8 modules (Accueil, Ventes, Clients, Atelier, Stock et achats, Finances, Équipe, Réglages). Un seul volet ouvert à la fois ; la barre d'onglets au-dessus de la page est masquée tant que le menu est ouvert. |
 | Court | Caisse, production, livreur | Les écrans du quotidien à plat (Ma journée, Caisse, Mes actions, Clients, Devis et commandes, Encaissements…) puis « Mon espace ». |
 | Replié | Graphiste PAO | Le menu court en icônes ; le libellé et les sous-écrans s'ouvrent au survol. « » » le rouvre. |
 
@@ -26,6 +26,19 @@ Commun à toutes les formes :
   plus dans le menu de gauche ; aussi « Aide et guide » dans le menu de la personne.
 
 Sur tablette (768 à 1023 px), le menu est toujours en icônes.
+
+## Stock et achats
+
+Depuis le 20/10/2026 (demande de Yaya : « un menu différent d'atelier pour
+les stock, achat, tout qui n'ont pas de relation directe avec l'atelier »),
+le module « Stock et achats » est à part de l'Atelier : « Articles et
+stock », « Inventaire », « Réapprovisionnement » (alertes SU06, et l'ancien
+bon de commande du stock), « Fournisseurs », « Commandes d'achat » et
+« Réceptions ». Réservé à la direction comme avant (`ROLE_ADMIN` ; dans la
+matrice Rôles et menus, la ligne « Stock et achats » est fixée à la
+Direction). L'Atelier garde la production, la prépresse, les machines et les
+consommables de production (rangés sous « Production »). Dans le menu court,
+« Stock » reste à sa place ; sur téléphone, la Direction l'ouvre par « Plus ».
 
 ## Livreur seul
 

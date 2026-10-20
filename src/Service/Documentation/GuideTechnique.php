@@ -723,7 +723,7 @@ final class GuideTechnique
             'app:actions-caisse' => 'ventes', 'app:orange-money' => 'finances',
             'app:finances' => 'finances', 'app:immobilisations' => 'finances', 'app:solde-client' => 'finances',
             'app:pointage' => 'equipe', 'app:nettoyer-fichiers' => 'atelier', 'app:poste-machiniste' => 'atelier',
-            'app:clients' => 'clients', 'app:fiche-client' => 'clients',
+            'app:clients' => 'clients', 'app:fiche-client' => 'clients', 'app:achats' => 'stock',
         ];
         $meilleur = null;
         $longueur = 0;

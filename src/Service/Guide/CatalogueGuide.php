@@ -182,7 +182,7 @@ final class CatalogueGuide
                 'but' => 'Voir ce qui est dû, ce qui arrive, qui livre à l\'heure et quoi commander bientôt.',
                 'droits' => ['ROLE_ADMIN'], 'route' => 'app_fournisseur_index', 'ecrans' => ['app_fournisseur_'], 'consultation' => true,
                 'captures' => [
-                    ['nom' => 'fournisseurs', 'legende' => 'Atelier › Fournisseurs.'],
+                    ['nom' => 'fournisseurs', 'legende' => 'Stock et achats › Fournisseurs.'],
                     ['nom' => 'fournisseur-fiche', 'legende' => 'La fiche d\'un fournisseur : conditions, performance, prix.'],
                 ],
             ],

@@ -1,31 +1,31 @@
 {
     "genere_le": {
-        "date": "2026-10-20T02:06:39+00:00",
-        "commit": "9cc974d28d8ec0ea6572d524aa1c65a0007a1299",
+        "date": "2026-10-20T02:32:10+00:00",
+        "commit": "ebc474ea002090142daffad34cf695bf64b03e46",
         "branche": "claude/fix-synchronisation-bloquee-9esn94"
     },
     "stats": {
         "entites": 179,
-        "routes": 1039,
-        "routes_modifiant_des_donnees": 554,
+        "routes": 1042,
+        "routes_modifiant_des_donnees": 555,
         "routes_sans_csrf_signalees": 5,
         "routes_publiques": 72,
-        "controleurs": 190,
-        "services": 446,
+        "controleurs": 191,
+        "services": 449,
         "commandes": 58,
         "commandes_planifiees": 28,
         "migrations": 121,
-        "tests_unitaires": 355,
+        "tests_unitaires": 356,
         "droits": 37,
         "voteurs": 9,
         "types_synchronises": 62,
         "tuiles_parametres": 51,
         "chapitres": 9,
-        "audit": 1253,
+        "audit": 1257,
         "audit_par_type": {
-            "controleur": 190,
+            "controleur": 191,
             "entite": 179,
-            "route": 783,
+            "route": 786,
             "securite": 73,
             "commande": 28
         }
@@ -914,6 +914,9 @@
                 "app_article_index",
                 "app_article_new",
                 "app_article_show",
+                "app_couts_marges_export",
+                "app_couts_marges_index",
+                "app_couts_marges_reglages",
                 "app_fournisseur_delete",
                 "app_fournisseur_edit",
                 "app_fournisseur_export",
@@ -955,6 +958,7 @@
             "controleurs": [
                 "App\\Controller\\AchatsController",
                 "App\\Controller\\ArticlesController",
+                "App\\Controller\\CoutsMargesController",
                 "App\\Controller\\EtatStockController",
                 "App\\Controller\\FournisseursController",
                 "App\\Controller\\LotEtiquetteController",
@@ -967,7 +971,10 @@
                 "App\\Service\\Achats\\AlertesAchats",
                 "App\\Service\\Achats\\CalculsAchat",
                 "App\\Service\\Achats\\CalculsAlertes",
+                "App\\Service\\Achats\\CalculsMarges",
                 "App\\Service\\Achats\\CalculsReception",
+                "App\\Service\\Achats\\CoutsMarges",
+                "App\\Service\\Achats\\CoutsMargesDemo",
                 "App\\Service\\Achats\\PreparationAchat",
                 "App\\Service\\Achats\\Receptions",
                 "App\\Service\\Achats\\SuiviAchats",
@@ -38293,6 +38300,110 @@
             "sensibles": []
         },
         {
+            "nom": "app_couts_marges_export",
+            "chemin": "/achats/couts-marges/export",
+            "methodes": [
+                "GET"
+            ],
+            "controleur": "App\\Controller\\CoutsMargesController::export",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [
+                    "ROLE_ADMIN"
+                ],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": false,
+            "csrf": false,
+            "csrf_detail": null,
+            "sans_csrf": false,
+            "sensibles": [
+                "montants",
+                "fichiers"
+            ]
+        },
+        {
+            "nom": "app_couts_marges_index",
+            "chemin": "/achats/couts-marges",
+            "methodes": [
+                "GET"
+            ],
+            "controleur": "App\\Controller\\CoutsMargesController::index",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [
+                    "ROLE_ADMIN"
+                ],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": false,
+            "csrf": false,
+            "csrf_detail": null,
+            "sans_csrf": false,
+            "sensibles": [
+                "montants"
+            ]
+        },
+        {
+            "nom": "app_couts_marges_reglages",
+            "chemin": "/achats/couts-marges/reglages",
+            "methodes": [
+                "GET",
+                "POST"
+            ],
+            "controleur": "App\\Controller\\CoutsMargesController::reglages",
+            "module": "stock",
+            "acces": {
+                "pare_feu": "main",
+                "access_control": {
+                    "chemin": "^/(fournisseur|fournisseurs|achat|achats)",
+                    "roles": [
+                        "ROLE_ADMIN"
+                    ],
+                    "methodes": [],
+                    "rang": 32
+                },
+                "note": null,
+                "is_granted": [
+                    "ROLE_ADMIN"
+                ],
+                "refus_dans_le_code": [],
+                "verifications_dans_le_code": []
+            },
+            "public": false,
+            "modifie_donnees": true,
+            "csrf": true,
+            "csrf_detail": "dans l'action",
+            "sans_csrf": false,
+            "sensibles": [
+                "montants"
+            ]
+        },
+        {
             "nom": "app_couts_revient_index",
             "chemin": "/reglages/couts",
             "methodes": [
@@ -65708,6 +65819,38 @@
             }
         },
         {
+            "classe": "App\\Controller\\CoutsMargesController",
+            "module": "stock",
+            "resume": "Stock et achats › Coûts et marges (maquette SU04, docs/achats.md) : pour chaque produit vendu dans le mois, le coût de revient (achat, transport et transit, encre, gâche, machine et main-d'œuvre), le prix de vente moyen, la marge et le bénéfice brut ; la cascade « où part l'argent » d'un produit et ce qu'il faut retenir.",
+            "fichier": "src/Controller/CoutsMargesController.php",
+            "is_granted_classe": [
+                "ROLE_ADMIN"
+            ],
+            "routes": [
+                "app_couts_marges_export",
+                "app_couts_marges_index",
+                "app_couts_marges_reglages"
+            ],
+            "services_constructeur": [
+                {
+                    "nom": "couts",
+                    "type": "App\\Service\\Achats\\CoutsMarges"
+                },
+                {
+                    "nom": "enLigne",
+                    "type": "bool"
+                }
+            ],
+            "services_actions": [],
+            "entites_chargees": [],
+            "csrf": {
+                "routes_modifiant": 1,
+                "avec_jeton": 1,
+                "appels_isCsrfTokenValid": 1,
+                "sans_jeton": []
+            }
+        },
+        {
             "classe": "App\\Controller\\CoutsRevientController",
             "module": "reglages",
             "resume": "Reglages · Couts de revient : les donnees dont le calcul automatique a besoin (machines, finitions, matieres), regroupees sur un ecran.",
@@ -71775,6 +71918,79 @@
             ]
         },
         {
+            "classe": "App\\Service\\Achats\\CalculsMarges",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Calculs de l'écran « Coûts et marges » (maquette SU04, docs/achats.md), statiques et testés sans base (tests/Unit/Service/Achats/CalculsMargesTest.php).",
+            "fichier": "src/Service/Achats/CalculsMarges.php",
+            "methodes_publiques": [
+                {
+                    "nom": "unitairesReceptions",
+                    "statique": true,
+                    "resume": "Coût d'une unité de stock (m², mètre, pièce…) rendue Bamako, d'après"
+                },
+                {
+                    "nom": "receptionsRetenues",
+                    "statique": true,
+                    "resume": "Les réceptions retenues : celles des JOURS_RECEPTIONS derniers jours"
+                },
+                {
+                    "nom": "machineM2",
+                    "statique": true,
+                    "resume": "Coût machine et main-d'œuvre au m² d'une machine : celui du réglage,"
+                },
+                {
+                    "nom": "gache",
+                    "statique": true,
+                    "resume": "Gâche d'un article : celle mesurée et saisie pour lui, sinon celle"
+                },
+                {
+                    "nom": "quantiteVendue",
+                    "statique": true,
+                    "resume": "Quantité vendue d'une ligne dans l'unité du produit : m² (surface"
+                },
+                {
+                    "nom": "coutsLigne",
+                    "statique": true,
+                    "resume": "Coût d'une ligne vendue, poste par poste, en francs."
+                },
+                {
+                    "nom": "additionner",
+                    "statique": true
+                },
+                {
+                    "nom": "bilan",
+                    "statique": true,
+                    "resume": "Bilan d'un produit sur le mois : prix de vente moyen, coût de revient"
+                },
+                {
+                    "nom": "evolution",
+                    "statique": true,
+                    "resume": "Évolution en % d'un montant sur celui du mois d'avant (null sans base)."
+                },
+                {
+                    "nom": "cascade",
+                    "statique": true,
+                    "resume": "La cascade « où part l'argent d'une unité vendue » : le prix de"
+                },
+                {
+                    "nom": "aRetenir",
+                    "statique": true,
+                    "resume": "« À retenir » : trois constats tirés du tableau."
+                },
+                {
+                    "nom": "mois",
+                    "statique": true,
+                    "resume": "Le mois demandé (« 2026-10 »), sinon le mois en cours ; jamais dans le futur."
+                },
+                {
+                    "nom": "libelleMois",
+                    "statique": true,
+                    "resume": "« octobre 2026 »."
+                }
+            ]
+        },
+        {
             "classe": "App\\Service\\Achats\\CalculsReception",
             "sorte": "classe",
             "module": "stock",
@@ -71838,6 +72054,62 @@
                 },
                 {
                     "nom": "estFeminin",
+                    "statique": true
+                }
+            ]
+        },
+        {
+            "classe": "App\\Service\\Achats\\CoutsMarges",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Coûts, marges et bénéfice brut par produit sur un mois (maquette SU04, docs/achats.md).",
+            "fichier": "src/Service/Achats/CoutsMarges.php",
+            "methodes_publiques": [
+                {
+                    "nom": "analyser"
+                },
+                {
+                    "nom": "moisPrecedent",
+                    "resume": "Bénéfice brut du mois d'avant, pour comparer : en entier pour un mois"
+                },
+                {
+                    "nom": "gacheDefaut"
+                },
+                {
+                    "nom": "gachesArticles"
+                },
+                {
+                    "nom": "coutsMachines"
+                },
+                {
+                    "nom": "reglages",
+                    "resume": "Ce que l'écran « Régler les coûts » montre : les machines avec leur"
+                },
+                {
+                    "nom": "enregistrer",
+                    "resume": "Enregistre la saisie de « Régler les coûts » dans la tuile (depuis le"
+                },
+                {
+                    "nom": "lireSaisie",
+                    "statique": true,
+                    "resume": "Saisie d'un tableau id => nombre : les id connus, les nombres entre 0"
+                },
+                {
+                    "nom": "articlePrincipal",
+                    "statique": true,
+                    "resume": "L'article principal : celui de la fiche produit, sinon la première matière liée active."
+                }
+            ]
+        },
+        {
+            "classe": "App\\Service\\Achats\\CoutsMargesDemo",
+            "sorte": "classe",
+            "module": "stock",
+            "resume": "Démonstration de « Coûts et marges » (app:demo, maquette SU04, docs/achats.md) : le transfert DTF A4 (film de Yinghe, vendu à la pièce, comme sur la maquette) et quelques gros travaux de vinyle, de micro-perforé et de kakémonos ce mois-ci et le mois d'avant, pour que les produits des fournisseurs des maquettes aient du volume.",
+            "fichier": "src/Service/Achats/CoutsMargesDemo.php",
+            "methodes_publiques": [
+                {
+                    "nom": "charger",
                     "statique": true
                 }
             ]
@@ -90774,7 +91046,7 @@
             {
                 "cle": "stock",
                 "libelle": "Stock et achats",
-                "detail": "articles, inventaire, réapprovisionnement, fournisseurs, commandes d'achat, réceptions",
+                "detail": "articles, inventaire, réapprovisionnement, fournisseurs, commandes d'achat, réceptions, coûts et marges",
                 "droits": [],
                 "fixe": "direction",
                 "niveaux_possibles": []
@@ -92433,6 +92705,13 @@
             },
             {
                 "controleur": "App\\Controller\\CoutLigneController",
+                "appels_isCsrfTokenValid": 1,
+                "routes_modifiant": 1,
+                "avec_jeton": 1,
+                "sans_jeton": []
+            },
+            {
+                "controleur": "App\\Controller\\CoutsMargesController",
                 "appels_isCsrfTokenValid": 1,
                 "routes_modifiant": 1,
                 "avec_jeton": 1,
@@ -96611,6 +96890,22 @@
                         "libelle": "Intervalle habituel dépassé de",
                         "type": "nombre",
                         "defaut": 20
+                    },
+                    {
+                        "cle": "gache_defaut_pourcent",
+                        "libelle": "Gâche comptée par défaut",
+                        "type": "nombre",
+                        "defaut": 8
+                    },
+                    {
+                        "cle": "gache_articles",
+                        "libelle": "Gâche mesurée par article",
+                        "type": "liste"
+                    },
+                    {
+                        "cle": "couts_machine_m2",
+                        "libelle": "Coût machine et main-d'œuvre au m² par machine",
+                        "type": "liste"
                     }
                 ],
                 "publique": false
@@ -98483,6 +98778,14 @@
             "titre": "CoutLigneController",
             "quoi_verifier": "Chaque action de CoutLigneController (1 route) vérifie ses droits (ROLE_USER, ROLE_COUT_MARGE) et le jeton CSRF sur les 1 route qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
             "fichier": "src/Controller/CoutLigneController.php"
+        },
+        {
+            "id": "controleur:App\\Controller\\CoutsMargesController",
+            "type": "controleur",
+            "module": "stock",
+            "titre": "CoutsMargesController",
+            "quoi_verifier": "Chaque action de CoutsMargesController (3 routes) vérifie ses droits (ROLE_ADMIN) et le jeton CSRF sur les 1 route qui modifient des données ; les montants, données personnelles et fichiers de ses pages ne se montrent qu'aux droits prévus.",
+            "fichier": "src/Controller/CoutsMargesController.php"
         },
         {
             "id": "controleur:App\\Controller\\CoutsRevientController",
@@ -102475,6 +102778,30 @@
             "titre": "POST /corbeille/{id}/supprimer",
             "quoi_verifier": "POST /corbeille/{id}/supprimer (CorbeilleController::supprimer) n'est ouverte qu'avec ROLE_USER (access_control), puis CORBEILLE (#[IsGranted]) et vérifie le jeton CSRF (dans l'action).",
             "fichier": "src/Controller/CorbeilleController.php"
+        },
+        {
+            "id": "route:app_couts_marges_export",
+            "type": "route",
+            "module": "stock",
+            "titre": "GET /achats/couts-marges/export",
+            "quoi_verifier": "GET /achats/couts-marges/export (CoutsMargesController::export) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) ; les montants payés et les restes dus ne s'affichent qu'avec ROLE_PAIEMENT_VOIR, les coûts et marges qu'avec ROLE_COUT_MARGE ; un fichier est servi après vérification des droits (FichierEnvoye::reponse), jamais depuis public/.",
+            "fichier": "src/Controller/CoutsMargesController.php"
+        },
+        {
+            "id": "route:app_couts_marges_index",
+            "type": "route",
+            "module": "stock",
+            "titre": "GET /achats/couts-marges",
+            "quoi_verifier": "GET /achats/couts-marges (CoutsMargesController::index) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) ; les montants payés et les restes dus ne s'affichent qu'avec ROLE_PAIEMENT_VOIR, les coûts et marges qu'avec ROLE_COUT_MARGE.",
+            "fichier": "src/Controller/CoutsMargesController.php"
+        },
+        {
+            "id": "route:app_couts_marges_reglages",
+            "type": "route",
+            "module": "stock",
+            "titre": "GET|POST /achats/couts-marges/reglages",
+            "quoi_verifier": "GET|POST /achats/couts-marges/reglages (CoutsMargesController::reglages) n'est ouverte qu'avec ROLE_ADMIN (access_control), puis ROLE_ADMIN (#[IsGranted]) et vérifie le jeton CSRF (dans l'action) ; les montants payés et les restes dus ne s'affichent qu'avec ROLE_PAIEMENT_VOIR, les coûts et marges qu'avec ROLE_COUT_MARGE.",
+            "fichier": "src/Controller/CoutsMargesController.php"
         },
         {
             "id": "route:app_couts_revient_index",

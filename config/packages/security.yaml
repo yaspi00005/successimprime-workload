@@ -249,7 +249,7 @@ security:
         }
 
         - {
-            path: '^/tablette(/\d+)?$',
+            path: '^/tablette(/(?:\d+|[0-9A-Za-z]{9}))?$',
             roles: PUBLIC_ACCESS
         }
 
@@ -259,12 +259,12 @@ security:
         }
 
         - {
-            path: ^/factures/\d+/pdf-public/,
+            path: '^/factures/(?:\d+|[0-9A-Za-z]{9})/pdf-public/',
             roles: PUBLIC_ACCESS
         }
 
         - {
-            path: ^/devis/\d+/pdf-public/,
+            path: '^/devis/(?:\d+|[0-9A-Za-z]{9})/pdf-public/',
             roles: PUBLIC_ACCESS
         }
 
@@ -326,7 +326,7 @@ security:
         # ouverts aux ventes ; chaque contrôleur affine (écriture : Admin ;
         # prix spéciaux : aussi Promotions ; coûts : ROLE_COUT_MARGE).
         - {
-            path: '^/produits(/?$|/(export|nouveau|\d+|prix-speciaux|options)(/|$))',
+            path: '^/produits(/?$|/(export|nouveau|(?:\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))',
             roles: [ROLE_ADMIN, ROLE_COMMANDE, ROLE_DEVIS, ROLE_PROMOTIONS]
         }
 
@@ -361,7 +361,7 @@ security:
         # ============================================================
 
         - {
-            path: ^/articles/\d+/commande/ajax,
+            path: '^/articles/(?:\d+|[0-9A-Za-z]{9})/commande/ajax',
             roles: ROLE_COMMANDE
         }
 
@@ -467,19 +467,19 @@ security:
 
 
         - {
-            path: ^/paiements/\d+/edit$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})/edit$',
             roles: ROLE_PAIEMENT_ENCAISSER
         }
 
 
         - {
-            path: ^/paiements/\d+/delete$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})/delete$',
             roles: ROLE_PAIEMENT_ENCAISSER
         }
 
 
         - {
-            path: ^/paiements/\d+$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})$',
             methods: [POST, PUT, PATCH, DELETE],
             roles: ROLE_PAIEMENT_ENCAISSER
         }
@@ -524,7 +524,7 @@ security:
 
 
         - {
-            path: ^/gestion/tresorerie/mouvements/\d+/(edit|validate|cancel)$,
+            path: '^/gestion/tresorerie/mouvements/(?:\d+|[0-9A-Za-z]{9})/(edit|validate|cancel)$',
             roles: ROLE_TRESORERIE_SAISIR
         }
 
@@ -656,7 +656,7 @@ security:
         # bureau (ROLE_COMMANDE, entrée de son menu) ; TourneeController
         # vérifie le reste (bureau, livreur du bon, encaissement).
         - {
-            path: '^/livraisons/(planning|bl/\d+)',
+            path: '^/livraisons/(planning|bl/(?:\d+|[0-9A-Za-z]{9}))',
             roles: [ROLE_LIVRAISON, ROLE_COMMANDE]
         }
 

@@ -47,6 +47,7 @@ class CommandesType extends AbstractType
     {
         return [
             'class' => Clients::class,
+            'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
             'query_builder' => static function (
                 EntityRepository $er
             ) use ($inclureClientId) {

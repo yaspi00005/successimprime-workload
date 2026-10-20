@@ -128,7 +128,7 @@
 						{% for f in d.fichiers %}
 							{% set choisi = d.detail and d.detail.fichier.id == f.id %}
 							<li>
-								<a href="{{ base }}?{{ {sd: f.sousDossier, q: d.q, filtre: d.filtre, tri: d.tri, f: f.id}|filter(v => v)|url_encode }}#fichiers" class="dc-tuile {{ choisi ? 'actif' }}" data-dc-fichier="{{ f.id }}" {{ choisi ? 'aria-current="true"' }}>
+								<a href="{{ base }}?{{ {sd: f.sousDossier, q: d.q, filtre: d.filtre, tri: d.tri, f: f.id|code_id}|filter(v => v)|url_encode }}#fichiers" class="dc-tuile {{ choisi ? 'actif' }}" data-dc-fichier="{{ f.id|code_id }}" {{ choisi ? 'aria-current="true"' }}>
 									<span class="dc-vignette"><img src="{{ path('app_dossiers_clients_miniature', {id: f.id}) }}{{ f.miniature ? '?v=' ~ f.miniature|slice(0, 8) }}" alt="" loading="lazy" width="160" height="110"></span>
 									<span class="dc-nom">{{ _self.pastille(f.extension, pastilles) }}<span title="{{ f.nom }}">{{ f.nom }}</span></span>
 									<span class="dc-meta">

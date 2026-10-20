@@ -900,7 +900,8 @@ final class ClientsController extends AbstractController
         CompteTresorerieRepository $compteTresorerieRepository,
         \App\Security\AccesEnLigne $accesEnLigne,
         EntityManagerInterface $entityManager,
-        \App\Service\DossiersClients\ExplorateurDossier $explorateurDossier
+        \App\Service\DossiersClients\ExplorateurDossier $explorateurDossier,
+        \App\Routing\CodeId $codes
     ): Response {
         $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
         $maintenant = new \DateTimeImmutable();
@@ -956,7 +957,7 @@ final class ClientsController extends AbstractController
             // Onglet Fichiers : dossier du client sur le serveur de l'atelier (docs/dossiers-clients.md),
             // filtré par « Qui voit quoi » ; en ligne, ses fichiers publiés seulement.
             'dossier_fichiers' => $accesEnLigne->estEnLigne() || $this->isGranted(\App\Security\DossiersClientsVoter::VOIR)
-                ? $explorateurDossier->pourClient($client, $this->getUser() instanceof User ? $this->getUser() : null, \App\Controller\DossiersClientsController::choix($request))
+                ? $explorateurDossier->pourClient($client, $this->getUser() instanceof User ? $this->getUser() : null, \App\Controller\DossiersClientsController::choix($request, $codes))
                 : null,
         ]);
     }

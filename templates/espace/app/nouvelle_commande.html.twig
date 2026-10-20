@@ -337,7 +337,7 @@
 									<details class="co-recents"{{ choix.fichiers is defined and choix.fichiers is not empty ? ' open' }}>
 										<summary>Ou un fichier déjà envoyé</summary>
 										{% for f in mesFichiers %}
-											<label class="ec-choix-fichier"><input type="checkbox" name="fichiers[]" value="{{ f.id }}"{{ f.id ~ '' in choix.fichiers|default([]) ? ' checked' }}><span><b>{{ f.nomOriginal }}</b><span class="ec-petit"> · envoyé le {{ f.creeLe|date('d/m') }}</span></span></label>
+											<label class="ec-choix-fichier"><input type="checkbox" name="fichiers[]" value="{{ f.id }}" data-code="{{ f.id|code_id }}"{{ f.id ~ '' in choix.fichiers|default([]) ? ' checked' }}><span><b>{{ f.nomOriginal }}</b><span class="ec-petit"> · envoyé le {{ f.creeLe|date('d/m') }}</span></span></label>
 										{% endfor %}
 									</details>
 								{% endif %}

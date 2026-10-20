@@ -11,6 +11,7 @@ use App\Entity\PieceJointeMessage;
 use App\Entity\RoleUtilisateur;
 use App\Entity\User;
 use App\Repository\ConversationRepository;
+use App\Routing\CodeId;
 use App\Security\FichierEnvoye;
 use App\Security\MessagerieInterneVoter;
 use App\Security\MessagerieVoter;
@@ -317,7 +318,7 @@ final class MessagerieInterneController extends AbstractController
 
     /** Recherche d'un client, d'un devis ou d'une commande (groupe de projet, dossier du client). */
     #[Route('/liaisons', name: 'liaisons', methods: ['GET'])]
-    public function liaisons(Request $request): JsonResponse
+    public function liaisons(Request $request, CodeId $codes): JsonResponse
     {
         $q = trim((string) $request->query->get('q', ''));
         $seulementClients = $request->query->getBoolean('clients');
@@ -326,7 +327,7 @@ final class MessagerieInterneController extends AbstractController
             $motif = '%'.addcslashes($q, '%_\\').'%';
             if ($this->isGranted('ROLE_CLIENT') || $this->isGranted('ROLE_COMMANDE') || $this->isGranted('ROLE_DEVIS') || $this->isGranted('ROLE_PREPRESSE')) {
                 foreach ($this->em->createQuery('SELECT c FROM '.Clients::class.' c WHERE c.code LIKE :q OR c.nom LIKE :q OR c.prenom LIKE :q OR c.raisonSociale LIKE :q ORDER BY c.id DESC')->setParameter('q', $motif)->setMaxResults(8)->getResult() as $cl) {
-                    $resultats[] = ['valeur' => 'client:'.$cl->getId(), 'id' => $cl->getId(), 'genre' => 'client', 'libelle' => $cl->getCode().' · '.$cl->getNomComplet()];
+                    $resultats[] = ['valeur' => 'client:'.$cl->getId(), 'id' => $cl->getId(), 'code' => $codes->coder((int) $cl->getId()), 'genre' => 'client', 'libelle' => $cl->getCode().' · '.$cl->getNomComplet()];
                 }
             }
             if (!$seulementClients && $this->isGranted('ROLE_DEVIS')) {

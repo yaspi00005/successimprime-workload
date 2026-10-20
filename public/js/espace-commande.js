@@ -409,7 +409,8 @@
 		if (nom === 'reception') majReception();
 		if (nom === 'paiement') libelleEnvoyer();
 		if (nom === 'adresse') majAdresse();
-		if (nom === 'fichiers[]' && e.target.checked) controler(+e.target.value, null);
+		// Le code chiffré du fichier (data-code) pour l'URL du contrôle (docs/ids-chiffres.md).
+		if (nom === 'fichiers[]' && e.target.checked) controler(e.target.dataset.code || String(e.target.value), null);
 		if (['produit', 'quantite', 'largeur', 'hauteur', 'unite_quantite', 'quantite_m2', 'finitions[]', 'delai', 'reception'].indexOf(nom) >= 0) changer();
 	});
 	form.addEventListener('input', function (e) {
@@ -438,7 +439,7 @@
 		attente.textContent = 'Contrôle en cours…';
 		liste.append(attente);
 		try {
-			const r = await fetch(D.controle.replace(/0$/, String(id)), {
+			const r = await fetch(D.controle.replace(/0$/, encodeURIComponent(String(id))), {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': D.jeton, 'Accept': 'application/json' },
 				body: JSON.stringify({ largeur: form.elements.largeur ? form.elements.largeur.value : '', hauteur: form.elements.hauteur ? form.elements.hauteur.value : '', unite: 'm', oeillets: !!oeillets() }),
@@ -533,7 +534,7 @@
 				etat.textContent = '';
 				barre.hidden = true;
 				const local = /^image\/(jpeg|png)$/.test(fichier.type) ? URL.createObjectURL(fichier) : null;
-				controler(recu.id, { image: local });
+				controler(recu.code || String(recu.id), { image: local });
 			} catch (e) {
 				etat.textContent = fichier.name + ' : ' + e.message;
 				barre.hidden = true;

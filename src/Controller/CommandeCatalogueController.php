@@ -8,6 +8,7 @@ use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Repository\ProduitConfigurationRepository;
+use App\Routing\CodeId;
 use App\Service\Catalogue\NomCommercial;
 use App\Service\Catalogue\PrixSpeciaux;
 use App\Service\Catalogue\TarifClient;
@@ -37,7 +38,8 @@ final class CommandeCatalogueController extends AbstractController
     )]
     public function configurationsProduit(
         Produits $produit,
-        ProduitConfigurationRepository $repository
+        ProduitConfigurationRepository $repository,
+        CodeId $codes
     ): JsonResponse {
         if (
             !$produit->isActif()
@@ -81,6 +83,9 @@ final class CommandeCatalogueController extends AbstractController
             $resultat[] = [
                 'id' =>
                     $configuration->getId(),
+
+                // Pour l'URL de la configuration, sans numéro lisible (docs/ids-chiffres.md).
+                'code' => $codes->coder((int) $configuration->getId()),
 
                 // Avec les noms commerciaux : la liste « Configuration » de la saisie les cherche aussi (docs/noms-commerciaux.md).
                 'libelle' =>

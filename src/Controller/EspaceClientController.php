@@ -10,6 +10,7 @@ use App\Entity\MessageClient;
 use App\Entity\TransactionOrangeMoney;
 use App\Repository\CompteClientRepository;
 use App\Repository\EntrepriseRepository;
+use App\Routing\CodeId;
 use App\Service\EspaceClient\CompteEntreprise;
 use App\Service\EspaceClient\AppareilsClient;
 use App\Service\EspaceClient\CoqueEspace;
@@ -416,7 +417,7 @@ final class EspaceClientController extends AbstractController
 
     /** Un morceau du fichier (corps brut), à la position annoncée. */
     #[Route('/fichiers/envoi/{jeton}', name: 'fichier_morceau', requirements: ['jeton' => '[a-f0-9]{64}'], methods: ['POST'])]
-    public function morceau(string $jeton, Request $request, FichiersClient $fichiers): JsonResponse
+    public function morceau(string $jeton, Request $request, FichiersClient $fichiers, CodeId $codes): JsonResponse
     {
         $this->jetonEntete($request);
         $f = $fichiers->trouverEnvoi($this->compte()->getClient(), $jeton) ?? throw $this->createNotFoundException();
@@ -426,7 +427,8 @@ final class EspaceClientController extends AbstractController
             return $this->json(['erreur' => $e->getMessage()], 422);
         }
         if ($etat['termine']) {
-            $etat['fichier'] = ['id' => $f->getId(), 'nom' => $f->getNomOriginal(), 'controle' => FichiersClient::resume($f->getAnalyse())];
+            // code : l'URL du contrôle du fichier, sans numéro lisible (docs/ids-chiffres.md).
+            $etat['fichier'] = ['id' => $f->getId(), 'code' => $codes->coder((int) $f->getId()), 'nom' => $f->getNomOriginal(), 'controle' => FichiersClient::resume($f->getAnalyse())];
         }
 
         return $this->json($etat);

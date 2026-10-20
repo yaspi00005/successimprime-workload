@@ -15,7 +15,7 @@
 		<p class="mi-systeme" id="m{{ m.id }}" data-id="{{ m.id }}">{{ m.contenu }} · {{ m.dateEnvoi|date('H:i') }}</p>
 	{% else %}
 		{% set moiAuteur = m.auteur and m.auteur.id == app.user.id %}
-		<article class="mi-msg {{ moiAuteur ? 'moi' }} {{ m.epingleLe ? 'epingle' }}" id="m{{ m.id }}" data-id="{{ m.id }}" data-auteur="{{ m.auteur|nom_equipe }}" data-apercu="{{ m.apercu(90) }}">
+		<article class="mi-msg {{ moiAuteur ? 'moi' }} {{ m.epingleLe ? 'epingle' }}" id="m{{ m.id }}" data-id="{{ m.id }}" data-code="{{ m.id|code_id }}" data-auteur="{{ m.auteur|nom_equipe }}" data-apercu="{{ m.apercu(90) }}">
 			{% include 'messagerie_interne/_avatar.html.twig' with {u: m.auteur} only %}
 			<div class="mi-msg-corps">
 				<p class="mi-msg-tete">

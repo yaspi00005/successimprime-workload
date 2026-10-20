@@ -171,11 +171,13 @@
 	// ---------------------------------------------------------------- réactions
 	var palette = document.getElementById('mi-emojis');
 	var paletteMessage = null;
-	function reagir(id, emoji) {
+	// msg : l'article du message ; son code chiffré (data-code) va dans l'URL (docs/ids-chiffres.md).
+	function reagir(msg, emoji) {
+		var id = msg.dataset.id;
 		var corps = new FormData();
 		corps.append('_token', d.csrf);
 		corps.append('emoji', emoji);
-		fetch(d.reactionUrl.replace(/\/0$/, '/' + id), {method: 'POST', body: corps, credentials: 'same-origin', headers: {Accept: 'application/json'}}).then(json).then(function (j) {
+		fetch(d.reactionUrl.replace(/\/0$/, '/' + (msg.dataset.code || id)), {method: 'POST', body: corps, credentials: 'same-origin', headers: {Accept: 'application/json'}}).then(json).then(function (j) {
 			var ancien = messages.querySelector('[data-reactions="' + id + '"]');
 			if (ancien) { ancien.outerHTML = j.html; }
 		}).catch(function (e) { alert(e.message); });
@@ -184,9 +186,9 @@
 		var msg = e.target.closest('.mi-msg');
 		if (!msg) { return; }
 		var r = e.target.closest('[data-reagir]');
-		if (r) { reagir(msg.dataset.id, r.dataset.reagir); return; }
+		if (r) { reagir(msg, r.dataset.reagir); return; }
 		if (e.target.closest('[data-emojis]') && palette) {
-			paletteMessage = msg.dataset.id;
+			paletteMessage = msg;
 			var b = e.target.closest('[data-emojis]').getBoundingClientRect(), f = racine.querySelector('.mi-fil').getBoundingClientRect();
 			palette.hidden = false;
 			palette.style.top = (b.bottom - f.top + 4) + 'px';
@@ -493,7 +495,7 @@
 	});
 	var autreClient = dlg.querySelector('.mi-dossier-client');
 	if (autreClient) {
-		rechercheLiaison(autreClient, dossier.querySelector('.mi-propositions'), {clients: true, genre: 'client'}, function (r) { autreClient.value = ''; chargerDossier(r.id); });
+		rechercheLiaison(autreClient, dossier.querySelector('.mi-propositions'), {clients: true, genre: 'client'}, function (r) { autreClient.value = ''; chargerDossier(r.code || r.id); });
 	}
 
 	boutonEnvoi.addEventListener('click', function () {

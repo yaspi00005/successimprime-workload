@@ -8,7 +8,7 @@
 {% set jeton = csrf_token('dossiers-clients') %}
 {% set logiciels = {ai: 'Illustrator', eps: 'Illustrator', psd: 'Photoshop', psb: 'Photoshop', indd: 'InDesign', idml: 'InDesign', cdr: 'CorelDRAW', pdf: 'Acrobat', afdesign: 'Affinity'} %}
 {% set logiciel = logiciels[f.extension|lower] ?? null %}
-{% set retour_url = base ~ '?' ~ {sd: f.sousDossier, f: f.id}|url_encode ~ '#fichiers' %}
+{% set retour_url = base ~ '?' ~ {sd: f.sousDossier, f: f.id|code_id}|url_encode ~ '#fichiers' %}
 <div class="dc-detail" data-dc-detail-id="{{ f.id }}">
 	<button type="button" class="dc-fermer" data-dc-fermer aria-label="Fermer le détail"><i class="fas fa-times"></i></button>
 	<div class="dc-apercu"><img src="{{ path('app_dossiers_clients_miniature', {id: f.id}) }}{{ f.miniature ? '?v=' ~ f.miniature|slice(0, 8) }}" alt="Aperçu de {{ f.nom }}"></div>
@@ -41,7 +41,7 @@
 					<b>v{{ v.version ?: loop.revindex }}</b>
 					<span>{{ v.modifieLe|date('d/m') }}</span>
 					<span class="dc-v-texte">
-						{% if l.bat %}{{ l.bat.titre }} · {{ {envoye: 'envoyé', valide: 'validé', refuse: 'refusé'}[l.bat.etat] }}{% elseif loop.last %}première version{% else %}<a href="{{ base }}?{{ {sd: v.sousDossier, f: v.id}|url_encode }}#fichiers" data-dc-fichier="{{ v.id }}">{{ v.nom }}</a>{% endif %}
+						{% if l.bat %}{{ l.bat.titre }} · {{ {envoye: 'envoyé', valide: 'validé', refuse: 'refusé'}[l.bat.etat] }}{% elseif loop.last %}première version{% else %}<a href="{{ base }}?{{ {sd: v.sousDossier, f: v.id|code_id}|url_encode }}#fichiers" data-dc-fichier="{{ v.id|code_id }}">{{ v.nom }}</a>{% endif %}
 					</span>
 					{% if l.bat and l.bat.etat == 'valide' %}<i class="fas fa-check dc-ok" aria-label="validé"></i>{% elseif l.bat and l.bat.etat == 'refuse' %}<i class="fas fa-undo dc-gris" aria-label="refusé"></i>{% endif %}
 				</li>

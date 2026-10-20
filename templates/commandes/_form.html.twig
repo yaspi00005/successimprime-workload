@@ -1516,6 +1516,13 @@ function construireUrl(modele, id) { /*
 return modele.replace(/\/0(\/|$)/, '/' + encodeURIComponent(id) + '$1');
 }
 
+/* Le code chiffré (data-code) du choix « id » de la liste, pour l'URL : pas de numéro lisible (docs/ids-chiffres.md). */
+function codeUrl(select, id) {
+const valeur = String(id ?? '');
+const option = select && select.options ? Array.from(select.options).find(function (o) { return o.value === valeur; }) : null;
+return option && option.dataset.code ? option.dataset.code : valeur;
+}
+
 
 /*
          * ====================================================
@@ -2611,7 +2618,7 @@ message.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
 
 try {
 
-const response = await fetch(construireUrl(articleCommandeUrl, select.value), {
+const response = await fetch(construireUrl(articleCommandeUrl, codeUrl(select, select.value)), {
 headers: {
 Accept: 'application/json'
 }
@@ -2717,7 +2724,7 @@ return;
 
 try {
 
-const url = construireUrl(configurationsProduitUrl, produit.value);
+const url = construireUrl(configurationsProduitUrl, codeUrl(produit, produit.value));
 console.log('[DEBUG] chargerConfigurationsProduit() : fetch vers', url);
 
 const response = await fetch(url);
@@ -2737,6 +2744,9 @@ configs.forEach(function (config) {
 const option = document.createElement('option');
 
 option.value = config.id;
+if (config.code) {
+option.dataset.code = config.code;
+}
 
 option.textContent = config.libelle || config.nom || ('Configuration ' + config.id);
 
@@ -2961,7 +2971,7 @@ return;
 try {
 
 // Le client choisi : paliers et prix négocié des configurations (docs/produits.md).
-const response = await fetch(construireUrl(optionsManuellesUrl, produit.value) + (clientSelect && clientSelect.value ? '?client=' + encodeURIComponent(clientSelect.value) : ''));
+const response = await fetch(construireUrl(optionsManuellesUrl, codeUrl(produit, produit.value)) + (clientSelect && clientSelect.value ? '?client=' + encodeURIComponent(codeUrl(clientSelect, clientSelect.value)) : ''));
 
 const json = await response.json();
 
@@ -3040,11 +3050,11 @@ return;
 
 try {
 
-let url = construireUrl(configurationUrl, configuration.value);
+let url = construireUrl(configurationUrl, codeUrl(configuration, configuration.value));
 
 // Prix négocié du client choisi (docs/produits.md) : le serveur le renvoie dans prixSpecial.
 if (clientSelect && clientSelect.value) {
-url += (url.indexOf('?') === -1 ? '?' : '&') + 'client=' + encodeURIComponent(clientSelect.value);
+url += (url.indexOf('?') === -1 ? '?' : '&') + 'client=' + encodeURIComponent(codeUrl(clientSelect, clientSelect.value));
 }
 console.log('[DEBUG] chargerConfiguration() : fetch vers', url);
 

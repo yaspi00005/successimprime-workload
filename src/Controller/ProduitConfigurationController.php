@@ -10,6 +10,7 @@ use App\Repository\ProduitConfigurationRepository;
 use App\Repository\ProduitsRepository;
 use App\Repository\SupportsRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Routing\CodeId;
 use App\Service\Catalogue\NomCommercial;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
@@ -713,7 +714,8 @@ final class ProduitConfigurationController extends AbstractController
     )]
     public function parProduit(
         Produits $produit,
-        ProduitConfigurationRepository $configurationRepository
+        ProduitConfigurationRepository $configurationRepository,
+        CodeId $codes
     ): JsonResponse {
         $configurations = $configurationRepository->findBy(
             [
@@ -729,7 +731,7 @@ final class ProduitConfigurationController extends AbstractController
         $resultats = array_map(
             function (
                 ProduitConfiguration $configuration
-            ): array {
+            ) use ($codes): array {
                 $typeImpression =
                     $configuration->getTypeImpression();
 
@@ -741,6 +743,8 @@ final class ProduitConfigurationController extends AbstractController
 
                 return [
                     'id' => $configuration->getId(),
+                    // Pour l'URL de la configuration, sans numéro lisible (docs/ids-chiffres.md).
+                    'code' => $codes->coder((int) $configuration->getId()),
 
                     // Avec les noms commerciaux : la liste de saisie les cherche aussi (docs/noms-commerciaux.md).
                     'libelle' => NomCommercial::texteConfigurationInterne($configuration),

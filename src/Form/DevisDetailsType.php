@@ -75,6 +75,7 @@ class DevisDetailsType extends AbstractType
             ])
             ->add('article', EntityType::class, [
                 'class' => Articles::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
 
                 'choice_label' => static function (
                     Articles $article
@@ -134,6 +135,7 @@ class DevisDetailsType extends AbstractType
 
             ->add('produit', EntityType::class, [
                 'class' => Produits::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
                 // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
                 'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 // La désignation de la ligne reste le nom technique seul (le nom commercial s'affiche à côté).
@@ -151,6 +153,7 @@ class DevisDetailsType extends AbstractType
 
             ->add('produitConfiguration', EntityType::class, [
                 'class' => ProduitConfiguration::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
                 // Désignations et noms commerciaux : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
                 'choice_label' => static fn (ProduitConfiguration $c): string => NomCommercial::texteConfigurationInterne($c),
                 'choice_attr' => static function (

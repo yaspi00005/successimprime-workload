@@ -27,7 +27,10 @@
             if (!/^\d+$/.test(id)) {
                 return;
             }
-            fetch(champ.dataset.url.replace('__id__', id), {credentials: 'same-origin', headers: {Accept: 'application/json'}})
+            // Le code chiffré du client (data-code) dans l'URL : pas de numéro lisible (docs/ids-chiffres.md).
+            var option = select.selectedIndex >= 0 ? select.options[select.selectedIndex] : null;
+            var code = option && option.value === id && option.dataset.code ? option.dataset.code : id;
+            fetch(champ.dataset.url.replace('__id__', encodeURIComponent(code)), {credentials: 'same-origin', headers: {Accept: 'application/json'}})
                 .then(function (r) { return r.ok ? r.json() : {interlocuteurs: []}; })
                 .then(function (donnees) {
                     if (numero !== demande) {

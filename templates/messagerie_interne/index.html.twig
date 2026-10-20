@@ -26,7 +26,7 @@
 			data-envoyer-url="{{ path('app_messagerie_interne_envoyer', {jeton: c.jeton}) }}"
 			data-reaction-url="{{ path('app_messagerie_interne_reaction', {jeton: c.jeton, id: 0}) }}"
 			data-dossier-url="{{ path('app_messagerie_interne_dossier_client', {jeton: c.jeton}) }}"
-			data-client="{{ c.client ? c.client.id }}"
+			data-client="{{ c.client ? c.client.id|code_id }}"
 			data-membres="{{ membres|filter(x => x.utilisateur.id != moi.id)|map(x => {id: x.utilisateur.id, nom: x.utilisateur|nom_equipe, pseudo: x.utilisateur|pseudo_equipe})|json_encode }}"
 		{% endif %}>
 		{% include 'messagerie_interne/_liste.html.twig' %}

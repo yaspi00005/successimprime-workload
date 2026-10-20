@@ -1218,7 +1218,7 @@ if (! produit || ! produit.value) {
 return;
 }
 try {
-const reponse = await fetch(construireUrl(optionsManuellesUrl, produit.value) + (clientSaisie && clientSaisie.value ? '?client=' + encodeURIComponent(clientSaisie.value) : ''));
+const reponse = await fetch(construireUrl(optionsManuellesUrl, codeUrl(produit, produit.value)) + (clientSaisie && clientSaisie.value ? '?client=' + encodeURIComponent(codeUrl(clientSaisie, clientSaisie.value)) : ''));
 const json = await reponse.json();
 detail.dataset.paliers = JSON.stringify(json.paliers || []);
 calculerDetail(detail);
@@ -1285,6 +1285,13 @@ const configurationsParDetail = new WeakMap();
 
 function construireUrl(url, id) {
 return url.replace('/0/', '/' + encodeURIComponent(id) + '/');
+}
+
+/* Le code chiffré (data-code) du choix « id » de la liste, pour l'URL : pas de numéro lisible (docs/ids-chiffres.md). */
+function codeUrl(select, id) {
+const valeur = String(id ?? '');
+const option = select && select.options ? Array.from(select.options).find(function (o) { return o.value === valeur; }) : null;
+return option && option.dataset.code ? option.dataset.code : valeur;
 }
 
 
@@ -2239,7 +2246,7 @@ return;
 
 try {
 
-const response = await fetch(construireUrl(optionsManuellesUrl, produitId));
+const response = await fetch(construireUrl(optionsManuellesUrl, codeUrl(champDetail(detail, 'produit'), produitId)));
 
 const json = await response.json();
 
@@ -2319,7 +2326,7 @@ information.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
 
 
 try {
-const url = construireUrl(articleUrl, select.value);
+const url = construireUrl(articleUrl, codeUrl(select, select.value));
 
 
 console.log('URL article appelée :', url);
@@ -2416,7 +2423,7 @@ return;
 
 
 try {
-const url = construireUrl(configurationsProduitUrl, produitId);
+const url = construireUrl(configurationsProduitUrl, codeUrl(champDetail(detail, 'produit'), produitId));
 
 
 console.log('Chargement configurations :', url);
@@ -2451,6 +2458,9 @@ configurations.forEach(function (configuration) {
 const option = document.createElement('option');
 
 option.value = configuration.id;
+if (configuration.code) {
+option.dataset.code = configuration.code;
+}
 
 option.textContent = configuration.libelle || configuration.nom || ('Configuration ' + configuration.id);
 
@@ -2501,7 +2511,7 @@ return;
 
 
 try {
-const url = construireUrl(configurationUrl, configurationId);
+const url = construireUrl(configurationUrl, codeUrl(champDetail(detail, 'configuration'), configurationId));
 
 
 console.log('Chargement configuration :', url);

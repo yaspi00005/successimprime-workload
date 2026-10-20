@@ -9,6 +9,7 @@ use App\Entity\FichierDossier;
 use App\Entity\FichierPublie;
 use App\Entity\LienDossierClient;
 use App\Entity\User;
+use App\Routing\CodeId;
 use App\Security\DossiersClientsVoter;
 use App\Service\DossiersClients\AnalyseDossiers;
 use App\Service\DossiersClients\ClassementFichiers;
@@ -58,6 +59,7 @@ final class DossiersClientsController extends AbstractController
         private readonly ReglagesDossiers $reglages,
         private readonly EntityManagerInterface $em,
         private readonly JournalDossiers $journal,
+        private readonly CodeId $codes,
     ) {
     }
 
@@ -70,7 +72,7 @@ final class DossiersClientsController extends AbstractController
 
         return $this->render('dossiers_clients/client.html.twig', [
             'client' => $client,
-            'dossier' => $explorateur->pourClient($client, $this->moi(), self::choix($request)),
+            'dossier' => $explorateur->pourClient($client, $this->moi(), self::choix($request, $this->codes)),
             'base' => $this->generateUrl('app_dossiers_clients_client', ['publicId' => $client->getPublicId()]),
         ]);
     }
@@ -229,7 +231,7 @@ final class DossiersClientsController extends AbstractController
                 $f = $classement->deposer($client, $sd, (string) $fichier->getPathname(), (string) $fichier->getClientOriginalName(), $this->moi() ?? throw $this->createAccessDeniedException());
                 $this->addFlash('success', \sprintf('« %s » est rangé dans %s.', $f->getNom(), $this->reglages->modele()->libelle($sd)));
 
-                return $this->redirect($this->base($request, $client).'?'.http_build_query(['sd' => $sd, 'f' => $f->getId()]).'#fichiers');
+                return $this->redirect($this->base($request, $client).'?'.http_build_query(['sd' => $sd, 'f' => $this->codes->coder((int) $f->getId())]).'#fichiers');
             } catch (\DomainException $e) {
                 $this->addFlash('danger', $e->getMessage());
             }
@@ -671,12 +673,19 @@ final class DossiersClientsController extends AbstractController
 
     /* ===================== Outils ===================== */
 
-    /** @return array{sd?: string, q?: string, filtre?: string, tri?: string, f?: int} */
-    public static function choix(Request $request): array
+    /**
+     * « ?f= » porte le code chiffré du fichier (docs/ids-chiffres.md) ; un
+     * ancien lien avec le numéro marche encore.
+     *
+     * @return array{sd?: string, q?: string, filtre?: string, tri?: string, f?: int}
+     */
+    public static function choix(Request $request, ?CodeId $codes = null): array
     {
         $q = $request->query;
+        $f = (string) $q->get('f', '');
+        $fichier = null !== $codes && CodeId::estCode($f) ? ($codes->decoder($f) ?? 0) : Entree::entier($q, 'f');
 
-        return ['sd' => (string) $q->get('sd', ''), 'q' => mb_substr((string) $q->get('q', ''), 0, 100), 'filtre' => (string) $q->get('filtre', ''), 'tri' => (string) $q->get('tri', ''), 'f' => Entree::entier($q, 'f')];
+        return ['sd' => (string) $q->get('sd', ''), 'q' => mb_substr((string) $q->get('q', ''), 0, 100), 'filtre' => (string) $q->get('filtre', ''), 'tri' => (string) $q->get('tri', ''), 'f' => $fichier];
     }
 
     private function moi(): ?User
@@ -776,7 +785,7 @@ final class DossiersClientsController extends AbstractController
 
     private function retour(Request $request, FichierDossier $f): Response
     {
-        return $this->redirect($this->base($request, $f->getClient()).'?'.http_build_query(['sd' => $f->getSousDossier(), 'f' => $f->getId()]).'#fichiers');
+        return $this->redirect($this->base($request, $f->getClient()).'?'.http_build_query(['sd' => $f->getSousDossier(), 'f' => $this->codes->coder((int) $f->getId())]).'#fichiers');
     }
 
     /** Miniature (déjà faite par l'analyse), sinon une icône du type. */

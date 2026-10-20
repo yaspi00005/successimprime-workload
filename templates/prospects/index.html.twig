@@ -69,7 +69,7 @@
 					{% for p in colonnes[etape] %}
 						{% set relance_due = p.prochaineRelance and p.prochaineRelance|date('Y-m-d') <= aujourdhui %}
 						<button type="button" class="si-prospect" data-si-ouvrir="si-dialogue-prospect"
-							data-id="{{ p.id }}" data-nom="{{ p.nom }}" data-telephone="{{ p.telephone }}" data-besoin="{{ p.besoin }}"
+							data-id="{{ p.id|code_id }}" data-nom="{{ p.nom }}" data-telephone="{{ p.telephone }}" data-besoin="{{ p.besoin }}"
 							data-montant="{{ p.montantEstime }}" data-source="{{ p.source }}" data-etape="{{ p.etape }}"
 							data-relance="{{ p.prochaineRelance ? p.prochaineRelance|date('Y-m-d') }}" data-motif="{{ p.motifPerte }}"
 							data-client="{{ p.client ? path('app_clients_show', {publicId: p.client.publicId}) }}"

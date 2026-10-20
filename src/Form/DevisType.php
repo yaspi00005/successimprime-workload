@@ -49,6 +49,7 @@ class DevisType extends AbstractType
 
             ->add('clients', EntityType::class, [
                 'class' => Clients::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
                 'choice_label' => static function (
                     Clients $client
                 ): string {

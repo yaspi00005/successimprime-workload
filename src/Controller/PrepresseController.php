@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
+use App\Entity\CommandesDetails;
 use App\Entity\User;
 use App\Service\Prepresse\AssociationFormats;
 use App\Service\Prepresse\DepotFichiers;
@@ -72,6 +73,7 @@ final class PrepresseController extends AbstractController
             'ouverte' => $request->query->getInt('commande'),
             'aRelancer' => \count(array_filter($commandes, static fn (array $c): bool => $c['manquants'] > 0 && $c['clientJoignable'])),
             'partage' => \count($this->partage->fichiers()),
+            'retirees' => $this->liste->nombreRetirees(),
             // Les nouveaux travaux à contrôler font sonner la page (comme l'ancienne file).
             'idsAControler' => array_merge(...array_map(static fn (array $c): array => array_column(array_filter($c['formats'], static fn (array $f): bool => EtatPrepresse::A_CONTROLER === $f['etat']), 'id'), $commandes) ?: [[]]),
         ]);
@@ -328,6 +330,70 @@ final class PrepresseController extends AbstractController
         } catch (\Throwable) {
             return [];
         }
+    }
+
+    /**
+     * « Retirer de la liste » : les lignes sans fichier d'une commande (ou
+     * une seule, avec « ligne ») quittent la liste de la prépresse. La
+     * commande n'est ni clôturée ni supprimée ; « Remettre dans la liste »
+     * la ramène (docs/prepresse.md).
+     */
+    #[Route('/commande/{id}/retirer', name: 'retirer', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function retirer(Commandes $commande, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('prepresse-retirer', (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'La page a expiré. Rechargez-la.');
+
+            return $this->redirectToRoute('app_controle_pre_presse_index', ['onglet' => EtatPrepresse::SANS_FICHIER]);
+        }
+        $ligne = $request->request->getInt('ligne');
+        $maintenant = new \DateTimeImmutable();
+        $moi = $this->moi();
+        $par = trim((string) $moi->getEmploye()?->getNomComplet()) ?: $moi->getUsername();
+        $retirees = 0;
+        foreach (DepotFichiers::lignes($commande) as $l) {
+            // Seulement les lignes encore sans fichier et pas commencées au contrôle.
+            if ((0 !== $ligne && $l->getId() !== $ligne) || DepotFichiers::aFichier($l) || !$l->getControlesPrePresse()->isEmpty()) {
+                continue;
+            }
+            $l->retirerDePrepresse($maintenant, $par);
+            ++$retirees;
+        }
+        $this->em->flush();
+        $this->addFlash(
+            $retirees > 0 ? 'success' : 'error',
+            $retirees > 0
+                ? \sprintf('%s : %d ligne%s sans fichier retirée%s de la liste. La commande n\'est ni clôturée ni supprimée.', $commande->getNumero(), $retirees, $retirees > 1 ? 's' : '', $retirees > 1 ? 's' : '')
+                : 'Rien à retirer : seules les lignes encore sans fichier peuvent quitter la liste.',
+        );
+
+        return $this->redirectToRoute('app_controle_pre_presse_index', ['onglet' => EtatPrepresse::SANS_FICHIER]);
+    }
+
+    /** Les lignes retirées de la liste, avec « Remettre dans la liste ». */
+    #[Route('/retirees', name: 'retirees', methods: ['GET'])]
+    public function retirees(): Response
+    {
+        return $this->render('controle_pre_presse/retirees.html.twig', [
+            'lignes' => $this->liste->retirees(),
+        ]);
+    }
+
+    #[Route('/ligne/{id}/remettre', name: 'remettre', requirements: ['id' => '\d+'], methods: ['POST'])]
+    public function remettre(CommandesDetails $ligne, Request $request): Response
+    {
+        if (!$this->isCsrfTokenValid('prepresse-retirer', (string) $request->request->get('_token'))) {
+            $this->addFlash('error', 'La page a expiré. Rechargez-la.');
+
+            return $this->redirectToRoute('app_controle_pre_presse_retirees');
+        }
+        if (null !== $ligne->getRetirePrepresseLe()) {
+            $ligne->remettreEnPrepresse();
+            $this->em->flush();
+            $this->addFlash('success', \sprintf('%s : la ligne %s est revenue dans la liste de la prépresse.', $ligne->getCommande()?->getNumero(), DepotFichiers::libelleFormat($ligne)));
+        }
+
+        return $this->redirectToRoute('app_controle_pre_presse_retirees');
     }
 
     private function moi(): User

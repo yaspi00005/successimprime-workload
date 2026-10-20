@@ -47,7 +47,7 @@ final class ListePrepresse
             ->leftJoin('d.format', 'fo')
             ->leftJoin('d.support', 's')
             ->where('c.deleted = false AND c.statut = true')
-            ->andWhere('d.prePresseNecessaire = true AND d.statutProduction = :a')
+            ->andWhere('d.prePresseNecessaire = true AND d.statutProduction = :a AND d.retirePrepresseLe IS NULL')
             ->setParameter('a', CommandesDetails::PRODUCTION_A_PRODUIRE)
             ->orderBy('c.dateCommande', 'ASC')->addOrderBy('d.id', 'ASC')
             ->getQuery()->getResult();
@@ -63,6 +63,45 @@ final class ListePrepresse
         }
 
         return $lignes;
+    }
+
+    /**
+     * Lignes sans fichier retirées de la liste (« Retirer de la liste ») :
+     * la commande n'est ni clôturée ni supprimée, on peut la remettre.
+     *
+     * @return list<array<string, mixed>> les plus récemment retirées d'abord
+     */
+    public function retirees(): array
+    {
+        /** @var list<CommandesDetails> $lignes */
+        $lignes = $this->em->createQueryBuilder()
+            ->select('d', 'c', 'cl')
+            ->from(CommandesDetails::class, 'd')
+            ->join('d.commande', 'c')
+            ->leftJoin('c.clients', 'cl')
+            ->where('c.deleted = false AND c.statut = true')
+            ->andWhere('d.prePresseNecessaire = true AND d.statutProduction = :a AND d.retirePrepresseLe IS NOT NULL')
+            ->setParameter('a', CommandesDetails::PRODUCTION_A_PRODUIRE)
+            ->orderBy('d.retirePrepresseLe', 'DESC')->addOrderBy('d.id', 'ASC')
+            ->getQuery()->getResult();
+
+        return array_map(static fn (CommandesDetails $l): array => [
+            'id' => $l->getId(),
+            'commandeId' => $l->getCommande()?->getId(),
+            'numero' => (string) $l->getCommande()?->getNumero(),
+            'client' => self::nomClient($l->getCommande()?->getClients()),
+            'format' => DepotFichiers::libelleFormat($l),
+            'quantite' => $l->getQuantite(),
+            'retireLe' => $l->getRetirePrepresseLe(),
+            'retirePar' => $l->getRetirePrepressePar(),
+        ], $lignes);
+    }
+
+    /** Nombre de lignes retirées de la liste, pour le lien « Retirées ». */
+    public function nombreRetirees(): int
+    {
+        return (int) $this->em->createQuery('SELECT COUNT(d.id) FROM '.CommandesDetails::class.' d JOIN d.commande c WHERE c.deleted = false AND c.statut = true AND d.prePresseNecessaire = true AND d.statutProduction = :a AND d.retirePrepresseLe IS NOT NULL')
+            ->setParameter('a', CommandesDetails::PRODUCTION_A_PRODUIRE)->getSingleScalarResult();
     }
 
     /**
@@ -202,6 +241,8 @@ final class ListePrepresse
                 'largeurMm' => $mm[0] ?? null,
                 'hauteurMm' => $mm[1] ?? null,
                 'retour' => $retour?->getLibelleMotifs(),
+                // « Retirer de la liste » : sans fichier et pas encore au contrôle.
+                'retirable' => EtatPrepresse::SANS_FICHIER === $etat && null === $controle,
             ];
         }
         $compte = array_fill_keys([EtatPrepresse::SANS_FICHIER, EtatPrepresse::A_CONTROLER, EtatPrepresse::RETOUR, EtatPrepresse::BAT, EtatPrepresse::PRET], 0);
@@ -239,6 +280,7 @@ final class ListePrepresse
             'total' => \count($formats),
             'recus' => \count($formats) - $manquants,
             'manquants' => $manquants,
+            'retirables' => \count(array_filter($formats, static fn (array $f): bool => $f['retirable'])),
             'compte' => $compte,
             'onglets' => EtatPrepresse::onglets($etats),
             'age' => EtatPrepresse::age($depuis, $maintenant),

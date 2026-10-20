@@ -49,7 +49,7 @@ final class DepotFichiers
     {
         return array_values(array_filter(
             $commande->getCommandesDetails()->toArray(),
-            static fn (CommandesDetails $l): bool => $l->isPrePresseNecessaire() && CommandesDetails::PRODUCTION_A_PRODUIRE === $l->getStatutProduction(),
+            static fn (CommandesDetails $l): bool => $l->isPrePresseNecessaire() && CommandesDetails::PRODUCTION_A_PRODUIRE === $l->getStatutProduction() && null === $l->getRetirePrepresseLe(),
         ));
     }
 

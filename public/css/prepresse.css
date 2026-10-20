@@ -57,6 +57,10 @@
 .pq-btn.violet { background: var(--pq-violet); border-color: var(--pq-violet); color: #fff; }
 .pq-btn[disabled] { opacity: .5; cursor: not-allowed; }
 .pq-btn.petit { padding: 4px 9px; font-size: 12px; }
+.pq-btn.gris { color: #5B6472; }
+.pq-btn.gris:hover { background: #F1F3F6; }
+.pq-retirees td, .pq-retirees th { padding: 10px 12px; border-bottom: 1px solid var(--pq-bord); vertical-align: middle; }
+.pq-retirees { width: 100%; border-collapse: collapse; }
 
 /* Badges */
 .pq-badge { display: inline-flex; align-items: center; gap: 4px; border-radius: 999px; padding: 2px 9px; font-size: 12px; font-weight: 700; white-space: nowrap; background: #EEF1F6; color: #374151; }

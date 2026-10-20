@@ -58,6 +58,13 @@
 			{% elseif action.secondaire == 'deposer' %}
 				<button type="button" class="pq-btn" data-pq-deposer><i class="fas fa-paperclip"></i>Déposer</button>
 			{% endif %}
+			{% if c.retirables > 0 %}
+				{# Ne clôture ni ne supprime la commande : « Retirées » la remet dans la liste. #}
+				<form method="post" action="{{ path('app_controle_pre_presse_retirer', {id: c.id}) }}" class="d-inline" data-confirmer="Retirer {{ c.numero }} de la liste ?" data-confirmer-detail="{{ c.retirables }} ligne{{ c.retirables > 1 ? 's' }} sans fichier quitte{{ c.retirables > 1 ? 'nt' }} la liste. La commande n'est ni clôturée ni supprimée : « Retirées » la remet." data-confirmer-bouton="Retirer">
+					<input type="hidden" name="_token" value="{{ csrf_token('prepresse-retirer') }}">
+					<button type="submit" class="pq-btn gris" title="Retirer de la liste les {{ c.retirables }} ligne{{ c.retirables > 1 ? 's' }} sans fichier. La commande n'est ni clôturée ni supprimée."><i class="fas fa-eye-slash"></i>Retirer</button>
+				</form>
+			{% endif %}
 		</div>
 	</div>
 
@@ -89,6 +96,13 @@
 						<td class="text-end">
 							{% if f.etat == 'sans_fichier' %}
 								<button type="button" class="pq-btn petit" data-pq-deposer data-pq-ligne="{{ f.id }}" aria-label="Déposer le fichier du format {{ f.format }}"><i class="fas fa-paperclip"></i></button>
+								{% if f.retirable %}
+									<form method="post" action="{{ path('app_controle_pre_presse_retirer', {id: c.id}) }}" class="d-inline" data-confirmer="Retirer le format {{ f.format }} de la liste ?" data-confirmer-detail="La commande n'est ni clôturée ni supprimée : « Retirées » remet la ligne." data-confirmer-bouton="Retirer">
+										<input type="hidden" name="_token" value="{{ csrf_token('prepresse-retirer') }}">
+										<input type="hidden" name="ligne" value="{{ f.id }}">
+										<button type="submit" class="pq-btn petit gris" title="Retirer cette ligne de la liste (ni clôturée ni supprimée)" aria-label="Retirer le format {{ f.format }} de la liste"><i class="fas fa-eye-slash"></i></button>
+									</form>
+								{% endif %}
 							{% else %}
 								<a class="fw-bold" href="{{ path('app_controle_pre_presse_controler', {id: f.id}) }}">{{ f.etat == 'pret' ? 'Voir' : 'Contrôler' }}</a>
 							{% endif %}

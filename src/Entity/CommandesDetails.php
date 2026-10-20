@@ -277,6 +277,17 @@ class CommandesDetails
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $statutProductionAvantAnnulation = null;
 
+    /**
+     * Ligne sans fichier retirée de la liste de la prépresse (bouton
+     * « Retirer de la liste », docs/prepresse.md) : la commande n'est ni
+     * clôturée ni supprimée, et « Remettre dans la liste » l'y ramène.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $retirePrepresseLe = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $retirePrepressePar = null;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionDebuteLe = null;
 
@@ -2718,5 +2729,31 @@ public function validerModeCommande(
         }
 
         return $copie;
+    }
+
+    public function getRetirePrepresseLe(): ?\DateTimeImmutable
+    {
+        return $this->retirePrepresseLe;
+    }
+
+    public function getRetirePrepressePar(): ?string
+    {
+        return $this->retirePrepressePar;
+    }
+
+    public function retirerDePrepresse(\DateTimeImmutable $le, ?string $par): static
+    {
+        $this->retirePrepresseLe = $le;
+        $this->retirePrepressePar = null !== $par ? mb_substr($par, 0, 120) : null;
+
+        return $this;
+    }
+
+    public function remettreEnPrepresse(): static
+    {
+        $this->retirePrepresseLe = null;
+        $this->retirePrepressePar = null;
+
+        return $this;
     }
 }

@@ -897,7 +897,7 @@ public function controler(
 
                         $message =
                             sprintf(
-                                'Prépresse validé. L’ordre %s a été transmis à la production. Le plafond du client a augmenté de %s FCFA.',
+                                'Document transmis à la production (ordre %s). Le plafond du client a augmenté de %s FCFA.',
                                 $ordre->getNumero(),
                                 number_format(
                                     $bonusPlafond,
@@ -911,7 +911,7 @@ public function controler(
 
                         $message =
                             sprintf(
-                                'Prépresse validé. L’ordre %s a été transmis à la production.',
+                                'Document transmis à la production (ordre %s).',
                                 $ordre->getNumero()
                             );
                     }
@@ -1014,8 +1014,12 @@ public function controler(
 
             /*
              * ====================================================
-             * REDIRECTION VERS PRODUCTION
+             * TRANSMIS À LA PRODUCTION : ON RESTE À LA PRÉPRESSE
              * ====================================================
+             *
+             * Le graphiste n'a rien à faire côté production : il revient
+             * à sa liste avec le message « Document transmis à la
+             * production » (demande de Yaya, 20/10).
              */
 
             if (
@@ -1024,11 +1028,7 @@ public function controler(
                 $ordre !== null
             ) {
                 return $this->redirectToRoute(
-                    'app_production_show',
-                    [
-                        'id' =>
-                            $ordre->getId(),
-                    ]
+                    'app_controle_pre_presse_index'
                 );
             }
 

@@ -99,3 +99,10 @@ Une commande a toujours un client dans l'ERP (le formulaire l'exige). Rendre aus
 |---|---|---|---|
 | `app:dossier-partage:importer` | chaque minute | dans `scripts\windows\synchro.bat` | `* * * * * cd /chemin/du/projet && php bin/console app:dossier-partage:importer -q` |
 | `app:prepresse:relances` | chaque heure | dans `scripts\windows\devis_relances.bat` | `5 * * * * cd /chemin/du/projet && php bin/console app:prepresse:relances -q` |
+
+## Après la validation, et lignes sans fichier retirées (20/10)
+
+- « Valider et envoyer en production » ramène le graphiste à la liste de la prépresse avec le message « Document transmis à la production (ordre …) ». Il n'a plus à passer par l'écran de production.
+- « Retirer » (sur la commande) ou l'icône œil barré (sur un format) enlève de la liste les lignes encore sans fichier et pas commencées au contrôle. La commande n'est ni clôturée ni supprimée : les champs `retire_prepresse_le` et `retire_prepresse_par` de `commandes_details` gardent la date et la personne.
+- Le lien « Retirées · N » de la liste ouvre `/pre-presse/retirees`, où « Remettre dans la liste » ramène la ligne.
+- Une ligne retirée n'est plus relancée et ne reçoit plus les fichiers du dossier partagé : il faut la remettre dans la liste d'abord.

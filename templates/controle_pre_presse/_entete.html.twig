@@ -6,7 +6,7 @@
 <header class="pq-entete">
 	{# Le fil (Atelier › …) et le titre sont dans l'en-tête commun (base.html.twig, bloc title). #}
 	<div class="pq-outils">
-		<form class="pq-recherche" method="get" action="{{ path(vue == 'liste' ? 'app_controle_pre_presse_index' : (vue == 'tableau' ? 'app_controle_pre_presse_tableau' : 'app_controle_pre_presse_relances')) }}" role="search">
+		<form class="pq-recherche" method="get" action="{{ path(vue == 'liste' ? 'app_controle_pre_presse_index' : (vue == 'tableau' ? 'app_controle_pre_presse_tableau' : (vue == 'relances' ? 'app_controle_pre_presse_relances' : 'app_controle_pre_presse_index'))) }}" role="search">
 			<i class="fas fa-search" aria-hidden="true"></i>
 			<input type="search" name="q" value="{{ recherche|default('') }}" placeholder="Commande, client, travail…" aria-label="Chercher une commande, un client ou un travail" data-pq-recherche>
 		</form>

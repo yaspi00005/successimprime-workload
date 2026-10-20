@@ -43,6 +43,9 @@
 					{% endfor %}
 				</nav>
 				<div class="pq-droite">
+					{% if retirees > 0 %}
+						<a class="pq-muet" href="{{ path('app_controle_pre_presse_retirees') }}" title="Lignes sans fichier retirées de la liste, à remettre si besoin"><i class="fas fa-eye-slash me-1"></i>Retirées · {{ retirees }}</a>
+					{% endif %}
 					<label class="pq-muet mb-0" for="pq-tri">Trier :</label>
 					<select id="pq-tri" class="pq-tri" data-pq-tri>
 						<option value="anciens">les plus anciens</option>

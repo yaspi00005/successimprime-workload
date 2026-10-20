@@ -107,7 +107,7 @@
 			const formats = c.querySelector('.pq-formats');
 			const bouton = c.querySelector('.pq-chevron');
 			tete.addEventListener('click', function (e) {
-				if (e.target.closest('a, [data-pq-deposer]')) { return; }
+				if (e.target.closest('a, form, [data-pq-deposer]')) { return; }
 				const ouvrir = formats.hidden;
 				formats.hidden = !ouvrir;
 				c.classList.toggle('ouverte', ouvrir);

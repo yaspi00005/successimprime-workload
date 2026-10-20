@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
 use App\Entity\Factures;
 use App\Entity\Paiements;
@@ -1432,6 +1433,10 @@ final class CommandesController extends AbstractController
             );
 
             foreach ($jetons as $jeton) {
+                // « d:<jeton> » : le fichier de découpe de la ligne (docs/prepresse.md).
+                $decoupe = str_starts_with($jeton, 'd:');
+                $jeton = $decoupe ? substr($jeton, 2) : $jeton;
+
                 if (!preg_match('/^[a-f0-9]{64}$/', $jeton)) {
                     throw new \RuntimeException(
                         'Un jeton de fichier est invalide.'
@@ -1464,6 +1469,10 @@ final class CommandesController extends AbstractController
                 }
 
                 $detail->addFichier($fichier);
+
+                if ($decoupe) {
+                    $fichier->setRole(CommandeDetailFichier::ROLE_DECOUPE);
+                }
             }
 
             // Évite de retraiter les mêmes jetons lors d’une modification.

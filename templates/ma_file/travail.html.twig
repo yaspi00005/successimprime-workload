@@ -49,6 +49,7 @@
 				{% if etatLie and etatLie != 'identique' and etatLie != 'hors_atelier' %}
 					<p class="si-pm-alerte">Fichier lié {{ etatLie == 'modifie' ? 'modifié depuis le lien' : 'introuvable' }} : n'imprimez pas, prévenez le prépresse.</p>
 				{% endif %}
+				{% include 'ma_file/_decoupe.html.twig' %}
 				{% if not peutAgir and raisonRefus and not o.estTermine %}
 					<p class="si-pm-alerte info"><i class="fas fa-info-circle me-1"></i>{{ raisonRefus }}</p>
 				{% endif %}

@@ -79,6 +79,10 @@ final class AiguillageCommandeController extends AbstractController
         }
         $produit = $ligne->getProduitClient();
         $lien = $ligne->getFichierLie();
+        // ?role=decoupe : le fichier de découpe lié avec le fichier à imprimer (docs/prepresse.md).
+        if ('decoupe' === $request->query->getString('role')) {
+            $lien = \is_array($lien['decoupe'] ?? null) ? $lien['decoupe'] : null;
+        }
         if (null === $produit || null === $lien) {
             throw $this->createNotFoundException('Cette ligne n\'a pas de fichier lié.');
         }

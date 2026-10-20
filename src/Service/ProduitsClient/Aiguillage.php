@@ -89,7 +89,7 @@ final class Aiguillage
         $lien = null !== $l && null !== $h ? $produit->fichierPourTaille($l, $h) : null;
         if (null !== $lien) {
             $verif = $this->liens->verifier($produit, $lien, $this->enLigne);
-            $fichier = ['nom' => (string) $lien['nom'], 'empreinte' => (string) $lien['empreinte'], 'le' => $lien['le'] ?? null, 'etat' => $verif['etat'], 'chemin' => $verif['chemin']];
+            $fichier = ['nom' => (string) $lien['nom'], 'empreinte' => (string) $lien['empreinte'], 'le' => $lien['le'] ?? null, 'etat' => $verif['etat'], 'chemin' => $verif['chemin'], 'lien' => $lien];
             $date = self::date($lien['le'] ?? null);
             $retenu = $ligne->getFichierLie();
             $nouvelleVersion = null !== $retenu && ($retenu['empreinte'] ?? null) !== $lien['empreinte'];
@@ -247,7 +247,9 @@ final class Aiguillage
             $ordre->transmettre();
             $ligne->setPrePresseNecessaire(false)->setBatValide(true)->setStatutProduction(CommandesDetails::PRODUCTION_A_PRODUIRE);
             if (null !== $a['fichier']) {
-                $ligne->setFichierLie(array_intersect_key($a['fichier'], array_flip(['nom', 'empreinte', 'le'])) + ['l' => self::tailleMm($ligne)[0], 'h' => self::tailleMm($ligne)[1]]);
+                // Le fichier de découpe lié avec lui suit dans la ligne (CommandeProduitClient::referenceLien).
+                $lien = ($a['fichier']['lien'] ?? $a['fichier']) + ['l' => 0, 'h' => 0];
+                $ligne->setFichierLie(['l' => self::tailleMm($ligne)[0], 'h' => self::tailleMm($ligne)[1]] + \App\Service\CommandeProduitClient::referenceLien($lien));
             }
             $this->em->persist($ordre);
             ++$crees;

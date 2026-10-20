@@ -54,13 +54,30 @@ final class LiensFichiers
      *
      * @throws \DomainException
      */
-    public function lier(ProduitClient $produit, string $nom, float $lMm, float $hMm, ?User $par, \DateTimeImmutable $maintenant): array
+    public function lier(ProduitClient $produit, string $nom, float $lMm, float $hMm, ?User $par, \DateTimeImmutable $maintenant, ?string $nomDecoupe = null, bool $decoupeSansFichier = false): array
     {
         if ($lMm <= 0 || $hMm <= 0 || $lMm > 10000 || $hMm > 100000) {
             throw new \DomainException('Indiquez la taille validée en mm.');
         }
+        $nomDecoupe = null !== $nomDecoupe && '' !== trim($nomDecoupe) ? trim($nomDecoupe) : null;
+        // Fichier de découpe (docs/prepresse.md) : demandé par une finition de découpe, sauf contour dans le fichier.
+        if (null === $nomDecoupe && !$decoupeSansFichier && $produit->besoinFichierDecoupe()) {
+            throw new \DomainException('Ce produit a une découpe : choisissez aussi le fichier de découpe dans le dossier du client, ou cochez « Découpe sans fichier séparé ».');
+        }
+        if (null !== $nomDecoupe && $nomDecoupe === $nom) {
+            throw new \DomainException('Le fichier de découpe doit être un autre fichier que celui à imprimer.');
+        }
         $prep = $this->preparer($produit, $nom, $lMm, $hMm);
         $empreinte = DossierClient::empreinte($prep['chemin']) ?? throw new \DomainException('Le fichier n\'a pas pu être lu sur le serveur.');
+        $decoupe = null;
+        if (null !== $nomDecoupe) {
+            $chemin = $this->dossiers->chemin($produit->getClient(), $nomDecoupe) ?? throw new \DomainException('Le fichier de découpe n\'est pas dans le dossier « Produits » du client.');
+            $decoupe = [
+                'nom' => basename($chemin),
+                'empreinte' => DossierClient::empreinte($chemin) ?? throw new \DomainException('Le fichier de découpe n\'a pas pu être lu sur le serveur.'),
+                'octets' => (int) filesize($chemin),
+            ];
+        }
         $lien = [
             'l' => round($lMm, 1),
             'h' => round($hMm, 1),
@@ -71,6 +88,11 @@ final class LiensFichiers
             'par' => null !== $par ? Pointages::nom($par) : null,
             'controles' => $prep['controles'],
         ];
+        if (null !== $decoupe) {
+            $lien['decoupe'] = $decoupe;
+        } elseif ($decoupeSansFichier) {
+            $lien['decoupeSansFichier'] = true;
+        }
         $produit->lierFichier($lien);
 
         return $lien;

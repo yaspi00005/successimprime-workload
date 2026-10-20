@@ -69,6 +69,9 @@
 											<small>{{ p.libelleTaille(f.l, f.h, p.rond) }} · lié le {{ f.le|date('d/m') }} ·
 												{% if etat == 'modifie' %}<b class="d-inline text-danger">fichier modifié depuis le lien</b>{% elseif etat == 'introuvable' %}<b class="d-inline text-danger">introuvable dans le dossier</b>{% else %}empreinte enregistrée{% endif %}
 											</small>
+											{% if f.decoupe is defined %}<small class="si-pcl-decoupe"><span class="si-pcl-badge decoupe">Découpe</span> {{ f.decoupe.nom }}</small>
+											{% elseif f.decoupeSansFichier|default(false) %}<small class="si-pcl-decoupe">Découpe sans fichier séparé</small>
+											{% elseif p.besoinFichierDecoupe %}<small class="si-pcl-decoupe manquant">Fichier de découpe manquant</small>{% endif %}
 										</span>
 										<button type="submit" class="si-pcl-mini" form="delier-{{ p.id }}-{{ loop.index }}" title="Retirer cette taille validée">retirer</button>
 									</div>
@@ -83,6 +86,16 @@
 								<input name="l" inputmode="decimal" value="{{ p.largeurMm ? p.largeurMm|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Largeur en mm" data-l> ×
 								<input name="h" inputmode="decimal" value="{{ p.hauteurMm ? p.hauteurMm|number_format(1, ',', '')|replace({',0': ''}) }}" aria-label="Hauteur en mm" data-h> mm
 							</label>
+							{# Fichier de découpe (docs/prepresse.md) : lié avec le fichier à imprimer, il suit à chaque commande. #}
+							<div class="si-pcl-decoupe-form" data-option{{ p.fichiersLies is not empty and not suspendu ? ' hidden' }}>
+								<label>Fichier de découpe{{ p.besoinFichierDecoupe ? ' (finition de découpe)' : ' (facultatif)' }}
+									<select name="decoupe" data-decoupe>
+										<option value="">Aucun</option>
+										{% for f in fichiers|filter(f => f.liable) %}<option value="{{ f.nom }}">{{ f.nom }}</option>{% endfor %}
+									</select>
+								</label>
+								{% if p.besoinFichierDecoupe %}<label class="si-pcl-sans"><input type="checkbox" name="decoupeSansFichier" value="1"> Découpe sans fichier séparé</label>{% endif %}
+							</div>
 						</div>
 						<div class="si-pcl-statut">
 							{% if suspendu %}
@@ -212,6 +225,13 @@
 			ligne.querySelector('[data-depose-ext]').textContent = (nom.split('.').pop() || '').slice(0, 4);
 			ligne.querySelector('[data-depot]').hidden = true;
 			ligne.querySelectorAll('[data-option]').forEach(function (o) { o.hidden = false; });
+			// Fichier de découpe du même nom (« etiquette.pdf » → « etiquette_decoupe.pdf ») : proposé d'office.
+			var choixDecoupe = ligne.querySelector('[data-decoupe]');
+			if (choixDecoupe && !choixDecoupe.value) {
+				var base = nom.replace(/\.[^.]+$/, '').toLowerCase();
+				var trouve = fichiers.filter(function (x) { var n = x.nom.toLowerCase(); return x.nom !== nom && /d[ée]coupe|cut|contour/.test(n) && n.indexOf(base) === 0; })[0];
+				if (trouve) { choixDecoupe.value = trouve.nom; }
+			}
 			controler(ligne);
 		}
 

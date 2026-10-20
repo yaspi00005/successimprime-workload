@@ -126,30 +126,51 @@ final class EtapesRelance
      * Le message au client : « Bonjour Fofana, votre commande CMD-000378
      * (étiquettes vinyle, 6 formats) attend encore 4 fichiers : 5,5 × 7 ·
      * 5,5 × 5. Envoyez-les ici : <lien> ou en réponse. Merci ! Succès Imprim ».
+     * Avec un fichier de découpe qui manque : « … attend encore 1 fichier :
+     * 5,5 × 7 cm, et le fichier de découpe : 5,5 × 5 cm. Envoyez-les… ».
      *
      * @param list<string> $manquants formats sans fichier
+     * @param list<string> $decoupes  formats sans fichier de découpe
      */
-    public static function message(string $nomClient, string $numero, string $travail, int $formats, array $manquants, ?string $lien): string
+    public static function message(string $nomClient, string $numero, string $travail, int $formats, array $manquants, ?string $lien, array $decoupes = []): string
     {
         $n = \count($manquants);
-        $quoi = 1 === $n ? '1 fichier' : $n.' fichiers';
-        $liste = [] !== $manquants ? ' : '.implode(' · ', $manquants) : '';
-        // Que des dimensions (« 5,5 × 7 ») : l'unité une seule fois, à la fin.
-        if ([] !== $manquants && [] === array_filter($manquants, static fn (string $m): bool => !preg_match('/^\d+(?:,\d+)? × \d+(?:,\d+)?$/u', $m))) {
-            $liste .= ' cm';
+        $parties = [];
+        if ($n > 0) {
+            $parties[] = (1 === $n ? '1 fichier' : $n.' fichiers').self::liste($manquants);
         }
+        if ([] !== $decoupes) {
+            $parties[] = (1 === \count($decoupes) ? 'le fichier de découpe' : 'les fichiers de découpe').self::liste($decoupes);
+        }
+        if ([] === $parties) {
+            $parties[] = '0 fichiers';
+        }
+        $total = $n + \count($decoupes);
         $nom = '' !== trim($nomClient) ? ' '.trim($nomClient) : '';
         $detail = trim($travail).($formats > 1 ? ', '.$formats.' formats' : '');
 
         return \sprintf(
-            'Bonjour%s, votre commande %s%s attend encore %s%s. Envoyez-%s ici : %s ou en réponse. Merci ! Succès Imprim',
+            'Bonjour%s, votre commande %s%s attend encore %s. Envoyez-%s ici : %s ou en réponse. Merci ! Succès Imprim',
             $nom,
             $numero,
             '' !== $detail ? ' ('.$detail.')' : '',
-            $quoi,
-            $liste,
-            1 === $n ? 'le' : 'les',
+            implode(', et ', $parties),
+            1 === $total ? 'le' : 'les',
             $lien ?? 'notre espace client',
         );
+    }
+
+    /** « : 5,5 × 7 · 5,5 × 5 cm » (l'unité une seule fois quand il n'y a que des dimensions). */
+    private static function liste(array $formats): string
+    {
+        if ([] === $formats) {
+            return '';
+        }
+        $liste = ' : '.implode(' · ', $formats);
+        if ([] === array_filter($formats, static fn (string $m): bool => !preg_match('/^\d+(?:,\d+)? × \d+(?:,\d+)?$/u', $m))) {
+            $liste .= ' cm';
+        }
+
+        return $liste;
     }
 }

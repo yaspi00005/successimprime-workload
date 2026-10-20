@@ -228,7 +228,7 @@
 			const tr = document.createElement('tr');
 			tr.dataset.pqEnvoi = String(n);
 			tr.innerHTML = '<td><div class="pq-nom-fichier"><span class="pq-pastille" style="background:' + COULEURS[n % COULEURS.length] + '"></span><span>' + echapper(fichier.name) + '<span class="pq-envoi"><i></i></span><span class="pq-muet" data-pq-etat>envoi…</span></span></div></td>'
-				+ '<td class="pq-fleche">→</td><td data-pq-format><span class="pq-muet">—</span></td><td data-pq-par></td><td class="pq-muet" data-pq-dim>' + taille(fichier.size) + '</td>';
+				+ '<td class="pq-fleche">→</td><td data-pq-format><span class="pq-muet">—</span></td><td data-pq-role></td><td data-pq-par></td><td class="pq-muet" data-pq-dim>' + taille(fichier.size) + '</td>';
 			modale.querySelector('[data-pq-depot-lignes]').appendChild(tr);
 			entree.ligne = tr;
 			envoyer(fichier, entree);
@@ -288,7 +288,7 @@
 
 	function optionsFormats(choisi) {
 		return '<option value="">Choisir le format ▾</option>' + etat.formats.map(function (f) {
-			return '<option value="' + f.id + '"' + (String(f.id) === String(choisi) ? ' selected' : '') + '>' + echapper(f.libelle) + (f.recu ? ' · déjà reçu' : '') + '</option>';
+			return '<option value="' + f.id + '"' + (String(f.id) === String(choisi) ? ' selected' : '') + '>' + echapper(f.libelle) + (f.recu ? ' · déjà reçu' : '') + (f.decoupe === 'manquant' ? ' · découpe manquante' : '') + '</option>';
 		}).join('');
 	}
 
@@ -311,7 +311,7 @@
 			} else {
 				tr = document.createElement('tr');
 				tr.dataset.pqPartage = f.cle;
-				tr.innerHTML = '<td><div class="pq-nom-fichier"><span class="pq-pastille" style="background:#6B7280"></span><span>' + echapper(f.nom) + '<span class="pq-muet d-block">dossier partagé</span></span></div></td><td class="pq-fleche">→</td><td data-pq-format></td><td data-pq-par></td><td class="pq-muet" data-pq-dim></td>';
+				tr.innerHTML = '<td><div class="pq-nom-fichier"><span class="pq-pastille" style="background:#6B7280"></span><span>' + echapper(f.nom) + '<span class="pq-muet d-block">dossier partagé</span></span></div></td><td class="pq-fleche">→</td><td data-pq-format></td><td data-pq-role></td><td data-pq-par></td><td class="pq-muet" data-pq-dim></td>';
 				corps.appendChild(tr);
 			}
 			tr.dataset.pqCle = f.cle;
@@ -328,6 +328,16 @@
 			const cellule = tr.querySelector('[data-pq-format]');
 			cellule.innerHTML = '';
 			cellule.appendChild(select);
+			// Fichier d'impression ou de découpe (contour) : deviné d'après le nom, corrigeable.
+			const role = document.createElement('select');
+			role.className = 'pq-choix pq-role' + (f.role === 'decoupe' ? ' decoupe' : '');
+			role.dataset.pqRole = f.cle;
+			role.innerHTML = '<option value="impression"' + (f.role !== 'decoupe' ? ' selected' : '') + '>Impression</option><option value="decoupe"' + (f.role === 'decoupe' ? ' selected' : '') + '>Découpe</option>';
+			role.setAttribute('aria-label', 'Rôle de ' + f.nom);
+			role.addEventListener('change', function () { role.classList.toggle('decoupe', role.value === 'decoupe'); });
+			const celluleRole = tr.querySelector('[data-pq-role]');
+			celluleRole.innerHTML = '';
+			celluleRole.appendChild(role);
 			const badge = f.certitude === 'sur' ? 'vert' : (f.certitude === 'verifier' ? 'jaune' : 'rouge-clair');
 			tr.querySelector('[data-pq-par]').innerHTML = '<span class="pq-badge ' + badge + '">' + echapper(f.libelle) + '</span>';
 			tr.querySelector('[data-pq-dim]').textContent = f.dimensions;
@@ -380,12 +390,14 @@
 				// Une correction (ou un format choisi) part telle quelle ; sinon le serveur décide.
 				choix[s.dataset.pqChoix] = s.value === s.dataset.auto ? 'auto' : s.value;
 			});
+			const roles = {};
+			modale.querySelectorAll('[data-pq-role]').forEach(function (s) { if (s.tagName === 'SELECT') { roles[s.dataset.pqRole] = s.value; } });
 			bouton.disabled = true;
 			bouton.textContent = 'Enregistrement…';
 			fetch(urlId(modale.dataset.enregistrer, etat.commande), {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-CSRF-TOKEN': modale.dataset.csrf },
-				body: JSON.stringify({ jetons: etat.fichiers.filter(function (f) { return f.jeton; }).map(function (f) { return f.jeton; }), partage: etat.partage, choix: choix })
+				body: JSON.stringify({ jetons: etat.fichiers.filter(function (f) { return f.jeton; }).map(function (f) { return f.jeton; }), partage: etat.partage, choix: choix, roles: roles })
 			}).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); }).then(function (x) {
 				if (!x.ok) { throw new Error(x.d.message || 'Enregistrement refusé.'); }
 				etat.enregistre = true;

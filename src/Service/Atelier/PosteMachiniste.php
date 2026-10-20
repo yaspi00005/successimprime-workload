@@ -387,9 +387,24 @@ final class PosteMachiniste
      */
     public static function fichier(OrdreProduction $o): ?CommandeDetailFichier
     {
-        $liste = array_values(array_filter($o->getFichiers()->toArray(), static fn (CommandeDetailFichier $f): bool => $f->isActif()));
+        return self::dernier($o, false);
+    }
+
+    /**
+     * Fichier de découpe (le contour pour le plotter, docs/prepresse.md) :
+     * le plus récent transmis à l'ordre, sinon celui de la ligne.
+     */
+    public static function fichierDecoupe(OrdreProduction $o): ?CommandeDetailFichier
+    {
+        return self::dernier($o, true);
+    }
+
+    private static function dernier(OrdreProduction $o, bool $decoupe): ?CommandeDetailFichier
+    {
+        $garder = static fn (CommandeDetailFichier $f): bool => $f->isActif() && $f->estDecoupe() === $decoupe;
+        $liste = array_values(array_filter($o->getFichiers()->toArray(), $garder));
         if ($liste === []) {
-            $liste = array_values(array_filter($o->getCommandeDetail()?->getFichiers()->toArray() ?? [], static fn (CommandeDetailFichier $f): bool => $f->isActif()));
+            $liste = array_values(array_filter($o->getCommandeDetail()?->getFichiers()->toArray() ?? [], $garder));
         }
         usort($liste, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getCreeLe(), $b->getId()] <=> [$a->getCreeLe(), $a->getId()]);
 

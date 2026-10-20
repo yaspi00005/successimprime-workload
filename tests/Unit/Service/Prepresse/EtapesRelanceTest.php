@@ -57,4 +57,16 @@ final class EtapesRelanceTest extends TestCase
         );
         self::assertStringContainsString('attend encore 1 fichier : 85 × 200 cm.', EtapesRelance::message('Sacko', 'CMD-1', 'roll-up', 1, ['85 × 200'], null));
     }
+
+    public function testMessageDemandeAussiLeFichierDeDecoupe(): void
+    {
+        self::assertStringContainsString(
+            'attend encore 1 fichier : 5,5 × 7 cm, et le fichier de découpe : 5,5 × 5 cm. Envoyez-les ici',
+            EtapesRelance::message('Fofana', 'CMD-1', 'vinyle', 2, ['5,5 × 7'], null, ['5,5 × 5']),
+        );
+        self::assertStringContainsString(
+            'attend encore le fichier de découpe : 60 × 40 cm. Envoyez-le ici',
+            EtapesRelance::message('Fofana', 'CMD-1', 'vinyle', 1, [], null, ['60 × 40']),
+        );
+    }
 }

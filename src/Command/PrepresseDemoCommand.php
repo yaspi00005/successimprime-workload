@@ -4,9 +4,11 @@ namespace App\Command;
 
 use App\Entity\Clients;
 use App\Entity\CommandeDetailFichier;
+use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControlePrePresse;
+use App\Entity\Finition;
 use App\Entity\Machines;
 use App\Entity\ProduitConfiguration;
 use App\Entity\RelanceFichier;
@@ -50,6 +52,11 @@ final class PrepresseDemoCommand extends Command
         "DELETE f FROM controle_pre_presse_fichier f JOIN controle_pre_presse p ON p.id = f.controle_pre_presse_id JOIN commandes_details d ON d.id = p.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
         "DELETE p FROM controle_pre_presse p JOIN commandes_details d ON d.id = p.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
         "DELETE f FROM commande_detail_fichier f JOIN commandes_details d ON d.id = f.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
+        // Ordres de production créés en essayant la démonstration (envoi en production), et finitions des lignes.
+        "DELETE f FROM ordre_production_fichier f JOIN ordre_production o ON o.id = f.ordre_production_id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
+        "DELETE r FROM retour_prepresse r JOIN ordre_production o ON o.id = r.ordre_id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
+        "DELETE o FROM ordre_production o JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
+        "DELETE f FROM commande_detail_finition f JOIN commandes_details d ON d.id = f.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
         "DELETE s FROM stock_reservation s JOIN commandes_details d ON d.id = s.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
         "DELETE d FROM commandes_details d JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PQ%'",
         "DELETE FROM commandes WHERE numero LIKE 'CMD-PQ%'",
@@ -149,6 +156,16 @@ final class PrepresseDemoCommand extends Command
         $ligneCoulibaly->setMachine($this->em->find(Machines::class, 900004));
         $fichierCoulibaly = $this->fichier($ligneCoulibaly, 'vinyle-coulibaly_100x100.png', 400, 400, [31, 157, 85], 'VINYL', $h('-2 days'), $agent);
 
+        // Autocollants de Traoré : vinyle imprimé puis découpé à la forme ; le fichier à imprimer est là,
+        // le fichier de découpe manque (docs/prepresse.md).
+        $traore = $this->commande('0431', 900017, $agent, $h('-1 day')->setTime(11, 15), $jour->modify('+3 days'));
+        $ligneTraore = $this->ligne($traore, 900002, 'Autocollants vinyle découpés', 0.6, 0.4, 20, 2500);
+        $ligneTraore->setMachine($this->em->find(Machines::class, 900004));
+        $decoupe = (new CommandeDetailFinition())->setFinition($this->em->find(Finition::class, 900006))->setNomFinition('Découpe à la forme')->setPrixApplique(0)->setQuantite(1)->setMontant(0);
+        $ligneTraore->addFinition($decoupe);
+        $this->em->persist($decoupe);
+        $this->fichier($ligneTraore, 'autocollants-traore_60x40.png', 709, 472, [233, 91, 53], 'TRAORE', $h('-3 hours'), $agent);
+
         $this->em->flush();
 
         $bat = (new ControlePrePresse())->setCommandeDetail($ligneSamake)->setFichierDejaTraite(true)->setBatNecessaire(true);
@@ -178,7 +195,7 @@ final class PrepresseDemoCommand extends Command
         $connexion->executeStatement('UPDATE controle_pre_presse SET cree_le = ?, traite_le = ? WHERE id = ?', [$h('-1 day')->format('Y-m-d H:i:s'), $jour->setTime(9, 12)->format('Y-m-d H:i:s'), $bat->getId()]);
         $connexion->executeStatement('UPDATE controle_pre_presse SET cree_le = ?, traite_le = ?, valide_le = ? WHERE id = ?', [$h('-2 days')->format('Y-m-d H:i:s'), $jour->setTime(10, 30)->format('Y-m-d H:i:s'), min($maintenant, $jour->setTime(10, 40))->format('Y-m-d H:i:s'), $valide->getId()]);
 
-        $io->success('Prépresse : 7 commandes de démonstration (CMD-PQ…), dont Fofana avec 2 fichiers sur 6.');
+        $io->success('Prépresse : 8 commandes de démonstration (CMD-PQ…), dont Fofana avec 2 fichiers sur 6 et les autocollants de Traoré sans fichier de découpe.');
 
         return Command::SUCCESS;
     }

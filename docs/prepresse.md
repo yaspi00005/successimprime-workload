@@ -91,7 +91,7 @@ Une commande a toujours un client dans l'ERP (le formulaire l'exige). Rendre aus
 
 ## Démonstration
 
-`php bin/console app:prepresse:demo` (lancée par `app:demo`) : commandes `CMD-PQ…`. Fofana avec 6 formats d'étiquettes et 2 fichiers reçus, relancée J+1 et J+3 ; Sacko qui « passe samedi » ; une commande au comptoir sans numéro ; Diallo depuis 2 jours ; un kakémono à contrôler à livrer aujourd'hui ; un BAT chez Samaké ; un vinyle de Coulibaly prêt pour la machine. Relancer la commande remplace la démonstration précédente.
+`php bin/console app:prepresse:demo` (lancée par `app:demo`) : commandes `CMD-PQ…`. Fofana avec 6 formats d'étiquettes et 2 fichiers reçus, relancée J+1 et J+3 ; Sacko qui « passe samedi » ; une commande au comptoir sans numéro ; Diallo depuis 2 jours ; un kakémono à contrôler à livrer aujourd'hui ; un BAT chez Samaké ; un vinyle de Coulibaly prêt pour la machine ; des autocollants découpés chez Traoré sans fichier de découpe. Relancer la commande remplace la démonstration précédente.
 
 ## Tâches planifiées
 
@@ -106,3 +106,16 @@ Une commande a toujours un client dans l'ERP (le formulaire l'exige). Rendre aus
 - « Retirer » (sur la commande) ou l'icône œil barré (sur un format) enlève de la liste les lignes encore sans fichier et pas commencées au contrôle. La commande n'est ni clôturée ni supprimée : les champs `retire_prepresse_le` et `retire_prepresse_par` de `commandes_details` gardent la date et la personne.
 - Le lien « Retirées · N » de la liste ouvre `/pre-presse/retirees`, où « Remettre dans la liste » ramène la ligne.
 - Une ligne retirée n'est plus relancée et ne reçoit plus les fichiers du dossier partagé : il faut la remettre dans la liste d'abord.
+
+## Fichier de découpe (20/10)
+
+Un vinyle imprimé puis découpé au plotter arrive souvent avec deux fichiers : celui de l'impression et celui de la découpe (le contour). Le second suit maintenant la ligne jusqu'à la machine.
+
+- **Données** : `commande_detail_fichier.role` (`impression` par défaut, ou `decoupe`) ; sur `commandes_details`, `fichier_decoupe_requis` (null = d'après les finitions, 1/0 = choix de la prépresse) et `decoupe_sans_fichier`. Migration `Version20261020071000`. Le rôle remonte au site par la synchro (`impression` → `decoupe`).
+- **Quand faut-il un fichier de découpe ?** Quand une finition de la ligne contient « découpe », « contour » ou « plotter » (`App\Service\Prepresse\RegleDecoupe`). Au contrôle, « Fichier de découpe requis » (Selon les finitions / Oui / Non) l'impose ou le retire.
+- **Reconnu au nom** : un fichier dont le nom contient « decoupe », « découpe » ou « contour », ou un mot qui commence par « cut » (« CutContour », « logo-cut » ; pas « biscuit »), est proposé comme fichier de découpe au dépôt (PQ02, colonne « Fichier » modifiable), rangé avec le suffixe `_decoupe`, et à l'import du dossier partagé il va à la seule ligne de la commande qui l'attend.
+- **Qui l'ajoute** : la prépresse (dépôt PQ02, contrôle « Ajouter le fichier de découpe », envoi par morceaux), la caisse (second champ « Fichier de découpe » sous le fichier client) et le client dans l'espace client (un fichier de découpe par produit). « Mes fichiers » n'a pas de case de découpe : ces fichiers ne sont pas rattachés à une ligne.
+- **Liste et relances** : « Découpe » (lien vers le fichier), « Fichier de découpe manquant » en ambre (compté sur la commande) ou « Découpe sans fichier séparé ». La liste des relances et le message envoyé au client demandent aussi le fichier de découpe. Les relances automatiques ne partent toujours que pour des fichiers d'impression manquants.
+- **Validation** : « Valider et envoyer en production » est refusé tant qu'une ligne qui demande une découpe n'a pas son fichier, sauf si « Découpe sans fichier séparé » est coché (le contour est dans le fichier d'impression). Ce choix est gardé et affiché au machiniste. Le dernier fichier de découpe part automatiquement en production avec le fichier traité.
+- **Machiniste** : bouton « Fichier de découpe » sur « vérifier le fichier » et sur le travail, téléchargement séparé.
+- **Mes produits** : le lien d'un fichier traité prend aussi un fichier de découpe (proposé d'après le nom). Un produit avec une finition de découpe est refusé sans fichier de découpe, sauf case « Découpe sans fichier séparé ». Les deux fichiers suivent à la recommande.

@@ -27,6 +27,11 @@
 				{% elseif etatLie == 'identique' %}
 					<a href="{{ path('app_commande_fichier_lie', {id: ligne.id}) }}" target="_blank" rel="noopener" class="btn btn-light si-btn-entete"><i class="fas fa-download me-1"></i>Ouvrir le PDF</a>
 				{% endif %}
+				{% if fichierDecoupe %}
+					<a href="{{ path('app_controle_pre_presse_telecharger_fichier', {id: fichierDecoupe.id}) }}" class="btn btn-light si-btn-entete"><i class="fas fa-cut me-1"></i>Fichier de découpe</a>
+				{% elseif ligne.fichierLie.decoupe ?? null %}
+					<a href="{{ path('app_commande_fichier_lie', {id: ligne.id, role: 'decoupe'}) }}" target="_blank" rel="noopener" class="btn btn-light si-btn-entete"><i class="fas fa-cut me-1"></i>Fichier de découpe</a>
+				{% endif %}
 				{% if peutAgir and not retour %}
 					<a href="#retour" class="btn si-pm-btn-rose" data-si-pm-ouvrir><i class="fas fa-undo me-1"></i>Retourner au prépresse</a>
 					<button form="si-pm-conforme" class="btn si-pm-btn-rouge"><i class="fas fa-check me-1"></i>Fichier conforme</button>
@@ -55,6 +60,7 @@
 						{% include 'ma_file/_apercu.html.twig' with {hauteurMax: 300, annoter: false, annotation: retour ? retour.annotation : []} %}
 					</div>
 					<p class="si-pm-apercu-pied">pointillé orange : zone de sécurité {{ zone }} cm{{ ligne.finitions|length ? ' (' ~ ligne.finitions|map(f => f.nomFinition|lower)|join(' et ') ~ ')' }}</p>
+					{% include 'ma_file/_decoupe.html.twig' %}
 				</section>
 
 				<div class="si-pm-tuiles">

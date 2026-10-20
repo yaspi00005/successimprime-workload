@@ -866,6 +866,10 @@
 				Les fichiers volumineux sont envoyés automatiquement.
 			</small>
 
+			{# Fichier de découpe (docs/prepresse.md) : le contour pour la découpe, à part du fichier à imprimer. #}
+			<label class="form-label small mt-2 mb-1">Fichier de découpe <span class="text-muted">(facultatif, pour une finition de découpe)</span></label>
+			<input type="file" class="form-control js-fichiers-client js-fichier-decoupe" accept=".pdf,.png,.jpg,.jpeg,.svg,.ai,.eps,.dxf,.cdr" aria-label="Fichier de découpe">
+
 			<div class="js-liste-uploads mt-3">
 
 				{% for fichierExistant in detail.vars.value.fichiers|default([]) %}
@@ -895,7 +899,7 @@
 						<div class="flex-grow-1">
 
 							<div class="small font-weight-bold">
-								{{ fichierExistant.nomOriginal }}
+								{% if fichierExistant.estDecoupe %}<span class="badge si-pp-badge-decoupe mr-1">Découpe</span>{% endif %}{{ fichierExistant.nomOriginal }}
 							</div>
 
 							<div class="small text-muted">
@@ -1642,7 +1646,7 @@ const valeurs = champ.value
 ? champ.value.split(',').map(function (v) { return v.trim(); }).filter(Boolean)
 : [];
 
-champ.value = valeurs.filter(function (v) { return v !== jeton; }).join(',');
+champ.value = valeurs.filter(function (v) { return v !== jeton && v !== 'd:' + jeton; }).join(',');
 }
 
 async function supprimerFichierTeleverse(detail, ligne) {
@@ -1773,7 +1777,7 @@ statutTexte.textContent = progression + ' %';
 }
 }
 
-ajouterJetonFichier(detail, jeton);
+ajouterJetonFichier(detail, (ligneUpload.dataset.decoupe ? 'd:' : '') + jeton);
 
 if (statutTexte) {
 statutTexte.textContent = 'Envoyé';
@@ -1794,13 +1798,15 @@ ligneUpload.classList.add('text-danger');
 }
 
 function initialiserUploadFichiers(detail) {
-const champFichier = detail.querySelector('.js-fichiers-client');
-
 const zoneListe = detail.querySelector('.js-liste-uploads');
 
-if (! champFichier || ! zoneListe || ! uploadInitialiserUrl) {
+if (! zoneListe || ! uploadInitialiserUrl) {
 return;
 }
+
+/* Fichier à imprimer, et fichier de découpe (jeton noté « d:… », docs/prepresse.md). */
+detail.querySelectorAll('.js-fichiers-client').forEach(function (champFichier) {
+const decoupe = champFichier.classList.contains('js-fichier-decoupe');
 
 champFichier.addEventListener('change', async function () {
 
@@ -1822,6 +1828,14 @@ for (const fichier of fichiers) {
 
 const ligne = creerLigneUpload(fichier);
 
+if (decoupe) {
+ligne.dataset.decoupe = '1';
+const nom = ligne.querySelector('.font-weight-bold');
+if (nom) {
+nom.insertAdjacentHTML('afterbegin', '<span class="badge si-pp-badge-decoupe mr-1">Découpe</span>');
+}
+}
+
 zoneListe.appendChild(ligne);
 
 const boutonSupprimer = ligne.querySelector('.js-upload-supprimer');
@@ -1834,6 +1848,7 @@ supprimerFichierTeleverse(detail, ligne);
 
 await televerserFichier(detail, fichier, ligne);
 }
+});
 });
 }
 

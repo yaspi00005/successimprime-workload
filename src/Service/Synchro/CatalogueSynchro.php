@@ -420,6 +420,8 @@ final class CatalogueSynchro
                     'creeLe', 'termineLe', 'morceauxRecus', 'nombreMorceaux', 'logo', 'analyse', 'empreinte',
                     // Raison d'une retouche validée malgré une alerte, montrée au client avec le BAT (docs/prepresse-retouche.md).
                     'remarqueBat',
+                    // Fichier d'impression ou de découpe (docs/prepresse.md) : le client envoie aussi le fichier de découpe en ligne.
+                    'role',
                     // « Garder ce fichier 1 an » (ConservationFichiers) : demandé d'un côté ou de l'autre. L'effacement reste propre à chaque serveur.
                     'gardeDemandeeLe', 'gardePar',
                 ],
@@ -429,7 +431,7 @@ final class CatalogueSynchro
                 // Un envoi pas fini ne part pas encore.
                 'pret' => static fn (CommandeDetailFichier $f): bool => $f->estUploadTermine(),
                 // En ligne, le client retire son fichier, le met dans une commande, et le contrôle est refait à la taille commandée.
-                'remontees' => ['actif' => ['1' => ['0']], 'analyse' => null, 'commandeDetail' => ['' => ['*']], 'gardeDemandeeLe' => null, 'gardePar' => null],
+                'remontees' => ['actif' => ['1' => ['0']], 'analyse' => null, 'commandeDetail' => ['' => ['*']], 'gardeDemandeeLe' => null, 'gardePar' => null, 'role' => [CommandeDetailFichier::ROLE_IMPRESSION => [CommandeDetailFichier::ROLE_DECOUPE]]],
             ],
             'controle' => [
                 'classe' => ControlePrePresse::class, 'sens' => self::DESCENDANT, 'libelle' => 'BAT', 'titre' => ['statut'],

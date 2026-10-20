@@ -137,6 +137,10 @@ final class DossierPartage
             }
         }
         $sansFichier = array_values(array_filter($lignes, static fn (CommandesDetails $l): bool => !DepotFichiers::aFichier($l)));
+        // Un fichier de découpe (« CMD-000378_decoupe.pdf ») va à la seule ligne qui attend encore le sien.
+        if (RegleDecoupe::estNomFichierDecoupe($lecture['reste'])) {
+            $sansFichier = array_values(array_filter($lignes, static fn (CommandesDetails $l): bool => RegleDecoupe::MANQUANT === $l->etatDecoupe()));
+        }
         if (1 === \count($lignes)) {
             return $lignes[0];
         }
@@ -261,9 +265,9 @@ final class DossierPartage
                 continue;
             }
             try {
-                $this->depot->rattacherPartage($chemin, $ligne, $par, $maintenant, 'import automatique');
+                $fichier = $this->depot->rattacherPartage($chemin, $ligne, $par, $maintenant, 'import automatique');
                 $this->em->flush();
-                $bilan['importes'][] = $f['nom'].' → '.$ligne->getCommande()?->getNumero().' · '.DepotFichiers::libelleFormat($ligne);
+                $bilan['importes'][] = $f['nom'].' → '.$ligne->getCommande()?->getNumero().' · '.DepotFichiers::libelleFormat($ligne).($fichier->estDecoupe() ? ' (fichier de découpe)' : '');
                 $commandes[(string) $ligne->getCommande()?->getNumero()] = true;
             } catch (\DomainException $e) {
                 $bilan['ignores'][] = $f['nom'].' ('.$e->getMessage().')';

@@ -88,8 +88,9 @@ final class DepotFichiers
     }
 
     /**
-     * Fichiers reçus sur la ligne : actifs et complets (un envoi en cours
-     * ne compte pas), ou fichier lié dans le dossier du client (Mes produits).
+     * Fichiers à imprimer reçus sur la ligne : actifs et complets (un envoi
+     * en cours ne compte pas). Le fichier de découpe n'en est pas un : il a
+     * sa place à part (RegleDecoupe, CommandesDetails::fichiersDecoupe()).
      *
      * @return list<CommandeDetailFichier>
      */
@@ -97,8 +98,18 @@ final class DepotFichiers
     {
         return array_values(array_filter(
             $ligne->getFichiers()->toArray(),
-            static fn (CommandeDetailFichier $f): bool => $f->isActif() && CommandeDetailFichier::STATUT_TERMINE === $f->getStatut(),
+            static fn (CommandeDetailFichier $f): bool => $f->isActif() && !$f->estDecoupe() && CommandeDetailFichier::STATUT_TERMINE === $f->getStatut(),
         ));
+    }
+
+    /** Rôle d'un fichier déposé : celui choisi, sinon d'après son nom (« decoupe », « cut », « contour »). */
+    public static function role(string $nom, ?string $choisi = null): string
+    {
+        if (\in_array($choisi, [CommandeDetailFichier::ROLE_IMPRESSION, CommandeDetailFichier::ROLE_DECOUPE], true)) {
+            return $choisi;
+        }
+
+        return RegleDecoupe::estNomFichierDecoupe($nom) ? CommandeDetailFichier::ROLE_DECOUPE : CommandeDetailFichier::ROLE_IMPRESSION;
     }
 
     public static function aFichier(CommandesDetails $ligne): bool
@@ -152,7 +163,7 @@ final class DepotFichiers
      * ligne. Refusé : envoi incomplet, déjà rattaché, fichier d'un client
      * (espace client), programme.
      */
-    public function rattacherEnvoi(CommandeDetailFichier $fichier, CommandesDetails $ligne, User $par, \DateTimeImmutable $le): void
+    public function rattacherEnvoi(CommandeDetailFichier $fichier, CommandesDetails $ligne, User $par, \DateTimeImmutable $le, ?string $role = null): void
     {
         if (CommandeDetailFichier::STATUT_TERMINE !== $fichier->getStatut()) {
             throw new \DomainException(\sprintf('« %s » n\'est pas encore entièrement envoyé.', $fichier->getNomOriginal()));
@@ -163,8 +174,9 @@ final class DepotFichiers
         self::verifierType((string) $fichier->getNomOriginal());
         $chemin = $this->chemin($fichier) ?? throw new \DomainException(\sprintf('« %s » est introuvable sur le disque.', $fichier->getNomOriginal()));
         $ligne->addFichier($fichier);
+        $fichier->setRole(self::role((string) $fichier->getNomOriginal(), $role));
         $fichier->setAjoutePar($par);
-        $fichier->setObservation(trim(($fichier->getObservation() ?? '')."\n".\sprintf('Déposé à la prépresse par %s le %s.', $par->getUserIdentifier(), $le->format('d/m/Y à H:i'))));
+        $fichier->setObservation(trim(($fichier->getObservation() ?? '')."\n".\sprintf('Déposé à la prépresse par %s le %s%s.', $par->getUserIdentifier(), $le->format('d/m/Y à H:i'), $fichier->estDecoupe() ? ' (fichier de découpe)' : '')));
         $this->apresRattachement($ligne, $fichier, $chemin, $par, $le, 'depot');
     }
 
@@ -173,9 +185,12 @@ final class DepotFichiers
      * DÉPLACÉ (rename, instantané sur le même disque ; sinon copie par
      * blocs puis retrait), renommé « commande_format.ext ».
      */
-    public function rattacherPartage(string $source, CommandesDetails $ligne, ?User $par, \DateTimeImmutable $le, string $comment = 'à la main'): CommandeDetailFichier
+    public function rattacherPartage(string $source, CommandesDetails $ligne, ?User $par, \DateTimeImmutable $le, string $comment = 'à la main', ?string $role = null): CommandeDetailFichier
     {
         $nomOrigine = basename($source);
+        $role = self::role($nomOrigine, $role);
+        // « CMD-000378_5,5x7cm_decoupe.pdf » : le fichier de découpe se reconnaît aussi une fois rangé.
+        $formatRange = str_replace(' cm', 'cm', self::libelleFormat($ligne)).(CommandeDetailFichier::ROLE_DECOUPE === $role ? '_decoupe' : '');
         self::verifierType($nomOrigine);
         $commande = $ligne->getCommande() ?? throw new \DomainException('Ligne sans commande.');
         $taille = (int) (@filesize($source) ?: 0);
@@ -197,7 +212,8 @@ final class DepotFichiers
         $type = @mime_content_type($cible);
         $fichier = (new CommandeDetailFichier())
             ->setJetonUpload(bin2hex(random_bytes(32)))
-            ->setNomOriginal(NomFichierPartage::nomRange((string) $commande->getNumero(), str_replace(' cm', 'cm', self::libelleFormat($ligne)), $nomOrigine))
+            ->setNomOriginal(NomFichierPartage::nomRange((string) $commande->getNumero(), $formatRange, $nomOrigine))
+            ->setRole($role)
             ->setNomStockage($nomStockage)
             ->setTypeMime(\is_string($type) ? $type : 'application/octet-stream')
             ->setTaille($taille)
@@ -261,11 +277,11 @@ final class DepotFichiers
         if (null === $commande) {
             return;
         }
-        $this->noter($commande, $par, ['fichier' => $fichier->getNomOriginal(), 'ligne' => $ligne->getId(), 'format' => self::libelleFormat($ligne), 'origine' => $origine], $le);
+        $this->noter($commande, $par, ['fichier' => $fichier->getNomOriginal(), 'ligne' => $ligne->getId(), 'format' => self::libelleFormat($ligne), 'origine' => $origine] + ($fichier->estDecoupe() ? ['role' => 'découpe'] : []), $le);
         $this->reprendreSiFichier($commande, $par, $le);
         $client = $commande->getClients();
         if (null !== $client) {
-            $this->rangement->ranger($client, $chemin, NomFichierPartage::nomRange((string) $commande->getNumero(), str_replace(' cm', 'cm', self::libelleFormat($ligne)), (string) $fichier->getNomOriginal()), $par, $le);
+            $this->rangement->ranger($client, $chemin, NomFichierPartage::nomRange((string) $commande->getNumero(), str_replace(' cm', 'cm', self::libelleFormat($ligne)).($fichier->estDecoupe() ? '_decoupe' : ''), (string) $fichier->getNomOriginal()), $par, $le);
         }
     }
 }

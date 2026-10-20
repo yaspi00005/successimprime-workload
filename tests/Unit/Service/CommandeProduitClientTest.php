@@ -84,6 +84,19 @@ final class CommandeProduitClientTest extends TestCase
         self::assertNull($ligne->getFichierLie());
     }
 
+    public function testLeFichierDeDecoupeSuitALaNouvelleCommande(): void
+    {
+        // Fichier traité et fichier de découpe liés ensemble (docs/prepresse.md) : les deux suivent la commande.
+        $bache = self::bache()->lierFichier(['l' => 4000.0, 'h' => 1500.0, 'nom' => 'bache.pdf', 'empreinte' => str_repeat('a', 64), 'octets' => 10, 'le' => '2026-10-18 10:00', 'decoupe' => ['nom' => 'bache_decoupe.pdf', 'empreinte' => str_repeat('b', 64), 'octets' => 5]]);
+        $ligne = $this->service->creerLigne((new Commandes())->setTva(18), $bache, 20, CommandeProduitClient::SAISIE_M2);
+
+        self::assertSame('bache.pdf', $ligne->getFichierLie()['nom'] ?? null);
+        self::assertSame(['nom' => 'bache_decoupe.pdf', 'empreinte' => str_repeat('b', 64)], $ligne->getFichierLie()['decoupe'] ?? null);
+        self::assertSame('present', $ligne->etatDecoupe());
+        // Le site ne reçoit que la référence du fichier de découpe.
+        self::assertSame(['nom' => 'bache_decoupe.pdf', 'empreinte' => str_repeat('b', 64), 'octets' => 5], ProduitClient::fichiersLiesPublics($bache->getFichiersLies())[0]['decoupe']);
+    }
+
     public function testLigneCreeeSansPaoAvecLesDeuxQuantites(): void
     {
         $commande = (new Commandes())->setTva(18);

@@ -122,9 +122,9 @@ final class ProduitsClientsPrepresseController extends AbstractController
         [$l, $h] = self::taille($request);
         try {
             $utilisateur = $this->getUser();
-            $lien = $this->liens->lier($produit, $request->request->getString('nom'), (float) $l, (float) $h, $utilisateur instanceof User ? $utilisateur : null, new \DateTimeImmutable());
+            $lien = $this->liens->lier($produit, $request->request->getString('nom'), (float) $l, (float) $h, $utilisateur instanceof User ? $utilisateur : null, new \DateTimeImmutable(), $request->request->getString('decoupe'), $request->request->getBoolean('decoupeSansFichier'));
             $this->em->flush();
-            $this->addFlash('success', \sprintf('%s lié à « %s » pour %s : le produit est prêt à imprimer dans l\'espace client.', $lien['nom'], $produit->getNom(), ProduitClient::libelleTaille((float) $l, (float) $h, $produit->isRond())));
+            $this->addFlash('success', \sprintf('%s lié à « %s » pour %s%s : le produit est prêt à imprimer dans l\'espace client.', $lien['nom'], $produit->getNom(), ProduitClient::libelleTaille((float) $l, (float) $h, $produit->isRond()), isset($lien['decoupe']) ? ', avec le fichier de découpe '.$lien['decoupe']['nom'] : ''));
         } catch (\DomainException $e) {
             $this->addFlash('danger', $e->getMessage());
         }

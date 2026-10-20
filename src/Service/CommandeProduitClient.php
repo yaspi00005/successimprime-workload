@@ -177,13 +177,34 @@ final class CommandeProduitClient
      * passe au prépresse, avec un BAT au client. Le local revérifie tout à
      * la réception (Synchro::verifierLigneEnLigne) et avant l'impression.
      */
+    /**
+     * La référence du fichier lié gardée sur la ligne, avec son fichier de
+     * découpe (nom et empreinte) quand il y en a un : il suit à chaque
+     * nouvelle commande du produit.
+     *
+     * @param array<string, mixed> $lien
+     *
+     * @return array<string, mixed>
+     */
+    public static function referenceLien(array $lien): array
+    {
+        $reference = ['nom' => (string) $lien['nom'], 'empreinte' => (string) $lien['empreinte'], 'l' => (float) $lien['l'], 'h' => (float) $lien['h'], 'le' => $lien['le'] ?? null];
+        if (\is_array($lien['decoupe'] ?? null)) {
+            $reference['decoupe'] = ['nom' => (string) ($lien['decoupe']['nom'] ?? ''), 'empreinte' => (string) ($lien['decoupe']['empreinte'] ?? '')];
+        } elseif ((bool) ($lien['decoupeSansFichier'] ?? false)) {
+            $reference['decoupeSansFichier'] = true;
+        }
+
+        return $reference;
+    }
+
     public static function aiguillerALaCommande(CommandesDetails $ligne, ProduitClient $produit): void
     {
         $l = null !== $ligne->getLargeur() ? round((float) $ligne->getLargeur() * 1000, 1) : null;
         $h = null !== $ligne->getLongueur() ? round((float) $ligne->getLongueur() * 1000, 1) : null;
         $lien = null !== $l && null !== $h ? $produit->fichierPourTaille($l, $h) : null;
         if (null !== $lien) {
-            $ligne->setFichierLie(['nom' => (string) $lien['nom'], 'empreinte' => (string) $lien['empreinte'], 'l' => (float) $lien['l'], 'h' => (float) $lien['h'], 'le' => $lien['le'] ?? null])
+            $ligne->setFichierLie(self::referenceLien($lien))
                 ->setPrePresseNecessaire(false)->setBatValide(true);
 
             return;

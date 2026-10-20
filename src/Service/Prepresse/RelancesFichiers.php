@@ -79,7 +79,25 @@ final class RelancesFichiers
             $travail = mb_strtolower(mb_substr($travail, 0, 1)).mb_substr($travail, 1);
         }
 
-        return EtapesRelance::message((string) ListePrepresse::nomClient($commande->getClients()), (string) $commande->getNumero(), $travail, \count($lignes), $manquants, $this->lien($commande));
+        return EtapesRelance::message((string) ListePrepresse::nomClient($commande->getClients()), (string) $commande->getNumero(), $travail, \count($lignes), $manquants, $this->lien($commande), self::decoupesManquantes($commande));
+    }
+
+    /**
+     * Formats qui attendent encore leur fichier de découpe (RegleDecoupe) :
+     * le message de relance le demande aussi.
+     *
+     * @return list<string>
+     */
+    public static function decoupesManquantes(Commandes $commande): array
+    {
+        $manquants = [];
+        foreach (DepotFichiers::lignes($commande) as $l) {
+            if (RegleDecoupe::MANQUANT === $l->etatDecoupe()) {
+                $manquants[] = str_replace(' cm', '', DepotFichiers::libelleFormat($l));
+            }
+        }
+
+        return $manquants;
     }
 
     /** Lien wa.me avec le message, ou null sans numéro. */
@@ -114,7 +132,8 @@ final class RelancesFichiers
      */
     public function aRelancer(\DateTimeImmutable $maintenant): array
     {
-        $lignes = array_values(array_filter($this->liste->commandes($maintenant), static fn (array $c): bool => $c['manquants'] > 0));
+        // Il manque un fichier à imprimer, ou un fichier de découpe.
+        $lignes = array_values(array_filter($this->liste->commandes($maintenant), static fn (array $c): bool => $c['manquants'] > 0 || $c['decoupesManquantes'] > 0));
         if ([] === $lignes) {
             return [];
         }
@@ -137,6 +156,7 @@ final class RelancesFichiers
             $manquants = self::manquants($c);
             $message = $this->message($c, $manquants);
             $l['manquantsListe'] = $manquants;
+            $l['decoupesListe'] = self::decoupesManquantes($c);
             $l['relances'] = $siennes;
             $l['frise'] = EtapesRelance::frise(self::etapesEnvoyees($siennes));
             $l['aEnvoyer'] = array_values(array_filter($siennes, static fn (RelanceFichier $r): bool => RelanceFichier::WHATSAPP === $r->getCanal() && !$r->estEnvoyee()));
@@ -172,7 +192,7 @@ final class RelancesFichiers
         }
         $manquants = self::manquants($commande);
         $message = $this->message($commande, $manquants);
-        $relance->preparer(\count($manquants), $message, self::whatsapp($commande->getClients(), $message))->envoyer($par, $maintenant);
+        $relance->preparer(\count($manquants) + \count(self::decoupesManquantes($commande)), $message, self::whatsapp($commande->getClients(), $message))->envoyer($par, $maintenant);
         $this->depot->noter($commande, $par, ['relance' => $relance->getLibelleEtape(), 'canal' => 'WhatsApp'], $maintenant);
         $this->em->flush();
 

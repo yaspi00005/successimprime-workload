@@ -593,7 +593,8 @@ security:
         # Fichiers des clients : aussi pour l'opérateur, qui les ouvre
         # depuis l'ordre de production de sa machine.
         - {
-            path: '^/pre-presse/fichier/\d+/(visualiser|telecharger)$',
+            # Numéro, ou son code chiffré de 9 caractères (docs/ids-chiffres.md).
+            path: '^/pre-presse/fichier/(\d+|[0-9A-Za-z]{9})/(visualiser|telecharger)$',
             roles: [ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
         }
 

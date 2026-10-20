@@ -57,7 +57,7 @@
 				</div>
 				{% if fichiers is not empty %}
 					<div class="si-ap-op-fichiers">
-						{% for f in fichiers %}<div><i class="fas fa-paperclip me-1" aria-hidden="true"></i>{{ f.nomOriginal }}</div>{% endfor %}
+						{% for f in fichiers %}<div><i class="fas fa-{{ f.estDecoupe ? 'cut' : 'paperclip' }} me-1" aria-hidden="true"></i>{{ f.estDecoupe ? 'Fichier de découpe : ' }}{{ f.nomOriginal }}</div>{% endfor %}
 					</div>
 				{% endif %}
 				{% if travail %}

@@ -17,7 +17,7 @@
 		</p>
 		<div class="d-flex flex-wrap gap-2">
 			<a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="btn btn-light btn-sm">Retour à la commande</a>
-			{% if etat == 'modifie' and is_granted('ROLE_PREPRESSE') %}<a href="{{ path('app_commande_fichier_lie', {id: ligne.id, quandMeme: 1}) }}" class="btn btn-outline-danger btn-sm">Ouvrir quand même</a>{% endif %}
+			{% if etat == 'modifie' and is_granted('ROLE_PREPRESSE') %}<a href="{{ path('app_commande_fichier_lie', {id: ligne.id, quandMeme: 1}|merge(app.request.query.get('role') == 'decoupe' ? {role: 'decoupe'} : {})) }}" class="btn btn-outline-danger btn-sm">Ouvrir quand même</a>{% endif %}
 		</div>
 	</div>
 {% endblock %}

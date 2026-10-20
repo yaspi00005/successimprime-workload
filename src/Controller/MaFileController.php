@@ -144,6 +144,7 @@ final class MaFileController extends AbstractController
         return $this->render('ma_file/travail.html.twig', [
             'o' => $ordre,
             'ligne' => $ordre->getCommandeDetail(),
+            'fichierDecoupe' => PosteMachiniste::fichierDecoupe($ordre),
             'carte' => $this->poste->carte($ordre, $maintenant),
             'progression' => FileMachine::progression($ordre, $maintenant),
             'libreA' => $ordre->getMachine() !== null ? $this->poste->machineLibreA($ordre->getMachine(), $maintenant, $ordre) : null,
@@ -172,6 +173,7 @@ final class MaFileController extends AbstractController
             'ligne' => $ligne,
             'carte' => $this->poste->carte($ordre, new \DateTimeImmutable()),
             'fichier' => $fichier,
+            'fichierDecoupe' => PosteMachiniste::fichierDecoupe($ordre),
             'typeApercu' => PosteMachiniste::typeApercu($fichier),
             'analyse' => $this->poste->analyseFichier($ordre),
             'controle' => $controle,

@@ -50,7 +50,8 @@
 												{% endif %}
 											</td>
 											<td><span class="pq-attente {{ l.attente >= 7 ? 'rouge' : (l.attente >= 1 ? 'orange') }}">{{ l.attente }} j</span></td>
-											<td>{{ l.manquants }} fichier{{ l.manquants > 1 ? 's' }}{% if l.total > 1 %} <span class="pq-muet">sur {{ l.total }}</span>{% endif %}</td>
+											<td>{% if l.manquants > 0 or l.decoupesListe is empty %}{{ l.manquants }} fichier{{ l.manquants > 1 ? 's' }}{% if l.total > 1 %} <span class="pq-muet">sur {{ l.total }}</span>{% endif %}{% endif %}
+												{% if l.decoupesListe is not empty %}<span class="pq-badge ambre d-inline-flex"><i class="fas fa-cut"></i>{{ l.decoupesListe|length > 1 ? l.decoupesListe|length ~ ' fichiers de découpe' : 'Fichier de découpe' }} manquant{{ l.decoupesListe|length > 1 ? 's' }}</span>{% endif %}</td>
 											<td>
 												{% if l.impossible %}
 													<span class="pq-muet">{{ l.impossible }}</span>

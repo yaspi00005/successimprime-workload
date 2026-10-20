@@ -342,6 +342,14 @@
 									</details>
 								{% endif %}
 								<div data-co-fichiers-envoyes></div>
+								{# Fichier de découpe (docs/prepresse.md) : pour un autocollant découpé à la forme, le contour à part. #}
+								<div class="co-decoupe">
+									<label class="co-decoupe-choix"><b>Fichier de découpe</b> <span class="ec-petit">facultatif · le contour pour une découpe à la forme</span>
+										<input type="file" data-co-envoi-decoupe accept="{{ extensions|map(e => '.' ~ e)|join(',') }}">
+									</label>
+									<input type="hidden" name="fichier_decoupe" value="{{ choix.fichier_decoupe|default('') }}" data-co-decoupe-id>
+									<div class="ec-petit" data-co-decoupe-etat role="status" aria-live="polite"></div>
+								</div>
 							</div>
 							<div class="co-controle">
 								<h3>Contrôle automatique <small>en quelques secondes</small></h3>

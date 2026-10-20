@@ -172,6 +172,8 @@ final class PrepresseController extends AbstractController
                 'libelle' => DepotFichiers::libelleFormat($l),
                 'quantite' => $l->getQuantite(),
                 'recu' => DepotFichiers::aFichier($l),
+                // Fichier de découpe : non_requis, present, manquant ou sans_fichier (RegleDecoupe).
+                'decoupe' => $l->etatDecoupe(),
             ];
         }
         $client = $commande->getClients();
@@ -226,6 +228,8 @@ final class PrepresseController extends AbstractController
         foreach ((array) ($donnees['choix'] ?? []) as $cle => $ligne) {
             $choix[(string) $cle] = '' === (string) $ligne || 'auto' === $ligne ? $ligne : (int) $ligne;
         }
+        // Rôle choisi dans la fenêtre (« Impression » ou « Découpe ») ; sinon d'après le nom du fichier.
+        $roles = array_map('strval', (array) ($donnees['roles'] ?? []));
         $lignes = [];
         foreach (DepotFichiers::lignes($commande) as $l) {
             $lignes[(int) $l->getId()] = $l;
@@ -246,12 +250,13 @@ final class PrepresseController extends AbstractController
                     }
                     continue;
                 }
+                $role = DepotFichiers::role($f['nom'], $roles[$cle] ?? null);
                 if (isset($associes['envois'][$cle])) {
-                    $depot->rattacherEnvoi($associes['envois'][$cle], $ligne, $moi, $maintenant);
+                    $depot->rattacherEnvoi($associes['envois'][$cle], $ligne, $moi, $maintenant, $role);
                 } elseif (isset($associes['partages'][$cle])) {
-                    $depot->rattacherPartage($associes['partages'][$cle], $ligne, $moi, $maintenant, 'dépôt groupé');
+                    $depot->rattacherPartage($associes['partages'][$cle], $ligne, $moi, $maintenant, 'dépôt groupé', $role);
                 }
-                $rattaches[] = $f['nom'].' → '.DepotFichiers::libelleFormat($ligne);
+                $rattaches[] = $f['nom'].' → '.DepotFichiers::libelleFormat($ligne).(CommandeDetailFichier::ROLE_DECOUPE === $role ? ' (découpe)' : '');
             } catch (\DomainException $e) {
                 $erreurs[] = $e->getMessage();
             }
@@ -306,7 +311,7 @@ final class PrepresseController extends AbstractController
         $lignes = [];
         foreach ($descriptions as $d) {
             $r = $resultat['fichiers'][$d['cle']];
-            $lignes[$d['cle']] = ['cle' => $d['cle'], 'nom' => $d['nom'], 'source' => str_starts_with($d['cle'], 'p:') ? 'partage' : 'depot'] + $r;
+            $lignes[$d['cle']] = ['cle' => $d['cle'], 'nom' => $d['nom'], 'source' => str_starts_with($d['cle'], 'p:') ? 'partage' : 'depot', 'role' => DepotFichiers::role($d['nom'])] + $r;
         }
 
         return ['lignes' => $lignes, 'resume' => $resultat['resume'], 'envois' => $envois, 'partages' => $partages];

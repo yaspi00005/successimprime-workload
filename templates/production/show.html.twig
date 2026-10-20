@@ -643,6 +643,7 @@
 												{% endif %}
 											</div>
 											<div class="p-3">
+												{% if fichier.estDecoupe %}<span class="si-pm-decoupe mb-1"><i class="fas fa-cut"></i>Fichier de découpe</span>{% endif %}
 												<div class="font-weight-bold text-truncate mb-2" title="{{ fichier.nomOriginal }}">{{ fichier.nomOriginal }}</div>
 												<a class="btn btn-sm btn-outline-primary mr-1" target="_blank" rel="noopener" href="{{ urlVisualisation }}">
 													<i class="fa fa-eye mr-1"></i>Visionner</a>

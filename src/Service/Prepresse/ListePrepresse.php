@@ -236,6 +236,9 @@ final class ListePrepresse
                 'statut' => EtatPrepresse::STATUTS[$etat][0],
                 'couleur' => EtatPrepresse::STATUTS[$etat][1],
                 'fichiers' => array_map(static fn (CommandeDetailFichier $f): array => ['id' => $f->getId(), 'nom' => $f->getNomOriginal()], $recus),
+                // Fichier de découpe, à part du fichier d'impression (RegleDecoupe) : non_requis, present, manquant, sans_fichier.
+                'decoupe' => $l->etatDecoupe(),
+                'fichiersDecoupe' => array_map(static fn (CommandeDetailFichier $f): array => ['id' => $f->getId(), 'nom' => $f->getNomOriginal()], $l->fichiersDecoupe()),
                 'lie' => [] === $recus && [] !== ($l->getFichierLie() ?? []),
                 'support' => (string) ($l->getSupport()?->getNom() ?? ''),
                 'largeurMm' => $mm[0] ?? null,
@@ -281,6 +284,8 @@ final class ListePrepresse
             'recus' => \count($formats) - $manquants,
             'manquants' => $manquants,
             'retirables' => \count(array_filter($formats, static fn (array $f): bool => $f['retirable'])),
+            // Lignes qui attendent encore leur fichier de découpe (badge ambre, relances).
+            'decoupesManquantes' => \count(array_filter($formats, static fn (array $f): bool => RegleDecoupe::MANQUANT === $f['decoupe'] && EtatPrepresse::PRET !== $f['etat'])),
             'compte' => $compte,
             'onglets' => EtatPrepresse::onglets($etats),
             'age' => EtatPrepresse::age($depuis, $maintenant),

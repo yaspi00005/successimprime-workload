@@ -5,7 +5,7 @@
 #}
 {% set action = c.action %}
 <article class="pq-cmd {{ ouverte ? 'ouverte' }}" id="commande-{{ c.id }}"
-	data-pq-commande="{{ c.id }}"
+	data-pq-commande="{{ c.id|code_id }}"
 	data-onglets="{{ c.onglets|join(' ') }}"
 	data-recherche="{{ c.recherche }}"
 	data-date="{{ c.dateCommande|date('U') }}"
@@ -36,6 +36,9 @@
 				<small class="complet">fichier{{ c.total > 1 ? 's' }} reçu{{ c.total > 1 ? 's' }} · à contrôler</small>
 			{% else %}
 				<small class="fini">{{ c.compte.bat > 0 ? 'BAT chez le client' : 'prêt pour la production' }}</small>
+			{% endif %}
+			{% if c.decoupesManquantes > 0 %}
+				<span class="pq-badge ambre mt-1"><i class="fas fa-cut"></i>{{ c.decoupesManquantes > 1 ? c.decoupesManquantes ~ ' fichiers de découpe manquants' : 'Fichier de découpe manquant' }}</span>
 			{% endif %}
 		</div>
 		<div class="pq-age">
@@ -88,6 +91,16 @@
 							{% else %}
 								<span class="pq-depose" data-pq-zone-ligne="{{ f.id }}" role="button" tabindex="0" title="Glisser le fichier ici ou cliquer pour le choisir">— glisser ici</span>
 							{% endif %}
+							{# Fichier de découpe : à part du fichier d'impression. #}
+							{% for fichier in f.fichiersDecoupe|slice(0, 1) %}
+								<div class="pq-decoupe"><span class="pq-badge decoupe"><i class="fas fa-cut"></i>Découpe</span><a class="nom" href="{{ path('app_controle_pre_presse_visualiser_fichier', {id: fichier.id}) }}" target="_blank" rel="noopener">{{ fichier.nom }}</a></div>
+							{% else %}
+								{% if f.decoupe == 'manquant' %}
+									<div class="pq-decoupe"><span class="pq-badge ambre"><i class="fas fa-cut"></i>Fichier de découpe manquant</span></div>
+								{% elseif f.decoupe == 'sans_fichier' %}
+									<div class="pq-decoupe"><span class="pq-badge gris"><i class="fas fa-cut"></i>Découpe sans fichier séparé</span></div>
+								{% endif %}
+							{% endfor %}
 						</td>
 						<td>
 							<span class="pq-badge {{ f.couleur == 'rouge' ? 'rouge-clair' : f.couleur }}">{{ f.statut }}</span>

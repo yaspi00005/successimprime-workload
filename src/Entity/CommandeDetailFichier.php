@@ -29,6 +29,10 @@ class CommandeDetailFichier
     public const ETAT_PRET_IMPRESSION = 'pret_impression';
     public const ETAT_REJETE = 'rejete';
 
+    /** Rôle du fichier sur la ligne : à imprimer, ou à découper (contour pour le plotter, docs/prepresse.md). */
+    public const ROLE_IMPRESSION = 'impression';
+    public const ROLE_DECOUPE = 'decoupe';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -107,6 +111,13 @@ class CommandeDetailFichier
      */
     #[ORM\Column(length: 30)]
     private string $etat = self::ETAT_ORIGINAL;
+
+    /*
+     * Rôle sur la ligne : impression (le fichier à imprimer) ou découpe
+     * (le fichier du contour, envoyé à la découpe avec l'impression).
+     */
+    #[ORM\Column(length: 20, options: ['default' => self::ROLE_IMPRESSION])]
+    private string $role = self::ROLE_IMPRESSION;
 
     /*
      * Indique que le fichier était déjà prêt
@@ -459,6 +470,27 @@ class CommandeDetailFichier
         $this->etat = $etat;
 
         return $this;
+    }
+
+    public function getRole(): string
+    {
+        return $this->role;
+    }
+
+    public function setRole(string $role): static
+    {
+        if (!\in_array($role, [self::ROLE_IMPRESSION, self::ROLE_DECOUPE], true)) {
+            throw new \InvalidArgumentException(sprintf('Rôle de fichier invalide : %s.', $role));
+        }
+        $this->role = $role;
+
+        return $this;
+    }
+
+    /** Fichier de découpe (le contour), pas le fichier à imprimer. */
+    public function estDecoupe(): bool
+    {
+        return self::ROLE_DECOUPE === $this->role;
     }
 
     public function isDejaTraite(): bool

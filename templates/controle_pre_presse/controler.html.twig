@@ -29,7 +29,7 @@
 		<select id="pp-version{{ suffixe }}" name="fichier" class="form-select form-select-sm" onchange="this.form.submit()">
 			{% for fichier in versions %}
 				<option value="{{ fichier.id }}" {{ fichierAffiche and fichier.id == fichierAffiche.id ? 'selected' }}>
-					Version {{ fichier.version }}{{ fichier.etat in ['traite', 'pret_impression'] ? ' · corrigée' }}{{ fichier.face ? ' · ' ~ fichier.face }}
+					{{ fichier.estDecoupe ? 'Découpe · ' }}Version {{ fichier.version }}{{ fichier.etat in ['traite', 'pret_impression'] and not fichier.estDecoupe ? ' · corrigée' }}{{ fichier.face ? ' · ' ~ fichier.face }}
 				</option>
 			{% endfor %}
 		</select>
@@ -155,6 +155,9 @@
 	{% set indexTemporaireFichierTraite = 999999999 %}
 	{% set modeleUrlMorceauFichierTraite = path('app_controle_pre_presse_fichier_traite_morceau', {jeton: jetonTemporaireFichierTraite, index: indexTemporaireFichierTraite})|replace({(jetonTemporaireFichierTraite): '__JETON__', (indexTemporaireFichierTraite ~ ''): '__INDEX__'}) %}
 	<form id="form-fichier-traite" method="post" enctype="multipart/form-data" action="{{ path('app_controle_pre_presse_ajouter_fichier_traite', {id: detail.id}) }}" data-upload-initialiser-url="{{ path('app_controle_pre_presse_fichier_traite_initialiser', {id: detail.id}) }}" data-upload-morceau-url="{{ modeleUrlMorceauFichierTraite }}"></form>
+	{# Même envoi par morceaux pour le fichier de découpe (rôle « decoupe »), et la case « Fichier de découpe requis ». #}
+	<form id="form-fichier-decoupe" method="post" enctype="multipart/form-data" action="{{ path('app_controle_pre_presse_ajouter_fichier_traite', {id: detail.id}) }}" data-upload-initialiser-url="{{ path('app_controle_pre_presse_fichier_traite_initialiser', {id: detail.id}) }}" data-upload-morceau-url="{{ modeleUrlMorceauFichierTraite }}"></form>
+	<form id="form-decoupe-requise" method="post" action="{{ path('app_controle_pre_presse_decoupe_requise', {id: detail.id}) }}"></form>
 
 	{# Cases pré-cochées quand le contrôle automatique est bon. #}
 	{% set auto_ok = [] %}
@@ -185,7 +188,7 @@
 						<label class="form-check mb-0">
 							<input type="checkbox" class="form-check-input fichier-checkbox" id="fichier-{{ fichier.id }}" name="fichiers[]" value="{{ fichier.id }}" {{ fichierAffiche and fichier.id == fichierAffiche.id ? 'checked' }}>
 							<span class="form-check-label">
-								<strong>V{{ fichier.version }} · {{ fichier.nomOriginal }}</strong>
+								<strong>{% if fichier.estDecoupe %}<span class="badge si-pp-badge-decoupe me-1"><i class="fas fa-cut me-1"></i>Découpe</span>{% endif %}V{{ fichier.version }} · {{ fichier.nomOriginal }}</strong>
 								<small>
 									{{ fichier.etat|replace({'_': ' '})|capitalize }}{{ fichier.face ? ' · ' ~ fichier.face }}{{ fichier.designation ? ' · ' ~ fichier.designation }}
 									· {% if fichier.estPretPourImpression %}prêt pour impression{% elseif fichier.estUploadTermine %}reçu{% else %}<span class="text-warning">envoi en cours</span>{% endif %}
@@ -206,7 +209,7 @@
 						<label for="fichierSource" class="form-label">Fichier original corrigé <span class="text-danger">*</span></label>
 						<select form="form-fichier-traite" class="form-select" id="fichierSource" name="fichierSource" required>
 							<option value="">Choisir l'original</option>
-							{% for fichier in versions|filter(f => f.etat == 'original') %}
+							{% for fichier in versions|filter(f => f.etat == 'original' and not f.estDecoupe) %}
 								<option value="{{ fichier.id }}">{{ fichier.nomOriginal|default('Fichier sans nom') }}{{ fichier.face ? ' — ' ~ fichier.face|capitalize }} — version {{ fichier.version }}</option>
 							{% else %}
 								<option value="" disabled>Aucun fichier original</option>
@@ -242,6 +245,52 @@
 					</div>
 				</div>
 			</details>
+
+			{# ---------- Fichier de découpe (docs/prepresse.md) ---------- #}
+			{% set etat_decoupe = detail.etatDecoupe %}
+			{% set fichier_decoupe = detail.fichierDecoupe %}
+			<div class="si-pp-decoupe si-pp-decoupe-{{ etat_decoupe }}" id="fichier-decoupe">
+				<div class="si-pp-decoupe-tete">
+					<strong><i class="fas fa-cut me-1"></i>Fichier de découpe</strong>
+					{% if etat_decoupe == 'present' %}
+						<span class="badge si-pp-badge-decoupe">Découpe</span>
+						<span class="si-pp-decoupe-nom">{{ fichier_decoupe.nomOriginal }} · version {{ fichier_decoupe.version }}</span>
+						<a href="{{ path('app_controle_pre_presse_telecharger_fichier', {id: fichier_decoupe.id}) }}"><i class="fas fa-download me-1"></i>Télécharger</a>
+					{% elseif etat_decoupe == 'manquant' %}
+						<span class="badge si-pp-badge-manquant">Fichier de découpe manquant</span>
+					{% elseif etat_decoupe == 'sans_fichier' %}
+						<span class="badge bg-secondary">Découpe sans fichier séparé</span>
+					{% else %}
+						<span class="text-muted small">pas nécessaire pour ce travail</span>
+					{% endif %}
+				</div>
+				<p class="small text-muted mb-2">
+					{% if detail.fichierDecoupeRequis is same as(true) %}Demandé par la prépresse.
+					{% elseif detail.fichierDecoupeRequis is same as(false) %}Pas demandé (choix de la prépresse).
+					{% elseif detail.aFinitionDecoupe %}Demandé par la finition « {{ detail.finitionsDecoupe|join(' », « ') }} ».
+					{% else %}Aucune finition de découpe sur ce travail.{% endif %}
+					Il part en production avec le fichier à imprimer, pour la découpe.
+				</p>
+				<div class="si-pp-decoupe-actions">
+					<input form="form-fichier-decoupe" type="hidden" name="_token" value="{{ csrf_token('ajouter_fichier_traite_' ~ detail.id) }}">
+					<input form="form-fichier-decoupe" type="hidden" name="role" value="decoupe">
+					<span class="si-pp-decoupe-envoi">
+						<label for="fichierDecoupe" class="visually-hidden">Fichier de découpe</label>
+						<input form="form-fichier-decoupe" type="file" class="form-control form-control-sm" id="fichierDecoupe" name="fichierTraite" required>
+						<button form="form-fichier-decoupe" type="submit" class="btn btn-sm si-pp-btn-decoupe" id="bouton-fichier-decoupe"><i class="fas fa-upload me-1"></i>{{ fichier_decoupe ? 'Remplacer le fichier de découpe' : 'Ajouter le fichier de découpe' }}</button>
+					</span>
+					<span class="si-pp-decoupe-requis">
+						<input form="form-decoupe-requise" type="hidden" name="_token" value="{{ csrf_token('decoupe_requise_' ~ detail.id) }}">
+						<label for="decoupeRequis" class="small text-muted">Fichier de découpe requis</label>
+						<select form="form-decoupe-requise" id="decoupeRequis" name="requis" class="form-select form-select-sm" onchange="this.form.submit()">
+							<option value="auto" {{ detail.fichierDecoupeRequis is null ? 'selected' }}>Selon les finitions</option>
+							<option value="oui" {{ detail.fichierDecoupeRequis is same as(true) ? 'selected' }}>Oui</option>
+							<option value="non" {{ detail.fichierDecoupeRequis is same as(false) ? 'selected' }}>Non</option>
+						</select>
+						<noscript><button form="form-decoupe-requise" type="submit" class="btn btn-sm btn-light">OK</button></noscript>
+					</span>
+				</div>
+			</div>
 		</section>
 
 		<section class="card si-pp-carte">
@@ -324,6 +373,13 @@
 					</details>
 				{% endif %}
 			</section>
+		{% endif %}
+
+		{% if detail.etatDecoupe == 'manquant' %}
+			<div class="alert si-pp-alerte-decoupe d-flex flex-wrap align-items-center gap-2">
+				<span class="me-auto"><i class="fas fa-cut me-1"></i><strong>Fichier de découpe manquant.</strong> Ajoutez-le avant l'envoi en production, ou cochez si le contour est dans le fichier d'impression.</span>
+				<label class="form-check mb-0"><input type="checkbox" class="form-check-input" name="decoupeSansFichier" value="1" id="decoupeSansFichier"><span class="form-check-label">Découpe sans fichier séparé</span></label>
+			</div>
 		{% endif %}
 
 		<div class="si-pp-actions">
@@ -628,6 +684,51 @@ if (bouton) {
 bouton.disabled = false;
 bouton.innerHTML = texteBoutonInitial;
 }
+}
+})();
+});
+});
+
+document.addEventListener('DOMContentLoaded', function () {
+/* Fichier de découpe : même envoi par morceaux que le fichier traité, avec le rôle « decoupe ». */
+const formulaire = document.getElementById('form-fichier-decoupe');
+const champ = document.getElementById('fichierDecoupe');
+const bouton = document.getElementById('bouton-fichier-decoupe');
+if (!formulaire || !champ) {
+return;
+}
+const MORCEAU = 5 * 1024 * 1024;
+formulaire.addEventListener('submit', function (event) {
+if (!champ.files || !champ.files.length) {
+return;
+}
+event.preventDefault();
+const fichier = champ.files[0];
+const jetonCsrf = document.querySelector('[form="form-fichier-decoupe"][name="_token"]').value;
+const texte = bouton ? bouton.innerHTML : '';
+if (bouton) { bouton.disabled = true; bouton.textContent = 'Envoi… 0 %'; }
+(async function () {
+try {
+const nombre = Math.max(1, Math.ceil(fichier.size / MORCEAU));
+const init = await fetch(formulaire.dataset.uploadInitialiserUrl, {
+method: 'POST',
+headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': jetonCsrf, Accept: 'application/json'},
+body: JSON.stringify({nom: fichier.name, typeMime: fichier.type || 'application/octet-stream', taille: fichier.size, nombreMorceaux: nombre, role: 'decoupe'})
+});
+const d = await init.json();
+if (!init.ok || !d.jeton) { throw new Error(d.message || "Impossible d'initialiser l'envoi."); }
+for (let i = 0; i < nombre; i++) {
+const corps = new FormData();
+corps.append('morceau', fichier.slice(i * MORCEAU, Math.min(fichier.size, (i + 1) * MORCEAU)), fichier.name);
+const r = await fetch(formulaire.dataset.uploadMorceauUrl.replace('__JETON__', d.jeton).replace('__INDEX__', String(i)), {method: 'POST', headers: {'X-CSRF-TOKEN': jetonCsrf}, body: corps});
+const m = await r.json();
+if (!r.ok) { throw new Error(m.message || "L'envoi du fichier a été interrompu."); }
+if (bouton) { bouton.textContent = 'Envoi… ' + (typeof m.progression === 'number' ? m.progression : Math.round((i + 1) / nombre * 100)) + ' %'; }
+}
+window.location.reload();
+} catch (erreur) {
+window.Swal.fire({icon: 'error', title: 'Échec de l’envoi', text: erreur.message || 'Une erreur est survenue pendant l’envoi du fichier.'});
+if (bouton) { bouton.disabled = false; bouton.innerHTML = texte; }
 }
 })();
 });

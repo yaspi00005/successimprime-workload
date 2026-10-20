@@ -306,6 +306,26 @@ public function controler(
 
         /*
          * ========================================================
+         * FICHIER DE DÉCOUPE (docs/prepresse.md)
+         * ========================================================
+         *
+         * Le fichier de découpe le plus récent part avec le fichier
+         * à imprimer : il est validé et transmis à l'ordre avec lui.
+         */
+
+        $fichierDecoupe = $detail->fichierDecoupe();
+
+        if (
+            $fichierDecoupe !== null
+            && in_array((string) $request->request->get('action'), ['valider', 'valider_production'], true)
+            && !$controle->getFichiers()->contains($fichierDecoupe)
+        ) {
+            $controle->addFichier($fichierDecoupe);
+        }
+
+
+        /*
+         * ========================================================
          * CONTRÔLES TECHNIQUES
          * ========================================================
          */
@@ -631,6 +651,34 @@ public function controler(
              */
 
             if ($envoyerProduction) {
+
+                /*
+                 * Fichier de découpe : une ligne avec une découpe ne part
+                 * pas sans lui, sauf « Découpe sans fichier séparé »
+                 * (le contour est dans le fichier d'impression).
+                 */
+                if (
+                    $detail->besoinFichierDecoupe()
+                    && $detail->fichierDecoupe() === null
+                    && !$detail->isDecoupeSansFichier()
+                ) {
+                    if (!$request->request->getBoolean('decoupeSansFichier')) {
+                        throw new \DomainException(
+                            'Ce travail a une découpe : ajoutez le fichier de découpe (« Ajouter le fichier de découpe »), ou cochez « Découpe sans fichier séparé » si le contour est dans le fichier d\'impression.'
+                        );
+                    }
+
+                    $detail->setDecoupeSansFichier(true);
+                }
+
+                if ([] === array_filter(
+                    $controle->getFichiers()->toArray(),
+                    static fn (CommandeDetailFichier $f): bool => !$f->estDecoupe()
+                )) {
+                    throw new \DomainException(
+                        'Sélectionnez le fichier à imprimer : le fichier de découpe part avec lui.'
+                    );
+                }
 
                 $controleCredit =
                     $controleCreditClientService
@@ -1118,10 +1166,12 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
     $choisi = Entree::entier($request->query, 'fichier');
     $affiche = null;
     foreach ($versions as $fichier) {
-        if ($choisi === 0 || $fichier->getId() === $choisi) {
+        // Par défaut, la dernière version à imprimer (pas le fichier de découpe).
+        if (($choisi === 0 && !$fichier->estDecoupe()) || $fichier->getId() === $choisi) {
             $affiche = $fichier;
         }
     }
+    $affiche ??= $choisi === 0 ? ($versions[\count($versions) - 1] ?? null) : null;
 
     $analyse = [];
     $image = null;
@@ -1140,6 +1190,45 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
 
     return ['versions' => $versions, 'fichierAffiche' => $affiche, 'analyse' => $analyse, 'typeApercu' => $image];
 }
+    /**
+     * « Fichier de découpe requis » (docs/prepresse.md) : la prépresse dit
+     * si la ligne a besoin d'un fichier de découpe, ou revient à la règle
+     * des finitions (RegleDecoupe).
+     */
+    #[Route(
+        '/travail/{id}/decoupe',
+        name: 'decoupe_requise',
+        requirements: ['id' => '\d+'],
+        methods: ['POST']
+    )]
+    public function decoupeRequise(
+        CommandesDetails $detail,
+        Request $request,
+        EntityManagerInterface $entityManager
+    ): Response {
+        if (!$this->isCsrfTokenValid('decoupe_requise_' . $detail->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Le jeton de sécurité est invalide.');
+        }
+
+        $choix = (string) $request->request->get('requis', 'auto');
+        $detail->setFichierDecoupeRequis(match ($choix) {
+            'oui' => true,
+            'non' => false,
+            default => null,
+        });
+        // Un fichier de découpe redemandé : « Découpe sans fichier séparé » ne vaut plus.
+        if ($choix === 'oui') {
+            $detail->setDecoupeSansFichier(false);
+        }
+        $entityManager->flush();
+
+        $this->addFlash('success', $detail->besoinFichierDecoupe()
+            ? 'Ce travail attend un fichier de découpe avant l\'envoi en production.'
+            : 'Ce travail n\'a pas besoin de fichier de découpe.');
+
+        return $this->redirectToRoute('app_controle_pre_presse_controler', ['id' => $detail->getId()]);
+    }
+
     #[Route(
         '/travail/{id}/fichier-traite',
         name: 'ajouter_fichier_traite',
@@ -1214,6 +1303,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         }
 
         $fichierSourceId = Entree::entier($request->request, 'fichierSource');
+        $decoupe = CommandeDetailFichier::ROLE_DECOUPE === $request->request->get('role');
 
         $fichierSource = null;
 
@@ -1224,7 +1314,9 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             }
         }
 
-        if (!$fichierSource instanceof CommandeDetailFichier) {
+        if ($decoupe) {
+            $fichierSource = $detail->fichierDecoupe();
+        } elseif (!$fichierSource instanceof CommandeDetailFichier) {
             $this->addFlash(
                 'error',
                 'Sélectionnez le fichier original correspondant.'
@@ -1240,6 +1332,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
          * Ces métadonnées doivent être lues avant move(), car le fichier
          * temporaire PHP n'existe plus à son ancien emplacement ensuite.
          */
+        $version = ($fichierSource?->getVersion() ?? 0) + 1;
         $nomOriginal = $fichierUpload->getClientOriginalName();
         $taille = (int) ($fichierUpload->getSize() ?: 0);
         $typeMime = $fichierUpload->getMimeType()
@@ -1263,7 +1356,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         $nomStockage = sprintf(
             '%s-v%d-%s.%s',
             $nomSecurise,
-            $fichierSource->getVersion() + 1,
+            $version,
             bin2hex(random_bytes(8)),
             strtolower($extension)
         );
@@ -1308,19 +1401,20 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             ->setTaille($taille)
             ->setOrigine(CommandeDetailFichier::ORIGINE_INTERNE)
             ->setEtat(CommandeDetailFichier::ETAT_TRAITE)
-            ->setVersion($fichierSource->getVersion() + 1)
+            ->setRole($decoupe ? CommandeDetailFichier::ROLE_DECOUPE : CommandeDetailFichier::ROLE_IMPRESSION)
+            ->setVersion($version)
             ->setFace(
-                $request->request->get('face') ?: $fichierSource->getFace()
+                $request->request->get('face') ?: $fichierSource?->getFace()
             )
             ->setDesignation(
                 $request->request->get('designation')
-                    ?: 'Fichier traité'
+                    ?: ($decoupe ? 'Fichier de découpe' : 'Fichier traité')
             )
             ->setGroupeFichier(
-                $fichierSource->getGroupeFichier()
+                $fichierSource?->getGroupeFichier()
             )
             ->setQuantiteAProduire(
-                $fichierSource->getQuantiteAProduire()
+                $fichierSource?->getQuantiteAProduire()
             )
             ->setObservation(
                 $request->request->get('observation')
@@ -1335,7 +1429,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
 
         $this->addFlash(
             'success',
-            'Le fichier traité a été ajouté avec succès.'
+            $decoupe ? 'Le fichier de découpe a été ajouté.' : 'Le fichier traité a été ajouté avec succès.'
         );
 
         return $this->redirectToRoute(
@@ -1418,6 +1512,8 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         $taille = (int) ($donnees['taille'] ?? 0);
         $nombreMorceaux = (int) ($donnees['nombreMorceaux'] ?? 0);
         $fichierSourceId = (int) ($donnees['fichierSource'] ?? 0);
+        // « Ajouter le fichier de découpe » : même envoi, rôle découpe.
+        $decoupe = CommandeDetailFichier::ROLE_DECOUPE === ($donnees['role'] ?? null);
 
         if ($nomOriginal === '' || $taille <= 0 || $nombreMorceaux <= 0) {
             return $this->json(
@@ -1452,12 +1548,17 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             }
         }
 
-        if (!$fichierSource instanceof CommandeDetailFichier) {
+        if ($decoupe) {
+            // Le fichier de découpe suit le dernier fichier de découpe de la ligne (s'il y en a un).
+            $fichierSource = $detail->fichierDecoupe();
+        } elseif (!$fichierSource instanceof CommandeDetailFichier) {
             return $this->json(
                 ['message' => 'Sélectionnez le fichier original correspondant.'],
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
         }
+
+        $version = ($fichierSource?->getVersion() ?? 0) + 1;
 
         $nomSansExtension = pathinfo($nomOriginal, PATHINFO_FILENAME);
         $nomSecurise = $slugger->slug($nomSansExtension)->lower();
@@ -1469,7 +1570,7 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
         $nomStockage = sprintf(
             '%s-v%d-%s.%s',
             $nomSecurise,
-            $fichierSource->getVersion() + 1,
+            $version,
             bin2hex(random_bytes(8)),
             $extension
         );
@@ -1509,11 +1610,12 @@ private function apercuFichier(CommandesDetails $detail, Request $request, Analy
             ->setStatut(CommandeDetailFichier::STATUT_EN_COURS)
             ->setOrigine(CommandeDetailFichier::ORIGINE_INTERNE)
             ->setEtat(CommandeDetailFichier::ETAT_TRAITE)
-            ->setVersion($fichierSource->getVersion() + 1)
-            ->setFace($face !== '' ? $face : $fichierSource->getFace())
-            ->setDesignation($designationFichier !== '' ? $designationFichier : 'Fichier traité')
-            ->setGroupeFichier($fichierSource->getGroupeFichier())
-            ->setQuantiteAProduire($fichierSource->getQuantiteAProduire())
+            ->setRole($decoupe ? CommandeDetailFichier::ROLE_DECOUPE : CommandeDetailFichier::ROLE_IMPRESSION)
+            ->setVersion($version)
+            ->setFace($face !== '' ? $face : $fichierSource?->getFace())
+            ->setDesignation($designationFichier !== '' ? $designationFichier : ($decoupe ? 'Fichier de découpe' : 'Fichier traité'))
+            ->setGroupeFichier($fichierSource?->getGroupeFichier())
+            ->setQuantiteAProduire($fichierSource?->getQuantiteAProduire())
             ->setObservation(
                 trim((string) ($donnees['observation'] ?? '')) ?: null
             )

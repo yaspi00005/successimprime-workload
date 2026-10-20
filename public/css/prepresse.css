@@ -240,3 +240,12 @@
 	.pq-table td.pq-attente { text-align: right; }
 	.pq-frise { white-space: normal; }
 }
+
+/* Fichier de découpe (docs/prepresse.md) : badge « Découpe » et « Fichier de découpe manquant » (ambre). */
+.pq-choix.pq-role { border-color: var(--pq-bord); }
+.pq-choix.pq-role.decoupe { border-color: #D97706; color: #92400E; background: #FFFBEB; }
+.pq-badge.decoupe { background: #FEF3C7; color: #92400E; }
+.pq-badge.ambre { background: #FFFBEB; color: #92400E; border: 1px solid #F59E0B; }
+.pq-decoupe { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 3px; font-size: 12px; min-width: 0; }
+.pq-decoupe span.nom { overflow-wrap: anywhere; color: #374151; }
+.pq-progression .pq-badge.ambre { white-space: normal; max-width: 100%; font-size: 11px; padding: 1px 7px; margin-top: 4px; }

@@ -35,6 +35,7 @@
 				<input type="file" multiple hidden data-pq-fichiers>
 				<i class="fas fa-cloud-upload-alt me-1"></i><b>Glissez les fichiers ici</b> ou cliquez pour les choisir · PDF, images, fichiers de travail · 750 Mo au plus chacun
 			</label>
+			<p class="pq-muet mt-1 mb-0">Fichier de découpe (contour pour le plotter) : déposez-le avec le fichier d'impression. Un nom avec « découpe », « cut » ou « contour » est reconnu ; sinon choisissez « Découpe » dans la colonne Fichier.</p>
 		</div>
 		<div data-pq-panneau="partage" hidden>
 			<p class="pq-muet mb-2">Fichiers lourds posés dans le dossier partagé du serveur qui semblent être pour cette commande (numéro, client ou format dans le nom). Cochés, ils en sortent à l'enregistrement : déplacés vers la commande et renommés « commande_format ».</p>
@@ -44,7 +45,7 @@
 		<div class="table-responsive-sm">
 			<table class="pq-depot-table" data-pq-depot-table hidden>
 				<thead>
-					<tr><th>Fichier déposé</th><th></th><th>Format de la commande</th><th>Associé par</th><th>Dimensions du fichier</th></tr>
+					<tr><th>Fichier déposé</th><th></th><th>Format de la commande</th><th>Fichier</th><th>Associé par</th><th>Dimensions du fichier</th></tr>
 				</thead>
 				<tbody data-pq-depot-lignes></tbody>
 			</table>

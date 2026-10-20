@@ -506,6 +506,26 @@
 		if (zone) zone.hidden = !oeillets();
 	}
 
+	// Fichier de découpe (docs/prepresse.md) : envoyé comme les autres, gardé à part pour la ligne.
+	$$('[data-co-envoi-decoupe]').forEach(function (champ) {
+		champ.addEventListener('change', async function () {
+			const fichier = this.files[0];
+			if (!fichier) return;
+			const etat = $('[data-co-decoupe-etat]');
+			etat.textContent = 'Envoi de ' + fichier.name + '…';
+			try {
+				const recu = await window.EspaceEnvoi.envoyer(fichier, {
+					debut: D.envoi, jeton: D.jeton,
+					progres: function (p) { etat.textContent = 'Envoi de ' + fichier.name + '… ' + p + ' %'; },
+				});
+				$('[data-co-decoupe-id]').value = recu.id;
+				etat.textContent = '✓ ' + recu.nom + ' : fichier de découpe joint.';
+			} catch (e) {
+				etat.textContent = fichier.name + ' : ' + e.message;
+			}
+		});
+	});
+
 	$$('[data-co-envoi]').forEach(function (champ) {
 		champ.addEventListener('change', async function () {
 			const fichier = this.files[0];

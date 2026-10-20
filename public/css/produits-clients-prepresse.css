@@ -107,3 +107,11 @@
 @media (max-width: 575px) { .si-aig-regles { grid-template-columns: 1fr; } .si-aig-regles dd { border-top: 0; padding-top: 0; } }
 .si-aig .si-pcl-nouveaux { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #EAF1FC; color: #0F4590; font-size: .72rem; font-weight: 800; vertical-align: middle; }
 .si-aig-file a { color: #1D5BB8; }
+
+/* Fichier de découpe lié avec le fichier à imprimer (docs/prepresse.md). */
+.si-pcl-badge.decoupe { background: #FEF3C7; color: #92400E; }
+.si-pcl-decoupe { display: block; font-size: .74rem; color: #475569; overflow-wrap: anywhere; }
+.si-pcl-decoupe.manquant { color: #92400E; font-weight: 700; }
+.si-pcl-decoupe-form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: .78rem; color: #64748B; margin-top: 4px; }
+.si-pcl-decoupe-form select { max-width: 100%; padding: 3px 6px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: .8rem; }
+.si-pcl-decoupe-form .si-pcl-sans { display: inline-flex; align-items: center; gap: 4px; }

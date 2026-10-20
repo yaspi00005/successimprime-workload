@@ -5644,3 +5644,21 @@ body.si-param-bloque { overflow: hidden; }
 
 /* Vente hors imprimerie (docs/hors-imprimerie.md) : pastille sur la commande, le devis et les listes. */
 .si-badge-hors { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; background: #EDE9FE; color: #5B21B6; white-space: nowrap; vertical-align: middle; }
+
+/* Fichier de découpe (docs/prepresse.md) : à part du fichier à imprimer, badge « Découpe », manquant en ambre. */
+.si-pp-badge-decoupe { background: #FEF3C7; color: #92400E; font-weight: 700; }
+.si-pp-badge-manquant { background: #FFFBEB; color: #92400E; border: 1px solid #F59E0B; font-weight: 700; }
+.si-pp-decoupe { border-top: 1px solid #EEF2F7; margin-top: 12px; padding-top: 12px; }
+.si-pp-decoupe-manquant { background: #FFFBEB; border: 1px solid #FCD34D; border-radius: 10px; padding: 12px; }
+.si-pp-decoupe-tete { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-bottom: 4px; }
+.si-pp-decoupe-nom { font-size: 13px; overflow-wrap: anywhere; }
+.si-pp-decoupe-actions { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 20px; }
+.si-pp-decoupe-envoi { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; flex: 1 1 320px; }
+.si-pp-decoupe-envoi .form-control { flex: 1 1 200px; min-width: 0; }
+.si-pp-decoupe-requis { display: flex; flex-direction: column; gap: 2px; }
+.si-pp-alerte-decoupe { background: #FFFBEB; border: 1px solid #F59E0B; color: #78350F; }
+.si-pm-decoupe { display: inline-flex; align-items: center; gap: 6px; background: #FEF3C7; color: #92400E; border-radius: 999px; padding: 3px 10px; font-size: 12.5px; font-weight: 700; }
+.si-pm-decoupe-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 8px 0 0; font-size: 13px; overflow-wrap: anywhere; }
+.si-pp-btn-decoupe { background: #B45309; border-color: #B45309; color: #fff; font-weight: 700; }
+.si-pp-btn-decoupe:hover, .si-pp-btn-decoupe:focus { background: #92400E; border-color: #92400E; color: #fff; }
+.si-pm-apercu .si-pm-decoupe-ligne, .si-pm-apercu .si-pm-decoupe-ligne a { color: #FDE68A; }

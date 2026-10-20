@@ -93,7 +93,7 @@ final class FicheCommande
                 $liste[] = [
                     'type' => 'client',
                     'nom' => $fichier->getNomOriginal(),
-                    'detail' => 'fichier client · '.$fichier->getCreeLe()->format('d/m').$suffixe,
+                    'detail' => ($fichier->estDecoupe() ? 'fichier de découpe' : 'fichier client').' · '.$fichier->getCreeLe()->format('d/m').$suffixe,
                     'statut' => null,
                     'fichier' => $fichier,
                 ];

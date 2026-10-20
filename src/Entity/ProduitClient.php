@@ -333,6 +333,12 @@ class ProduitClient
     /**
      * @return Collection<int, Finition>
      */
+    /** Une finition de découpe (« Découpe à la forme »…) : le fichier de découpe se lie avec le fichier à imprimer. */
+    public function besoinFichierDecoupe(): bool
+    {
+        return \App\Service\Prepresse\RegleDecoupe::requis(array_map(static fn (Finition $f): string => (string) $f->getNom(), $this->finitions->toArray()), null);
+    }
+
     public function getFinitions(): Collection
     {
         return $this->finitions;
@@ -761,7 +767,15 @@ class ProduitClient
             return null;
         }
 
-        return array_values(array_map(static fn (array $f): array => array_intersect_key($f, array_flip(['l', 'h', 'nom', 'empreinte', 'octets', 'le'])), array_filter($fichiers, 'is_array')));
+        return array_values(array_map(static function (array $f): array {
+            $public = array_intersect_key($f, array_flip(['l', 'h', 'nom', 'empreinte', 'octets', 'le', 'decoupeSansFichier']));
+            // Le fichier de découpe lié avec lui : sa référence seulement.
+            if (\is_array($f['decoupe'] ?? null)) {
+                $public['decoupe'] = array_intersect_key($f['decoupe'], array_flip(['nom', 'empreinte', 'octets']));
+            }
+
+            return $public;
+        }, array_filter($fichiers, 'is_array')));
     }
 
     /** @param list<array{l: float, h: float}> $tailles */

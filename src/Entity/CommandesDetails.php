@@ -288,6 +288,22 @@ class CommandesDetails
     #[ORM\Column(length: 120, nullable: true)]
     private ?string $retirePrepressePar = null;
 
+    /**
+     * Fichier de découpe (docs/prepresse.md) : null, d'après les finitions
+     * de la ligne (RegleDecoupe) ; true ou false, la prépresse l'a coché
+     * (« Fichier de découpe requis ») ou décoché.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?bool $fichierDecoupeRequis = null;
+
+    /**
+     * « Découpe sans fichier séparé » : coché par le graphiste à l'envoi en
+     * production (le contour est dans le fichier d'impression). Montré au
+     * machiniste.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $decoupeSansFichier = false;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionDebuteLe = null;
 
@@ -2755,5 +2771,90 @@ public function validerModeCommande(
         $this->retirePrepressePar = null;
 
         return $this;
+    }
+
+    public function getFichierDecoupeRequis(): ?bool
+    {
+        return $this->fichierDecoupeRequis;
+    }
+
+    public function setFichierDecoupeRequis(?bool $requis): static
+    {
+        $this->fichierDecoupeRequis = $requis;
+
+        return $this;
+    }
+
+    public function isDecoupeSansFichier(): bool
+    {
+        return $this->decoupeSansFichier;
+    }
+
+    public function setDecoupeSansFichier(bool $sansFichier): static
+    {
+        $this->decoupeSansFichier = $sansFichier;
+
+        return $this;
+    }
+
+    /** @return list<string> les noms des finitions de la ligne */
+    public function nomsFinitions(): array
+    {
+        $noms = [];
+        foreach ($this->finitions as $f) {
+            $noms[] = (string) ($f->getNomFinition() ?? $f->getFinition()?->getNom());
+        }
+
+        return $noms;
+    }
+
+    /** @return list<string> les finitions de découpe de la ligne (« Découpe à la forme ») */
+    public function finitionsDecoupe(): array
+    {
+        return array_values(array_filter($this->nomsFinitions(), \App\Service\Prepresse\RegleDecoupe::estFinitionDecoupe(...)));
+    }
+
+    /** Une finition de la ligne est une découpe (sans la case de la prépresse). */
+    public function aFinitionDecoupe(): bool
+    {
+        return \App\Service\Prepresse\RegleDecoupe::requis($this->nomsFinitions(), null);
+    }
+
+    /** La ligne demande-t-elle un fichier de découpe ? (finition de découpe, ou case de la prépresse) */
+    public function besoinFichierDecoupe(): bool
+    {
+        return \App\Service\Prepresse\RegleDecoupe::requis($this->nomsFinitions(), $this->fichierDecoupeRequis);
+    }
+
+    /**
+     * Fichiers de découpe reçus (actifs et complets), le plus récent d'abord.
+     *
+     * @return list<CommandeDetailFichier>
+     */
+    public function fichiersDecoupe(): array
+    {
+        $liste = array_values(array_filter($this->fichiers->toArray(), static fn (CommandeDetailFichier $f): bool => $f->estDecoupe() && $f->isActif() && $f->estUploadTermine()));
+        usort($liste, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getCreeLe(), $b->getId()] <=> [$a->getCreeLe(), $a->getId()]);
+
+        return $liste;
+    }
+
+    /** Le fichier de découpe à transmettre : le plus récent, ou null. */
+    public function fichierDecoupe(): ?CommandeDetailFichier
+    {
+        return $this->fichiersDecoupe()[0] ?? null;
+    }
+
+    /**
+     * Où en est le fichier de découpe : RegleDecoupe::NON_REQUIS, PRESENT,
+     * MANQUANT ou SANS_FICHIER. Le fichier lié d'un produit du client
+     * (Mes produits) compte aussi.
+     */
+    public function etatDecoupe(): string
+    {
+        $decoupeLiee = \is_array($this->fichierLie['decoupe'] ?? null);
+        $sansFichierLie = (bool) ($this->fichierLie['decoupeSansFichier'] ?? false);
+
+        return \App\Service\Prepresse\RegleDecoupe::etat($this->besoinFichierDecoupe(), $decoupeLiee || null !== $this->fichierDecoupe(), $this->decoupeSansFichier || $sansFichierLie);
     }
 }

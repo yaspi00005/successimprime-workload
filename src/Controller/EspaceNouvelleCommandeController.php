@@ -68,7 +68,7 @@ final class EspaceNouvelleCommandeController extends AbstractController
     private const PANIER = 'espace_commande_produits';
     /** Dernier produit rouvert pour finir la commande (« Terminer la commande »). */
     private const REPRISE = 'espace_commande_reprise';
-    private const SAISIES_PRODUIT = ['produit', 'quantite', 'unite_quantite', 'quantite_m2', 'largeur', 'hauteur', 'unite_taille', 'finitions', 'fichier_mode', 'fichiers', 'creation', 'note', 'refaire', 'delai', 'reception'];
+    private const SAISIES_PRODUIT = ['produit', 'quantite', 'unite_quantite', 'quantite_m2', 'largeur', 'hauteur', 'unite_taille', 'finitions', 'fichier_mode', 'fichiers', 'fichier_decoupe', 'creation', 'note', 'refaire', 'delai', 'reception'];
 
     public function __construct(
         private readonly CompteClientRepository $comptes,
@@ -549,6 +549,22 @@ final class EspaceNouvelleCommandeController extends AbstractController
                 }
                 if (null !== $f) {
                     $choisis[] = $f;
+                }
+            }
+            // Fichier de découpe (docs/prepresse.md) : envoyé à part, il arrive sur la ligne avec le rôle « découpe ».
+            $decoupe = (int) ($s['fichier_decoupe'] ?? 0) > 0 ? $fichiers->trouver($client, (int) $s['fichier_decoupe']) : null;
+            if (null !== $decoupe && null === $decoupe->getCommandeDetail() && !$decoupe->isLogo() && $decoupe->estUploadTermine() && !\in_array($decoupe, $choisis, true)) {
+                if (isset($utilises[$decoupe->getId()])) {
+                    $decoupe = $reel ? $fichiers->reprendre($decoupe, $client) : $decoupe;
+                } else {
+                    $utilises[(int) $decoupe->getId()] = true;
+                }
+                if (null !== $decoupe) {
+                    if ($reel) {
+                        $decoupe->setRole(CommandeDetailFichier::ROLE_DECOUPE);
+                    }
+                    $choisis[] = $decoupe;
+                    $notes[] = \sprintf('Fichier de découpe : %s.', $decoupe->getNomOriginal());
                 }
             }
         } elseif ('creation' === $mode) {

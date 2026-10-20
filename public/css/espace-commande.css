@@ -305,3 +305,8 @@ html:not(.co-js) [data-co-aller], html:not(.co-js) .co-barre { display: none !im
 .co-plafond-choix { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; }
 .co-plafond-choix .co-option em { float: none; display: block; margin: .15rem 0 0; color: var(--orange); }
 @media (min-width: 900px) { .co-plafond-choix { grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); } }
+
+/* Fichier de découpe (docs/prepresse.md) : à part du fichier à imprimer. */
+.co-decoupe { margin-top: .8rem; padding-top: .7rem; border-top: 1px dashed #E2E8F0; font-size: .9rem; }
+.co-decoupe-choix { display: flex; flex-direction: column; gap: .3rem; }
+.co-decoupe-choix input { max-width: 100%; font-size: .85rem; }

@@ -139,7 +139,7 @@ final class ControleFinalController extends AbstractController
             try {
                 $pieces = Entree::entier($request->request, 'pieces', 1);
                 $this->controles->refaire($ordre, $pieces, (string) $request->request->get('motif'), $this->moi(), new \DateTimeImmutable());
-                $this->addFlash('success', \sprintf('%d pièce%s à refaire : le travail est revenu dans Ma file (colonne « Prêt »), le chef d\'atelier est prévenu.', $pieces, $pieces > 1 ? 's' : ''));
+                $this->addFlash('success', \sprintf('%d pièce%s à refaire : le travail est revenu dans Ma file (colonne « Prêt »), le chef d\'atelier est prévenu. Ses colis seront à rescanner.', $pieces, $pieces > 1 ? 's' : ''));
             } catch (\LogicException|\InvalidArgumentException $e) {
                 $this->addFlash('danger', $e->getMessage());
             }

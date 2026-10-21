@@ -71,7 +71,7 @@ La page d'une commande : `/atelier/production/controle/{commande}`, « Contrôle
 
 Le bouton « Refaire une pièce » (avec une confirmation) demande le travail, le nombre de pièces et la raison. Alors :
 
-- le travail repart en production pour ces pièces : il revient dans Ma file, colonne « Prêt » ; ses colis gardent leurs étiquettes ;
+- le travail repart en production pour ces pièces : il revient dans Ma file, colonne « Prêt » (bouton « Refaire 1 pièce sur … ») ; ses colis gardent leurs étiquettes, mais ceux qui le contiennent ne comptent plus comme scannés : une fois la pièce refaite et remise dans son colis, on le rescanne (« Réimprimer les mêmes » si l'étiquette était collée sur la pièce rejetée) ;
 - le contrôle final de la commande est rouvert (les cases sont à recocher) ;
 - une **réimpression** est notée au journal de la machine, au nom de l'opérateur du travail (elle compte dans ses points, comme une réimpression signalée au poste machiniste) ;
 - le chef d'atelier est prévenu ;

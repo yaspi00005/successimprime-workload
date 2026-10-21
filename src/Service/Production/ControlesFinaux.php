@@ -428,6 +428,10 @@ final class ControlesFinaux
         $ordre->refaire($pieces, $le);
         $ligne->rouvrirPourRefaire($pieces);
         $this->controles->deLaCommande($commande)?->rouvrir($le);
+        // Les colis de ce travail gardent leur étiquette mais se rescannent une fois la pièce refaite.
+        foreach ($this->colis->etat($commande)['actifs'] as $c) {
+            $c->rouvrirPourReprise((int) $ordre->getId());
+        }
 
         $nom = PosteMachiniste::titre($ligne);
         if (null !== $ordre->getMachine()) {

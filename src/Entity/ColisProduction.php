@@ -254,4 +254,20 @@ class ColisProduction
     {
         $this->annuleLe ??= $le;
     }
+
+    /**
+     * Une pièce de ce travail est à refaire (contrôle final) : si ce colis
+     * le contient, son scan ne compte plus, il se rescanne une fois la
+     * pièce refaite et remise dedans. Renvoie true si le colis le contient.
+     */
+    public function rouvrirPourReprise(int $ordre): bool
+    {
+        if ([] === array_filter($this->contenu, static fn (array $c): bool => (int) $c['ordre'] === $ordre)) {
+            return false;
+        }
+        $this->scanneLe = null;
+        $this->scannePar = null;
+
+        return true;
+    }
 }

@@ -51,6 +51,23 @@ final class ColisEtRepriseTest extends TestCase
         $ancien->scanner($oumar, new \DateTimeImmutable());
     }
 
+    public function testUnColisDontUnePieceEstRefaiteSeRescanne(): void
+    {
+        $commande = (new Commandes())->setNumero('CMD-000183');
+        $oumar = new User();
+        $bache = new ColisProduction($commande, 1, 1, 2, ColisProduction::ROULEAU, [['ordre' => 7, 'ligne' => 1, 'libelle' => 'Bâche 300 × 100 cm × 1', 'quantite' => 1]], null, new \DateTimeImmutable('2026-10-20 10:50'));
+        $flyers = new ColisProduction($commande, 1, 2, 2, ColisProduction::CARTON, [['ordre' => 8, 'ligne' => 2, 'libelle' => 'Flyers A5 × 1000', 'quantite' => 1000]], null, new \DateTimeImmutable('2026-10-20 10:50'));
+        $bache->scanner($oumar, new \DateTimeImmutable('2026-10-20 11:02'));
+        $flyers->scanner($oumar, new \DateTimeImmutable('2026-10-20 11:03'));
+
+        self::assertTrue($bache->rouvrirPourReprise(7));
+        self::assertFalse($bache->estScanne(), 'la bâche refaite se rescanne');
+        self::assertNull($bache->getScannePar());
+        self::assertFalse($flyers->rouvrirPourReprise(7));
+        self::assertTrue($flyers->estScanne(), 'le carton de flyers reste scanné');
+        self::assertTrue($bache->scanner($oumar, new \DateTimeImmutable('2026-10-21 09:15')));
+    }
+
     public function testRefaireUnePiece(): void
     {
         $oumar = new User();

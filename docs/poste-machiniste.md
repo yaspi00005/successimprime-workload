@@ -9,8 +9,8 @@ Le code : `src/Controller/MaFileController.php`, `src/Service/Atelier/PosteMachi
 1. **À vérifier** : le prépresse a envoyé le fichier en production. Le machiniste ouvre le fichier et le vérifie.
 2. **Prêt à démarrer** : fichier conforme. Le machiniste choisit la machine et estime le temps.
 3. **En cours** : démarré sur la machine. Chronomètre et avancement estimé.
-4. **Terminé, à étiqueter** : le machiniste imprime les étiquettes des colis.
-5. **Prêt pour livraison** : le livreur (ou le bureau) et le client sont prévenus.
+4. **Terminé, à étiqueter** : le machiniste imprime une étiquette par colis (Production › Étiquettes), puis fait le contrôle final et scanne les colis (`docs/production-colis.md`).
+5. **Prêt pour livraison** : au contrôle final validé et au dernier colis scanné ; le livreur (ou le bureau) et le client sont prévenus.
 
 Un fichier qui ne va pas repart au prépresse (« Retourné au prépresse ») et revient « À vérifier » quand le graphiste l'a corrigé.
 
@@ -20,7 +20,7 @@ Un fichier qui ne va pas repart au prépresse (« Retourné au prépresse ») et
 - Chaque carte : numéro de commande, date promise (en rouge si elle est passée), client, travail et taille. Puis selon la colonne : les m², le temps estimé et la machine, l'heure de démarrage et l'avancement, l'heure de fin, le nombre de colis et le livreur.
 - En haut : les puces des machines. « Mes machines » regroupe les machines où la personne est affectée (Atelier › Files d'attente › Affecter les opérateurs), puis celles où elle a travaillé ces 60 derniers jours. Sur le poste d'une machine (adresse IP reconnue), « Ce poste » est choisi d'office.
 - Le bandeau « Retourné au prépresse » montre les travaux partis en correction : motif, heure du renvoi, graphiste, et depuis combien de temps.
-- « Étiquettes » (avec le nombre de travaux à étiqueter) et « Scanner un bon » : on tape ou on scanne le numéro de commande, d'ordre ou d'étiquette (une douchette marche comme un clavier).
+- « Étiquettes » (avec le nombre de travaux à étiqueter) et « Scanner un bon » : on tape ou on scanne le numéro de commande, d'ordre ou d'étiquette (une douchette marche comme un clavier). Le code d'une étiquette de colis (« CMD-…-C2 ») ouvre la fiche du colis pour le scanner.
 - Les travaux terminés il y a plus de 7 jours ne sont plus montrés.
 
 ## Vérifier le fichier (OP02)
@@ -53,31 +53,34 @@ Un fichier qui ne va pas repart au prépresse (« Retourné au prépresse ») et
 - Le temps d'attente est compté au prépresse, pas au machiniste.
 - Quand le graphiste renvoie le fichier corrigé en production (« Valider et envoyer en production »), le travail revient « À vérifier » avec le nouveau fichier et le machiniste est prévenu. Le bandeau montre le temps passé en correction.
 
-## Étiquettes et livraison (OP05)
+## Colis et livraison (OP05)
+
+**Une seule étiquette de colis** : celle de Production › Étiquettes (PD05), 100 × 60 mm, une par colis et par commande, avec son QR (`docs/production-colis.md`). L'ancienne étiquette 100 × 70 mm par travail n'est plus imprimée ici. Régler le pilote de l'imprimante d'étiquettes sur 100 × 60 mm.
 
 - À gauche, le suivi de production : fichier vérifié, retours éventuels, démarré, terminé (estimé et réel), étiquettes, prêt pour livraison. Puis le bilan (pièces bonnes, gâche, observation).
-- Au milieu, l'aperçu des étiquettes 100 × 70 mm : client, adresse et téléphone (ou « À retirer par »), contenu, QR, numéro de commande, qui a préparé, date de livraison.
-- À droite : le nombre de colis, « Imprimer N étiquettes » (une page par étiquette, au format 100 × 70 mm, dans un nouvel onglet), puis la livraison : mode, date, livreur. Le reste à encaisser n'est affiché qu'avec le droit « Paiements » ; sinon seulement « à encaisser à la remise » ou « réglé ».
-- Le **QR** ouvre `/livraisons/tournee/colis/{numéro d'étiquette}` : pour le livreur du bon de livraison, la remise au client ; pour le bureau, la commande.
-- « Prêt pour livraison » (après l'impression des étiquettes) : la ligne passe « prête », le client le voit dans son espace, le livreur du bon (ou l'équipe commandes s'il n'y a pas encore de bon) est prévenu.
+- Au milieu, les colis de la commande : « Colis 1/2 · CMD-…-C1 », leur contenu, scanné ou à scanner ; puis « 1 colis sur 2 scannés · contrôle final à faire ».
+- À droite : « Étiqueter les colis » (Production › Étiquettes, la commande choisie) et « Contrôle final », puis la livraison : mode, date, livreur. Le reste à encaisser n'est affiché qu'avec le droit « Paiements » ; sinon seulement « à encaisser à la remise » ou « réglé ».
+- « Terminer » mène directement à Production › Étiquettes pour la commande du travail.
+- La commande passe « Prête » au contrôle final, quand tous ses colis sont scannés : la ligne passe « prête », le client le voit dans son espace, le livreur du bon (ou l'équipe commandes s'il n'y a pas encore de bon) est prévenu. Il n'y a plus de bouton « Prêt pour livraison » sur cette page.
+- Les anciennes étiquettes déjà collées (QR `/livraisons/tournee/colis/{numéro d'étiquette}`) marchent toujours : pour le livreur du bon, la remise au client ; pour le bureau, la commande.
 
 ## Le travail sur la machine (OP06)
 
 - La carte de la machine : statut, barre d'avancement, heure de démarrage, fin estimée, temps passé (chronomètre).
-- De gros boutons, l'un sous l'autre : Démarré (ou Démarrer), Terminé (pièces imprimées gâche comprise, gâche, cause de la gâche, observation), Pause / Reprendre, Étiquettes, Prêt pour livraison, Signaler un problème (panne, gâche, têtes nettoyées, réimpression).
+- De gros boutons, l'un sous l'autre : Démarré (ou Démarrer), Terminé (pièces imprimées gâche comprise, gâche, cause de la gâche, observation), Pause / Reprendre, Étiquettes, Prêt pour livraison (mène au contrôle final une fois le travail terminé), Signaler un problème (panne, gâche, têtes nettoyées, réimpression).
 - Sur téléphone, la vérification du fichier garde l'aperçu, la fiche et deux boutons en bas : « Prépresse » et « Conforme ».
 
 ## Qui peut agir
 
-- Voir la file : le droit « Voir la production ». Vérifier, estimer, démarrer, terminer, étiqueter : le droit « Statuts de production ».
+- Voir la file : le droit « Voir la production ». Vérifier, estimer, démarrer, terminer, étiqueter, contrôler : le droit « Statuts de production ».
 - Démarrer, mettre en pause, terminer et signaler suivent la règle de l'atelier (`docs/atelier-production.md`) : le chef d'atelier, le poste de la machine (adresse IP reconnue), ou un opérateur affecté à la machine. Pour une machine sans opérateur affecté, une personne qui a pointé son arrivée aujourd'hui peut aussi agir depuis son téléphone.
 - **Aucun montant** pour le machiniste. Le reste à encaisser n'apparaît qu'avec le droit « Paiements ».
 
 ## Données
 
-- `ordre_production` : `fichier_verifie_le` et `fichier_verifie_par_id`, `controle_machiniste` (cases cochées), `estimation` (étapes proposées et estimées, raison), `nombre_colis`, `etiquettes_imprimees_le`, `pret_livraison_le` et `pret_livraison_par_id`. Les ordres déjà démarrés au moment de la migration sont marqués « fichier vérifié ».
+- `ordre_production` : `fichier_verifie_le` et `fichier_verifie_par_id`, `controle_machiniste` (cases cochées), `estimation` (étapes proposées et estimées, raison), `nombre_colis` et `etiquettes_imprimees_le` (tenus à jour par les étiquettes de colis), `pret_livraison_le` et `pret_livraison_par_id`. Les colis eux-mêmes : `colis_production` (`docs/production-colis.md`). Les ordres déjà démarrés au moment de la migration sont marqués « fichier vérifié ».
 - `retour_prepresse` : un retour par renvoi, avec les motifs, le commentaire, le dessin (formes en coordonnées 0 à 1), le destinataire et l'heure de correction.
 
 ## Démonstration
 
-`php bin/console app:poste-machiniste:demo` (lancé aussi par `app:demo`) crée huit travaux `CMD-PM…` dans la file de `demo.oumar` : deux à vérifier (dont la bâche Clinique Kayes avec son aperçu), un prêt à démarrer, un en cours, un terminé à étiqueter, deux prêts pour livraison (une livraison de 3 colis, un retrait) et un kakémono retourné au prépresse avec un dessin. Il pointe l'arrivée d'Oumar à 07:52 s'il ne l'a pas fait. `--purger` les enlève.
+`php bin/console app:poste-machiniste:demo` (lancé aussi par `app:demo`) crée huit travaux `CMD-PM…` dans la file de `demo.oumar` : deux à vérifier (dont la bâche Clinique Kayes avec son aperçu), un prêt à démarrer, un en cours, un terminé à étiqueter, deux prêts pour livraison (une livraison de 3 colis, un retrait ; préparés avant les étiquettes de colis, sans colis scannés) et un kakémono retourné au prépresse avec un dessin. Il pointe l'arrivée d'Oumar à 07:52 s'il ne l'a pas fait. `--purger` les enlève.

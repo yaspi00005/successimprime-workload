@@ -3,7 +3,7 @@
 {#
 	PD06 Contrôle final, la liste (docs/production-colis.md) : commandes dont
 	tous les travaux sont terminés et pas encore prêtes, la livraison la plus
-	proche d'abord. Aucun montant.
+	proche d'abord ; puis celles passées « Prête » aujourd'hui. Aucun montant.
 #}
 
 {% block title %}Contrôle final{% endblock %}
@@ -54,4 +54,28 @@
 			</ul>
 		{% endif %}
 	</section>
+
+	{% if pretes is not empty %}
+		<section class="si-fab-carte mt-3">
+			<h2>Prêtes aujourd'hui <small>{{ pretes|length }}</small></h2>
+			<ul class="si-ctl-liste">
+				{% for p in pretes %}
+					{% set bon = p.livraison.bon %}
+					<li>
+						<a href="{{ path('app_atelier_production_controle_commande', {id: p.commande.id}) }}">
+							<span>
+								<b>{{ p.commande.numero }} · {{ p.client.nom }}</b>
+								<small>
+									{%- if p.livraison.retrait %}retrait à l'imprimerie
+									{%- elseif bon and bon.livreur and bon.prevuLe %}tournée du {{ p.livraison.jourCourt }}{{ p.livraison.creneau ? ', ' ~ p.livraison.creneau }}
+									{%- else %}livraison à planifier{% endif -%}
+								</small>
+							</span>
+							<span class="etats"><span class="si-fab-pastille vert">prête {{ p.le|date('H:i') }}</span></span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</section>
+	{% endif %}
 {% endblock %}

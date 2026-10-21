@@ -349,6 +349,7 @@ final class RecetteAcces
         $livreurSeul = LivreurSeul::est($roles);
         if ($livreurSeul) {
             $this->verifierLivreurSeul($identifiant, $session, $etats, $chemins, $bilan);
+            $this->verifierColisDuLivreur($compte, $session, $bilan);
         }
 
         // Entrées du menu et onglets que la personne voit : ils doivent s'ouvrir.
@@ -445,6 +446,39 @@ final class RecetteAcces
         $reponse = $this->navigateur->get($this->routeur->generate('app_home'), $session);
         $arrivee = (string) parse_url($reponse->redirection, \PHP_URL_PATH);
         $bilan->controler(\sprintf('%s : l\'accueil mène à sa tournée', $identifiant), Reponse::REDIRIGE === $reponse->etat() && $arrivee === $this->routeur->generate('app_livraisons_tournee'), '/ → '.$reponse->etat().' '.$arrivee);
+    }
+
+    /**
+     * QR d'une étiquette de colis (docs/production-colis.md) : le livreur
+     * arrive sur la remise de sa propre livraison, jamais sur celle d'un
+     * autre livreur ; l'ouverture n'écrit rien (le scan de l'atelier se fait
+     * par un bouton).
+     */
+    private function verifierColisDuLivreur(User $compte, MockArraySessionStorage $session, BilanRecette $bilan): void
+    {
+        $identifiant = $compte->getUserIdentifier();
+        $lignes = $this->em->getConnection()->fetchAllAssociative(
+            "SELECT x.jeton, b.id AS bon, b.livreur_id AS livreur FROM colis_production x
+             JOIN bon_livraison b ON b.commande_id = x.commande_id AND b.statut = 'valide' AND b.livreur_id IS NOT NULL
+             WHERE x.annule_le IS NULL ORDER BY x.id"
+        );
+        $vus = ['sien' => false, 'autre' => false];
+        foreach ($lignes as $l) {
+            $sien = (int) $l['livreur'] === (int) $compte->getId();
+            if ($vus[$sien ? 'sien' : 'autre']) {
+                continue;
+            }
+            $vus[$sien ? 'sien' : 'autre'] = true;
+            $chemin = $this->routeur->generate('app_colis_qr', ['jeton' => $l['jeton']]);
+            $reponse = $this->navigateur->get($chemin, $session);
+            $arrivee = (string) parse_url($reponse->redirection, \PHP_URL_PATH);
+            $remise = $this->routeur->generate('app_livraisons_remise', ['id' => (int) $l['bon']]);
+            $ok = Reponse::REDIRIGE === $reponse->etat() && 0 === $reponse->ecritures && ($sien ? $arrivee === $remise : $arrivee !== $remise);
+            $bilan->controler(\sprintf($sien ? '%s : le QR d\'un colis de sa tournée mène à la remise de sa livraison' : '%s : le QR d\'un colis confié à un autre livreur ne mène pas à cette livraison', $identifiant), $ok, $chemin.' → '.$reponse->etat().' '.$arrivee);
+            if (!$ok && !$sien) {
+                $bilan->constater(BilanRecette::FUITE, 'objet_autrui', 'app_colis_qr', $chemin, $identifiant, 'le QR d\'un colis ouvre la livraison d\'un autre livreur');
+            }
+        }
     }
 
     /**

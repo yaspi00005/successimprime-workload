@@ -87,6 +87,7 @@ final class ProductionColisDemoCommand extends Command
         private readonly ControleFinalRepository $depotControles,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
+        #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne = false,
     ) {
         parent::__construct();
     }
@@ -118,6 +119,11 @@ final class ProductionColisDemoCommand extends Command
         }
         if ($input->getOption('purger')) {
             $io->success('Démonstration des colis et du contrôle final enlevée.');
+
+            return Command::SUCCESS;
+        }
+        if ($this->enLigne) {
+            $io->note('Site en ligne : les colis et le contrôle final sont sur l\'ERP local seulement.');
 
             return Command::SUCCESS;
         }

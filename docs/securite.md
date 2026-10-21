@@ -132,6 +132,7 @@ Règle : un fichier envoyé (par un client ou par le personnel) se range **hors 
 | `chat` | pièces jointes du chat du personnel | les participants de la conversation, et eux seuls (la direction n'ouvre pas une conversation dont elle ne fait pas partie) | `/chat/{conversation}/fichier/{message}` |
 | `prepresse` | fichiers traités au contrôle pré-presse | droit Pré-presse ou Production (voir) ; l'outil de montage, avec ses propres droits | `/pre-presse/fichier/{id}/visualiser` et `/telecharger`, `/atelier/montage/fichier/{id}` |
 | `etiquettes` | QR codes et ZIP des lots d'étiquettes | la direction, comme la page des lots | `/lot/etiquette/qr/{id}`, `/lot/etiquette/{id}/telecharger` |
+| `production/controles` | photos de la pièce imprimée au contrôle final (réencodées sans EXIF ni position) | droit « Voir la production » (ERP local seulement) | `/atelier/production/controle/{commande}/photo` |
 | `reclamations` | justificatifs des demandes de remboursement du personnel | l'employé qui a fait la demande, la caisse, la trésorerie, la direction | `/reclamations/{id}/justificatif` |
 | `employes` | photos du personnel | tout le personnel connecté (jamais un client ni un visiteur) | `/equipe/photo/{id}` |
 | `entreprises` | logos et cachets des entreprises | personne : lus seulement pour fabriquer les factures et devis | aucune |

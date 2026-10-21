@@ -4,6 +4,7 @@ namespace App\Service\Production;
 
 use App\Entity\BonLivraison;
 use App\Entity\Commandes;
+use App\Entity\CommandesDetails;
 use App\Entity\ControleFinal;
 use App\Entity\JournalActivite;
 use App\Entity\JournalMachine;
@@ -90,6 +91,38 @@ final class ControlesFinaux
             ];
         }
         usort($liste, static fn (array $a, array $b): int => [$a['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $a['commande']->getId()] <=> [$b['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $b['commande']->getId()]);
+
+        return $liste;
+    }
+
+    /**
+     * Commandes passées « Prête » aujourd'hui, la plus récente d'abord
+     * (bas de la liste PD06) : livraison planifiée ou à planifier.
+     *
+     * @return list<array{commande: Commandes, client: array<string, mixed>, le: \DateTimeImmutable, livraison: array<string, mixed>}>
+     */
+    public function preteesDuJour(\DateTimeImmutable $maintenant): array
+    {
+        $rangs = $this->em->createQueryBuilder()
+            ->select('IDENTITY(d.commande) AS id', 'MAX(d.preteLivraisonLe) AS le')
+            ->from(CommandesDetails::class, 'd')->join('d.commande', 'c')
+            ->where('d.preteLivraisonLe >= :debut')->andWhere('c.deleted = false')
+            ->setParameter('debut', $maintenant->setTime(0, 0))
+            ->groupBy('d.commande')->orderBy('le', 'DESC')->setMaxResults(30)
+            ->getQuery()->getArrayResult();
+        $liste = [];
+        foreach ($rangs as $r) {
+            $commande = $this->em->find(Commandes::class, (int) $r['id']);
+            if (!$commande instanceof Commandes || !ColisCommandes::estPrete($commande)) {
+                continue;
+            }
+            $liste[] = [
+                'commande' => $commande,
+                'client' => ColisCommandes::client($commande->getClients()),
+                'le' => new \DateTimeImmutable((string) $r['le']),
+                'livraison' => $this->colis->livraison($commande),
+            ];
+        }
 
         return $liste;
     }

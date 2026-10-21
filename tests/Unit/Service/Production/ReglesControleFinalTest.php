@@ -39,6 +39,15 @@ final class ReglesControleFinalTest extends TestCase
         self::assertTrue(ReglesControleFinal::tailleHorsTolerance(85, 86.5));
     }
 
+    public function testCouleurASurveillerLueDansLesNotes(): void
+    {
+        self::assertSame('rouge', ReglesControleFinal::couleurSensible('Le rouge Awa Mode doit être identique au BAT.'));
+        self::assertSame('Pantone 186 C', ReglesControleFinal::couleurSensible(null, 'Logo en pantone 186 c, fond bleu'));
+        self::assertSame('vert', ReglesControleFinal::couleurSensible('Croix verte ? non : le vert de la croix', 'bleu roi'), 'la première couleur citée');
+        self::assertNull(ReglesControleFinal::couleurSensible('Rougeâtre interdit, livrer à Bleuet'), 'pas de couleur dans un autre mot');
+        self::assertNull(ReglesControleFinal::couleurSensible(null, '', '  '));
+    }
+
     public function testLaCommandePassePreteAuDernierGeste(): void
     {
         self::assertTrue(ReglesControleFinal::commandePrete(true, 2, 2));

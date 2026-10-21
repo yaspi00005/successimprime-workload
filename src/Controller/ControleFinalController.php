@@ -43,8 +43,11 @@ final class ControleFinalController extends AbstractController
     #[IsGranted('ROLE_PRODUCTION_VOIR')]
     public function liste(): Response
     {
+        $maintenant = new \DateTimeImmutable();
+
         return $this->render('production_colis/controles.html.twig', [
-            'liste' => $this->controles->aControler(new \DateTimeImmutable()),
+            'liste' => $this->controles->aControler($maintenant),
+            'pretes' => $this->controles->preteesDuJour($maintenant),
         ]);
     }
 

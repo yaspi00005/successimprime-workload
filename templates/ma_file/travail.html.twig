@@ -91,7 +91,12 @@
 					{% else %}
 						<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-tag"></i>Étiquettes</span>
 					{% endif %}
-					<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-truck"></i>Prêt pour livraison</span>
+					{% if o.estTermine and not o.estPretLivraison and o.commandeDetail and o.commandeDetail.commande %}
+						{# « Prête » se décide au contrôle final (docs/production-colis.md). #}
+						<a href="{{ path('app_atelier_production_controle_commande', {id: o.commandeDetail.commande.id}) }}" class="btn si-pm-btn-bleu"><i class="fas fa-truck"></i>Prêt pour livraison</a>
+					{% else %}
+						<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-truck"></i>Prêt pour livraison</span>
+					{% endif %}
 
 					{% if peutAgir and o.machine and not o.estTermine %}
 						<details>

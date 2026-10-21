@@ -279,23 +279,25 @@ final class EspaceClientController extends AbstractController
         ]);
     }
 
-    /** « Exporter » : la liste choisie (année, onglet) en CSV pour un tableur ; montants pour qui les voit. */
+    /** « Exporter » : la liste choisie (année, onglet) en CSV pour un tableur ; total pour qui voit les montants, payé et reste pour le payeur. */
     #[Route('/commandes/export', name: 'commandes_export', methods: ['GET'])]
     public function commandesExport(Request $request, MesCommandesClient $mesCommandes): Response
     {
         $compte = $this->compte();
         [$lignes, , , $onglet] = $this->mesCommandes($request, $compte, $mesCommandes);
         $montants = $compte->montantsVisibles();
+        $payeur = $montants && $compte->peut(CompteClient::DROIT_PAYEUR);
         $flux = fopen('php://temp', 'r+');
         fwrite($flux, "\xEF\xBB\xBF"); // Excel lit les accents
-        fputcsv($flux, array_merge(['Commande', 'Date', 'Produits', 'Étape'], $montants ? ['Total (F)', 'Payé (F)', 'Reste (F)'] : []), ';', '"', '');
+        fputcsv($flux, array_merge(['Commande', 'Date', 'Produits', 'Étape'], $montants ? ['Total (F)'] : [], $payeur ? ['Payé (F)', 'Reste (F)'] : []), ';', '"', '');
         foreach ($lignes as $l) {
             if (!\in_array($onglet, $l['onglets'], true)) {
                 continue;
             }
             fputcsv($flux, array_merge(
                 [$l['commande']->getNumero(), $l['commande']->getDateCommande()?->format('d/m/Y'), $l['titre'], $l['etat']['titre']],
-                $montants ? [$l['montants']['total'], $l['montants']['paye'], $l['montants']['reste']] : [],
+                $montants ? [$l['montants']['total']] : [],
+                $payeur ? [$l['montants']['paye'], $l['montants']['reste']] : [],
             ), ';', '"', '');
         }
         rewind($flux);

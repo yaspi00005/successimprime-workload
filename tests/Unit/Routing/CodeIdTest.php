@@ -46,4 +46,14 @@ final class CodeIdTest extends TestCase
         self::assertFalse(IdsChiffres::routeConcernee('api_commandes_get'));
         self::assertTrue(IdsChiffres::routeConcernee('app_commandes_show'));
     }
+
+    public function testLeSiteVitrineGardeSesPropresJetonsDeProduit(): void
+    {
+        // ?produit= du calculateur et du devis : jeton JetonsSite et 301 du site, pas le code de l'ERP.
+        self::assertFalse(IdsChiffres::parametre('app_site_calculateur', 'produit'));
+        self::assertFalse(IdsChiffres::parametre('app_site_devis', 'produit'));
+        self::assertTrue(IdsChiffres::parametre('app_site_calculateur', 'commande'), 'les autres numéros du site restent chiffrés');
+        self::assertTrue(IdsChiffres::parametre('app_produits_show', 'produit'), 'dans l\'ERP, ?produit= reste chiffré');
+        self::assertFalse(IdsChiffres::parametre('app_commandes_index', 'tri'));
+    }
 }

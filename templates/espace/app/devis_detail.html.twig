@@ -143,7 +143,7 @@
 				</div>
 				<div class="db-info ec-bureau">
 					<span class="db-info-icone" aria-hidden="true">📦</span>
-					<p><b>Retrait ou livraison</b><small>retrait à l'imprimerie, ou livraison à Bamako{{ fraisLivraison > 0 ? ' ' ~ fraisLivraison|number_format(0, ',', ' ') ~ ' F' }}</small></p>
+					<p><b>Retrait ou livraison</b><small>retrait à l'imprimerie, ou livraison à Bamako{{ montants and fraisLivraison > 0 ? ' ' ~ fraisLivraison|number_format(0, ',', ' ') ~ ' F' }}</small></p>
 				</div>
 			</section>
 		</div>

@@ -86,7 +86,7 @@
 				<li class="cd-commande">
 					<a class="cd-produit" href="{{ path('app_espace_commande', {id: c.publicId}) }}">
 						<span class="cd-vignette" aria-hidden="true"><svg focusable="false"><use href="#si-dessin-{{ l.illustration }}"/></svg></span>
-						<span class="cd-nom"><b title="{{ l.titreComplet }}">{{ l.titre }}</b><small>{{ c.numero }}{% if c.dateCommande %} · commandée le {{ c.dateCommande|date('d/m') }}{% endif %}{% if l.montants %}<span class="ec-telephone"> · {{ l.montants.total|number_format(0, ',', ' ') }} F</span>{% endif %}</small></span>
+						<span class="cd-nom"><b title="{{ l.titreComplet }}">{{ l.titre }}</b><small>{{ c.numero }}{% if c.dateCommande %} · commandée le {{ c.dateCommande|date('d/m') }}{% endif %}{% if l.montants %}<span class="ec-telephone"> · <span class="cd-masque">Total </span>{{ l.montants.total|number_format(0, ',', ' ') }} F</span>{% endif %}</small></span>
 					</a>
 					<div class="cd-suivi">
 						<p class="cd-etat {{ l.etat.ton }}"><b>{{ l.etat.titre }}</b>{% if l.etat.detail %} <span>{{ l.etat.detail }}</span>{% endif %}</p>
@@ -98,8 +98,8 @@
 					</div>
 					{% if l.montants %}
 						<div class="cd-montants">
-							<b>{{ l.montants.total|number_format(0, ',', ' ') }} F</b>
-							{% if l.montants.aConfirmer %}<small>prix à confirmer par l'atelier</small>{% else %}<small>payé {{ l.montants.paye|number_format(0, ',', ' ') }} F · reste <em class="{{ l.montants.reste > 0 ? 'rouge' : '' }}">{{ l.montants.reste|number_format(0, ',', ' ') }} F</em>{% if l.montants.enValidation > 0 %}<br>{{ l.montants.enValidation|number_format(0, ',', ' ') }} F en validation{% endif %}</small>{% endif %}
+							<b><span class="cd-masque">Total </span>{{ l.montants.total|number_format(0, ',', ' ') }} F</b>
+							{% if l.montants.aConfirmer %}<small>prix à confirmer par l'atelier</small>{% elseif l.montants.reste is not null %}<small>payé {{ l.montants.paye|number_format(0, ',', ' ') }} F · reste <em class="{{ l.montants.reste > 0 ? 'rouge' : '' }}">{{ l.montants.reste|number_format(0, ',', ' ') }} F</em>{% if l.montants.enValidation > 0 %}<br>{{ l.montants.enValidation|number_format(0, ',', ' ') }} F en validation{% endif %}</small>{% endif %}
 						</div>
 					{% endif %}
 					<a class="cd-action {{ l.action.ton }}" href="{{ path(l.action.route, l.action.params) }}">{{ l.action.libelle }}</a>

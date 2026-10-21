@@ -40,6 +40,19 @@ final class IdsChiffres
         'entite_id' => true,
     ];
 
+    /**
+     * Le site vitrine chiffre lui-même ces paramètres (JetonsSite, jeton de
+     * 11 caractères) et renvoie (301) une ancienne adresse à numéro vers son
+     * jeton : on n'y touche pas sur ses pages.
+     */
+    private const JETONS_SITE = ['produit' => true, 'precedent' => true, 'finitions' => true];
+
+    /** Ce paramètre de cette route porte-t-il un numéro de fiche à chiffrer ? */
+    public static function parametre(string $route, string $cle): bool
+    {
+        return isset(self::NOMS[$cle]) && !(isset(self::JETONS_SITE[$cle]) && str_starts_with($route, 'app_site_'));
+    }
+
     /** Le numéro de fiche porté par une valeur (entier ou chiffres, 8 au plus), sinon null. */
     public static function numero(mixed $valeur): ?int
     {

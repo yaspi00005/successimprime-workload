@@ -14,7 +14,8 @@ use App\Service\Site\CatalogueSite;
  * (Commande, Acompte, BAT, Production, Prête, Livrée), ce qui est payé et
  * ce qui reste, et le bouton du moment (valider le BAT, payer l'acompte,
  * suivre, payer le reste). Les montants seulement pour qui les voit
- * (CompteClient::montantsVisibles), les boutons de paiement pour le payeur.
+ * (CompteClient::montantsVisibles) ; payé, reste et boutons de paiement
+ * pour le payeur seul.
  */
 final class MesCommandesClient
 {
@@ -157,7 +158,10 @@ final class MesCommandesClient
             'etapes' => $six,
             'etat' => ['titre' => $titre, 'detail' => $detail, 'ton' => $ton],
             'action' => $action,
-            'montants' => $montants ? ['total' => $total, 'paye' => max(0, $total - $reste - $enValidation), 'reste' => $reste, 'enValidation' => $enValidation, 'aConfirmer' => !$confirmee] : null,
+            // Le total pour qui voit les montants ; payé, reste et paiements en validation pour le payeur seul.
+            'montants' => $montants ? ['total' => $total, 'aConfirmer' => !$confirmee] + ($payeur
+                ? ['paye' => max(0, $total - $reste - $enValidation), 'reste' => $reste, 'enValidation' => $enValidation]
+                : ['paye' => null, 'reste' => null, 'enValidation' => null]) : null,
             'aConfirmer' => $carte['aConfirmer'],
             'onglets' => $onglets,
             'bat' => null !== $bat,
@@ -198,8 +202,8 @@ final class MesCommandesClient
             'reste' => $montants ? array_sum(array_map(static fn (array $l): int => \in_array('a_payer', $l['onglets'], true) ? $l['montants']['reste'] : 0, $lignes)) : null,
             'echu' => $montants ? array_sum(array_column($lignes, 'echu')) : null,
             'annee' => $annee,
+            // Le nombre de commandes seulement : jamais le total dépensé à l'imprimerie.
             'commandees' => \count($actives),
-            'montantCommande' => $montants ? array_sum(array_map(static fn (array $l): int => $l['montants']['total'], $actives)) : null,
         ];
     }
 

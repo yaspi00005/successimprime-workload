@@ -171,8 +171,11 @@ final class RecetteVisiteur
         $contact = $this->navigateur->get($this->routeur->generate('app_site_contact'));
         $vignettes = substr_count($contact->contenu, 'class="si-local-vignette"');
         $fenetres = substr_count($contact->contenu, 'class="si-local-visionneuse"');
-        $ok = 200 === $contact->statut && str_contains($contact->contenu, 'class="si-local-entete"') && str_contains($contact->contenu, 'allee-entree-succes-imprim-') && 3 === $vignettes && 3 === $fenetres;
-        $bilan->controler('Visiteur : /contact montre l\'allée et la galerie « Notre local » (3 photos, visionneuse)', $ok, \sprintf('%d, %d vignette(s), %d visionneuse(s)', $contact->statut, $vignettes, $fenetres));
+        // Maquette EC04 : à côté de la carte, les 3 photos du local en vignettes (l'allée comprise), qui ouvrent la galerie « Notre local ».
+        $debut = strpos($contact->contenu, 'class="si-contact-vignettes');
+        $mini = false === $debut ? 0 : substr_count(substr($contact->contenu, $debut, (strpos($contact->contenu, '</ul>', $debut) ?: $debut) - $debut), 'data-ouvrir="local-');
+        $ok = 200 === $contact->statut && 3 === $mini && str_contains($contact->contenu, 'allee-entree-succes-imprim-') && 3 === $vignettes && 3 === $fenetres;
+        $bilan->controler('Visiteur : /contact montre les 3 vignettes du local près de la carte et la galerie « Notre local » (visionneuse)', $ok, \sprintf('%d, %d vignette(s) près de la carte, %d dans la galerie, %d visionneuse(s)', $contact->statut, $mini, $vignettes, $fenetres));
         $bilan->controler('Visiteur : la fiche de l\'imprimerie pour Google montre la vraie façade (16:9, 4:3, 1:1)', str_contains($contact->contenu, 'images/site/fiche/facade-local-succes-imprim-bamako-1x1.webp'), str_contains($contact->contenu, '"LocalBusiness"') ? 'fiche lue' : 'fiche absente');
     }
 

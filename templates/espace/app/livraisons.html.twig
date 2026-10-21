@@ -65,7 +65,7 @@
 						<form method="post" action="{{ path('app_espace_livraison_programmer', {id: c.publicId}) }}" class="db-lv-modes">
 							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
 							<label class="db-mode"><input type="radio" name="mode" value="retrait" data-lv-mode><span><b>🏪 Retrait</b><small>à l'imprimerie · gratuit</small></span></label>
-							<label class="db-mode"><input type="radio" name="mode" value="livraison" data-lv-mode checked><span><b>🛵 Livraison</b><small>Bamako{{ frais > 0 ? ' · ' ~ frais|number_format(0, ',', ' ') ~ ' F' }}</small></span></label>
+							<label class="db-mode"><input type="radio" name="mode" value="livraison" data-lv-mode checked><span><b>🛵 Livraison</b><small>Bamako{{ frais > 0 and espace_coque().montants ? ' · ' ~ frais|number_format(0, ',', ' ') ~ ' F' }}</small></span></label>
 							<a class="ec-bouton orange" href="{{ path('app_espace_livraison_programmer', {id: c.publicId}) }}" data-lv-livraison>Choisir le jour et l'heure</a>
 							<button type="submit" class="ec-bouton bleu" data-lv-retrait hidden>Je viendrai la chercher</button>
 						</form>

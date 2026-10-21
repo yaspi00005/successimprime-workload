@@ -29,7 +29,7 @@ final class RouteurIdsChiffres implements RouterInterface, RequestMatcherInterfa
     {
         if (IdsChiffres::routeConcernee($name)) {
             foreach ($parameters as $cle => $valeur) {
-                if (isset(IdsChiffres::NOMS[$cle]) && null !== ($numero = IdsChiffres::numero($valeur))) {
+                if (IdsChiffres::parametre($name, (string) $cle) && null !== ($numero = IdsChiffres::numero($valeur))) {
                     $parameters[$cle] = $this->codes->coder($numero);
                 }
             }

@@ -56,7 +56,8 @@ final class EspaceSuiviController extends AbstractController
         return $this->render('espace/app/livraisons.html.twig', [
             'page' => $livraisons->page($compte->getClient(), new \DateTimeImmutable()),
             'vue' => 'retirees' === $request->query->getString('vue') ? 'retirees' : 'livrees',
-            'frais' => $this->reglages->fraisEnLigne(),
+            // Tarif de livraison : un montant, seulement pour qui voit les montants.
+            'frais' => $compte->montantsVisibles() ? $this->reglages->fraisEnLigne() : 0,
         ]);
     }
 

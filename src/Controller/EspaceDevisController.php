@@ -108,7 +108,8 @@ final class EspaceDevisController extends AbstractController
             'options' => $options,
             'calcul' => OptionsDevis::pourLaPage($devis),
             'pret' => ($pret = $this->delais->pretSiAccepte($devis->getDelaiRealisation(), $maintenant)) + ['jour' => DelaisCommande::jour($pret['pret'])],
-            'fraisLivraison' => $this->reglagesSaisie->fraisEnLigne(),
+            // Tarif de livraison : un montant, seulement pour qui voit les montants.
+            'fraisLivraison' => $compte->montantsVisibles() ? $this->reglagesSaisie->fraisEnLigne() : 0,
             // « Ce qui a changé » : la version d'avant et celle-ci.
             'actuelle' => $versions[0] ?? null,
             'precedente' => $versions[1] ?? null,

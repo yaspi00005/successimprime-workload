@@ -52,7 +52,7 @@ final class IdsChiffresSubscriber implements EventSubscriberInterface
 
         $parametres = (array) $requete->attributes->get('_route_params', []);
         foreach ($parametres as $cle => $valeur) {
-            if (!isset(IdsChiffres::NOMS[$cle]) || !\is_string($valeur)) {
+            if (!IdsChiffres::parametre((string) $route, (string) $cle) || !\is_string($valeur)) {
                 continue;
             }
             if (CodeId::estCode($valeur)) {
@@ -69,7 +69,7 @@ final class IdsChiffresSubscriber implements EventSubscriberInterface
         $requete->attributes->set('_route_params', $parametres);
 
         foreach ($requete->query->all() as $cle => $valeur) {
-            if (!isset(IdsChiffres::NOMS[$cle]) || !\is_string($valeur)) {
+            if (!IdsChiffres::parametre((string) $route, (string) $cle) || !\is_string($valeur)) {
                 continue;
             }
             if (CodeId::estCode($valeur)) {

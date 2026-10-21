@@ -557,7 +557,11 @@ final class TiragesRouleau
     /** Coût matière + encre (pour ROLE_COUT_MARGE seulement), ou null. */
     public function cout(TirageRouleau $tirage): ?int
     {
-        return ImpositionRouleau::cout($tirage->getConsommeM2(), $tirage->getImprimeM2(), $tirage->getSupport()?->getCoutUnitaireStock(), $tirage->getMachine()->getCoutEncreM2());
+        $article = $tirage->getSupport();
+        // Le coût en stock est celui de l'unité de l'article (m², mètre, rouleau) : ramené au m² de rouleau.
+        $coutM2 = null !== $article ? ImpositionRouleau::coutM2Matiere($article->getUnite(), $article->getCoutUnitaireStock(), $article->getLaize() ?? $tirage->getLaizeM(), $article->getLongueurUniteAchat()) : null;
+
+        return ImpositionRouleau::cout($tirage->getConsommeM2(), $tirage->getImprimeM2(), $coutM2, $tirage->getMachine()->getCoutEncreM2());
     }
 
     /**

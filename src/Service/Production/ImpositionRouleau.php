@@ -213,15 +213,36 @@ final class ImpositionRouleau
     /**
      * Coût matière + encre (droit « Marges et coûts » seulement) : rouleau
      * consommé × coût du m² de l'article, plus m² imprimés × coût de
-     * l'encre au m² de la machine. Null quand les deux coûts manquent.
+     * l'encre au m² de la machine. Null quand l'un des deux manque.
      */
-    public static function cout(float $consommeM2, float $imprimeM2, ?int $coutM2Matiere, ?int $coutEncreM2): ?int
+    public static function cout(float $consommeM2, float $imprimeM2, int|float|null $coutM2Matiere, ?int $coutEncreM2): ?int
     {
-        if (null === $coutM2Matiere && null === $coutEncreM2) {
+        // Un des deux coûts manque : pas de total à moitié (« coûts à régler »).
+        if (null === $coutM2Matiere || null === $coutEncreM2) {
             return null;
         }
 
-        return (int) round($consommeM2 * ($coutM2Matiere ?? 0) + $imprimeM2 * ($coutEncreM2 ?? 0));
+        return (int) round($consommeM2 * $coutM2Matiere + $imprimeM2 * $coutEncreM2);
+    }
+
+    /**
+     * Coût d'un m² de rouleau d'après l'unité de stock de l'article : au m²,
+     * le coût tel quel ; au mètre (linéaire), divisé par la laize ; au
+     * rouleau, divisé par les m² d'un rouleau (longueur × laize). Null pour
+     * une autre unité ou une donnée manquante : le coût n'est pas inventé.
+     */
+    public static function coutM2Matiere(string $unite, ?int $coutUnite, ?float $laizeM, ?float $longueurRouleauM): ?float
+    {
+        if (null === $coutUnite) {
+            return null;
+        }
+
+        return match (mb_strtolower(trim($unite))) {
+            'm2', 'm²', 'metre_carre' => (float) $coutUnite,
+            'metre', 'm', 'ml' => null !== $laizeM && $laizeM > 0 ? $coutUnite / $laizeM : null,
+            'rouleau' => null !== $laizeM && $laizeM > 0 && null !== $longueurRouleauM && $longueurRouleauM > 0 ? $coutUnite / ($laizeM * $longueurRouleauM) : null,
+            default => null,
+        };
     }
 
     public static function nombre(float $valeur): string

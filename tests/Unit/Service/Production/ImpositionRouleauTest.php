@@ -122,5 +122,21 @@ final class ImpositionRouleauTest extends TestCase
         // 13,056 m² à 550 F + 11,8 m² d'encre à 650 F.
         self::assertSame(14851, ImpositionRouleau::cout(13.056, 11.8, 550, 650));
         self::assertNull(ImpositionRouleau::cout(13.0, 11.8, null, null));
+        // Un coût manque (encre de la machine non réglée) : pas de total à moitié.
+        self::assertNull(ImpositionRouleau::cout(13.0, 11.8, 550, null));
+        self::assertNull(ImpositionRouleau::cout(13.0, 11.8, null, 650));
+    }
+
+    public function testCoutDuM2SelonLUniteDeLArticle(): void
+    {
+        // Au m² : tel quel ; au mètre linéaire : ÷ laize ; au rouleau de 50 m : ÷ (3,20 × 50) m².
+        self::assertSame(600.0, ImpositionRouleau::coutM2Matiere('m2', 600, 3.2, 50.0));
+        self::assertSame(600.0, ImpositionRouleau::coutM2Matiere('metre', 1920, 3.2, null));
+        self::assertSame(1200.0, ImpositionRouleau::coutM2Matiere('rouleau', 192000, 3.2, 50.0));
+        // Rien d'inventé : unité sans rapport, laize ou longueur inconnue, coût absent.
+        self::assertNull(ImpositionRouleau::coutM2Matiere('kg', 600, 3.2, 50.0));
+        self::assertNull(ImpositionRouleau::coutM2Matiere('rouleau', 192000, 3.2, null));
+        self::assertNull(ImpositionRouleau::coutM2Matiere('metre', 1920, null, null));
+        self::assertNull(ImpositionRouleau::coutM2Matiere('m2', null, 3.2, 50.0));
     }
 }

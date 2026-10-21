@@ -5,9 +5,11 @@ namespace App\Controller;
 use App\Entity\AtelierMachine;
 use App\Entity\Finition;
 use App\Entity\Machines;
+use App\Entity\OrdreProduction;
 use App\Entity\Supports;
 use App\Security\Droits;
 use App\Service\Atelier\AtelierProduction;
+use App\Service\Http\Entree;
 use App\Service\Production\FichierProduction;
 use App\Service\Production\NomFichierProduction;
 use App\Service\Production\ProfilsImpression;
@@ -97,14 +99,22 @@ final class ProductionMachinesController extends AbstractController
     }
 
     #[Route('/nommage', name: 'nommage', methods: ['GET'])]
-    public function nommage(): Response
+    public function nommage(Request $request): Response
     {
-        $exemple = NomFichierProduction::nom('CMD-000183', 1, 'BACHE440', 300, 100, 2, ['OURLET', 'OEIL50'], 'pdf');
+        // Ouvert depuis le parcours d'un fichier : l'exemple est le nom de ce travail.
+        $id = Entree::entier($request->query, 'ordre');
+        $ordre = $id > 0 ? $this->em->find(OrdreProduction::class, $id) : null;
+        $exemple = null !== $ordre ? FichierProduction::nomProduction($ordre) : '';
+        if ('' === $exemple) {
+            $ordre = null;
+            $exemple = NomFichierProduction::nom('CMD-000183', 1, 'BACHE440', 300, 100, 2, ['OURLET', 'OEIL50'], 'pdf');
+        }
 
         return $this->render('production_rouleau/nommage.html.twig', [
             'exemple' => $exemple,
+            'ordre' => $ordre,
             'parties' => NomFichierProduction::parties($exemple),
-            'decoupe' => NomFichierProduction::nomDecoupe(NomFichierProduction::nom('CMD-000430', 2, 'BACHEFL440', 120, 200, 1, ['FOURREAU'], 'png'), 'svg'),
+            'decoupe' => (null !== $ordre ? FichierProduction::nomDecoupe($ordre) : null) ?? NomFichierProduction::nomDecoupe($exemple, 'svg'),
             'supports' => $this->em->getRepository(Supports::class)->findBy([], ['nom' => 'ASC'], 300),
             'finitions' => $this->em->getRepository(Finition::class)->findBy([], ['nom' => 'ASC'], 300),
             'peutModifier' => $this->peutModifier(),

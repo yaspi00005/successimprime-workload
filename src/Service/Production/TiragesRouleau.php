@@ -85,7 +85,9 @@ final class TiragesRouleau
             }
             $liste[] = ['machine' => $m, 'atelier' => $ateliers[$m->getId()] ?? null];
         }
-        usort($liste, static fn (array $a, array $b): int => [null === $a['atelier']?->getCodeDossier(), (string) $a['machine']->getNom()] <=> [null === $b['atelier']?->getCodeDossier(), (string) $b['machine']->getNom()]);
+        // Comme la maquette : les plus larges d'abord (Solvant 3,20 m, 1,80 m, DTF, Canon), le traceur de découpe à la fin.
+        $cle = static fn (array $l): array => [null === $l['atelier']?->getCodeDossier(), FichierProduction::CODE_DECOUPE === $l['atelier']?->getCodeDossier(), -($l['machine']->getLaizeMetres() ?? 0), (string) $l['machine']->getNom()];
+        usort($liste, static fn (array $a, array $b): int => $cle($a) <=> $cle($b));
 
         return $liste;
     }

@@ -88,16 +88,8 @@ final class ParcoursFichier
 
         // 2. Fichier de production
         $f = PosteMachiniste::fichier($o);
-        $analyse = $f?->getAnalyse() ?? [];
-        $infos = [];
-        foreach ($analyse as $a) {
-            if ('Type de fichier' === ($a['libelle'] ?? '')) {
-                $infos[] = (string) $a['valeur'];
-            }
-            if ('Mode colorimétrique' === ($a['libelle'] ?? '')) {
-                $infos[] = self::couleurs((string) $a['valeur']);
-            }
-        }
+        $nomSource = $f?->getNomOriginal() ?? (string) ($ligne?->getFichierLie()['nom'] ?? '');
+        $infos = self::infosFichier($nomSource, $f?->getAnalyse() ?? []);
         if ([] === $infos) {
             $infos[] = null !== $f || null !== $ligne?->getFichierLie() ? 'couleurs converties au RIP si besoin' : 'pas encore de fichier';
         }
@@ -105,7 +97,7 @@ final class ParcoursFichier
 
         // 3. Imposition
         $imposition = null !== $tirage
-            ? \sprintf('%s · %s · laize %s m · %d %%', $tirage->getNumero(), self::court($tirage->getLibelleSupport()), ImpositionRouleau::nombre($tirage->getLaizeM()), $tirage->getPourcent())
+            ? \sprintf('%s · %s · laize %s m · %d %%', $tirage->getNumero(), self::court($tirage->getLibelleSupport()), number_format($tirage->getLaizeM(), 2, ',', ' '), $tirage->getPourcent())
             : (null !== $o->getMachine() && !$this->tirages->estMachineRouleau($o->getMachine()) ? 'à la feuille : pas de rouleau' : 'pas encore sur un rouleau');
 
         // 4. Dossier de la machine
@@ -170,6 +162,43 @@ final class ParcoursFichier
         }
 
         return ProfilsImpression::choisir($atelier->getProfils(), $ligne->getArticle()?->getId(), FichierProduction::libelleSupport($ligne), (string) FichierProduction::codeSupport($ligne));
+    }
+
+    /**
+     * Ce que l'analyse du prépresse dit du fichier, tel quel : type, taille
+     * (format de page d'un PDF), résolution réelle d'une image, fonds
+     * perdus, couleurs. « PNG · 12 dpi (conseillé : 72) · RVB : conversion
+     * aux couleurs d'impression au RIP ».
+     *
+     * @param list<array{libelle?: string, valeur?: string}> $analyse
+     *
+     * @return list<string>
+     */
+    public static function infosFichier(string $nomSource, array $analyse): array
+    {
+        $extension = strtoupper(NomFichierProduction::extension($nomSource, ''));
+        $infos = '' !== $extension ? [$extension] : [];
+        $couleurs = null;
+        foreach ($analyse as $a) {
+            $libelle = (string) ($a['libelle'] ?? '');
+            $valeur = trim((string) ($a['valeur'] ?? ''));
+            if ('' === $valeur) {
+                continue;
+            }
+            match (true) {
+                'Type de fichier' === $libelle && [] === $infos => $infos[] = $valeur,
+                'Format de page' === $libelle => $infos[] = $valeur,
+                str_starts_with($libelle, 'Résolution réelle') => $infos[] = $valeur,
+                'Fonds perdus' === $libelle => $infos[] = 'fond perdu '.$valeur,
+                'Mode colorimétrique' === $libelle => $couleurs = self::couleurs($valeur),
+                default => null,
+            };
+        }
+        if (null !== $couleurs) {
+            $infos[] = $couleurs;
+        }
+
+        return $infos;
     }
 
     /** La vérité sur les couleurs : le RIP convertit, pas le serveur. */

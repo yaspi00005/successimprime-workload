@@ -20,6 +20,7 @@
 		<section class="si-fab-carte" aria-labelledby="si-fr-regle-titre">
 			<h2 id="si-fr-regle-titre">Le nom du fichier de production</h2>
 			<p style="font-size:13px">Commande_Ligne_Support_Taille_Quantité_Finitions. L'ERP le compose tout seul quand le prépresse transmet le travail : personne ne le tape.</p>
+			{% if ordre %}<p class="si-fab-muet" style="font-size:12px">Exemple : le travail {{ ordre.commandeDetail.commande.numero }}{% if ordre.commandeDetail.commande.clients %} · {{ ordre.commandeDetail.commande.clients.nomComplet }}{% endif %} (<a href="{{ path('app_atelier_production_parcours', {ordre: ordre.id}) }}">son parcours</a>).</p>{% endif %}
 			{% include 'production_rouleau/_nom.html.twig' with {parties: parties, nom: exemple} only %}
 			<div class="si-fr-parties">
 				{% for p in parties %}

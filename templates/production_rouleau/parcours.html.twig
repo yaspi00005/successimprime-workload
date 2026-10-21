@@ -13,7 +13,7 @@
 			<h1 class="si-fab-titre">Le parcours d'un fichier, du BAT au colis</h1>
 		</div>
 		<div class="si-fab-actions">
-			<a href="{{ path('app_atelier_production_nommage') }}" class="si-fab-bouton"><i class="fas fa-font" aria-hidden="true"></i>Règles de nommage</a>
+			<a href="{{ ordre ? path('app_atelier_production_nommage', {ordre: ordre.id}) : path('app_atelier_production_nommage') }}" class="si-fab-bouton"><i class="fas fa-font" aria-hidden="true"></i>Règles de nommage</a>
 		</div>
 	</header>
 
@@ -49,7 +49,7 @@
 				{% for e in etapes %}
 					<li class="{{ e.etat }}" style="--fr-couleur: {{ couleurs_etapes[e.cle] }}">
 						<span class="icone" aria-hidden="true"><i class="fas {{ e.icone }}"></i></span>
-						<span class="etape">Étape {{ e.numero }}{% if e.etat == 'encours' %} · en cours{% endif %}</span>
+						<span class="etape">Étape {{ e.numero }}{% if e.etat == 'encours' %} · à faire{% endif %}</span>
 						<b>{{ e.titre }}</b>
 						<span class="sous">{{ e.sous }}</span>
 						<span class="detail">{{ e.detail }}</span>

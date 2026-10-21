@@ -71,11 +71,15 @@
 		rects.forEach(function (r) { r.setAttribute('width', p.h); r.setAttribute('height', p.l); });
 		// Textes recentrés comme dans le gabarit : la taille du premier sert de base.
 		var textes = g.querySelectorAll('text');
-		var fs = textes.length ? parseFloat(textes[0].getAttribute('font-size')) : 0;
+		var fs = parseFloat(g.dataset.fs || (textes.length ? textes[0].getAttribute('font-size') : 0));
+		// Libellé sur plusieurs lignes (pièce étroite) : le bloc reste centré.
+		var lignes = g.querySelectorAll('tspan');
+		var decale = lignes.length > 1 ? (lignes.length - 1) * parseFloat(textes[textes.length - 1].getAttribute('font-size')) * 0.6 : 0;
 		textes.forEach(function (t, i) {
 			t.setAttribute('x', p.h / 2);
-			t.setAttribute('y', p.l / 2 + (i === 0 ? -0.3 : 0.9) * fs);
+			t.setAttribute('y', p.l / 2 + (i === 0 ? -0.3 : 0.9) * fs - decale);
 		});
+		lignes.forEach(function (ts) { ts.setAttribute('x', p.h / 2); });
 		placer(g, p.x, p.y);
 	}
 

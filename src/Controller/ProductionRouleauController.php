@@ -208,22 +208,34 @@ final class ProductionRouleauController extends AbstractController
     {
         $maintenant = new \DateTimeImmutable();
         $travaux = $this->tirages->travaux($tirage);
-        $couleurs = [];
+        $parOrdre = [];
         foreach ($travaux as $t) {
-            $couleurs[$t['ordre']->getId()] = $t['couleur'];
+            $parOrdre[$t['ordre']->getId()] = $t;
         }
         $pieces = [];
         foreach ($tirage->piecesTriees() as $p) {
-            $taille = TiragesRouleau::taillePiece($p->getOrdre());
+            $o = $p->getOrdre();
+            $taille = TiragesRouleau::taillePiece($o);
+            $t = $parOrdre[$o->getId()] ?? null;
+            // « Kakémono 120 × 200 » puis « CMD-000430 · Koita · ⏱ 14:00 » (livraison du jour), « 1/2 » quand il y en a plusieurs.
+            $quantite = max(1, (int) $o->getQuantite());
+            $promis = $t['promis'] ?? null;
+            $libelle = implode(' · ', array_filter([
+                $t['numero'] ?? $o->getNumero(),
+                $this->nomCourtClient($o, 18),
+                $quantite > 1 ? $p->getExemplaire().'/'.$quantite : null,
+                null !== $promis && $promis->format('Y-m-d') === $maintenant->format('Y-m-d') && '00:00' !== $promis->format('H:i') ? '⏱ '.$promis->format('H:i') : null,
+            ], static fn (?string $s): bool => null !== $s && '' !== $s));
             $pieces[] = [
                 'cle' => $p->cle(),
-                'ordre' => $p->getOrdre()->getId(),
+                'ordre' => $o->getId(),
                 'rang' => $p->getRang(),
                 'x' => $p->getXCm(), 'y' => $p->getYCm(), 'l' => $p->getLargeurCm(), 'h' => $p->getHauteurCm(), 'tourne' => $p->isTourne(),
                 'lo' => $taille[0] ?? $p->getLargeurCm(), 'ho' => $taille[1] ?? $p->getHauteurCm(),
-                'libelle' => $this->tirages->libellePiece($p).' · '.$this->nomCourtClient($p->getOrdre(), 18),
+                'produit' => TiragesRouleau::produitCourt($o->getCommandeDetail()),
+                'libelle' => $libelle,
                 'exemplaire' => $p->getExemplaire(),
-                'couleur' => $couleurs[$p->getOrdre()->getId()] ?? TiragesRouleau::COULEURS[0],
+                'couleur' => $t['couleur'] ?? TiragesRouleau::COULEURS[0],
             ];
         }
         $profil = $this->tirages->profil($tirage);

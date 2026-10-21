@@ -51,13 +51,20 @@
 							<rect x="{{ laize - marge }}" y="0" width="{{ marge }}" height="{{ hauteur_plan }}" fill="#9AA6B8" opacity=".35"></rect>
 							{% for p in pieces %}
 								{% set fs = min(max(min(p.l, p.h) / 9, 5), 13) %}
-								{# Le libellé tient dans la largeur de la pièce. #}
+								{% set titre = p.produit ~ ' ' ~ p.lo|number_format(0, ',', ' ') ~ ' × ' ~ p.ho|number_format(0, ',', ' ') ~ (p.tourne ? ' ↻' : '') %}
+								{# Les deux lignes tiennent dans la largeur de la pièce. #}
+								{% set fs1 = min(fs, p.l * 0.92 / max(titre|length * 0.6, 1)) %}
 								{% set fs2 = min(fs * 0.75, p.l * 0.92 / max(p.libelle|length * 0.56, 1)) %}
-								<g class="piece" data-cle="{{ p.cle }}" data-l="{{ p.l }}" data-h="{{ p.h }}" data-lo="{{ p.lo }}" data-ho="{{ p.ho }}" data-tourne="{{ p.tourne ? 1 : 0 }}" transform="translate({{ p.x }} {{ p.y }})" tabindex="-1" aria-label="{{ p.libelle }}, {{ p.l|number_format(0, ',', ' ') }} × {{ p.h|number_format(0, ',', ' ') }} cm{{ p.tourne ? ', tournée' }}">
+								{# Pièce étroite : la deuxième ligne passe sur plusieurs lignes plutôt qu'en tout petit. #}
+								{% set parts = p.libelle|split(' · ') %}
+								{% set multi = parts|length > 1 and fs2 < fs * 0.55 %}
+								{% if multi %}{% set fs2 = min(fs * 0.75, p.l * 0.92 / max(max(parts|map(x => x|length)) * 0.56, 1)) %}{% endif %}
+								<g class="piece" data-cle="{{ p.cle }}" data-l="{{ p.l }}" data-h="{{ p.h }}" data-lo="{{ p.lo }}" data-ho="{{ p.ho }}" data-fs="{{ fs }}" data-tourne="{{ p.tourne ? 1 : 0 }}" transform="translate({{ p.x }} {{ p.y }})" tabindex="-1" aria-label="{{ titre }}, {{ p.libelle }}{{ p.tourne ? ', tournée' }}">
 									<rect class="fond" x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="{{ p.couleur }}"></rect>
 									<rect x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="none" stroke="#DE1028" stroke-width="1" stroke-dasharray="4 3"></rect>
-									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 - fs * 0.3 }}" text-anchor="middle" font-size="{{ fs }}" font-weight="700" fill="#FFFFFF">{{ p.lo|number_format(0, ',', ' ') }} × {{ p.ho|number_format(0, ',', ' ') }}{{ p.tourne ? ' ↻' }}</text>
-									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 + fs * 0.9 }}" text-anchor="middle" font-size="{{ fs2 }}" fill="#FFFFFF">{{ p.libelle }}</text>
+									{% set decale = multi ? (parts|length - 1) * fs2 * 0.6 : 0 %}
+									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 - fs * 0.3 - decale }}" text-anchor="middle" font-size="{{ fs1 }}" font-weight="700" fill="#FFFFFF">{{ titre }}</text>
+									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 + fs * 0.9 - decale }}" text-anchor="middle" font-size="{{ fs2 }}" fill="#FFFFFF">{% if multi %}{% for part in parts %}<tspan x="{{ p.l / 2 }}" dy="{{ loop.first ? 0 : fs2 * 1.2 }}">{{ part }}</tspan>{% endfor %}{% else %}{{ p.libelle }}{% endif %}</text>
 								</g>
 							{% endfor %}
 						</svg>

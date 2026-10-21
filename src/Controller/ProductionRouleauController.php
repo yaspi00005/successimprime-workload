@@ -605,6 +605,7 @@ final class ProductionRouleauController extends AbstractController
             'envoyeParPrenom' => AtelierProduction::prenom($envoyePar),
             'envoyeLe' => $envoyeLe,
             'peutAgir' => $peutAgir,
+            'peutEncre' => $this->peutSaisirEncre($tirage->getMachine(), $request),
             'raison' => $peutAgir ? null : $this->raisonRefus($tirage->getMachine(), $request),
             'aCocher' => ControlesTirage::A_COCHER,
             'buses' => $this->tirages->busesDuJour($tirage->getMachine(), $maintenant),
@@ -704,6 +705,28 @@ final class ProductionRouleauController extends AbstractController
         $pointe = null !== $dernier && null === $dernier->getDepartLe() && $dernier->getArriveeLe()->format('Ymd') === (new \DateTimeImmutable())->format('Ymd');
 
         return $pointe ? null : 'Pointez votre arrivée à l\'atelier pour agir depuis le téléphone (ou utilisez le poste de la machine).';
+    }
+
+    /**
+     * Relever les niveaux d'encre passe par la route de l'atelier
+     * (app_atelier_encre), plus stricte : chef d'atelier, poste de la
+     * machine ou opérateur affecté (pas « pointé aujourd'hui »).
+     */
+    private function peutSaisirEncre(Machines $machine, Request $request): bool
+    {
+        if (!$this->isGranted('ROLE_PRODUCTION_GERER')) {
+            return false;
+        }
+        if ($this->isGranted(Droits::ATELIER_CHEF)) {
+            return true;
+        }
+        $ip = $request->getClientIp();
+        if (null !== $ip && $this->machinesRepository->findOneByAdresseIp($ip) === $machine) {
+            return true;
+        }
+        $atelier = $this->em->getRepository(AtelierMachine::class)->findOneBy(['machine' => $machine]);
+
+        return null !== $atelier && $atelier->getOperateurs()->contains($this->moi());
     }
 
     private function exigerAction(?Machines $machine, Request $request): void

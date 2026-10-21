@@ -95,8 +95,10 @@
 										<input type="number" id="si-fr-bouchees" name="bouchees" min="0" max="999" value="0">
 										<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-check" aria-hidden="true"></i>Test fait</button>
 									</form>
-								{% elseif p.cle == 'encres' and p.etat != 'ok' and atelier %}
+								{% elseif p.cle == 'encres' and p.etat != 'ok' and atelier and peutEncre %}
 									<div class="actions"><a href="#si-fr-encres" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-fill-drip" aria-hidden="true"></i>Saisir les niveaux</a></div>
+								{% elseif p.cle == 'encres' and p.etat != 'ok' %}
+									<span class="detail">Le chef d'atelier ou l'opérateur de la machine relève les niveaux.</span>
 								{% endif %}
 							{% endif %}
 						</div>
@@ -154,6 +156,17 @@
 					<p class="mb-1" style="font-size:13px"><b>V{{ e.version }}</b> · {{ e.mode == 'separes' ? 'fichiers séparés et feuille de placement' : 'un seul PDF' }} · {{ e.le|date('d/m à H:i') }} · {{ e.parNom }}</p>
 					<p class="si-fab-muet mb-2" style="word-break: break-all">{{ e.nom }}{% if e.copie %}<br>Copié dans {{ dossier }}{% endif %}</p>
 					<a href="{{ path('app_atelier_production_rip_fichier', {id: tirage.id, version: e.version}) }}" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-download" aria-hidden="true"></i>{{ e.mode == 'separes' ? 'Feuille de placement' : 'PDF du rouleau' }}</a>
+					{% if e.mode == 'separes' %}
+						{# Fichiers séparés : chacun se télécharge sous son nom de production (dossier de la machine non réglé). #}
+						<ul class="si-fr-liste mt-2">
+							{% for t in travaux %}
+								<li>
+									<span class="si-fab-muet" style="word-break: break-all; font-size:12px">{{ t.nomFichier }}</span>
+									<a href="{{ path('app_atelier_production_fichier', {id: t.ordre.id, quoi: 'impression'}) }}" class="si-fab-bouton si-fr-petit-bouton" aria-label="Télécharger {{ t.nomFichier }}"><i class="fas fa-download" aria-hidden="true"></i>Fichier</a>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
 				</section>
 			{% endif %}
 		</div>
@@ -179,7 +192,7 @@
 				{% else %}
 					<p class="si-fab-muet mt-2 mb-0">Niveaux d'encre pas encore relevés.</p>
 				{% endif %}
-				{% if peutAgir and atelier %}
+				{% if peutEncre and atelier %}
 					<details class="si-fr-modifier" {{ points|filter(p => p.cle == 'encres' and p.etat != 'ok')|length > 0 ? 'open' }}>
 						<summary>Relever les niveaux</summary>
 						<form method="post" action="{{ path('app_atelier_encre', {id: tirage.machine.id}) }}" class="si-fr-encre-form">

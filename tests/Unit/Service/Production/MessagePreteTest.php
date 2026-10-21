@@ -25,6 +25,13 @@ final class MessagePreteTest extends TestCase
         self::assertSame('Vos 2 bâches sont prêtes. Livraison demain entre 10 h et 12 h. Votre code de réception : 4827.', $texte);
     }
 
+    public function testDateDeLivraisonPasseeNonAnnoncee(): void
+    {
+        $texte = MessagePrete::texte([['nom' => NomsProduits::reconnaitre('Bâche'), 'quantite' => 2]], 'CMD-000183', true, new \DateTimeImmutable('2026-10-19'), '10-12', null, self::auj());
+
+        self::assertSame('Vos 2 bâches sont prêtes. Nous vous appelons pour fixer l\'heure de la livraison.', $texte);
+    }
+
     public function testRetraitALImprimerie(): void
     {
         self::assertSame(

@@ -26,7 +26,9 @@ final class MessagePrete
         $phrases = [$sujet.'.'];
 
         if ($livraison) {
-            $quand = self::jour($jour, $aujourdhui);
+            // Une date de livraison déjà passée (sans bon planifié) ne s'annonce pas au client : on l'appelle.
+            $passee = $jour !== null && $jour->format('Y-m-d') < $aujourdhui->format('Y-m-d');
+            $quand = $passee ? null : self::jour($jour, $aujourdhui);
             $heures = self::creneau($creneau);
             $phrases[] = $quand === null
                 ? 'Nous vous appelons pour fixer l\'heure de la livraison.'

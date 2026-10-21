@@ -321,8 +321,8 @@ final class ProductionColisDemoCommand extends Command
             }
             $ordres[] = $ordre;
         }
+        // Payée à la livraison ou au retrait : rien d'encaissé d'avance (aucun montant sur ces écrans).
         $commande->recalculerTotaux();
-        $commande->setTotalPaye($commande->getTotalTtc() ?? 0)->setResteAPayer(0);
         $this->em->persist($commande);
         $this->em->flush();
 

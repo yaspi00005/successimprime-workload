@@ -336,15 +336,9 @@ final class ProductionRouleauController extends AbstractController
         $vus = [];
         foreach ($tirage->piecesTriees() as $p) {
             $o = $p->getOrdre();
-            $f = PosteMachiniste::fichier($o);
             $source = $this->fichiers->source($o);
-            $type = match (true) {
-                null === $source['chemin'] => null,
-                'pdf' === NomFichierProduction::extension($f?->getNomOriginal() ?? (string) ($o->getCommandeDetail()?->getFichierLie()['nom'] ?? ''), '') => 'pdf',
-                \in_array(NomFichierProduction::extension($f?->getNomOriginal() ?? '', ''), ['png'], true) => 'png',
-                \in_array(NomFichierProduction::extension($f?->getNomOriginal() ?? '', ''), ['jpg', 'jpeg'], true) => 'jpeg',
-                default => null,
-            };
+            // Le type lu dans le fichier (fichier de la commande ou de « Mes produits »), jamais d'après son nom.
+            $type = null !== $source['chemin'] ? EnvoiRip::typeMontable($source['chemin']) : null;
             if (null !== $source['chemin'] && !isset($vus[$o->getId()])) {
                 $vus[$o->getId()] = true;
                 $total += (int) @filesize($source['chemin']);
@@ -367,6 +361,7 @@ final class ProductionRouleauController extends AbstractController
             'nom' => $this->tirages->nomRip($tirage),
             'laize' => $tirage->getLaizeCm(),
             'marge' => $tirage->getMargeCm(),
+            'espace' => $tirage->getEspaceCm(),
             'longueur' => $tirage->getConsommeM() * 100,
             'pieces' => $pieces,
             'taille' => $total,
@@ -422,6 +417,10 @@ final class ProductionRouleauController extends AbstractController
         }
         try {
             $d = $request->toArray();
+        } catch (\Throwable) {
+            return $this->json(['message' => 'Données illisibles.'], Response::HTTP_BAD_REQUEST);
+        }
+        try {
             $r = $rip->terminer($tirage, (string) ($d['jeton'] ?? ''), (int) ($d['pages'] ?? 1), $this->moi(), new \DateTimeImmutable(), $request->getSession());
             $this->em->flush();
         } catch (\DomainException|\LogicException $e) {

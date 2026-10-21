@@ -234,15 +234,18 @@
 				dire('Montage de la pièce ' + n + ' sur ' + D.pieces.length + '…', 5 + 45 * n / D.pieces.length);
 				if (!cache[p.url]) {
 					var octets = await (await fetch(p.url, {credentials: 'same-origin'})).arrayBuffer();
-					if (p.type === 'pdf') { cache[p.url] = {pdf: true, o: (await doc.embedPdf(octets, [0]))[0]}; }
-					else if (p.type === 'png') { cache[p.url] = {o: await doc.embedPng(octets)}; }
-					else { cache[p.url] = {o: await doc.embedJpg(octets)}; }
+					if (p.type === 'pdf') { cache[p.url] = await pagePdf(doc, octets, p, D.espace); }
+					else if (p.type === 'png') { cache[p.url] = {o: await doc.embedPng(octets), f: [0, 0, 0, 0]}; }
+					else { cache[p.url] = {o: await doc.embedJpg(octets), f: [0, 0, 0, 0]}; }
 				}
 				var e = cache[p.url];
 				var gauche = p.x * CM, bas = (H - (p.y - y0) - p.h) * CM;
+				// Format fini à sa place, au cm près ; le fond perdu gardé (3 mm au plus) déborde autour.
+				var fg = e.f[0], fb = e.f[1], fd = e.f[2], fh = e.f[3];
+				var largeur = p.lo * CM + fg + fd, hauteur = p.ho * CM + fb + fh;
 				var opts = p.tourne
-					? {x: gauche + p.l * CM, y: bas, width: p.lo * CM, height: p.ho * CM, rotate: P.degrees(90)}
-					: {x: gauche, y: bas, width: p.l * CM, height: p.h * CM};
+					? {x: gauche + p.l * CM + fb, y: bas - fg, width: largeur, height: hauteur, rotate: P.degrees(90)}
+					: {x: gauche - fg, y: bas - fb, width: largeur, height: hauteur};
 				if (e.pdf) { page.drawPage(e.o, opts); } else { page.drawImage(e.o, opts); }
 				reperes(page, p, y0, H, noir);
 				// Nom de la commande dans la marge de gauche, une colonne par pièce de la même rangée.
@@ -256,6 +259,30 @@
 			}
 		}
 		return {octets: await doc.save(), pages: doc.getPageCount()};
+	}
+
+	/*
+	 * Première page d'un PDF de production, prête à poser : le format fini
+	 * (TrimBox, comme les PDF du prépresse, sinon la page visible) remplit la
+	 * pièce à l'échelle 1:1 ; du fond perdu, on garde 3 mm au plus de chaque
+	 * côté (moins si l'espace entre les pièces est plus petit), pour que les
+	 * repères de coupe restent dehors. f : fond gardé à gauche, en bas, à
+	 * droite, en haut, en points du rouleau.
+	 */
+	async function pagePdf(doc, octets, p, espace) {
+		var P = window.PDFLib;
+		var source = await P.PDFDocument.load(octets, {ignoreEncryption: true});
+		var pg = source.getPage(0);
+		var fini = pg.node.TrimBox() ? pg.getTrimBox() : pg.getCropBox();
+		var fond = pg.getBleedBox();
+		var sx = p.lo * CM / fini.width, sy = p.ho * CM / fini.height;
+		var maxi = Math.max(0, Math.min(0.3, (typeof espace === 'number' ? espace : 4) / 2)) * CM;
+		var g = Math.min(Math.max(0, fini.x - fond.x) * sx, maxi);
+		var b = Math.min(Math.max(0, fini.y - fond.y) * sy, maxi);
+		var d = Math.min(Math.max(0, (fond.x + fond.width) - (fini.x + fini.width)) * sx, maxi);
+		var h = Math.min(Math.max(0, (fond.y + fond.height) - (fini.y + fini.height)) * sy, maxi);
+		var boite = {left: fini.x - g / sx, bottom: fini.y - b / sy, right: fini.x + fini.width + d / sx, top: fini.y + fini.height + h / sy};
+		return {pdf: true, o: await doc.embedPage(pg, boite), f: [g, b, d, h]};
 	}
 
 	/* Repères de coupe : à chaque coin, deux traits de 1 cm à 3 mm de la pièce. */

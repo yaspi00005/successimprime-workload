@@ -37,6 +37,23 @@ final class EnvoiRip
     ) {
     }
 
+    /**
+     * Ce que le navigateur sait poser dans le PDF du rouleau, d'après les
+     * premiers octets du fichier : « pdf », « png », « jpeg », sinon null
+     * (PSD, AI, TIFF… : fichiers séparés).
+     */
+    public static function typeMontable(string $chemin): ?string
+    {
+        $debut = (string) @file_get_contents($chemin, false, null, 0, 1024);
+
+        return match (true) {
+            str_contains($debut, '%PDF-') => 'pdf',
+            str_starts_with($debut, "\x89PNG\r\n\x1A\n") => 'png',
+            str_starts_with($debut, "\xFF\xD8\xFF") => 'jpeg',
+            default => null,
+        };
+    }
+
     /** Taille d'un morceau : 5 Mo, ou moins si PHP refuse plus. */
     public static function morceau(): int
     {

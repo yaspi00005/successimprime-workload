@@ -30,7 +30,9 @@
 	</header>
 
 	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous voyez la fiche sans pouvoir cocher ni démarrer.</p>{% endif %}
-	{% if tirage.statut == 'prepare' %}
+	{% if tirage.aRenvoyer %}
+		<p class="si-fr-alerte rouge">Le placement a changé depuis l'envoi V{{ (tirage.envois|first).version }} : le fichier du RIP n'est plus le bon. <a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}">Renvoyez-le depuis l'imposition</a> avant de démarrer.</p>
+	{% elseif tirage.statut == 'prepare' %}
 		<p class="si-fr-alerte">Le rouleau n'est pas encore au RIP : <a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}">envoyez-le depuis l'imposition</a> avant de démarrer.</p>
 	{% elseif tirage.estAnnule %}
 		<p class="si-fr-alerte rouge">Ce rouleau est annulé : ses travaux attendent un autre rouleau.</p>

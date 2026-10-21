@@ -4,6 +4,8 @@ Le poste du machiniste, d'après les maquettes OP01 à OP06 (« Poste machiniste
 
 Le code : `src/Controller/MaFileController.php`, `src/Service/Atelier/PosteMachiniste.php` (ce que montrent les pages), `src/Service/Atelier/TempsEstime.php` (les calculs, testés dans `tests/Unit/Service/Atelier/TempsEstimeTest.php`), `src/Service/Atelier/ActionsOrdre.php` (démarrer, pause, terminer : le même chemin que l'atelier et le poste de production), `src/Entity/RetourPrepresse.php`, `templates/ma_file/`, `public/css/poste-machiniste.css`, `public/js/poste-machiniste.js`.
 
+Les travaux au rouleau (bâches, kakémonos, vinyle) se regroupent d'abord sur un rouleau : imposition, envoi au RIP et fiche de production, dont « Démarrer » fait passer tous les travaux « en cours » ici (`docs/production-rouleau.md`).
+
 ## Le parcours d'un travail
 
 1. **À vérifier** : le prépresse a envoyé le fichier en production. Le machiniste ouvre le fichier et le vérifie.

@@ -13,6 +13,8 @@ Cinq écrans pour suivre les machines de l'atelier, d'après les maquettes AT01 
 
 Le code : `src/Controller/AtelierProductionController.php`, `src/Service/Atelier/AtelierProduction.php` (ce que montrent les pages), `src/Service/Atelier/AvancementOrdre.php` (les calculs, testés dans `tests/Unit/Service/Atelier/AvancementOrdreTest.php`), `src/Service/Atelier/ActionsOrdre.php` (démarrer, pause, terminer), `templates/atelier_production/`, `public/css/atelier-production.css`.
 
+La production au rouleau (parcours d'un fichier, imposition, envoi au RIP, fiche de production, machines et dossiers) : `docs/production-rouleau.md`.
+
 ## Qui voit quoi
 
 - **Chef d'atelier** (nouveau droit « Chef d'atelier », `ROLE_ATELIER_CHEF`, donné par l'administrateur ou ajouté sur la fiche d'une personne) et **direction** : toutes les machines, et tous les gestes (ranger les files, déplacer dans le planning, affecter les opérateurs, mettre à jour les incidents, gérer l'entretien).

@@ -29,6 +29,7 @@
 
 	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous voyez le placement sans pouvoir le changer.</p>{% endif %}
 	{% if not modifiable %}<p class="si-fr-alerte">Ce rouleau est {{ tirage.libelleStatut|lower }} : le placement ne change plus.</p>{% endif %}
+	{% if tirage.aRenvoyer %}<p class="si-fr-alerte rouge">Le placement a changé depuis l'envoi V{{ (tirage.envois|first).version }} : renvoyez le rouleau au RIP avant de démarrer.</p>{% endif %}
 
 	<div class="si-fab-grille si-fr-impo">
 		<section class="si-fab-carte" aria-labelledby="si-fr-plan-titre">
@@ -165,7 +166,7 @@
 			{% endif %}
 
 			{% if modifiable and peutAgir %}
-				<form method="post" action="{{ path('app_atelier_production_annuler', {id: tirage.id}) }}" onsubmit="return confirm('Annuler ce rouleau ? Ses travaux attendront un autre rouleau.')">
+				<form method="post" action="{{ path('app_atelier_production_annuler', {id: tirage.id}) }}" data-confirmer="Annuler le rouleau {{ tirage.numero }} ?" data-confirmer-detail="Ses travaux attendront un autre rouleau ; les fichiers déjà envoyés restent dans l'historique." data-confirmer-bouton="Annuler le rouleau" data-confirmer-danger>
 					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
 					<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-times" aria-hidden="true"></i>Annuler le rouleau</button>
 				</form>

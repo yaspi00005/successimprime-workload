@@ -465,6 +465,15 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'production-rouleau', 'groupe' => 'production', 'titre' => 'Rouleau : imposer, envoyer au RIP, démarrer',
+                'but' => 'Regrouper les travaux d\'un même support sur un rouleau, envoyer un seul fichier au RIP et démarrer quand la fiche est verte.',
+                'droits' => ['ROLE_PRODUCTION_VOIR', 'ROLE_PRODUCTION_GERER'], 'route' => 'app_atelier_production_rouleaux', 'ecrans' => ['app_atelier_production_'],
+                'captures' => [
+                    ['nom' => 'rouleau-imposition', 'legende' => 'L\'imposition : les pièces sur la laize, le rouleau utilisé et « Envoyer au RIP ».'],
+                    ['nom' => 'rouleau-fiche', 'legende' => 'La fiche de production : les points à vérifier avant « Démarrer ».'],
+                ],
+            ],
+            [
                 'cle' => 'planning-machines', 'groupe' => 'production', 'titre' => 'Le planning des machines',
                 'but' => 'Voir la semaine de chaque machine, sa charge, et déplacer un travail.',
                 'droits' => ['ROLE_PRODUCTION_VOIR'], 'route' => 'app_atelier_planning', 'consultation' => true,

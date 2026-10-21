@@ -516,6 +516,27 @@ class TirageRouleau
         return $this->rouleauConfirmePar;
     }
 
+    /**
+     * Le placement a changé après l'envoi au RIP : le fichier envoyé ne
+     * correspond plus, le rouleau redevient « Préparé » et attend un nouvel
+     * envoi avant « Démarrer ». L'historique des envois reste.
+     */
+    public function placementChange(\DateTimeImmutable $le): static
+    {
+        if (self::STATUT_ENVOYE === $this->statut) {
+            $this->statut = self::STATUT_PREPARE;
+        }
+        $this->modifieLe = $le;
+
+        return $this;
+    }
+
+    /** Envoyé au RIP puis replacé : le dernier fichier envoyé n'est plus le bon. */
+    public function aRenvoyer(): bool
+    {
+        return self::STATUT_PREPARE === $this->statut && [] !== $this->getEnvois();
+    }
+
     public function demarrer(User $par, \DateTimeImmutable $le): static
     {
         if (self::STATUT_ENVOYE !== $this->statut) {

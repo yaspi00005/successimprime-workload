@@ -362,6 +362,7 @@ final class TiragesRouleau
         if (!$tirage->estModifiable()) {
             throw new \DomainException('Ce rouleau est en impression : le placement ne change plus.');
         }
+        $avant = self::signaturePlacement($tirage);
         $ordres = $tirage->ordres();
         if (null !== $ordreIds) {
             $rang = array_flip(array_values($ordreIds));
@@ -400,6 +401,9 @@ final class TiragesRouleau
         }
         $tirage->setMode(TirageRouleau::MODE_AUTO);
         $this->enregistrerBilan($tirage, $maintenant);
+        if ($avant !== self::signaturePlacement($tirage)) {
+            $tirage->placementChange($maintenant);
+        }
 
         return $retires;
     }
@@ -437,6 +441,7 @@ final class TiragesRouleau
 
             return array_map(static fn (string $texte): string => strtr($texte, $libelles), $problemes);
         }
+        $avant = self::signaturePlacement($tirage);
         // Le rouleau commence à la première pièce.
         $haut = [] !== $pieces ? min(array_column($pieces, 'y')) : 0.0;
         $rang = array_flip(ImpositionRouleau::ordreImpression($pieces));
@@ -445,8 +450,23 @@ final class TiragesRouleau
         }
         $tirage->setMode(TirageRouleau::MODE_MANUEL);
         $this->enregistrerBilan($tirage, $maintenant);
+        if ($avant !== self::signaturePlacement($tirage)) {
+            $tirage->placementChange($maintenant);
+        }
 
         return [];
+    }
+
+    /** Positions et tailles des pièces : ce que le fichier envoyé au RIP fige. */
+    private static function signaturePlacement(TirageRouleau $tirage): string
+    {
+        $s = [];
+        foreach ($tirage->getPieces() as $p) {
+            $s[$p->cle()] = [round($p->getXCm(), 1), round($p->getYCm(), 1), round($p->getLargeurCm(), 1), round($p->getHauteurCm(), 1), $p->isTourne()];
+        }
+        ksort($s);
+
+        return (string) json_encode($s);
     }
 
     /** « 412-1 » → « CMD-000430 1/1 » dans les messages. */

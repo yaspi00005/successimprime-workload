@@ -18,6 +18,11 @@
 	var manuel = false;
 	var modifie = false;
 
+	/* Fenêtre de confirmation de l'application (public/js/confirmation.js), jamais la boîte du navigateur. */
+	function confirmer(question) {
+		return window.SiConfirmation ? window.SiConfirmation.demander(question) : Promise.resolve(true);
+	}
+
 	/* ---------------- Placement manuel ---------------- */
 
 	function pieces() { return svg ? Array.prototype.slice.call(svg.querySelectorAll('g.piece')) : []; }
@@ -130,9 +135,9 @@
 				document.querySelectorAll('[data-fr-mode]').forEach(function (x) { x.classList.toggle('actif', x === b); x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
 				activerManuel();
 			} else if (manuel || C.mode === 'manuel') {
-				if (!modifie || window.confirm('Revenir au placement automatique ? Les déplacements non enregistrés sont perdus.')) {
-					document.querySelector('[data-fr-auto]').submit();
-				}
+				var revenir = function () { modifie = false; document.querySelector('[data-fr-auto]').submit(); };
+				if (!modifie) { revenir(); return; }
+				confirmer({message: 'Revenir au placement automatique ?', detail: 'Les déplacements non enregistrés sont perdus.', bouton: 'Revenir à l\'automatique'}).then(function (ok) { if (ok) { revenir(); } });
 			}
 		});
 	});
@@ -176,9 +181,9 @@
 
 	function proposerSepares(raison) {
 		dire(raison + ' Le RIP ne peut pas recevoir un seul fichier : envoyez les fichiers séparés.', 0);
-		if (window.confirm(raison + '\n\nEnvoyer les fichiers séparés (chaque fichier sous son nom de production et une feuille de placement) ?')) {
-			document.querySelector('[data-fr-separes]').submit();
-		}
+		confirmer({message: 'Envoyer les fichiers séparés ?', detail: raison + ' Chaque fichier part sous son nom de production, avec une feuille de placement.', bouton: 'Envoyer les fichiers séparés'}).then(function (ok) {
+			if (ok) { document.querySelector('[data-fr-separes]').submit(); }
+		});
 	}
 
 	/* Découpe en pages de 500 cm au plus, entre deux rangées de pièces. */
@@ -293,7 +298,7 @@
 
 	if (boutonRip) {
 		boutonRip.addEventListener('click', async function () {
-			if (modifie) { window.alert('Enregistrez d\'abord le placement manuel.'); return; }
+			if (modifie) { dire('Enregistrez d\'abord le placement manuel (« Enregistrer le placement »).', 0); return; }
 			boutonRip.disabled = true;
 			try {
 				dire('Préparation du PDF du rouleau…', 2);

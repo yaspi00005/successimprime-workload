@@ -1,0 +1,226 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Fiche de production · {{ tirage.numero }}{% endblock %}
+{% block fab_actif %}rouleaux{% endblock %}
+
+{% set icones = {ok: 'fa-check', bloquant: 'fa-exclamation', afaire: 'fa-hand-point-right', surveiller: 'fa-eye'} %}
+{% set modifiable = tirage.estModifiable %}
+{% set demarrable = peutAgir and tirage.statut == 'envoye' and resume.pret %}
+{% set lance = tirage.statut in ['en_impression', 'en_pause', 'imprime', 'termine'] %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › <a href="{{ path('app_atelier_production_rouleaux') }}">Rouleaux</a> › {{ tirage.machine.nom }}</p>
+			<h1 class="si-fab-titre">Fiche de production · rouleau {{ tirage.numero }}</h1>
+			<p class="si-fab-muet mb-0">{{ tirage.libelleSupport }} · {{ tirage.pieces|length }} pièce{{ tirage.pieces|length > 1 ? 's' }} · {{ tirage.consommeM|number_format(1, ',', ' ') }} m de rouleau · <span class="si-fab-pastille {{ tirage.statut == 'envoye' ? 'bleu' : (tirage.statut in ['en_impression', 'en_pause'] ? 'orange' : (tirage.statut == 'annule' ? 'rouge' : (lance ? 'vert' : ''))) }}">{{ tirage.libelleStatut }}</span></p>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}" class="si-fab-bouton"><i class="fas fa-th-large" aria-hidden="true"></i>Imposition</a>
+			<a href="{{ path('app_atelier_production_imprimer', {id: tirage.id}) }}" class="si-fab-bouton" target="_blank" rel="noopener"><i class="fas fa-print" aria-hidden="true"></i>Imprimer la fiche</a>
+			{% if lance %}
+				<a href="{{ path('app_ma_file_index', {m: tirage.machine.id}) }}" class="si-fab-bouton sombre"><i class="fas fa-stream" aria-hidden="true"></i>Ma file</a>
+			{% elseif not tirage.estAnnule %}
+				<form method="post" action="{{ path('app_atelier_production_demarrer', {id: tirage.id}) }}" class="si-fr-inline">
+					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+					<button type="submit" class="si-fab-bouton principal" {{ demarrable ? '' : 'disabled aria-describedby=si-fr-demarrer-note' }}><i class="fas fa-play" aria-hidden="true"></i>Démarrer</button>
+				</form>
+			{% endif %}
+		</div>
+	</header>
+
+	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous voyez la fiche sans pouvoir cocher ni démarrer.</p>{% endif %}
+	{% if tirage.aRenvoyer %}
+		<p class="si-fr-alerte rouge">Le placement a changé depuis l'envoi V{{ (tirage.envois|first).version }} : le fichier du RIP n'est plus le bon. <a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}">Renvoyez-le depuis l'imposition</a> avant de démarrer.</p>
+	{% elseif tirage.statut == 'prepare' %}
+		<p class="si-fr-alerte">Le rouleau n'est pas encore au RIP : <a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}">envoyez-le depuis l'imposition</a> avant de démarrer.</p>
+	{% elseif tirage.estAnnule %}
+		<p class="si-fr-alerte rouge">Ce rouleau est annulé : ses travaux attendent un autre rouleau.</p>
+	{% elseif lance and tirage.demarreLe %}
+		<p class="si-fr-alerte vert">Impression démarrée à {{ tirage.demarreLe|date('H:i') }}{% if machinistePrenom %} par {{ machinistePrenom }}{% endif %}. La suite se fait dans Ma file.</p>
+	{% endif %}
+
+	<div class="si-fr-fiche">
+		{# Colonne 1 : les contrôles avant d'imprimer #}
+		<section class="si-fab-carte" aria-labelledby="si-fr-points-titre">
+			<div class="si-fr-carte-entete">
+				<h2 id="si-fr-points-titre">Avant d'appuyer sur « Imprimer »</h2>
+				{% if resume.bloquants > 0 %}
+					<span class="si-fr-compte">{{ resume.bloquants }} point{{ resume.bloquants > 1 ? 's' }} bloquant{{ resume.bloquants > 1 ? 's' }}</span>
+				{% elseif resume.afaire > 0 %}
+					<span class="si-fr-compte" style="color: var(--fab-bleu)">{{ resume.afaire }} à cocher</span>
+				{% else %}
+					<span class="si-fr-compte vert">Tout est vert</span>
+				{% endif %}
+			</div>
+			<ul class="si-fab-controles si-fr-points">
+				{% for p in points %}
+					<li id="point-{{ p.cle }}">
+						<span class="si-fab-etat {{ p.etat }}" role="img" aria-label="{{ {ok: 'bon', bloquant: 'bloquant', afaire: 'à faire', surveiller: 'à surveiller'}[p.etat] }}"><i class="fas {{ icones[p.etat] }}" aria-hidden="true"></i></span>
+						<div class="contenu">
+							<b>{{ p.libelle }}</b>
+							<span class="detail {{ p.etat == 'bloquant' ? 'bloquant-texte' }}">{{ p.detail }}</span>
+							{% if peutAgir and modifiable and p.cle in aCocher|keys and p.etat == 'ok' %}
+								<form method="post" action="{{ path('app_atelier_production_cocher', {id: tirage.id}) }}" class="si-fr-decocher">
+									<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+									<input type="hidden" name="cle" value="{{ p.cle }}">
+									<input type="hidden" name="fait" value="0">
+									<button type="submit" aria-label="Décocher « {{ p.libelle }} »">décocher</button>
+								</form>
+							{% endif %}
+							{% if peutAgir and modifiable %}
+								{% if p.cle in aCocher|keys %}
+									{% if p.etat == 'afaire' %}
+									<div class="actions">
+											<form method="post" action="{{ path('app_atelier_production_cocher', {id: tirage.id}) }}">
+												<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+												<input type="hidden" name="cle" value="{{ p.cle }}">
+												<input type="hidden" name="fait" value="1">
+												<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-check" aria-hidden="true"></i>{{ aCocher[p.cle] }}</button>
+											</form>
+										{% if p.cle == 'support' and tirage.support and tirage.support.reference %}
+											<form method="post" action="{{ path('app_atelier_production_scanner', {id: tirage.id}) }}">
+												<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+												<label class="visually-hidden" for="si-fr-code-rouleau">Code lu sur le rouleau</label>
+												<input type="text" id="si-fr-code-rouleau" name="code" maxlength="60" placeholder="Scanner le rouleau" autocomplete="off" inputmode="text">
+												<button type="submit" class="si-fab-bouton si-fr-petit-bouton sombre"><i class="fas fa-barcode" aria-hidden="true"></i>Valider</button>
+											</form>
+										{% endif %}
+									</div>
+									{% endif %}
+								{% elseif p.cle == 'buses' and p.etat != 'ok' %}
+									<form method="post" action="{{ path('app_atelier_production_buses', {id: tirage.id}) }}" class="actions">
+										<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+										<label class="si-fab-muet" for="si-fr-bouchees">Buses bouchées</label>
+										<input type="number" id="si-fr-bouchees" name="bouchees" min="0" max="999" value="0">
+										<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-check" aria-hidden="true"></i>Test fait</button>
+									</form>
+								{% elseif p.cle == 'encres' and p.etat != 'ok' and atelier and peutEncre %}
+									<div class="actions"><a href="#si-fr-encres" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-fill-drip" aria-hidden="true"></i>Saisir les niveaux</a></div>
+								{% elseif p.cle == 'encres' and p.etat != 'ok' %}
+									<span class="detail">Le chef d'atelier ou l'opérateur de la machine relève les niveaux.</span>
+								{% endif %}
+							{% endif %}
+						</div>
+					</li>
+				{% endfor %}
+			</ul>
+			<p class="si-fab-note" id="si-fr-demarrer-note">« Démarrer » se débloque quand tout est vert (les points orange se surveillent pendant l'impression). Le scan du code du rouleau confirme le support.</p>
+		</section>
+
+		{# Colonne 2 : les travaux et la suite #}
+		<div>
+			<section class="si-fab-carte" aria-labelledby="si-fr-travaux-titre">
+				<h2 id="si-fr-travaux-titre">Les travaux du rouleau <small>dans l'ordre d'impression</small></h2>
+				<ol class="si-fr-travaux">
+					{% for t in travaux %}
+						<li>
+							<span class="si-fr-rang" aria-hidden="true">{{ t.rang }}</span>
+							{% if apercus[loop.index0] ?? null %}
+								<img class="si-fr-vignette" src="{{ path('app_atelier_production_fichier', {id: t.ordre.id, quoi: 'impression', apercu: 1}) }}" alt="" loading="lazy" style="border: 2px solid {{ t.couleur }}">
+							{% else %}
+								<span class="si-fr-vignette" style="background: {{ t.couleur }}" aria-hidden="true">{{ t.pieces }}</span>
+							{% endif %}
+							<span class="texte">
+								<b>{{ t.numero }} · {{ t.client|default('client') }}</b>
+								{{ t.produit }}{% if t.taille %} {{ t.taille }}{% endif %}{% if t.quantite > 1 %} × {{ t.quantite }}{% endif %}
+								{% if t.finitions is not empty %}<br><i class="fas fa-cut" aria-hidden="true"></i> {{ t.finitions|join(' + ')|lower }}{% endif %}
+							</span>
+							{% if t.promis %}
+								{% if t.promis|date('Y-m-d') == maintenant|date('Y-m-d') %}
+									<span class="quand si-fr-rouge">livrer {{ t.promis|date('H:i') != '00:00' ? t.promis|date('H:i') : 'aujourd\'hui' }}</span>
+								{% else %}
+									<span class="quand si-fab-muet">{{ jour_court(t.promis) }}</span>
+								{% endif %}
+							{% endif %}
+						</li>
+					{% else %}
+						<li class="si-fab-muet">Aucun travail sur ce rouleau.</li>
+					{% endfor %}
+				</ol>
+			</section>
+
+			<section class="si-fab-carte" aria-labelledby="si-fr-apres-titre">
+				<h2 id="si-fr-apres-titre">Après l'impression</h2>
+				<dl class="si-fr-apres">
+					{% for c in apres %}
+						<div><dt>{{ c.titre }} :</dt> <dd>{{ c.texte }}</dd></div>
+					{% endfor %}
+				</dl>
+			</section>
+
+			{% if tirage.envois is not empty %}
+				{% set e = tirage.envois|first %}
+				<section class="si-fab-carte" aria-labelledby="si-fr-rip-titre">
+					<h2 id="si-fr-rip-titre">Au RIP</h2>
+					<p class="mb-1" style="font-size:13px"><b>V{{ e.version }}</b> · {{ e.mode == 'separes' ? 'fichiers séparés et feuille de placement' : 'un seul PDF' }} · {{ e.le|date('d/m à H:i') }} · {{ e.parNom }}</p>
+					<p class="si-fab-muet mb-2" style="word-break: break-all">{{ e.nom }}{% if e.copie %}<br>Copié dans {{ dossier }}{% endif %}</p>
+					<a href="{{ path('app_atelier_production_rip_fichier', {id: tirage.id, version: e.version}) }}" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-download" aria-hidden="true"></i>{{ e.mode == 'separes' ? 'Feuille de placement' : 'PDF du rouleau' }}</a>
+					{% if e.mode == 'separes' %}
+						{# Fichiers séparés : chacun se télécharge sous son nom de production (dossier de la machine non réglé). #}
+						<ul class="si-fr-liste mt-2">
+							{% for t in travaux %}
+								<li>
+									<span class="si-fab-muet" style="word-break: break-all; font-size:12px">{{ t.nomFichier }}</span>
+									<a href="{{ path('app_atelier_production_fichier', {id: t.ordre.id, quoi: 'impression'}) }}" class="si-fab-bouton si-fr-petit-bouton" aria-label="Télécharger {{ t.nomFichier }}"><i class="fas fa-download" aria-hidden="true"></i>Fichier</a>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</section>
+			{% endif %}
+		</div>
+
+		{# Colonne 3 : la machine, le machiniste, le QR du rouleau #}
+		<div class="colonne-machine">
+			<section class="si-fab-carte" aria-labelledby="si-fr-machine-titre" id="si-fr-encres">
+				<h2 id="si-fr-machine-titre">Machine</h2>
+				<p class="mb-1"><b>{{ tirage.machine.nom }}</b></p>
+				<span class="si-fab-pastille {{ etatMachine.couleur }}">{{ etatMachine.libelle }}</span>
+				{% if encres is not empty %}
+					<div class="si-fr-encres" role="list" aria-label="Niveaux d'encre">
+						{% for code, pct in encres %}
+							{% set couleur = {C: '#00AEEF', M: '#EC008C', J: '#FFD400', N: '#1F2937', B: '#E5E7EB'}[code] ?? '#9CA3AF' %}
+							<div class="{{ pct < seuilEncre ? 'bas' }}" role="listitem" aria-label="{{ nomsEncres[code] ?? code }} {{ pct }} %">
+								<span class="tube"><span style="height: {{ pct }}%; background: {{ couleur }}"></span></span>
+								<b>{{ pct }}</b>
+								<span>{{ code }}</span>
+							</div>
+						{% endfor %}
+					</div>
+					<p class="si-fab-muet mb-0">{% if atelier.niveauxEncreLe %}Relevés le {{ atelier.niveauxEncreLe|date('d/m à H:i') }}{% if atelier.niveauxEncrePar %} par {{ atelier.niveauxEncrePar.employe ? atelier.niveauxEncrePar.employe.prenom : atelier.niveauxEncrePar.userIdentifier }}{% endif %}. {% endif %}Seuil : {{ seuilEncre }} %.</p>
+				{% else %}
+					<p class="si-fab-muet mt-2 mb-0">Niveaux d'encre pas encore relevés.</p>
+				{% endif %}
+				{% if peutEncre and atelier %}
+					<details class="si-fr-modifier" {{ points|filter(p => p.cle == 'encres' and p.etat != 'ok')|length > 0 ? 'open' }}>
+						<summary>Relever les niveaux</summary>
+						<form method="post" action="{{ path('app_atelier_encre', {id: tirage.machine.id}) }}" class="si-fr-encre-form">
+							<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+							<input type="hidden" name="retour" value="{{ path('app_atelier_production_fiche', {id: tirage.id}) }}">
+							{% for code in (encres is not empty ? encres|keys : ['C', 'M', 'J', 'N']) %}
+								<label>{{ nomsEncres[code]|default(code)|capitalize }}<input type="number" name="encre[{{ code }}]" min="0" max="100" value="{{ encres[code] ?? '' }}" inputmode="numeric"></label>
+							{% endfor %}
+							<button type="submit" class="si-fab-bouton si-fr-petit-bouton sombre">Enregistrer</button>
+						</form>
+					</details>
+				{% endif %}
+			</section>
+
+			<section class="si-fab-carte" aria-label="Machiniste">
+				<div class="si-fr-personne">
+					<span class="si-fr-initiales" aria-hidden="true">{{ machiniste|initiales_equipe }}</span>
+					<div>
+						<b>{{ machinistePrenom|default(machiniste.userIdentifier) }} · machiniste</b><br>
+						<small class="si-fab-muet">{% if envoyeLe %}fichier reçu{% if envoyeParPrenom %} de {{ envoyeParPrenom }}{% endif %} à {{ envoyeLe|date('H:i') }}{% if envoyeLe|date('Y-m-d') != maintenant|date('Y-m-d') %} le {{ envoyeLe|date('d/m') }}{% endif %}{% else %}fichier pas encore transmis par le prépresse{% endif %}</small>
+					</div>
+				</div>
+			</section>
+
+			<section class="si-fab-carte si-fr-qr" aria-label="QR du rouleau">
+				<img src="{{ qr }}" alt="QR de la fiche du rouleau {{ tirage.numero }}">
+				<p class="mb-0">Scanner le rouleau {{ tirage.numero }}</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

@@ -15,6 +15,7 @@ class Supports implements AUnNomCommercial
 {
     use PublicIdTrait;
     use NomCommercialTrait;
+    use Trait\CodeProductionTrait;
 
     #[ORM\Id]
     #[ORM\GeneratedValue]

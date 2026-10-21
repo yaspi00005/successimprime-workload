@@ -130,6 +130,7 @@ final class RecetteAcces
         private readonly AccessDecisionManagerInterface $decisions,
         private readonly TokenStorageInterface $jetons,
         private readonly RecetteRapportsMail $rapportsMail,
+        private readonly RecetteProductionRouleau $productionRouleau,
     ) {
     }
 
@@ -258,6 +259,7 @@ final class RecetteAcces
                 $this->verifierNomsCommerciaux($compte, $bilan);
                 $this->verifierCompteClient($compte, $bilan);
                 $this->verifierSuppressionClient($compte, $bilan);
+                $this->productionRouleau->verifierCompte($compte, fn (string $droit): bool => $this->accorde($droit), $bilan);
             }
             $suivi && $suivi('corbeille');
             try {

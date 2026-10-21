@@ -1,0 +1,76 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Nouveau rouleau{% endblock %}
+{% block fab_actif %}rouleaux{% endblock %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › <a href="{{ path('app_atelier_production_rouleaux') }}">Rouleaux</a></p>
+			<h1 class="si-fab-titre">Nouveau rouleau</h1>
+		</div>
+	</header>
+
+	{% if machines is empty %}
+		<p class="si-fab-carte">Aucune machine à rouleau (une laize, facturée au m²) n'est active.</p>
+	{% else %}
+		<section class="si-fab-carte" aria-label="Machine et support">
+			<form method="get" class="si-fr-formulaire" style="margin-top: 0">
+				<label>Machine
+					<select name="machine" onchange="this.form.submit()">
+						{% for m in machines %}
+							<option value="{{ m.id|code_id }}" {{ machine and m.id == machine.id ? 'selected' }}>{{ m.nom }} · laize {{ m.laizeMetres|number_format(2, ',', ' ') }} m</option>
+						{% endfor %}
+					</select>
+				</label>
+				<label>Support
+					<select name="support" onchange="this.form.submit()">
+						{% for s in supports %}
+							<option value="{{ s.code }}" {{ s.code == code ? 'selected' }}>{{ s.libelle }} ({{ s.code }}) · {{ s.nombre }} {{ s.nombre > 1 ? 'travaux' : 'travail' }}</option>
+						{% else %}
+							<option value="">Aucun travail en attente pour cette machine</option>
+						{% endfor %}
+					</select>
+				</label>
+				<noscript><button type="submit" class="si-fab-bouton">Afficher</button></noscript>
+			</form>
+		</section>
+
+		{% if candidats.ordres is not empty %}
+			<form method="post" action="{{ path('app_atelier_production_nouveau') }}" class="si-fab-carte">
+				<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+				<input type="hidden" name="machine" value="{{ machine.id }}">
+				<input type="hidden" name="support" value="{{ code }}">
+				<div class="si-fr-carte-entete">
+					<h2>Travaux à regrouper <small>par urgence · laize {{ candidats.laize|number_format(2, ',', ' ') }} m{% if candidats.article %} · {{ candidats.article.designation }}{% endif %}</small></h2>
+				</div>
+				<p class="si-fab-muet">Cochés d'office dans l'ordre d'urgence, jusqu'à {{ (longueurMax / 100)|number_format(0, ',', ' ') }} m de rouleau. Décochez ce qui doit attendre.</p>
+				<table class="si-fr-table">
+					<thead><tr><th></th><th>Commande</th><th>Travail</th><th>Taille (cm)</th><th>Livraison</th></tr></thead>
+					<tbody>
+						{% for o in candidats.ordres %}
+							{% set l = o.commandeDetail %}
+							{% set t = tailles[o.id] %}
+							<tr>
+								<td><input type="checkbox" name="ordres[]" value="{{ o.id }}" id="si-fr-o-{{ loop.index }}" {{ o.id in candidats.preselection ? 'checked' }} aria-label="Mettre {{ l.commande.numero }} sur le rouleau"></td>
+								<td><label for="si-fr-o-{{ loop.index }}"><b>{{ l.commande.numero }}</b><br><small class="si-fab-muet">{{ l.commande.clients ? l.commande.clients.nomComplet }}</small></label></td>
+								<td>{{ l.designation|default(o.numero) }} × {{ o.quantite }}{% if o.priorite in ['urgente', 'haute'] %} <span class="si-fab-pastille rouge">{{ o.priorite }}</span>{% endif %}{% if l.nomsFinitions is not empty %}<br><small class="si-fab-muet">{{ l.nomsFinitions|join(', ') }}</small>{% endif %}</td>
+								<td>{{ t ? t[0]|number_format(0, ',', ' ') ~ ' × ' ~ t[1]|number_format(0, ',', ' ') }}</td>
+								<td>{% set p = o.dateLimite ?? l.commande.dateLivraison %}{% if p %}<span class="{{ p|date('Y-m-d') == maintenant|date('Y-m-d') ? 'si-fr-rouge' }}">{{ p|date('d/m') }}{% if p|date('H:i') != '00:00' %} {{ p|date('H:i') }}{% endif %}</span>{% endif %}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<div class="si-fr-ligne mt-3">
+					{% if peutAgir %}
+						<button type="submit" class="si-fab-bouton principal"><i class="fas fa-th-large" aria-hidden="true"></i>Placer sur le rouleau</button>
+					{% else %}
+						<p class="si-fr-alerte mb-0">Seuls les opérateurs de {{ machine.nom }}, le chef d'atelier ou le poste de la machine préparent ce rouleau.</p>
+					{% endif %}
+				</div>
+			</form>
+		{% elseif machine %}
+			<p class="si-fab-carte si-fab-muet">Aucun travail transmis par le prépresse n'attend ce support sur {{ machine.nom }}.</p>
+		{% endif %}
+	{% endif %}
+{% endblock %}

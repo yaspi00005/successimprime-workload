@@ -12,6 +12,11 @@ use Doctrine\ORM\Mapping as ORM;
  * opérateurs affectés, niveaux d'encre saisis à la main, ordre de la file
  * choisi par le chef d'atelier, date de pose des têtes. Table à part pour ne
  * pas toucher la fiche technique (Machines) ni l'immobilisation.
+ *
+ * Production au rouleau (docs/production-rouleau.md, maquette PD01) : le
+ * dossier de la machine sur le serveur de l'atelier (« SOLVANT-320 »), le
+ * type de tête, les usages, le miroir par défaut et les profils
+ * d'impression par support (ProfilsImpression).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'atelier_machine')]
@@ -53,6 +58,30 @@ class AtelierMachine
 
     #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $tetesPoseesLe = null;
+
+    /** Nom du dossier de la machine sous la racine de production (« SOLVANT-320 ») : A-Z, 0-9 et tiret. */
+    #[ORM\Column(length: 40, nullable: true)]
+    private ?string $codeDossier = null;
+
+    /** « 2 têtes i3200 ». */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $teteImpression = null;
+
+    /** « bâches > 1,70 m, kakémonos, grands volumes ». */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $usages = null;
+
+    /** Impression en miroir par défaut (DTF, transfert). */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $miroir = false;
+
+    /**
+     * Profils d'impression par support (ProfilsImpression::normaliser).
+     *
+     * @var list<array<string, mixed>>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $profils = null;
 
     public function __construct(Machines $machine)
     {
@@ -148,6 +177,79 @@ class AtelierMachine
     public function setTetesPoseesLe(?\DateTimeImmutable $le): static
     {
         $this->tetesPoseesLe = $le;
+
+        return $this;
+    }
+
+    public function getCodeDossier(): ?string
+    {
+        return $this->codeDossier;
+    }
+
+    /** « solvant 320 » → « SOLVANT-320 » ; vide : aucun dossier. */
+    public static function nettoyerCodeDossier(?string $code): ?string
+    {
+        $code = strtoupper(trim((string) preg_replace('/[^A-Za-z0-9]+/', '-', (string) iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', (string) $code)), '-'));
+
+        return '' === $code ? null : substr($code, 0, 40);
+    }
+
+    public function setCodeDossier(?string $code): static
+    {
+        $this->codeDossier = self::nettoyerCodeDossier($code);
+
+        return $this;
+    }
+
+    public function getTeteImpression(): ?string
+    {
+        return $this->teteImpression;
+    }
+
+    public function setTeteImpression(?string $tete): static
+    {
+        $tete = trim((string) $tete);
+        $this->teteImpression = '' === $tete ? null : mb_substr($tete, 0, 80);
+
+        return $this;
+    }
+
+    public function getUsages(): ?string
+    {
+        return $this->usages;
+    }
+
+    public function setUsages(?string $usages): static
+    {
+        $usages = trim((string) $usages);
+        $this->usages = '' === $usages ? null : mb_substr($usages, 0, 160);
+
+        return $this;
+    }
+
+    public function isMiroir(): bool
+    {
+        return $this->miroir;
+    }
+
+    public function setMiroir(bool $miroir): static
+    {
+        $this->miroir = $miroir;
+
+        return $this;
+    }
+
+    /** @return list<array{support: string, profilIcc: string, mode: string, vitesseM2h: ?float, encreMlM2: ?float, chauffeC: ?int, sechageMin: ?int, miroir: bool}> */
+    public function getProfils(): array
+    {
+        return \App\Service\Production\ProfilsImpression::normaliser($this->profils ?? []);
+    }
+
+    /** @param array<mixed> $profils */
+    public function setProfils(array $profils): static
+    {
+        $propres = \App\Service\Production\ProfilsImpression::normaliser($profils);
+        $this->profils = [] === $propres ? null : $propres;
 
         return $this;
     }

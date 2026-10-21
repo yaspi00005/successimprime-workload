@@ -363,6 +363,26 @@ final class CatalogueParametres
                 'note' => 'L\'ERP lit ce dossier, il ne déplace et ne supprime jamais rien. Il crée seulement le dossier d\'un nouveau client et range une copie renommée d\'un fichier « à classer » (l\'original est gardé). Le site en ligne ne voit pas ce serveur : seuls les fichiers publiés pour le client y sont copiés. La sauvegarde du dossier n\'est pas fournie par l\'ERP.',
             ],
 
+            // Production au rouleau (docs/production-rouleau.md, maquettes PD01 à PD03) : où l'ERP copie les
+            // fichiers de production (un dossier par machine, « IN »), et les règles d'imposition et de contrôle
+            // avant impression. ERP local seulement : le site n'en sait rien (pas dans CatalogueSynchro).
+            'production' => [
+                'famille' => 'atelier', 'libelle' => 'Production : dossiers et rouleaux', 'icone' => 'fa-scroll',
+                'roles' => ['ROLE_ADMIN'], 'route' => 'app_atelier_production_machines',
+                'champs' => [
+                    ['cle' => 'racine_serveur', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Dossier de production vu du serveur de l\'ERP', 'aide' => 'Là où l\'ERP copie les fichiers, par exemple D:\\ATELIER\\Production : un sous-dossier par machine (SOLVANT-320\\IN, DECOUPE\\IN). Vide : rien n\'est copié, le fichier reste dans l\'ERP et se télécharge sous son nom de production.', 'defaut' => ''],
+                    ['cle' => 'racine_affichee', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Le même dossier vu des postes', 'aide' => 'Chemin montré à l\'équipe (ex. \\\\ATELIER\\Production).', 'defaut' => '\\\\ATELIER\\Production'],
+                    ['cle' => 'marge_cm', 'type' => 'nombre', 'libelle' => 'Marge de chaque côté du rouleau', 'suffixe' => 'cm', 'min' => 0, 'max' => 50, 'defaut' => 10],
+                    ['cle' => 'espace_cm', 'type' => 'nombre', 'libelle' => 'Espace entre les pièces', 'aide' => 'Pour couper entre deux pièces', 'suffixe' => 'cm', 'min' => 0, 'max' => 30, 'defaut' => 4],
+                    ['cle' => 'longueur_max_m', 'type' => 'nombre', 'libelle' => 'Longueur maximale d\'un rouleau', 'aide' => 'Un tirage ne la dépasse jamais', 'suffixe' => 'm', 'min' => 1, 'max' => 200, 'defaut' => 30],
+                    ['cle' => 'seuil_encre_pourcent', 'type' => 'nombre', 'libelle' => 'Encre bloquante en dessous de', 'aide' => 'Sur la fiche de production, « Démarrer » attend qu\'on remplace la cartouche', 'suffixe' => '%', 'min' => 0, 'max' => 90, 'defaut' => 20],
+                    ['cle' => 'sechage_min', 'type' => 'nombre', 'libelle' => 'Séchage avant finition', 'aide' => 'Quand le profil de la machine n\'en donne pas', 'suffixe' => 'min', 'min' => 0, 'max' => 1440, 'defaut' => 45],
+                    ['cle' => 'nommage', 'type' => 'texte', 'longueur' => 255, 'libelle' => 'Règle de nommage (lecture seule)', 'aide' => 'Fixée par l\'ERP ; les codes des supports et des finitions se règlent sur Production › Règles de nommage.', 'defaut' => 'Commande_Ligne_Support_Taille_Quantité_Finitions (CMD-000183_L1_BACHE440_300x100_x2_OEIL50.pdf)', 'fige' => true],
+                ],
+                'motsCles' => ['Dossier de chaque machine · IN · RIP', 'Nom du fichier de production', 'Imposition au rouleau · marge · espace', 'Encre basse · séchage avant finition', 'Traceur de découpe · _decoupe'],
+                'note' => 'Nom du fichier de production : Commande_Ligne_Support_Taille_Quantité_Finitions, par exemple CMD-000183_L1_BACHE440_300x100_x2_OEIL50.pdf (fichier de découpe : même nom + _decoupe). L\'ERP ne déplace ni ne renomme jamais le fichier du client : il en copie un exemplaire, sous son nom de production, dans le dossier de la machine (jamais par-dessus un fichier existant). Le site en ligne ne voit pas ce dossier. Les dossiers, têtes et profils d\'impression de chaque machine se règlent sur Production › Machines et dossiers.',
+            ],
+
             // ---------- Personnel ----------
             'utilisateurs' => [
                 'famille' => 'personnel', 'libelle' => 'Utilisateurs et rôles', 'icone' => 'fa-user-friends',

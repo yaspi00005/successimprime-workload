@@ -2,6 +2,8 @@
 
 namespace App\Twig;
 
+use App\EventSubscriber\AtelierHorsLigneSubscriber;
+use App\Security\AccesEnLigne;
 use Symfony\Component\Routing\RouterInterface;
 use Twig\Extension\AbstractExtension;
 use Twig\TwigFunction;
@@ -11,16 +13,20 @@ use Twig\TwigFunction;
  * 20/10/2026, docs/production-rouleau.md et docs/production-colis.md).
  *
  * Chaque écran ajoute sa ligne dans ENTREES ; une entrée dont la route
- * n'existe pas encore est simplement cachée.
+ * n'existe pas encore, ou qui est fermée sur le site en ligne
+ * (AtelierHorsLigneSubscriber), est simplement cachée.
  */
 final class FabricationExtension extends AbstractExtension
 {
     /** @var list<array{cle: string, libelle: string, route: string}> */
     public const ENTREES = [
         ['cle' => 'tableau', 'libelle' => 'Tableau', 'route' => 'app_atelier_production'],
+        ['cle' => 'parcours', 'libelle' => 'Parcours d\'un fichier', 'route' => 'app_atelier_production_parcours'],
+        ['cle' => 'rouleaux', 'libelle' => 'Rouleaux', 'route' => 'app_atelier_production_rouleaux'],
+        ['cle' => 'machines', 'libelle' => 'Machines et dossiers', 'route' => 'app_atelier_production_machines'],
     ];
 
-    public function __construct(private readonly RouterInterface $router)
+    public function __construct(private readonly RouterInterface $router, private readonly ?AccesEnLigne $acces = null)
     {
     }
 
@@ -33,7 +39,17 @@ final class FabricationExtension extends AbstractExtension
     public function onglets(): array
     {
         $routes = $this->router->getRouteCollection();
+        $enLigne = $this->acces?->estEnLigne() ?? false;
+        $fermee = static function (string $route) use ($enLigne): bool {
+            foreach ($enLigne ? AtelierHorsLigneSubscriber::ROUTES : [] as $prefixe) {
+                if (str_starts_with($route, $prefixe)) {
+                    return true;
+                }
+            }
 
-        return array_values(array_filter(self::ENTREES, static fn (array $e): bool => null !== $routes->get($e['route'])));
+            return false;
+        };
+
+        return array_values(array_filter(self::ENTREES, static fn (array $e): bool => null !== $routes->get($e['route']) && !$fermee($e['route'])));
     }
 }

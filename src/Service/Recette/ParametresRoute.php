@@ -151,7 +151,7 @@ final class ParametresRoute
             'annee' => (int) date('Y'),
             'mois' => (int) date('n'),
             'date', 'jour' => date('Y-m-d'),
-            'page' => 1,
+            'page', 'version' => 1,
             default => null,
         };
     }

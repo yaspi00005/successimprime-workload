@@ -682,6 +682,19 @@ await scene(['entretien', 'entretien-tache'], async () => {
     await capture(page, 'entretien-tache');
 });
 
+/* ---------- Production au rouleau ---------- */
+
+// Le rouleau de la démonstration (app:production-rouleau:demo), envoyé au RIP.
+await scene(['rouleau-imposition', 'rouleau-fiche'], async () => {
+    const page = await session('demo.oumar');
+    await aller(page, '/atelier/production/rouleaux');
+    const imposition = await page.locator('a[href$="/imposition"]').first().getAttribute('href');
+    await aller(page, imposition);
+    await capture(page, 'rouleau-imposition');
+    await aller(page, imposition.replace(/\/imposition$/, ''));
+    await capture(page, 'rouleau-fiche');
+});
+
 await navigateur.close();
 
 const total = fs.readdirSync(SORTIE).filter((f) => f.endsWith('.webp')).reduce((s, f) => s + fs.statSync(path.join(SORTIE, f)).size, 0);

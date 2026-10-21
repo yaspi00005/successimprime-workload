@@ -564,6 +564,7 @@ final class PosteMachiniste
         foreach ($controle->getFichiers() as $f) {
             $o->addFichier($f);
         }
+        \App\Service\Production\FichierProduction::preparer($o);
         $o->getCommandeDetail()?->setStatutProduction(CommandesDetails::PRODUCTION_A_PRODUIRE);
         if ($retour->getPar() !== null) {
             $this->notifications->notifierUtilisateur($retour->getPar(), \sprintf('%s : le fichier corrigé est revenu du prépresse, à vérifier.', $o->getCommandeDetail()?->getCommande()?->getNumero() ?? $o->getNumero()), 'app_ma_file_travail', ['id' => $o->getId()]);

@@ -1,0 +1,22 @@
+{# « Chaque machine a son dossier et son profil » (maquette PD01) : les machines qui ont un dossier. #}
+{% set couleurs_machines = ['#1E4FA3', '#2F9BE0', '#13787A', '#E95B35', '#7C3AED', '#CA8A04', '#475569'] %}
+{% set avec = machines|filter(l => l.atelier and l.atelier.codeDossier) %}
+{% set sans = machines|length - avec|length %}
+<section class="si-fab-carte" aria-labelledby="si-fr-machines-titre">
+	<h2 id="si-fr-machines-titre">Chaque machine a son dossier et son profil</h2>
+	<ul class="si-fr-machines">
+		{% for l in avec %}
+			{% set a = l.atelier %}
+			<li style="--fr-couleur: {{ couleurs_machines[loop.index0 % couleurs_machines|length] }}">
+				<div>
+					<b>{{ l.machine.nom }}</b>{% if a.teteImpression %} <small>{{ a.teteImpression }}</small>{% endif %}<br>
+					<small>{{ a.usages ?: l.machine.typeMachine }}</small>
+				</div>
+				<span class="si-fr-code">{{ a.codeDossier }}\IN</span>
+			</li>
+		{% else %}
+			<li><span class="si-fab-muet">Aucune machine n'a encore de dossier.</span></li>
+		{% endfor %}
+	</ul>
+	<p class="si-fab-note"><a href="{{ path('app_atelier_production_machines') }}">Machines et dossiers</a> : têtes, usages, profils d'impression{% if sans > 0 %} · {{ sans }} machine{{ sans > 1 ? 's' }} sans dossier{% endif %}.</p>
+</section>

@@ -1,0 +1,76 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Règles de nommage{% endblock %}
+{% block fab_actif %}machines{% endblock %}
+
+{% set roles = {commande: 'la commande', ligne: 'la ligne de la commande', support: 'le support à charger', taille: 'la taille en cm (largeur × hauteur)', quantite: 'la quantité', finition: 'les finitions', decoupe: 'le fichier de découpe'} %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › <a href="{{ path('app_atelier_production_machines') }}">Machines et dossiers</a></p>
+			<h1 class="si-fab-titre">Règles de nommage</h1>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production_parcours') }}" class="si-fab-bouton"><i class="fas fa-route" aria-hidden="true"></i>Parcours d'un fichier</a>
+		</div>
+	</header>
+
+	<div class="si-fab-grille">
+		<section class="si-fab-carte" aria-labelledby="si-fr-regle-titre">
+			<h2 id="si-fr-regle-titre">Le nom du fichier de production</h2>
+			<p style="font-size:13px">Commande_Ligne_Support_Taille_Quantité_Finitions. L'ERP le compose tout seul quand le prépresse transmet le travail : personne ne le tape.</p>
+			{% if ordre %}<p class="si-fab-muet" style="font-size:12px">Exemple : le travail {{ ordre.commandeDetail.commande.numero }}{% if ordre.commandeDetail.commande.clients %} · {{ ordre.commandeDetail.commande.clients.nomComplet }}{% endif %} (<a href="{{ path('app_atelier_production_parcours', {ordre: ordre.id}) }}">son parcours</a>).</p>{% endif %}
+			{% include 'production_rouleau/_nom.html.twig' with {parties: parties, nom: exemple} only %}
+			<div class="si-fr-parties">
+				{% for p in parties %}
+					<div class="p-{{ p.role }}"><code>{{ p.texte }}</code>{{ roles[p.role] ?? p.role }}</div>
+				{% endfor %}
+			</div>
+			<ul class="si-fab-note" style="padding-left:18px">
+				<li>Fichier de découpe pour le traceur : le même nom suivi de « _decoupe », par exemple <span class="si-fr-code">{{ decoupe }}</span>, copié dans le dossier DECOUPE.</li>
+				<li>Lettres sans accent, chiffres, tirets et « _ » seulement ; {{ longueurMax }} caractères au plus : au-delà, la fin du nom (les finitions) est coupée.</li>
+				<li>Le fichier du client n'est ni déplacé ni renommé : l'ERP en copie un exemplaire, jamais par-dessus un fichier existant (« -2 » est ajouté).</li>
+				<li>Un code changé ici vaut pour les prochains travaux ; les fichiers déjà nommés gardent leur nom.</li>
+			</ul>
+		</section>
+
+		<section class="si-fab-carte" aria-labelledby="si-fr-pourquoi-nom">
+			<h2 id="si-fr-pourquoi-nom">Pourquoi ce nom</h2>
+			<p style="font-size:13px" class="mb-2">Le machiniste reconnaît le travail sans ouvrir le fichier : la commande, quel support charger, la taille à contrôler au mètre, combien en tirer et ce qui suit l'impression.</p>
+			<p class="si-fab-muet mb-0">Le code d'un support ou d'une finition est le code réglé ci-dessous, sinon le premier mot et le premier nombre de son nom (« Bâche 440 g roll-up » → BACHE440, « Œillets tous les 50 cm » → OEIL50). Sans support sur la ligne, c'est le nom de l'article qui sert.</p>
+		</section>
+	</div>
+
+	<form method="post" action="{{ path('app_atelier_production_nommage_enregistrer') }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+		<div class="si-fab-grille" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+			{% for type, liste in {support: supports, finition: finitions} %}
+				<section class="si-fab-carte" aria-labelledby="si-fr-codes-{{ type }}">
+					<h2 id="si-fr-codes-{{ type }}">{{ type == 'support' ? 'Codes des supports' : 'Codes des finitions' }} <small>{{ liste|length }}</small></h2>
+					<table class="si-fr-table si-fr-codes">
+						<thead><tr><th>{{ type == 'support' ? 'Support' : 'Finition' }}</th><th>Code dans le nom</th>{% if peutModifier %}<th>Code réglé</th>{% endif %}</tr></thead>
+						<tbody>
+							{% for e in liste %}
+								<tr>
+									<td>{{ e.nom }}</td>
+									<td><span class="si-fr-code">{{ e.codePourFichier }}</span>{% if not e.codeProduction %} <small class="si-fab-muet">tiré du nom</small>{% endif %}</td>
+									{% if peutModifier %}
+										<td><input type="text" name="codes[{{ type }}][{{ e.id }}]" value="{{ e.codeProduction }}" maxlength="30" placeholder="{{ e.codePourFichier }}" aria-label="Code de {{ e.nom }}" autocomplete="off"></td>
+									{% endif %}
+								</tr>
+							{% else %}
+								<tr><td colspan="3" class="si-fab-muet">Aucun{{ type == 'finition' ? 'e' }} {{ type }}.</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</section>
+			{% endfor %}
+		</div>
+		{% if peutModifier %}
+			<button type="submit" class="si-fab-bouton principal"><i class="fas fa-save" aria-hidden="true"></i>Enregistrer les codes</button>
+		{% else %}
+			<p class="si-fab-muet">Seul le chef d'atelier (ou la Direction) change les codes.</p>
+		{% endif %}
+	</form>
+{% endblock %}

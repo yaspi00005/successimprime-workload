@@ -136,6 +136,7 @@ Règle : un fichier envoyé (par un client ou par le personnel) se range **hors 
 | `employes` | photos du personnel | tout le personnel connecté (jamais un client ni un visiteur) | `/equipe/photo/{id}` |
 | `entreprises` | logos et cachets des entreprises | personne : lus seulement pour fabriquer les factures et devis | aucune |
 | `fichiers` | anciens fichiers divers | personne | aucune |
+| `production/rouleaux` | PDF des rouleaux envoyés au RIP et feuilles de placement (docs/production-rouleau.md) ; les morceaux en cours d'envoi attendent dans `production/tmp`, effacés après l'envoi ou au bout de 24 h | droit Production, au local seulement (404 en ligne) | `/atelier/production/rouleau/{id}/rip/{version}` |
 
 Les autres dossiers de `var/uploads` (`commandes` pour les fichiers des clients et les BAT, `atelier`, `imports`, `depenses`, `livraisons`, `entretien`…) y étaient déjà et ne changent pas.
 

@@ -108,7 +108,7 @@ final class DemoCommand extends Command
         $n = 0;
         try {
             $this->connexion->beginTransaction();
-            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PrepresseDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...AchatsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
+            foreach ([...MessagerieInterneDemoCommand::PURGE, ...MessagerieDemoCommand::PURGE, ...PrepresseDemoCommand::PURGE, ...ProductionRouleauDemoCommand::PURGE, ...PosteMachinisteDemoCommand::PURGE, ...DossiersClientsDemoCommand::PURGE, ...self::PURGE_MODULES, ...EquipeDemo::PURGE, ...ProduitsDemo::PURGE, ...AchatsDemo::PURGE, ...self::instructions((string) file_get_contents($fichier))] as $sql) {
                 $this->connexion->executeStatement($sql);
                 ++$n;
             }
@@ -161,6 +161,8 @@ final class DemoCommand extends Command
             $this->lancer('app:messagerie:demo', [], $output);
             // Poste machiniste : huit travaux de demo.oumar, du fichier à vérifier au colis prêt (docs/poste-machiniste.md).
             $this->lancer('app:poste-machiniste:demo', [], $output);
+            // Production au rouleau : dossiers des machines, rouleau R-…-03 envoyé au RIP, jaune à 18 % (docs/production-rouleau.md).
+            $this->lancer('app:production-rouleau:demo', [], $output);
             // Prépresse : Fofana 2 fichiers sur 6, relances, BAT chez Samaké, vinyle prêt (docs/prepresse.md).
             $this->lancer('app:prepresse:demo', [], $output);
             // Fiche client de Salon Espoir : conditions, charte, contact « Factures », notes internes (docs/clients.md).

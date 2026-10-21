@@ -916,6 +916,9 @@ public function controler(
 
                     $ordre->transmettre();
 
+                    // Nom du fichier de production (docs/production-rouleau.md).
+                    \App\Service\Production\FichierProduction::preparer($ordre);
+
 
                     /*
                      * =============================================

@@ -38,11 +38,11 @@ Chaque machine a son dossier de dépôt `<racine>\<CODE>\IN`, que son RIP survei
 - **Le fichier du client n'est jamais déplacé ni renommé.** L'ERP en copie un exemplaire, sous son nom de production, jamais par-dessus un fichier existant (« -2 », « -3 » sont ajoutés).
 - La copie se fait **à l'envoi au RIP** (le PDF du rouleau, ou les fichiers séparés) et sur demande avec « Copier dans le dossier de la machine » (Parcours d'un fichier). Rien n'est copié à la transmission du prépresse.
 - Racine vide, inaccessible depuis le serveur, ou placée dans le dossier de l'application (`public/` serait servi, `var/uploads/` relu) : rien n'est copié ; le fichier reste dans l'ERP et se télécharge sous son nom de production (« Télécharger sous ce nom »). Jamais dans `var/uploads/dossier_partage` : le dossier partagé relirait la copie comme un fichier reçu.
-- Sur la base d'essai, la racine n'est pas réglée : les pages le disent (« Dossier du serveur pas encore réglé »).
+- Sur la base d'essai, la racine n'est pas réglée : les pages le disent (« Dossier de la machine non réglé : le fichier reste dans l'ERP »).
 
 ## Parcours d'un fichier (PD01)
 
-Chercher une commande ou un client ; sans recherche, le dernier fichier parti au RIP. La frise en 7 étapes (BAT validé, fichier de production, imposition, dossier de la machine, impression, finition, étiquette et contrôle) avec, à chaque étape, qui et quand. Puis le nom du fichier de production découpé en parties, « Télécharger sous ce nom », le rouleau qui le porte, et les dossiers de chaque machine.
+Chercher une commande ou un client ; sans recherche, le dernier fichier parti au RIP. La frise en 7 étapes (BAT validé, fichier de production, imposition, dossier de la machine, impression, finition, étiquette et contrôle) avec, à chaque étape, qui et quand ; la première étape pas encore faite est marquée « à faire ». L'étape « Fichier de production » reprend ce que l'analyse du prépresse a trouvé, tel quel : type, format de page d'un PDF, résolution réelle d'une image, fonds perdus, couleurs (« RVB : conversion aux couleurs d'impression au RIP »). Puis le nom du fichier de production découpé en parties, « Télécharger sous ce nom », le rouleau qui le porte, et les dossiers de chaque machine (les plus larges d'abord, le traceur à la fin). « Règles de nommage » s'ouvre avec le nom de ce travail en exemple.
 
 ## Rouleaux et imposition (PD02)
 
@@ -50,15 +50,17 @@ Chercher une commande ou un client ; sans recherche, le dernier fichier parti au
 
 **Placement automatique** (`ImpositionRouleau`) : par rangées (étagères), le plus urgent en premier, chaque pièce tournée si elle tient mieux ; marge de chaque côté et espace entre les pièces des Réglages. Une pièce trop large pour la laize utile, sans dimensions ou qui dépasserait la longueur maximale est refusée, avec la raison.
 
+**Étiquette de chaque pièce** sur le plan : le produit et sa taille (« Kakémono 120 × 200 », « ↻ » si elle est tournée), puis le numéro de commande, le client, « 1/2 » quand la commande compte plusieurs exemplaires et « ⏱ 14:00 » pour une livraison promise aujourd'hui. Sur une pièce étroite, la deuxième ligne passe sur plusieurs lignes.
+
 **Placement manuel** : « Manuel », puis glisser une pièce (souris ou doigt), flèches du clavier (Maj : 10 cm), R pour la tourner, « Enregistrer le placement ». Le serveur recontrôle tout : chevauchement, marges, laize ; en cas de refus, la raison s'affiche et rien ne change. « Automatique » ou « Recalculer » revient au placement calculé. L'ordre d'impression se change avec les flèches de la légende.
 
-**Bilan** : m² imprimés, mètres et m² de rouleau consommés, % utilisé, chute. **Estimation** : durée (vitesse du profil de la machine pour ce support), séchage avant finition, encre (ml/m² du profil). **Coût matière + encre** (« Coûts et marges » seulement) : m² consommés × coût unitaire en stock de l'article du rouleau + m² imprimés × coût de l'encre au m² de la machine ; « coûts à régler » si l'un manque. « Pourquoi la 3,20 m ? » explique le choix de la machine.
+**Bilan** : m² imprimés, mètres et m² de rouleau consommés, % utilisé, chute. **Estimation** : durée (vitesse du profil de la machine pour ce support), séchage avant finition, encre (ml/m² du profil). **Coût matière + encre** (« Coûts et marges » seulement) : m² consommés × coût du m² de l'article du rouleau + m² imprimés × coût de l'encre au m² de la machine ; « coûts à régler » si l'un manque (jamais de total à moitié). Le coût en stock de l'article est ramené au m² selon son unité : au m² tel quel, au mètre divisé par la laize, au rouleau divisé par longueur × laize ; une autre unité donne « coûts à régler ». « Pourquoi la 3,20 m ? » explique le choix de la machine.
 
 **Annuler le rouleau** : les travaux reviennent en attente ; les fichiers déjà envoyés restent dans l'historique.
 
 ## Envoyer au RIP
 
-Un seul PDF pour tout le rouleau, monté **dans le navigateur** (pdf-lib, `public/vendor/montage/`) : chaque pièce à sa place à l'échelle 1:1, repères de coupe à 3 mm des coins, numéro de commande et nom du client dans la marge de gauche. Au-delà de 5 m, le PDF a plusieurs pages, coupées entre deux rangées.
+Un seul PDF pour tout le rouleau, monté **dans le navigateur** (pdf-lib, `public/vendor/montage/`) : chaque pièce à sa place à l'échelle 1:1, repères de coupe à 3 mm des coins, numéro de commande et nom du client dans la marge de gauche. Pour un PDF, c'est le format fini (TrimBox, celle que posent les outils du prépresse ; sinon la page visible) qui remplit la pièce : le fond perdu n'est jamais rétréci dedans, il en reste 3 mm au plus autour (moins si l'espace entre les pièces est plus petit), pour que les repères restent dehors. Le type de chaque fichier (PDF, PNG, JPEG) est lu dans son contenu, fichiers de « Mes produits » compris. Au-delà de 5 m, le PDF a plusieurs pages, coupées entre deux rangées.
 
 - Le PDF part par morceaux (5 Mo, moins si PHP n'en accepte pas autant), 400 Mo au plus. Le serveur vérifie la taille et l'en-tête `%PDF-`, le range sous `var/uploads/production/rouleaux/` (jamais écrasé, jamais servi en direct), le copie dans le dossier de la machine et le note : V1, V2… avec qui et quand. Les morceaux attendent dans `var/uploads/production/tmp/`, effacés après l'envoi ou au bout de 24 heures.
 - **Fichiers séparés** : si une pièce n'est ni PDF, ni PNG, ni JPEG (PSD, AI, TIFF…), si un fichier manque ou si le tout dépasse 400 Mo, la page propose « Envoyer les fichiers séparés » : chaque fichier sous son nom de production et une feuille de placement en PDF (plan à l'échelle et positions).
@@ -81,9 +83,9 @@ Un seul PDF pour tout le rouleau, monté **dans le navigateur** (pdf-lib, `publi
 | Sens et miroir | coché (miroir pour un film de transfert) | — |
 | Échelle et taille, Couleurs sensibles | toujours orange : à surveiller pendant l'impression (couleurs : mots des observations, « rouge Awa Mode ») | — |
 
-**Démarrer** se débloque quand il n'y a plus ni rouge ni bleu, sur un rouleau envoyé au RIP. Il démarre chaque travail du rouleau comme Ma file (`ActionsOrdre::demarrer`, sur la machine du rouleau), note qui et quand, et renvoie à « Ma file » pour la suite (pause, terminer, étiquettes). Le placement ne change plus.
+**Démarrer** se débloque quand il n'y a plus ni rouge ni bleu, sur un rouleau envoyé au RIP. Il démarre chaque travail du rouleau comme Ma file (`ActionsOrdre::demarrer`, sur la machine du rouleau) ; si l'un refuse, aucun ne démarre et la raison s'affiche. La fiche affiche ensuite « Impression démarrée à 10:24 par Oumar » et le bouton « Ma file » pour la suite (pause, terminer, étiquettes). Le placement ne change plus.
 
-À côté : les travaux dans l'ordre d'impression (aperçu, finitions, livraison promise), « Après l'impression » (séchage, coupe, finition, roulage), l'envoi au RIP, la machine (état, niveaux d'encre, « Relever les niveaux »), le machiniste et le QR du rouleau. « Imprimer la fiche » donne la fiche A4 à poser sur la machine, sans montant.
+À côté : les travaux dans l'ordre d'impression (aperçu, finitions, livraison promise), « Après l'impression » (séchage, coupe, finition, roulage), l'envoi au RIP (fichiers séparés : chacun se télécharge sous son nom de production), la machine (état, niveaux d'encre, « Relever les niveaux » pour le chef d'atelier, le poste de la machine et ses opérateurs, comme sur l'atelier), le machiniste et le QR du rouleau. « Imprimer la fiche » donne la fiche A4 à poser sur la machine, sans montant.
 
 ## Machines et dossiers, Règles de nommage
 
@@ -109,4 +111,5 @@ Tuile « Production : dossiers et rouleaux » (famille Atelier, direction) : dos
 - La copie dans le dossier de la machine se fait à l'envoi au RIP (et sur demande), pas dès la transmission du prépresse.
 - La racine réelle du dossier de production (`\\ATELIER\Production` ?) est à régler sur le serveur de l'imprimerie.
 - Le coût affiché vient du coût en stock de l'article et du coût d'encre de la machine ; la maquette montrait « 21 800 F » pour le même rouleau, la démonstration calcule 15 504 F : la formule (main-d'œuvre, chute comptée ou non) est à confirmer.
-- L'article du rouleau est trouvé par le code tiré de sa désignation ; un code réglé à la main sur le support n'est pas encore pris en compte pour ce choix.
+- L'article du rouleau est trouvé par le code tiré de sa désignation, ou par celui du support quand un code y est réglé à la main.
+- Les PDF envoyés au RIP restent dans `var/uploads/production/rouleaux` (toutes les versions) et partent donc dans la sauvegarde des fichiers : combien de temps les garder reste à décider.

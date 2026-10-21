@@ -61,7 +61,7 @@
 					<div class="si-fr-profil-saisie-boite">
 						<table class="si-fr-profils">
 							<caption class="visually-hidden">Profils d'impression de {{ m.nom }}</caption>
-							<thead><tr><th>Support</th><th>Profil</th><th>Mode</th><th>m²/h</th><th>ml/m²</th><th>°C</th><th>Séchage</th></tr></thead>
+							<thead><tr><th>Support</th><th>Profil</th><th>Mode</th><th>m²/h</th><th>ml/m²</th><th>Chauffe · séchage</th></tr></thead>
 							<tbody>
 								{% for p in profils %}
 									<tr>
@@ -70,8 +70,7 @@
 										<td>{{ p.mode }}{% if p.miroir %} · miroir{% endif %}</td>
 										<td>{{ p.vitesseM2h is not null ? p.vitesseM2h|number_format(1, ',', ' ')|replace({',0': ''}) : '—' }}</td>
 										<td>{{ p.encreMlM2 is not null ? p.encreMlM2|number_format(1, ',', ' ')|replace({',0': ''}) : '—' }}</td>
-										<td>{{ p.chauffeC ?? '—' }}</td>
-										<td>{{ p.sechageMin is not null ? p.sechageMin ~ ' min' : '—' }}</td>
+										<td>{{ p.chauffeC is not null ? p.chauffeC ~ ' °C' : '—' }} · {{ p.sechageMin is not null ? p.sechageMin ~ ' min' : '—' }}</td>
 									</tr>
 								{% endfor %}
 							</tbody>

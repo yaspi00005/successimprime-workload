@@ -74,6 +74,7 @@
 /* ---------- PD02 · Rouleaux et imposition ---------- */
 .si-fab .si-fr-rouleau { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
 .si-fab .si-fr-rouleau a.titre { font-weight: 800; color: var(--fab-nuit); text-decoration: none; }
+.si-fab .si-fr-impo { grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr); }
 .si-fab .si-fr-placement { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, 240px); gap: 16px; align-items: start; }
 .si-fab .si-fr-plan { max-height: 74vh; overflow: auto; background: var(--fab-fond); border-radius: 10px; padding: 10px; }
 .si-fab .si-fr-plan svg { display: block; width: 100%; height: auto; max-width: 560px; margin: 0 auto; touch-action: none; user-select: none; }
@@ -169,7 +170,7 @@
 .si-fab .si-fr-proprietes .si-fr-code { white-space: normal; overflow-wrap: anywhere; }
 .si-fab .si-fr-profil-saisie-boite { overflow-x: auto; }
 .si-fab .si-fr-cartes .si-fab-carte { border-left: 5px solid var(--fr-couleur, var(--fab-bleu)); margin-bottom: 0; }
-.si-fab .si-fr-profils { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 8px; }
+.si-fab .si-fr-profils { width: 100%; min-width: 460px; font-size: 12px; border-collapse: collapse; margin-top: 8px; }
 .si-fab .si-fr-profils th { text-align: left; color: var(--fab-gris); font-weight: 700; padding: 3px 4px; border-bottom: 1px solid var(--fab-bord); }
 .si-fab .si-fr-profils td { padding: 3px 4px; border-bottom: 1px solid var(--fab-bord); }
 .si-fab .si-fr-formulaire { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; margin-top: 10px; }
@@ -188,6 +189,9 @@
 	.si-fab .si-fr-fiche > .colonne-machine > .si-fab-carte { margin-bottom: 0; }
 	.si-fab .si-fr-frise { grid-template-columns: repeat(4, minmax(0, 1fr)); row-gap: 18px; }
 	.si-fab .si-fr-frise > li::before { display: none; }
+}
+@media (max-width: 991.98px) {
+	.si-fab .si-fr-impo { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 767.98px) {
 	.si-fab .si-fr-frise { grid-template-columns: minmax(0, 1fr); row-gap: 0; }

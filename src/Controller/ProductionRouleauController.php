@@ -547,7 +547,8 @@ final class ProductionRouleauController extends AbstractController
         $this->exigerAction($tirage->getMachine(), $request);
         try {
             $this->tirages->demarrer($tirage, $this->moi(), new \DateTimeImmutable());
-            $this->addFlash('success', \sprintf('Impression démarrée à %s par %s.', $tirage->getDemarreLe()?->format('H:i'), AtelierProduction::prenom($this->moi())));
+            $n = \count($tirage->ordres());
+            $this->addFlash('success', \sprintf('%d travau%s du rouleau passe%s « en cours ».', $n, $n > 1 ? 'x' : '', $n > 1 ? 'nt' : ''));
         } catch (\DomainException $e) {
             $this->addFlash('danger', $e->getMessage());
         }

@@ -43,6 +43,7 @@ final class RecetteVisiteur
         private readonly ParametresRoute $parametres,
         private readonly ReferencementSite $referencement,
         private readonly JetonsSite $jetons,
+        private readonly RecetteProductionRouleau $productionRouleau,
     ) {
     }
 
@@ -62,6 +63,7 @@ final class RecetteVisiteur
                 $this->adressesProduits($bilan);
                 $this->pagesPubliques($bilan);
                 $this->equipe($bilan);
+                $this->productionRouleau->verifierEnLigne($bilan);
             }
         } finally {
             $this->navigateur->terminer();

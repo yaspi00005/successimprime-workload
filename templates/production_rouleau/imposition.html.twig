@@ -30,7 +30,7 @@
 	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous voyez le placement sans pouvoir le changer.</p>{% endif %}
 	{% if not modifiable %}<p class="si-fr-alerte">Ce rouleau est {{ tirage.libelleStatut|lower }} : le placement ne change plus.</p>{% endif %}
 
-	<div class="si-fab-grille" style="grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr);">
+	<div class="si-fab-grille si-fr-impo">
 		<section class="si-fab-carte" aria-labelledby="si-fr-plan-titre">
 			<div class="si-fr-carte-entete">
 				<h2 id="si-fr-plan-titre">Placement sur le rouleau <small>vue de dessus · le rouleau avance vers le bas</small></h2>

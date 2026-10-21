@@ -1,0 +1,48 @@
+{#
+	Une étiquette de colis 100 × 60 mm (PD05, docs/production-colis.md),
+	pour l'aperçu et la page d'impression. Variable e : numero, rang, total,
+	client {nom, societe}, contenu (libellés), livraison {retrait, jourCourt,
+	zone}, nePasPlier, code et qr (null dans l'aperçu : créés à l'impression).
+	Jamais de montant ni de numéro de téléphone.
+#}
+{% set reste = e.contenu|length - 2 %}
+<div class="si-etq-cadre">
+	<article class="si-etq" aria-label="Étiquette {{ e.numero }}, colis {{ e.rang }} sur {{ e.total }}">
+		<div class="si-etq-haut">
+			<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim">
+			<div class="si-etq-num"><b>{{ e.numero }}</b><span>COLIS {{ e.rang }}/{{ e.total }}</span></div>
+		</div>
+		<div class="si-etq-corps">
+			<div class="si-etq-infos">
+				<small>Client</small>
+				<b class="si-etq-nom">{{ e.client.nom }}</b>
+				{% if e.client.societe %}<span class="si-etq-societe">{{ e.client.societe }}</span>{% endif %}
+				<small>Contenu</small>
+				<div class="si-etq-contenu">
+					{% for libelle in e.contenu|slice(0, 2) %}
+						{% set morceaux = libelle|split(' · ', 2) %}
+						<b>{{ morceaux[0] }}</b>{% if morceaux[1] is defined %}<span>{{ morceaux[1] }}</span>{% endif %}
+					{% endfor %}
+					{% if reste > 0 %}<span>+ {{ reste }} autre{{ reste > 1 ? 's' }}</span>{% endif %}
+				</div>
+			</div>
+			<div class="si-etq-qr">
+				{% if e.qr %}
+					<img src="{{ e.qr }}" alt="QR du colis {{ e.rang }}/{{ e.total }}">
+				{% else %}
+					<span class="si-etq-qr-vide">QR créé à l'impression</span>
+				{% endif %}
+				<code>{{ e.code ?? (e.numero ~ '-C' ~ e.rang) }}</code>
+				<em>scanner = prêt</em>
+			</div>
+		</div>
+		<div class="si-etq-bas">
+			{% if e.livraison.retrait %}
+				<span class="si-etq-livraison">RETRAIT</span><span class="si-etq-zone">à l'imprimerie</span>
+			{% else %}
+				<span class="si-etq-livraison">LIVRAISON{{ e.livraison.jourCourt ? ' ' ~ e.livraison.jourCourt }}</span><span class="si-etq-zone">{{ e.livraison.zone }}</span>
+			{% endif %}
+			{% if e.nePasPlier %}<b class="si-etq-plier">NE PAS PLIER</b>{% endif %}
+		</div>
+	</article>
+</div>

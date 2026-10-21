@@ -21,7 +21,8 @@ final class TableauDeBordServiceTest extends TestCase
         yield 'BAT valide' => [CommandesDetails::PRODUCTION_A_PRODUIRE, true, true, ControlePrePresse::STATUT_VALIDE, 'impression'];
         yield 'sans prepresse' => [CommandesDetails::PRODUCTION_A_PRODUIRE, false, false, null, 'impression'];
         yield 'en production' => [CommandesDetails::PRODUCTION_EN_COURS, true, true, null, 'impression'];
-        yield 'terminee' => [CommandesDetails::PRODUCTION_TERMINEE, true, true, null, 'prete'];
+        // Imprimée, pas encore contrôlée ni étiquetée (PD06) : pas encore « Prête ».
+        yield 'terminee' => [CommandesDetails::PRODUCTION_TERMINEE, true, true, null, 'finition'];
         yield 'prete a livrer' => [CommandesDetails::PRODUCTION_PRETE_LIVRAISON, true, true, null, 'prete'];
     }
 

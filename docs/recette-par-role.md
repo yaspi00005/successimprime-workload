@@ -72,6 +72,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Fidélité : régler un article (activé, points, seuil, dates), ajuster les points d'un client avec un motif ; l'action est inscrite au journal.
 - [ ] Crédits SMS et e-mail (Clients) : sans les clés Orange, saisir le solde et la fin du pack, puis la fin de l'abonnement e-mail ; un SMS ou un e-mail envoyé apparaît dans « Historique des envois » sans son texte ; « Export CSV » ; sous le seuil ou à moins de 15 jours de la fin, une seule notification.
 - [ ] Synchronisation et sauvegardes : écrans à jour, « Synchroniser maintenant » fonctionne.
+- [ ] Contrôle final de CMD-PC0177 (`docs/production-colis.md`) : carte « Prête pour la livraison · Bakary », « Ajoutée à la tournée de Bakary », le message WhatsApp avec le code de réception et « Fiche de démonstration : aucun message ». Une commande prête sans bon : « Ajouter à la tournée » (livreur, jour, créneau proposés) crée le bon, le valide et le place dans la tournée.
 
 ## Caisse et commercial (demo.aminata, puis demo.fanta)
 
@@ -100,10 +101,12 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 
 ## Opérateur production (demo.oumar)
 
-- [ ] Ma file machine (poste machiniste, `docs/poste-machiniste.md`) : ouvrir CMD-PM0178, cocher le contrôle, « Fichier conforme » ; choisir la machine, corriger une étape du temps estimé (le total et l'heure de fin bougent), démarrer ; Terminé ; imprimer 2 étiquettes (100 × 70 mm, QR) ; « Prêt pour livraison ». Sur le tableau de production, la carte avance d'elle-même.
+- [ ] Ma file machine (poste machiniste, `docs/poste-machiniste.md`) : ouvrir CMD-PM0178, cocher le contrôle, « Fichier conforme » ; choisir la machine, corriger une étape du temps estimé (le total et l'heure de fin bougent), démarrer ; Terminé : la page Production › Étiquettes s'ouvre sur la commande. Sur le tableau de production, la carte avance d'elle-même.
+- [ ] Étiquettes et contrôle final (`docs/production-colis.md`) : Production › Étiquettes, CMD-PC0183 propose 2 colis ; « Imprimer 2 étiquettes » (100 × 60 mm, QR, « COLIS 1/2 », ni montant ni téléphone). Contrôle final de CMD-PC0179 : la photo à côté du BAT, cocher les cases (taille 400 × 80 : taper 82 pour la hauteur demande une confirmation), « Prêt pour la livraison », puis scanner le code CMD-PC0179-C2 : la commande passe « Prête » (« 2 colis sur 2 scannés : commande prête, client prévenu »). Sur le téléphone, Mon travail › « Scanner une étiquette de colis ».
+- [ ] « Refaire une pièce » sur un travail d'une commande à contrôler : il revient dans Ma file (colonne « Prêt »), demo.ibrahim est prévenu, le contrôle est à refaire.
 - [ ] Retourner au prépresse : entourer le problème sur l'aperçu, choisir un motif ; le travail passe dans le bandeau rouge ; demo.seydou le reçoit, renvoie le fichier en production, le travail revient « À vérifier ».
 - [ ] Sur téléphone : la file en une colonne, « Prépresse » et « Conforme » en bas de la vérification, les gros boutons du travail en cours.
-- [ ] Ne voit aucun montant sur le poste machiniste (étiquettes : « à encaisser à la remise », sans somme).
+- [ ] Ne voit aucun montant sur le poste machiniste (étiquettes : « à encaisser à la remise », sans somme), ni sur les étiquettes de colis et le contrôle final (le « Consommé » est en quantités).
 - [ ] Atelier › Mon travail (téléphone) : le travail en cours de sa machine, Pause, Terminer (imprimé, gâche, motif), Signaler un problème, niveaux d'encre.
 - [ ] Atelier › Vue en direct : ne voit que ses machines (solvants) ; Planning de la semaine et Files d'attente en consultation (pas de glisser-déposer).
 - [ ] Pointage par QR et photo à l'arrivée et au départ.
@@ -128,6 +131,7 @@ Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `d
 - [ ] Mes livraisons : ses remises et ses échecs des 30 derniers jours, sans montant, jamais ceux d'un autre livreur.
 - [ ] Encaissement à la livraison : il arrive en caisse à valider.
 - [ ] Ne voit que sa tournée et ses livraisons : tableau de bord, clients, commandes, statistiques, recherche, messagerie, planning, liste des livraisons, « À retirer » et suivi refusés, même tapés à la main.
+- [ ] Le QR d'une étiquette de colis de sa tournée (CMD-PC0177) ouvre la remise de sa livraison ; Étiquettes, Contrôle final et le scanner de l'atelier lui sont refusés ; il ne voit jamais le code de réception du client.
 
 ## Suivi des livraisons (demo.kadiatou, demo.fanta, demo.seydou)
 

@@ -1,0 +1,31 @@
+/*
+ * Étiquette de colis 100 × 60 mm (PD05, docs/production-colis.md), à
+ * l'écran (aperçu) et à l'impression. Le cadre est un conteneur : 1cqw vaut
+ * 1 mm quand l'étiquette fait sa vraie taille, et tout se réduit avec elle
+ * sur un téléphone. Bande rouge à gauche, numéro en grand, QR à droite.
+ */
+.si-etq-cadre { container-type: inline-size; width: 100mm; max-width: 100%; }
+.si-etq { position: relative; box-sizing: border-box; width: 100cqw; height: 60cqw; background: #fff; color: #0B1220; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; padding: 3cqw 3.5cqw 2.6cqw 5.2cqw; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; row-gap: 1.6cqw; overflow: hidden; border-radius: 1.2cqw; line-height: 1.18; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+.si-etq::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 1.8cqw; background: #DE1028; }
+.si-etq-haut { display: flex; justify-content: space-between; align-items: flex-start; gap: 2cqw; border-bottom: .5cqw solid #0B1220; padding-bottom: 1.3cqw; }
+.si-etq-haut img { height: 8.5cqw; width: auto; }
+.si-etq-num { text-align: right; }
+.si-etq-num b { display: block; font-size: 5.4cqw; font-weight: 800; letter-spacing: .01em; }
+.si-etq-num span { display: block; font-size: 2.7cqw; font-weight: 800; letter-spacing: .08em; }
+.si-etq-corps { display: grid; grid-template-columns: minmax(0, 1fr) 23cqw; column-gap: 3cqw; min-height: 0; }
+.si-etq-infos { min-width: 0; overflow: hidden; }
+.si-etq-infos small { display: block; font-size: 2cqw; font-weight: 800; letter-spacing: .14em; color: #64748B; text-transform: uppercase; margin-top: .6cqw; }
+.si-etq-infos small:first-child { margin-top: 0; }
+.si-etq-nom { display: block; font-size: 4.2cqw; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-etq-societe { display: block; font-size: 2.9cqw; color: #1E293B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-etq-contenu b { display: block; font-size: 3.3cqw; font-weight: 800; margin-top: .3cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-etq-contenu span { display: block; font-size: 2.6cqw; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-etq-qr { text-align: center; align-self: center; }
+.si-etq-qr img, .si-etq-qr-vide { box-sizing: border-box; width: 21cqw; height: 21cqw; display: block; margin: 0 auto; image-rendering: pixelated; }
+.si-etq-qr-vide { border: .45cqw dashed #94A3B8; border-radius: 1cqw; display: flex; align-items: center; justify-content: center; padding: 1.5cqw; font-size: 2.3cqw; color: #64748B; line-height: 1.25; }
+.si-etq-qr code { display: block; margin-top: .7cqw; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 2.2cqw; font-weight: 800; color: #0B1220; background: none; padding: 0; white-space: nowrap; }
+.si-etq-qr em { display: block; font-style: normal; font-size: 1.9cqw; color: #64748B; }
+.si-etq-bas { display: flex; align-items: center; gap: 2cqw; min-width: 0; }
+.si-etq-livraison { background: #0B1220; color: #fff; font-weight: 800; font-size: 2.7cqw; letter-spacing: .02em; padding: .9cqw 1.9cqw; border-radius: .9cqw; white-space: nowrap; }
+.si-etq-zone { flex: 1 1 auto; min-width: 0; font-size: 2.7cqw; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-etq-plier { margin-left: auto; color: #DE1028; font-weight: 900; font-size: 2.7cqw; letter-spacing: .02em; white-space: nowrap; }

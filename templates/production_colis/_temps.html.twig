@@ -1,0 +1,30 @@
+{#
+	Temps réel vs estimé (PD06) : étapes estimées par le machiniste (OP03) et
+	temps réel total sans les pauses, par travail. Bloc à part : le temps
+	réel par étape s'ajoutera ici. Variable temps : ControlesFinaux::temps().
+#}
+<section class="si-fab-carte" data-bloc="temps">
+	<h2>Temps réel vs estimé</h2>
+	{% if temps.lignes is empty %}
+		<p class="si-fab-muet mb-0">Aucun travail terminé.</p>
+	{% else %}
+		<table class="si-ctl-table" data-sans-filtres>
+			<thead><tr><th scope="col">Étape</th><th scope="col" class="num">Estimé</th><th scope="col" class="num">Réel</th></tr></thead>
+			<tbody>
+				{% for l in temps.lignes %}
+					{% if temps.lignes|length > 1 %}<tr class="sous"><td colspan="3">{{ l.nom }}</td></tr>{% endif %}
+					{% for e in l.etapes %}
+						<tr><td>{{ e.libelle }}</td><td class="num">{{ e.estime|temps_estime }}</td><td class="num si-fab-muet" title="Le temps réel est mesuré pour le travail entier">–</td></tr>
+					{% endfor %}
+					{% set ecart = l.estime and l.reel is not null ? l.reel / l.estime : null %}
+					<tr class="total"><td>{{ temps.lignes|length > 1 ? 'Sous-total' : 'Total' }}</td><td class="num">{{ l.estime|temps_estime }}</td><td class="num {{ ecart is null ? '' : (ecart <= 1 ? 'vert' : (ecart <= 1.1 ? 'orange' : 'rouge')) }}">{{ l.reel|temps_estime }}</td></tr>
+				{% endfor %}
+				{% if temps.lignes|length > 1 %}
+					{% set ecart = temps.estime and temps.reel is not null ? temps.reel / temps.estime : null %}
+					<tr class="total"><td>Total de la commande</td><td class="num">{{ temps.estime|temps_estime }}</td><td class="num {{ ecart is null ? '' : (ecart <= 1 ? 'vert' : (ecart <= 1.1 ? 'orange' : 'rouge')) }}">{{ temps.reel|temps_estime }}</td></tr>
+				{% endif %}
+			</tbody>
+		</table>
+		<p class="si-fab-note">Réel : du démarrage à « Terminé », pauses déduites.</p>
+	{% endif %}
+</section>

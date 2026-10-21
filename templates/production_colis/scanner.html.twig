@@ -1,0 +1,152 @@
+{% extends 'base.html.twig' %}
+
+{#
+	PD07 écran 2 : scanner une étiquette de colis avec le téléphone
+	(docs/production-colis.md). Caméra de la page (BarcodeDetector, comme le
+	pointage), champ pour la douchette ou le code tapé. Seuls nos QR de colis
+	sont acceptés. Sur iPhone (pas de BarcodeDetector), l'appareil photo du
+	téléphone ouvre le lien du QR : page de confirmation du colis.
+#}
+
+{% block title %}Scanner une étiquette{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-colis.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="si-scan" data-si-scan data-prefixe="{{ prefixe }}" data-url="{{ path('app_atelier_production_colis_scanner') }}" data-jeton="{{ csrf_token(jeton) }}">
+		<h1>Scanner une étiquette</h1>
+
+		<div class="si-scan-video" data-si-scan-video hidden>
+			<video playsinline muted></video>
+			<span class="si-scan-cadre" aria-hidden="true"></span>
+		</div>
+		<div class="si-scan-vide" data-si-scan-vide>Visez le QR de l'étiquette collée sur le colis.</div>
+
+		{% if peutAgir %}
+			<button type="button" class="si-scan-bouton" data-si-scan-camera hidden><i class="fas fa-camera" aria-hidden="true"></i>Ouvrir la caméra</button>
+			<p class="si-scan-aide" data-si-scan-aide>Ou tapez le code écrit sous le QR (le numéro de la commande suivi de -C1, -C2…), ou scannez-le à la douchette.</p>
+			<form method="post" action="{{ path('app_atelier_production_colis_scanner') }}" class="si-scan-saisie" data-si-scan-form>
+				<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+				<label class="visually-hidden" for="si-scan-code">Code de l'étiquette</label>
+				<input id="si-scan-code" name="saisie" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Code sous le QR" required maxlength="300">
+				<button class="si-scan-bouton">Valider</button>
+			</form>
+		{% else %}
+			<p class="si-scan-aide">Scanner un colis demande le droit « Statuts de production ».</p>
+		{% endif %}
+
+		<div class="si-scan-resultat" data-si-scan-resultat hidden aria-live="polite">
+			<div class="si-scan-tete">
+				<span class="si-scan-ok" data-si-scan-icone aria-hidden="true"><i class="fas fa-check"></i></span>
+				<div><b data-si-scan-titre></b><small data-si-scan-detail></small></div>
+			</div>
+			<p class="si-scan-suite" data-si-scan-suite></p>
+			<button type="button" class="si-scan-bouton" data-si-scan-suivant>Scanner le suivant</button>
+		</div>
+
+		<p class="si-scan-note">Sur iPhone, ouvrez l'appareil photo et visez le QR : le lien ouvre la fiche du colis, où un bouton confirme « Colis collé et scanné ». <a href="{{ path('app_atelier_production_controle') }}">Contrôle final</a></p>
+	</div>
+
+	<script>
+		(function () {
+			var page = document.querySelector('[data-si-scan]');
+			var form = page.querySelector('[data-si-scan-form]');
+			if (!form) { return; }
+			var prefixe = page.getAttribute('data-prefixe');
+			var champ = form.querySelector('input[name=saisie]');
+			var boutonCamera = page.querySelector('[data-si-scan-camera]');
+			var zone = page.querySelector('[data-si-scan-video]');
+			var vide = page.querySelector('[data-si-scan-vide]');
+			var aide = page.querySelector('[data-si-scan-aide]');
+			var resultat = page.querySelector('[data-si-scan-resultat]');
+			var flux = null;
+			var occupe = false;
+			var camera = 'BarcodeDetector' in window && navigator.mediaDevices && navigator.mediaDevices.getUserMedia;
+
+			// Nos étiquettes seulement : lien de nos QR, ou code court sous le QR.
+			var estNotreCode = function (texte) {
+				return texte.indexOf(prefixe) === 0 || /^[A-Z0-9-]{3,50}-C\d{1,2}$/i.test(texte.replace(/\s+/g, ''));
+			};
+
+			var arreter = function () {
+				if (flux) { flux.getTracks().forEach(function (t) { t.stop(); }); flux = null; }
+				zone.hidden = true;
+				vide.hidden = false;
+			};
+
+			var afficher = function (r) {
+				resultat.hidden = false;
+				var icone = page.querySelector('[data-si-scan-icone]');
+				icone.className = 'si-scan-ok' + (r.ok ? '' : ' non');
+				icone.innerHTML = r.ok ? '<i class="fas fa-check"></i>' : '<i class="fas fa-times"></i>';
+				page.querySelector('[data-si-scan-titre]').textContent = r.colis ? r.colis.numero + ' · colis ' + r.colis.rang + '/' + r.colis.total : (r.ok ? 'Colis scanné' : 'Code refusé');
+				page.querySelector('[data-si-scan-detail]').textContent = r.colis ? r.colis.client + ' · ' + r.colis.contenu : '';
+				var suite = page.querySelector('[data-si-scan-suite]');
+				suite.textContent = r.ok ? (r.message + ' ' + (r.suite || '')).trim() : r.message;
+				suite.className = 'si-scan-suite' + (r.ok ? (r.prete ? '' : ' attente') : ' non');
+				resultat.scrollIntoView({block: 'nearest'});
+			};
+
+			var envoyer = function (texte) {
+				if (occupe) { return; }
+				occupe = true;
+				fetch(page.getAttribute('data-url'), {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': page.getAttribute('data-jeton')},
+					body: JSON.stringify({saisie: texte}),
+					credentials: 'same-origin'
+				}).then(function (rep) { return rep.json(); }).then(afficher).catch(function () {
+					afficher({ok: false, message: 'Pas de réponse du serveur : vérifiez le réseau puis recommencez.'});
+				}).then(function () { occupe = false; champ.value = ''; });
+			};
+
+			form.addEventListener('submit', function (e) {
+				e.preventDefault();
+				var texte = champ.value.trim();
+				if (texte !== '') { envoyer(texte); }
+			});
+
+			var ouvrir = function () {
+				var detecteur = new BarcodeDetector({formats: ['qr_code']});
+				navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function (f) {
+					flux = f;
+					var video = zone.querySelector('video');
+					video.srcObject = f;
+					video.play();
+					zone.hidden = false;
+					vide.hidden = true;
+					resultat.hidden = true;
+					aide.textContent = 'Placez le QR de l\'étiquette dans le cadre. Seules les étiquettes de colis Succès Imprim sont acceptées.';
+					var chercher = function () {
+						if (!flux) { return; }
+						detecteur.detect(video).then(function (codes) {
+							var lu = codes.length ? codes[0].rawValue : '';
+							if (lu && estNotreCode(lu)) {
+								arreter();
+								envoyer(lu);
+								return;
+							}
+							if (lu) { aide.textContent = 'Ce QR n\'est pas une étiquette de colis Succès Imprim.'; }
+							requestAnimationFrame(chercher);
+						}).catch(function () { requestAnimationFrame(chercher); });
+					};
+					chercher();
+				}).catch(function () {
+					aide.textContent = 'La caméra est refusée. Autorisez-la, ou tapez le code sous le QR.';
+				});
+			};
+
+			if (camera && boutonCamera) {
+				boutonCamera.hidden = false;
+				boutonCamera.addEventListener('click', ouvrir);
+			}
+			page.querySelector('[data-si-scan-suivant]').addEventListener('click', function () {
+				resultat.hidden = true;
+				if (camera) { ouvrir(); } else { champ.focus(); }
+			});
+		})();
+	</script>
+{% endblock %}

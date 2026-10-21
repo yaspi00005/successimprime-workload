@@ -695,6 +695,19 @@ await scene(['rouleau-imposition', 'rouleau-fiche'], async () => {
     await capture(page, 'rouleau-fiche');
 });
 
+/* ---------- Colis et contrôle final (docs/production-colis.md) ---------- */
+
+await scene(['colis-etiquettes', 'controle-final'], async () => {
+    const page = await session('demo.oumar');
+    await aller(page, '/atelier/production/etiquettes');
+    const awa = page.locator('a[href*="commande="]', { hasText: 'CMD-PC0183' });
+    if (await awa.count()) await suivre(page, awa.first());
+    await capture(page, 'colis-etiquettes');
+    await aller(page, '/atelier/production/controle');
+    await suivre(page, page.locator('a[href*="/atelier/production/controle/"]', { hasText: 'CMD-PC0177' }).first());
+    await capture(page, 'controle-final');
+});
+
 await navigateur.close();
 
 const total = fs.readdirSync(SORTIE).filter((f) => f.endsWith('.webp')).reduce((s, f) => s + fs.statSync(path.join(SORTIE, f)).size, 0);

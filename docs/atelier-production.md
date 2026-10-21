@@ -69,6 +69,10 @@ L'écran de l'opérateur, pensé pour le téléphone : le travail en cours de sa
 - **Retard** : la date promise (date limite de l'ordre, sinon livraison prévue de la commande ; sans heure, jusqu'à 19 h) est dépassée, ou la fin estimée tombe après elle.
 - **Gâche** : gâche ÷ (bon + gâche), en m² quand les dimensions sont connues, sinon en pièces.
 
+## Colis et contrôle final
+
+Une fois ses travaux terminés, une commande passe par **Production › Étiquettes** (`/atelier/production/etiquettes`, une étiquette 100 × 60 mm par colis), puis **Production › Contrôle final** (`/atelier/production/controle` : BAT et photo, vérifications, colis scannés, temps et consommé) ; elle passe « Prête » au contrôle validé et au dernier colis scanné. Le scanner du téléphone (`/atelier/operateur/scanner`) est au bas de Mon travail. « Refaire une pièce » suit la même règle que les gestes ci-dessus (opérateur affecté, chef d'atelier, poste de la machine). Tout est dans `docs/production-colis.md`.
+
 ## Niveaux d'encre
 
 Les machines n'envoient aucune donnée : les niveaux d'encre sont **saisis à la main** par l'opérateur ou le chef d'atelier (Files d'attente › « Saisir les niveaux d'encre », ou Mon travail). La page dit qui les a saisis et quand.

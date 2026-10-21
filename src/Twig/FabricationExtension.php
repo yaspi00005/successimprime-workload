@@ -24,6 +24,8 @@ final class FabricationExtension extends AbstractExtension
         ['cle' => 'parcours', 'libelle' => 'Parcours d\'un fichier', 'route' => 'app_atelier_production_parcours'],
         ['cle' => 'rouleaux', 'libelle' => 'Rouleaux', 'route' => 'app_atelier_production_rouleaux'],
         ['cle' => 'machines', 'libelle' => 'Machines et dossiers', 'route' => 'app_atelier_production_machines'],
+        ['cle' => 'etiquettes', 'libelle' => 'Étiquettes', 'route' => 'app_atelier_production_etiquettes'],
+        ['cle' => 'controle', 'libelle' => 'Contrôle final', 'route' => 'app_atelier_production_controle'],
     ];
 
     public function __construct(private readonly RouterInterface $router, private readonly ?AccesEnLigne $acces = null)

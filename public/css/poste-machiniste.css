@@ -229,19 +229,6 @@
 .si-pm-suivi small { color: var(--pm-gris); font-size: 11px; }
 .si-pm-bilan { margin-top: 10px; background: #E7F8EE; border-radius: 10px; padding: 8px 10px; font-size: 12px; }
 .si-pm-bilan b { display: block; }
-.si-pm-planche { background: var(--pm-fond); border-radius: 16px; padding: 14px; min-height: 420px; }
-.si-pm-planche > small { font-size: 12px; font-weight: 700; color: #475569; }
-.si-pm-planche-etiquettes { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 20px 0; }
-.si-pm-etq { width: 100mm; height: 70mm; max-width: 100%; background: #fff; border: 1px solid #CBD5E1; border-radius: 4px; padding: 3mm 3.5mm; display: grid; grid-template-columns: 1fr 26mm; grid-template-rows: auto 1fr auto; gap: 1.5mm 3mm; font-size: 8.5pt; line-height: 1.25; color: #0F172A; box-shadow: 0 4px 14px rgba(15, 23, 42, .12); overflow: hidden; }
-.si-pm-etq-haut { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #0F172A; padding-bottom: 1.2mm; }
-.si-pm-etq-haut img { height: 7mm; }
-.si-pm-etq-haut b { font-size: 9pt; letter-spacing: .02em; }
-.si-pm-etq-corps small { display: block; font-size: 5.5pt; color: #64748B; text-transform: uppercase; letter-spacing: .04em; margin-top: 1mm; }
-.si-pm-etq-corps strong { display: block; font-size: 11pt; }
-.si-pm-etq-qr { text-align: center; font-size: 7pt; font-weight: 800; align-self: center; }
-.si-pm-etq-qr img { width: 24mm; height: 24mm; display: block; margin: 0 auto 1mm; }
-.si-pm-etq-pied { grid-column: 1 / -1; display: flex; justify-content: space-between; border-top: 1px dashed #64748B; padding-top: 1mm; font-size: 6.5pt; }
-.si-pm-etq-pied b { font-size: 7pt; }
 .si-pm-champs { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .si-pm-champs label { font-size: 11px; color: var(--pm-gris); margin: 0; }
 .si-pm-champ-unite { position: relative; }
@@ -270,8 +257,6 @@
 	.si-pm-apercu-haut .si-pm-badges { margin-left: 0; }
 	.si-pm-scene { padding: 30px 4px 8px 28px; }
 	.si-pm-scanner-form { position: fixed; left: 16px; right: 16px; top: 64px; width: auto; }
-	.si-pm-planche { min-height: 0; }
-	.si-pm-etq { transform-origin: top center; }
 	.si-pm-fenetre { padding: 0; align-items: stretch; }
 	.si-pm-fenetre-boite { max-height: 100vh; border-radius: 0; }
 	.si-pm-tete-actions { width: 100%; }
@@ -296,9 +281,3 @@
 @media (max-width: 640px) { .si-pm-bureau-inline { display: none; } }
 .si-pm .si-pm-tete-actions .btn { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 700; }
 .si-pm-grille-3 > *, .si-pm-grille-2 > * { min-width: 0; }
-@media (max-width: 640px) {
-	.si-pm-planche { padding: 10px; }
-	.si-pm-planche-etiquettes { padding: 10px 0; }
-	.si-pm-etq { width: 100%; height: auto; aspect-ratio: 100 / 70; font-size: 7.5pt; grid-template-columns: 1fr 22mm; }
-	.si-pm-etq-qr img { width: 20mm; height: 20mm; }
-}

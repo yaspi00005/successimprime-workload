@@ -91,6 +91,15 @@ final class ParametresRoute
             return null === $ligne ? 'aucun dépôt ni argent rendu sur un compte client' : [['id' => (int) $ligne['id']]];
         }
 
+        // Contrôle final (docs/production-colis.md) : une commande qui a un contrôle, et sa photo.
+        if (\in_array($nom, ['app_atelier_production_controle_commande', 'app_atelier_production_controle_photo_voir'], true)) {
+            $photo = 'app_atelier_production_controle_photo_voir' === $nom;
+            $id = $this->em->getConnection()->fetchOne('SELECT commande_id FROM controle_final WHERE commande_id >= 900001'.($photo ? ' AND photo IS NOT NULL' : '').' ORDER BY id LIMIT 1');
+            if (false !== $id) {
+                return [['id' => (int) $id]];
+            }
+        }
+
         // Note vocale de la messagerie (docs/messagerie-clients.md) : une note interne et un message de la démonstration.
         if ('app_messages_clients_vocale_ecouter' === $nom) {
             $jeux = [];

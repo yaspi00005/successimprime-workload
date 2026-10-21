@@ -274,6 +274,17 @@ final class CatalogueSynchroTest extends TestCase
         self::assertSame(0, CatalogueSynchro::reglagesPublics('espace_client', ['corrections_bat_gratuites' => 0])['corrections_bat_gratuites'] ?? null);
     }
 
+    public function testLaLigneDitQuandElleEstPreteSansLesColisNiLeControle(): void
+    {
+        // « Prête » dans l'espace client (docs/production-colis.md) : l'heure descend avec le statut de la ligne ;
+        // colis, étiquettes, photo et contrôle final restent au local.
+        $types = CatalogueSynchro::types();
+        self::assertContains('preteLivraisonLe', $types['commande_ligne']['champs']);
+        foreach ($types as $cle => $t) {
+            self::assertNotContains($t['classe'] ?? null, [\App\Entity\ColisProduction::class, \App\Entity\ControleFinal::class], $cle);
+        }
+    }
+
     public function testNumeroDuSite(): void
     {
         self::assertTrue(JournalSynchro::aPrefixer('CMD-00012'));

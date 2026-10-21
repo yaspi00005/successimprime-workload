@@ -8,6 +8,7 @@ use App\Repository\CompteTresorerieRepository;
 use App\Security\LivreurVoter;
 use App\Service\Http\Entree;
 use App\Service\Livraisons\SuiviLivraisons;
+use App\Service\Livraisons\PreparationLivraison;
 use App\Service\Livraisons\Tournee;
 use App\Service\NotificationService;
 use App\Service\SuiviMetiers\PointsLivreur;
@@ -38,6 +39,7 @@ final class TourneeController extends AbstractController
         private readonly EntityManagerInterface $em,
         private readonly SuiviLivraisons $suivi,
         private readonly NotificationService $notifications,
+        private readonly PreparationLivraison $preparation,
     ) {
     }
 
@@ -363,16 +365,14 @@ final class TourneeController extends AbstractController
             throw $this->createAccessDeniedException();
         }
         $livreur = (int) $request->request->get('livreur') > 0 ? $this->em->getRepository(User::class)->find((int) $request->request->get('livreur')) : null;
-        $bon->setLivreur($livreur)
-            ->setPrevuLe(\DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: null)
-            ->setCreneau((string) $request->request->get('creneau'))
-            ->setOrdreTournee((int) $request->request->get('ordre') > 0 ? (int) $request->request->get('ordre') : null);
-        // Après un échec, la nouvelle planification remet la livraison dans la tournée.
-        $replanifiee = $bon->etatSuivi() === BonLivraison::ETAT_ECHEC && $bon->getPrevuLe() !== null;
-        if ($replanifiee) {
-            $bon->reprendre();
-        }
-        $this->em->flush();
+        // Après un échec, la nouvelle planification remet la livraison dans la tournée (PreparationLivraison).
+        $replanifiee = $this->preparation->planifier(
+            $bon,
+            $livreur,
+            \DateTimeImmutable::createFromFormat('!Y-m-d', (string) $request->request->get('jour')) ?: null,
+            (string) $request->request->get('creneau'),
+            (int) $request->request->get('ordre'),
+        );
         $this->addFlash('success', $replanifiee ? 'Livraison replanifiée : elle revient dans la tournée.' : 'Livraison planifiée.');
 
         return $this->redirectToRoute('app_livraisons_bl', ['id' => $bon->getId()]);

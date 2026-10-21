@@ -54,7 +54,8 @@ final class RelanceRetraitService
     public function commandesPretes(\DateTimeImmutable $maintenant): array
     {
         $lignes = $this->em->createQueryBuilder()
-            ->select('c AS commande, MAX(d.productionTermineeLe) AS preteDepuis')
+            // Prête depuis le passage à « Prête » (contrôle final, colis scannés), sinon la fin de production (lignes d'avant).
+            ->select('c AS commande, MAX(COALESCE(d.preteLivraisonLe, d.productionTermineeLe)) AS preteDepuis')
             ->from(Commandes::class, 'c')
             ->join('c.commandesDetails', 'd', 'WITH', 'd.statutProduction = :prete')
             ->where('c.deleted = false')

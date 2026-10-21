@@ -490,6 +490,16 @@ final class CatalogueGuide
                     ['nom' => 'ma-file-travail', 'legende' => 'Un travail en cours sur la machine.'],
                 ],
             ],
+            [
+                'cle' => 'colis-controle', 'groupe' => 'production', 'titre' => 'Étiqueter les colis et faire le contrôle final',
+                'but' => 'Coller une étiquette par colis, comparer au BAT, scanner les colis et passer la commande « Prête ».',
+                'droits' => ['ROLE_PRODUCTION_VOIR', 'ROLE_PRODUCTION_GERER'], 'route' => 'app_atelier_production_etiquettes',
+                'ecrans' => ['app_atelier_production_etiquettes', 'app_atelier_production_controle', 'app_atelier_operateur_scanner'],
+                'captures' => [
+                    ['nom' => 'colis-etiquettes', 'legende' => 'Atelier › Production › Étiquettes : une étiquette 100 × 60 mm par colis.'],
+                    ['nom' => 'controle-final', 'legende' => 'Le contrôle final : BAT et photo, cases, colis scannés, temps et consommé.'],
+                ],
+            ],
 
             // ---------- Livreur ----------
             [

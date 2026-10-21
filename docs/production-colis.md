@@ -24,7 +24,7 @@ Adresse : `/atelier/production/etiquettes`.
   - le reste : 1 colis.
   Le contenu se répartit entre les colis (« Bâche 300 × 100 cm × 1 · ourlet + œillets »).
 - **Où coller**, selon l'emballage : bâche roulée « sur le film, à 10 cm du bord, côté visible » ; carton « sur le dessus, jamais sur une ouverture » ; kakémono « sur la housse ».
-- **L'aperçu** montre chaque étiquette à sa taille réelle (100 × 60 mm) : logo, numéro de commande, « COLIS 1/2 », CLIENT (nom, puis la société ou le nom commercial), CONTENU, QR avec le code court dessous (« CMD-000183-10-2026-C2 »), LIVRAISON « mer. 21/10 » et le quartier, ou « RETRAIT à l'imprimerie », « NE PAS PLIER » sur ce qui est roulé. **Ni montant ni téléphone** sur l'étiquette.
+- **L'aperçu** montre chaque étiquette à sa taille réelle (100 × 60 mm) : logo, numéro de commande, « COLIS 1/2 », CLIENT (nom, puis la société ou le nom commercial), CONTENU, QR avec le code court dessous (« CMD-000183-C2 » ; « CMD-000183-S2-C2 » pour une série réimprimée avec un autre nombre de colis), LIVRAISON « mer. 21/10 » et le quartier, ou « RETRAIT à l'imprimerie », « NE PAS PLIER » sur ce qui est roulé. **Ni montant ni téléphone** sur l'étiquette.
 - **Imprimer N étiquettes** ouvre une page d'impression à part (une étiquette par page, `@page 100mm 60mm`, sans marge) et lance l'impression du navigateur.
 - **Réimprimer les mêmes** redonne les étiquettes en cours (même QR, même code). Imprimer une nouvelle série (autre nombre de colis) **remplace** l'ancienne : un message le demande d'abord ; les anciennes étiquettes ne se scannent plus (« étiquette remplacée »).
 
@@ -81,7 +81,7 @@ Même règle que l'atelier pour agir sur un travail : le chef d'atelier, le post
 
 ## « Prête »
 
-Règle de Yaya : une commande passe **« Prête »** quand son **contrôle final est validé** et que **tous ses colis sont scannés** (au moins un), qu'il ne reste rien en production et que tous ses travaux terminés sont dans des colis. Cela se fait au dernier de ces gestes, depuis n'importe quel écran (contrôle final, scanner du téléphone, fiche du QR). Chaque ligne passe alors « prête pour la livraison » par le chemin du poste machiniste : le client le voit dans son espace, le livreur du bon (ou le bureau, « À planifier ») est prévenu.
+Règle de Yaya : une commande passe **« Prête »** quand son **contrôle final est validé** et que **tous ses colis sont scannés** (au moins un), qu'il ne reste rien en production et que tous ses travaux terminés sont dans des colis. Cela se fait au dernier de ces gestes, depuis n'importe quel écran (contrôle final, scanner du téléphone, fiche du QR). Chaque ligne passe alors « prête pour la livraison » par le chemin du poste machiniste : le client le voit dans son espace, le livreur du bon (ou le bureau, « À planifier ») est prévenu, et les équipes livraison et commerciale reçoivent « Commande CMD-… prête » (une fois par commande, plus à la fin de la production : `docs/notifications-equipe.md`).
 
 Une ligne seulement « terminée » n'est plus montrée « Prête » nulle part (tableau de bord, suivi commercial, espace client) : elle reste en « Finition / contrôle » jusqu'au contrôle final.
 
@@ -110,7 +110,7 @@ Aucun montant sur ces écrans ni sur les étiquettes. Le livreur seul (`LivreurS
 
 ## Données (ERP local, jamais synchronisées)
 
-- `colis_production` : un colis par ligne : commande, série, rang et total (« 1/2 »), jeton du QR, code court, contenu (travaux et quantités), emballage (`rouleau`, `carton`, `housse`, `autre`), imprimé le / par, scanné le / par, remplacé le (`annule_le`).
+- `colis_production` : une ligne par colis : commande, série, rang et total (« 1/2 »), jeton du QR, code court, contenu (travaux et quantités), emballage (`rouleau`, `carton`, `housse`, `autre`), imprimé le / par, scanné le / par, remplacé le (`annule_le`).
 - `controle_final` : un par commande : cases cochées par ligne (et tailles mesurées), validé le / par, photo (nom du fichier) prise le / par, nombre de reprises.
 - `ordre_production.pieces_a_refaire` et `reimpressions` : la reprise en cours et leur nombre.
 - `commandes_details.prete_livraison_le` : l'heure où la ligne est passée « prête » (synchronisée avec le statut de la ligne pour l'espace client).

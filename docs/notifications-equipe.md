@@ -59,7 +59,7 @@ Règles anti-bruit :
 | Devis à relancer | à faire | action de caisse « devis » à faire | agent de l'action |
 | Stock bas | à faire | article « à commander » | Direction |
 | Achats : stock bas, hausse de prix, fournisseur en retard, commande oubliée | à faire | `app:achats:alertes` chaque heure (docs/achats.md, SU06) | Direction |
-| Commande prête | info | fin de production (`ActionsOrdre`) | livraison, commercial |
+| Commande prête | info | passage à « Prête » : contrôle final validé et colis scannés (`ColisCommandes`, docs/production-colis.md) | livraison, commercial |
 | Retard de pointage | info | pointages du jour en retard | RH |
 
 Les sources sont relues au plus une fois par minute pendant le polling et à chaque passage de `app:notifications`, **sur l'ERP local seulement** (le site en ligne n'a pas l'atelier).

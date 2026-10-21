@@ -45,7 +45,7 @@ final class NotificationsDemo
         $lignes[] = ['destinataire_id' => self::AMINATA, 'type' => 'mention', 'niveau' => Notification::URGENT, 'message' => 'Kadiatou vous cite (Question générale)', 'detail' => '@aminata peux-tu rappeler ce client avant midi ?', 'action_libelle' => 'Ouvrir', 'route' => 'app_messages_clients_index', 'route_parametres' => '[]', 'empreinte' => 'demo:mention:1', 'date_creation' => $il('12 minutes')];
         if (false !== $commandePrete) {
             foreach ([self::AMINATA, self::BAKARY, self::KADIATOU] as $i => $u) {
-                $lignes[] = ['destinataire_id' => $u, 'type' => 'commande_prete', 'niveau' => Notification::INFO, 'message' => 'Commande '.$numero($commandePrete).' prête', 'detail' => 'Production terminée : prête pour la suite.', 'action_libelle' => 'Voir', 'route' => 'app_commandes_show', 'route_parametres' => json_encode(['id' => (int) $commandePrete]), 'empreinte' => 'demo:commande_prete:'.$commandePrete, 'date_creation' => $il((25 + $i) .' minutes')];
+                $lignes[] = ['destinataire_id' => $u, 'type' => 'commande_prete', 'niveau' => Notification::INFO, 'message' => 'Commande '.$numero($commandePrete).' prête', 'detail' => 'Contrôle final validé et colis scannés : prête pour la livraison.', 'action_libelle' => 'Voir', 'route' => 'app_commandes_show', 'route_parametres' => json_encode(['id' => (int) $commandePrete]), 'empreinte' => 'demo:commande_prete:'.$commandePrete, 'date_creation' => $il((25 + $i) .' minutes')];
             }
         }
         if (false !== $commandeBloquee) {
@@ -62,7 +62,7 @@ final class NotificationsDemo
             [self::AMINATA, 'acompte_recu', Notification::A_FAIRE, 'Acompte reçu · Awa Diallo', 'Espèces · à valider', '6 hours', 4, Notification::RESOLUE_AUTO],
             [self::SEYDOU, 'bat_valide', Notification::A_FAIRE, 'BAT validé · Cartes de visite', 'À lancer en production', '1 day', 30, Notification::RESOLUE_AUTO],
             [self::OUMAR, 'machine_panne', Notification::CRITIQUE, 'Machine en panne : Konica C6100', 'Arrêt signalé par Oumar.', '1 day', 95, Notification::RESOLUE_AUTO],
-            [self::BAKARY, 'commande_prete', Notification::INFO, 'Commande CMD-D00012 prête', 'Production terminée : prête pour la suite.', '2 days', 40, Notification::RESOLUE_LUE],
+            [self::BAKARY, 'commande_prete', Notification::INFO, 'Commande CMD-D00012 prête', 'Contrôle final validé et colis scannés : prête pour la livraison.', '2 days', 40, Notification::RESOLUE_LUE],
         ] as $i => [$u, $type, $niveau, $titre, $detail, $depuis, $minutes, $resolution]) {
             $creee = $maintenant->modify('-'.$depuis);
             $lignes[] = ['destinataire_id' => $u, 'type' => $type, 'niveau' => $niveau, 'message' => $titre, 'detail' => $detail, 'route' => null, 'route_parametres' => null, 'empreinte' => 'demo:historique:'.$i, 'date_creation' => $creee->format('Y-m-d H:i:s'), 'lue' => 1, 'resolue_le' => $creee->modify('+'.$minutes.' minutes')->format('Y-m-d H:i:s'), 'resolution' => $resolution];

@@ -7,8 +7,6 @@ use App\Entity\Machines;
 use App\Entity\OrdreProduction;
 use App\Entity\StockSorties;
 use App\Entity\User;
-use App\Service\NotificationService;
-use App\Service\NotificationsEquipe\NotificationsEquipe;
 use App\Service\StockService;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -17,7 +15,8 @@ use Doctrine\ORM\EntityManagerInterface;
  * démarrer, pause, reprendre, terminer avec la gâche. Même suite que les
  * écrans de production du poste (ProductionController) : ligne de commande
  * et ordre ensemble, sortie de stock sur la quantité traitée, compteur
- * d'usure de la machine, notification de fin.
+ * d'usure de la machine (la notification « Commande prête » part au
+ * passage à « Prête », ColisCommandes).
  */
 final class ActionsOrdre
 {
@@ -27,8 +26,6 @@ final class ActionsOrdre
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly StockService $stock,
-        private readonly NotificationService $notifications,
-        private readonly ?NotificationsEquipe $equipe = null,
     ) {
     }
 
@@ -100,23 +97,8 @@ final class ActionsOrdre
             }
         }
 
-        $commande = $detail->getCommande();
-        if (null !== $commande) {
-            $this->commandePrete($commande);
-        }
+        // « Commande prête » part au passage à « Prête » (contrôle final et colis scannés, ColisCommandes), plus à la fin de la production.
         $this->em->flush();
-    }
-
-    /** Notification « Commande prête » (niveau info) aux équipes livraison et commerciale. */
-    private function commandePrete(\App\Entity\Commandes $commande): void
-    {
-        $numero = $commande->getNumero() ?? ('#'.$commande->getId());
-        if (null !== $this->equipe) {
-            $this->equipe->notifier('commande_prete', sprintf('Commande %s prête', $numero), ['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], 'Production terminée : prête pour la suite.', 'Voir', 'app_commandes_show', ['id' => $commande->getId()], 'commande_prete:'.$commande->getId());
-
-            return;
-        }
-        $this->notifications->notifierRoles(['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], sprintf('Production terminée pour la commande %s : prête pour la suite.', $numero), 'app_commandes_show', ['id' => $commande->getId()]);
     }
 
     /** Surface d'une pièce en m² : dimensions de la ligne, sinon celles du format. */

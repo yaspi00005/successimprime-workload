@@ -13,6 +13,8 @@ use App\Repository\ColisProductionRepository;
 use App\Repository\ControleFinalRepository;
 use App\Service\Atelier\PosteMachiniste;
 use App\Service\Livraisons\ProgrammationLivraison;
+use App\Service\NotificationService;
+use App\Service\NotificationsEquipe\NotificationsEquipe;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -32,6 +34,8 @@ final class ColisCommandes
         private readonly PosteMachiniste $poste,
         private readonly ColisProductionRepository $colis,
         private readonly ControleFinalRepository $controles,
+        private readonly NotificationService $notifications,
+        private readonly ?NotificationsEquipe $equipe = null,
     ) {
     }
 
@@ -208,9 +212,22 @@ final class ColisCommandes
         foreach ($ordres as $o) {
             $this->poste->pretPourLivraison($o, $par, $le);
         }
+        $this->notifierPrete($commande);
         $this->em->flush();
 
         return true;
+    }
+
+    /** Notification « Commande prête » (niveau info, sans montant) aux équipes livraison et commerciale. */
+    private function notifierPrete(Commandes $commande): void
+    {
+        $numero = $commande->getNumero() ?? ('#'.$commande->getId());
+        if (null !== $this->equipe) {
+            $this->equipe->notifier('commande_prete', \sprintf('Commande %s prête', $numero), ['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], 'Contrôle final validé et colis scannés : prête pour la livraison.', 'Voir', 'app_commandes_show', ['id' => $commande->getId()], 'commande_prete:'.$commande->getId());
+
+            return;
+        }
+        $this->notifications->notifierRoles(['ROLE_LIVRAISON', 'ROLE_COMMERCIAL'], \sprintf('Commande %s prête : contrôle final validé et colis scannés.', $numero), 'app_commandes_show', ['id' => $commande->getId()]);
     }
 
     /**

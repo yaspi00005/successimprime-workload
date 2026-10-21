@@ -9,6 +9,7 @@ use App\Entity\JournalMachine;
 use App\Entity\Machines;
 use App\Entity\OrdreProduction;
 use App\Entity\PieceTirage;
+use App\Entity\Supports;
 use App\Entity\TirageRouleau;
 use App\Entity\User;
 use App\Service\Atelier\ActionsOrdre;
@@ -267,13 +268,18 @@ final class TiragesRouleau
     public function articleRouleau(Machines $machine, string $code): ?Articles
     {
         $laizeMachine = $machine->getLaizeMetres() ?? 0;
+        // Un code réglé à la main sur un support (« Règles de nommage ») désigne aussi l'article tiré de son nom.
+        $codes = [$code => true];
+        foreach ($this->em->getRepository(Supports::class)->findBy(['codeProduction' => $code]) as $s) {
+            $codes[NomFichierProduction::code((string) $s->getNom())] = true;
+        }
         $meilleur = null;
         /** @var list<Articles> $articles */
         $articles = $this->em->createQueryBuilder()->select('a')->from(Articles::class, 'a')
             ->where('a.laize IS NOT NULL')->andWhere('a.laize > 0')->andWhere('a.actif = true')
             ->getQuery()->getResult();
         foreach ($articles as $a) {
-            if (NomFichierProduction::code((string) $a->getDesignation()) !== $code || (float) $a->getLaize() > $laizeMachine + 0.001) {
+            if (!isset($codes[NomFichierProduction::code((string) $a->getDesignation())]) || (float) $a->getLaize() > $laizeMachine + 0.001) {
                 continue;
             }
             if (null === $meilleur || (float) $a->getLaize() > (float) $meilleur->getLaize()) {

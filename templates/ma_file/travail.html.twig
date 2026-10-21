@@ -55,12 +55,13 @@
 				{% endif %}
 
 				<div class="si-pm-gros">
-					{% if o.demarreLe %}
+					{# Une pièce à refaire (contrôle final, docs/production-colis.md) a déjà une heure de démarrage : elle se redémarre. #}
+					{% if o.demarreLe and not o.estADemarrer %}
 						<span class="btn si-pm-fait" aria-disabled="true"><i class="fas fa-play"></i>Démarré · {{ o.demarreLe|date('H:i') }} <i class="fas fa-check"></i></span>
 					{% elseif o.machine is null %}
 						<a href="{{ path('app_ma_file_estimer', {id: o.id}) }}" class="btn si-pm-btn-rouge"><i class="far fa-clock"></i>Machine et temps estimé</a>
 					{% else %}
-						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-btn-vert"{{ not peutAgir ? ' disabled' }}><i class="fas fa-play"></i>Démarrer sur {{ o.machine.nom }}</button></form>
+						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-btn-vert"{{ not peutAgir ? ' disabled' }}><i class="fas fa-play"></i>{{ o.piecesARefaire ? 'Refaire ' ~ o.piecesARefaire ~ ' pièce' ~ (o.piecesARefaire > 1 ? 's') ~ ' sur ' : 'Démarrer sur ' }}{{ o.machine.nom }}</button></form>
 					{% endif %}
 
 					{% if o.statut == 'en_cours' %}

@@ -367,7 +367,8 @@ final class MaFileController extends AbstractController
                 default => $this->actions->reprendre($ordre, $this->moi()),
             };
             $this->addFlash('success', match ($action) {
-                'demarrer' => 'Démarré à '.$ordre->getDemarreLe()?->format('H:i').'.',
+                // Une pièce à refaire garde l'heure du premier démarrage : l'heure dite est celle du clic.
+                'demarrer' => 'Démarré à '.(new \DateTimeImmutable())->format('H:i').'.',
                 'pause' => 'En pause : le temps de pause ne compte pas.',
                 default => 'Repris.',
             });
@@ -390,9 +391,16 @@ final class MaFileController extends AbstractController
         }
         try {
             $motif = (string) $request->request->get('motif_gache');
+            // Pièce refaite après le contrôle final (docs/production-colis.md) : retour au contrôle de la commande.
+            $reprise = null !== $ordre->getPiecesARefaire();
             $this->actions->terminer($ordre, $this->moi(), Entree::entier($request->request, 'quantite_produite'), Entree::entier($request->request, 'quantite_rebut'), isset(ActionsOrdre::MOTIFS_GACHE[$motif]) ? $motif : null, (string) $request->request->get('observation'));
-            $this->addFlash('success', \sprintf('Terminé : %d bon%s, %d en gâche. Imprimez les étiquettes des colis.', $ordre->getQuantiteConforme(), $ordre->getQuantiteConforme() > 1 ? 's' : '', $ordre->getQuantiteRebut()));
             $commande = $ordre->getCommandeDetail()?->getCommande();
+            if ($reprise && null !== $commande) {
+                $this->addFlash('success', 'Pièce refaite. Collez l\'étiquette de son colis (« Réimprimer les mêmes » si besoin), scannez-la, puis refaites le contrôle final.');
+
+                return $this->redirectToRoute('app_atelier_production_controle_commande', ['id' => $commande->getId()]);
+            }
+            $this->addFlash('success', \sprintf('Terminé : %d bon%s, %d en gâche. Imprimez les étiquettes des colis.', $ordre->getQuantiteConforme(), $ordre->getQuantiteConforme() > 1 ? 's' : '', $ordre->getQuantiteRebut()));
 
             // Étiquettes par colis de la commande (PD05, docs/production-colis.md).
             return null !== $commande

@@ -211,6 +211,26 @@ final class FichierProduction
         return $reelle;
     }
 
+    /** Pourquoi rien n'est copié dans le dossier de production ; null quand la racine est bonne. */
+    public function alerteRacine(): ?string
+    {
+        if (null !== $this->racine()) {
+            return null;
+        }
+        $saisie = rtrim(trim((string) $this->parametres->valeur('production', 'racine_serveur')), '/\\');
+        if ($this->enLigne) {
+            return 'Sur le site en ligne, rien n\'est copié dans les dossiers des machines : le fichier reste dans l\'ERP. Téléchargez-le sous son nom de production.';
+        }
+        if ('' === $saisie) {
+            return 'Dossier de production non réglé (Réglages › Production) : le fichier reste dans l\'ERP. Téléchargez-le sous son nom de production.';
+        }
+        if (!is_dir($saisie)) {
+            return \sprintf('Le dossier de production « %s » est introuvable sur ce poste : créez-le ou corrigez le chemin dans Réglages › Production.', $saisie);
+        }
+
+        return \sprintf('Le dossier « %s » est dans l\'application : choisissez un dossier en dehors.', $saisie);
+    }
+
     /** Une racine est-elle saisie (même absente de ce serveur) ? */
     public function racineSaisie(): bool
     {

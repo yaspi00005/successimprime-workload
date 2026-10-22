@@ -89,6 +89,7 @@ final class ProductionRouleauController extends AbstractController
             'parties' => null !== $ordre ? NomFichierProduction::parties(FichierProduction::nomProduction($ordre)) : [],
             'dossier' => null !== $ordre ? $this->fichiers->dossierAffiche($this->fichiers->codeDossier($ordre->getTirage()?->getMachine() ?? $ordre->getMachine())) : null,
             'racine' => null !== $this->fichiers->racine(),
+            'alerteRacine' => $this->fichiers->alerteRacine(),
             'machines' => $this->tirages->machines(),
             'peutCopier' => null !== $ordre && $this->peutAgirSur($ordre->getMachine(), $request),
         ]);
@@ -258,6 +259,7 @@ final class ProductionRouleauController extends AbstractController
             'tailleMax' => EnvoiRip::TAILLE_MAX,
             'dossier' => $this->fichiers->dossierAffiche($this->fichiers->codeDossier($tirage->getMachine())),
             'racine' => null !== $this->fichiers->racine(),
+            'alerteRacine' => $this->fichiers->alerteRacine(),
             'longueurMax' => $this->tirages->reglages()['longueurMax'],
             'margeTexte' => ImpositionRouleau::nombre($tirage->getMargeCm()),
             'espaceTexte' => ImpositionRouleau::nombre($tirage->getEspaceCm()),

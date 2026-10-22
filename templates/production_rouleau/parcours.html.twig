@@ -70,7 +70,7 @@
 				</div>
 				<p class="si-fab-note">Le machiniste reconnaît le travail sans ouvrir le fichier. Le nom vient de l'ERP, personne ne le tape à la main ; le fichier du client n'est ni déplacé ni renommé.</p>
 				{% if not racine %}
-					<p class="si-fr-alerte mt-2">Dossier de la machine non réglé : le fichier reste dans l'ERP. Téléchargez-le sous son nom de production.</p>
+					<p class="si-fr-alerte mt-2">{{ alerteRacine }}</p>
 				{% endif %}
 				<div class="si-fr-ligne mt-2">
 					<a href="{{ path('app_atelier_production_fichier', {id: ordre.id, quoi: 'impression'}) }}" class="si-fab-bouton"><i class="fas fa-download" aria-hidden="true"></i>Télécharger sous ce nom</a>

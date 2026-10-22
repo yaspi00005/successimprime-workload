@@ -142,7 +142,7 @@
 			<div class="si-fr-note-rip">
 				Le RIP reçoit un seul fichier avec les {{ pieces|length }} pièce{{ pieces|length > 1 ? 's' }}, les repères de coupe et le nom de chaque commande imprimé dans la marge ({{ nomRip }}). Les couleurs sont converties par le RIP avec le profil du support : le serveur ne convertit rien.
 				{% if dossier and racine %}<br>Dossier de la machine : <span class="si-fr-code">{{ dossier }}</span>{% endif %}
-				{% if not racine %}<br><b>Dossier de la machine non réglé : le fichier reste dans l'ERP</b>{% if dossier %} (prévu : <span class="si-fr-code">{{ dossier }}</span>){% endif %}.{% endif %}
+				{% if not racine %}<br><b>{{ alerteRacine|trim('.', 'right') }}</b>{% if dossier %} (prévu : <span class="si-fr-code">{{ dossier }}</span>){% endif %}.{% endif %}
 			</div>
 
 			{% if modifiable and peutAgir %}

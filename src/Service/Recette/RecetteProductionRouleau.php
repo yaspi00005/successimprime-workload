@@ -2,6 +2,7 @@
 
 namespace App\Service\Recette;
 
+use App\Entity\TirageRouleau;
 use App\Entity\User;
 use App\Security\Droits;
 use Doctrine\ORM\EntityManagerInterface;
@@ -12,15 +13,16 @@ use Symfony\Component\Routing\RouterInterface;
  *
  * - le coût matière + encre de l'imposition seulement avec « Coûts et
  *   marges » (les autres pages passent déjà par la recherche des montants) ;
- * - les gestes de l'atelier (cocher, scanner, buses, Démarrer) suivent la
- *   règle de l'atelier : « Statuts de production », puis chef d'atelier,
- *   opérateur affecté à la machine, ou pointé aujourd'hui si la machine
- *   n'a pas d'opérateur ;
+ * - les gestes de l'atelier (cocher, scanner, buses, Démarrer, impression
+ *   en cours) suivent la règle de l'atelier : « Statuts de production »,
+ *   puis chef d'atelier, opérateur affecté à la machine, ou pointé
+ *   aujourd'hui si la machine n'a pas d'opérateur ;
  * - machines, dossiers et codes des fichiers : chef d'atelier (ou
  *   Direction) seulement ;
  * - sur le site en ligne, ces écrans n'existent pas (404).
  *
- * Les envois ne changent rien : un point inconnu, aucun code saisi ; la
+ * Les envois ne changent rien : un point inconnu, aucun code saisi,
+ * « Reprendre » sur un rouleau qui n'est pas en pause ; la
  * modification d'une machine n'est essayée que là où elle doit être
  * refusée. La recette annule de toute façon ses écritures.
  */
@@ -74,6 +76,15 @@ final class RecetteProductionRouleau
             $this->envoi($bilan, $identifiant, 'app_atelier_production_cocher', $chemin, $etat, $permis, 'cocher un point de la fiche de production', 'règle de l\'atelier : Statuts de production, puis chef d\'atelier, opérateur de la machine ou pointé');
         }
 
+        // Impression en cours (PD04, PD07) : « Reprendre » sur un rouleau qui n'est pas en pause ne change rien.
+        $calme = $this->em->getConnection()->fetchAssociative('SELECT id, machine_id FROM tirage_rouleau WHERE id >= ? AND statut <> ? ORDER BY id LIMIT 1', [ParametresRoute::PREMIER_ID_DEMO, TirageRouleau::STATUT_EN_PAUSE]);
+        if (false !== $calme) {
+            $permis = $gerer && ($chef || ($this->operateur((int) $calme['machine_id'], $compte) ?? $this->pointeAujourdhui($compte)));
+            $chemin = $this->routeur->generate('app_atelier_production_en_cours_action', ['id' => (int) $calme['id'], 'action' => 'reprendre']);
+            $etat = $this->navigateur->post($chemin, ['_token' => $jeton], $session)->etat();
+            $this->envoi($bilan, $identifiant, 'app_atelier_production_en_cours_action', $chemin, $etat, $permis, 'un geste de l\'impression en cours', 'règle de l\'atelier : Statuts de production, puis chef d\'atelier, opérateur de la machine ou pointé');
+        }
+
         // Codes des fichiers (aucun code envoyé : rien ne change).
         $chemin = $this->routeur->generate('app_atelier_production_nommage_enregistrer');
         $etat = $this->navigateur->post($chemin, ['_token' => $jeton], $session)->etat();
@@ -102,14 +113,21 @@ final class RecetteProductionRouleau
             $chemin = $this->routeur->generate($route);
             $reponses[] = $chemin.' → '.$this->navigateur->get($chemin)->statut;
         }
-        foreach (['app_atelier_production_fiche', 'app_atelier_production_imposition'] as $route) {
+        foreach (['app_atelier_production_fiche', 'app_atelier_production_imposition', 'app_atelier_production_en_cours', 'app_atelier_production_en_cours_etat'] as $route) {
             $chemin = $this->routeur->generate($route, ['id' => ParametresRoute::PREMIER_ID_DEMO]);
             $reponses[] = $chemin.' → '.$this->navigateur->get($chemin)->statut;
         }
-        $chemin = $this->routeur->generate('app_atelier_production_nommage_enregistrer');
-        $reponses[] = 'POST '.$chemin.' → '.$this->navigateur->post($chemin, [])->statut;
+        $chemin = $this->routeur->generate('app_atelier_operateur_en_cours');
+        $reponses[] = $chemin.' → '.$this->navigateur->get($chemin)->statut;
+        foreach ([
+            $this->routeur->generate('app_atelier_production_nommage_enregistrer'),
+            $this->routeur->generate('app_atelier_production_en_cours_action', ['id' => ParametresRoute::PREMIER_ID_DEMO, 'action' => 'terminer']),
+            $this->routeur->generate('app_atelier_production_finition', ['id' => ParametresRoute::PREMIER_ID_DEMO]),
+        ] as $chemin) {
+            $reponses[] = 'POST '.$chemin.' → '.$this->navigateur->post($chemin, [])->statut;
+        }
         $ok = [] === array_filter($reponses, static fn (string $r): bool => !str_ends_with($r, '→ 404'));
-        $bilan->controler('Site en ligne : production au rouleau, machines et dossiers introuvables', $ok, implode(', ', $reponses));
+        $bilan->controler('Site en ligne : production au rouleau, impression en cours, machines et dossiers introuvables', $ok, implode(', ', $reponses));
     }
 
     private function envoi(BilanRecette $bilan, string $identifiant, string $route, string $chemin, string $etat, bool $permis, string $libelle, string $regle): void

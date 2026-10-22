@@ -19,7 +19,7 @@
 			<a href="{{ path('app_atelier_production_imposition', {id: tirage.id}) }}" class="si-fab-bouton"><i class="fas fa-th-large" aria-hidden="true"></i>Imposition</a>
 			<a href="{{ path('app_atelier_production_imprimer', {id: tirage.id}) }}" class="si-fab-bouton" target="_blank" rel="noopener"><i class="fas fa-print" aria-hidden="true"></i>Imprimer la fiche</a>
 			{% if lance %}
-				<a href="{{ path('app_ma_file_index', {m: tirage.machine.id}) }}" class="si-fab-bouton sombre"><i class="fas fa-stream" aria-hidden="true"></i>Ma file</a>
+				<a href="{{ path('app_atelier_production_en_cours', {id: tirage.id}) }}" class="si-fab-bouton sombre"><i class="fas fa-print" aria-hidden="true"></i>{{ tirage.statut in ['en_impression', 'en_pause'] ? 'Impression en cours' : 'Suivi de l\'impression' }}</a>
 			{% elseif not tirage.estAnnule %}
 				<form method="post" action="{{ path('app_atelier_production_demarrer', {id: tirage.id}) }}" class="si-fr-inline">
 					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
@@ -37,7 +37,7 @@
 	{% elseif tirage.estAnnule %}
 		<p class="si-fr-alerte rouge">Ce rouleau est annulé : ses travaux attendent un autre rouleau.</p>
 	{% elseif lance and tirage.demarreLe %}
-		<p class="si-fr-alerte vert">Impression démarrée à {{ tirage.demarreLe|date('H:i') }}{% if machinistePrenom %} par {{ machinistePrenom }}{% endif %}. La suite se fait dans Ma file.</p>
+		<p class="si-fr-alerte vert">Impression démarrée à {{ tirage.demarreLe|date('H:i') }}{% if machinistePrenom %} par {{ machinistePrenom }}{% endif %}. La suite se fait sur <a href="{{ path('app_atelier_production_en_cours', {id: tirage.id}) }}">l'impression en cours</a>.</p>
 	{% endif %}
 
 	<div class="si-fr-fiche">

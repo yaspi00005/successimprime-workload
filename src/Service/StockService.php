@@ -1147,6 +1147,62 @@ final class StockService
     }
 
 
+    /**
+     * Sortie d'un article précis pour une ligne, en plus de sa recette :
+     * chute du rouleau, encre, œillets (PD04 et PD06,
+     * docs/production-rouleau.md). Idempotente par ligne, article, origine
+     * et référence (ROUL-R-1021-02, ROUL-R-1021-02-ENCRE, FIN-000123).
+     * Consomme la réservation de l'article sur la ligne et prévient sous le
+     * seuil, comme consommerPourDetail. Ne flushe pas.
+     */
+    public function sortirArticlePourDetail(
+        CommandesDetails $detail,
+        Articles $article,
+        float $quantite,
+        string $origine,
+        string $referenceOrigine
+    ): ?StockSorties {
+        $quantite = round($quantite, 3);
+        $referenceOrigine = trim($referenceOrigine);
+        if ($quantite <= 0 || $referenceOrigine === '') {
+            return null;
+        }
+        if (!in_array($origine, [StockSorties::ORIGINE_PRODUCTION, StockSorties::ORIGINE_LIVRAISON, StockSorties::ORIGINE_MANUELLE], true)) {
+            throw new \DomainException('Origine de sortie de stock invalide.');
+        }
+        if ($this->trouverSortieExistante($detail, $article, $origine, $referenceOrigine) !== null) {
+            return null;
+        }
+
+        $stockAvant = $this->getStockPhysique($article);
+        if ($stockAvant + 0.000001 < $quantite) {
+            $this->notificationService->notifierRoles(
+                self::ROLES_ALERTE_STOCK_BAS,
+                sprintf('Sortie de stock au-delà du stock enregistré : %s — sorti %s, stock enregistré %s (%s). Vérifiez l’inventaire ou les entrées.', $this->getDesignationArticle($article), $this->formaterQuantite($quantite), $this->formaterQuantite($stockAvant), $referenceOrigine),
+                'app_stock_etat_index'
+            );
+        }
+
+        $sortie = (new StockSorties())
+            ->setArticle($article)
+            ->setCommandeDetail($detail)
+            ->setQuantite($quantite)
+            ->setDate(new \DateTimeImmutable())
+            ->setOrigine($origine)
+            ->setReferenceOrigine($referenceOrigine);
+        $this->entityManager->persist($sortie);
+
+        $reservations = $this->entityManager->getRepository(StockReservation::class)->findBy([
+            'commandeDetail' => $detail,
+            'article' => $article,
+            'statut' => StockReservation::STATUT_ACTIVE,
+        ]);
+        $this->consommerReservationArticle($detail, $article, $quantite, $reservations);
+        $this->verifierSeuilAlerte($article, $stockAvant, $quantite);
+
+        return $sortie;
+    }
+
     /*
      * ============================================================
      * CONSOMMER UNE RÉSERVATION

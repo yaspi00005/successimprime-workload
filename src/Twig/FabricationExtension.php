@@ -23,6 +23,7 @@ final class FabricationExtension extends AbstractExtension
         ['cle' => 'tableau', 'libelle' => 'Tableau', 'route' => 'app_atelier_production'],
         ['cle' => 'parcours', 'libelle' => 'Parcours d\'un fichier', 'route' => 'app_atelier_production_parcours'],
         ['cle' => 'rouleaux', 'libelle' => 'Rouleaux', 'route' => 'app_atelier_production_rouleaux'],
+        ['cle' => 'en_cours', 'libelle' => 'Impression en cours', 'route' => 'app_atelier_operateur_en_cours'],
         ['cle' => 'machines', 'libelle' => 'Machines et dossiers', 'route' => 'app_atelier_production_machines'],
         ['cle' => 'etiquettes', 'libelle' => 'Étiquettes', 'route' => 'app_atelier_production_etiquettes'],
         ['cle' => 'controle', 'libelle' => 'Contrôle final', 'route' => 'app_atelier_production_controle'],

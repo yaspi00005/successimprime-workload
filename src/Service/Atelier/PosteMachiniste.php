@@ -200,7 +200,8 @@ final class PosteMachiniste
             'machine' => $o->getMachine()?->getNom(),
             'estime' => $duree !== null ? TempsEstime::duree($duree) : null,
             'debutPrevu' => $o->getDebutPrevuLe(),
-            'pourcent' => $duree !== null && $duree > 0 && $o->getDemarreLe() !== null ? min(99, (int) floor($progression['secondes'] * 100 / ($duree * 60))) : null,
+            'pourcent' => $progression['duree'] !== null && $progression['duree'] > 0 && $progression['debut'] !== null ? min(99, (int) floor($progression['secondes'] * 100 / ($progression['duree'] * 60))) : null,
+            'demarre' => $progression['debut'],
             'finEstimee' => $progression['finEstimee'],
             'enPause' => $o->estEnPause(),
             'colis' => $o->getNombreColis(),
@@ -227,7 +228,7 @@ final class PosteMachiniste
             }
             $fin = $o->estADemarrer()
                 ? ($o->getFinPrevueLe() !== null && $o->getFinPrevueLe() > $maintenant ? $o->getFinPrevueLe() : null)
-                : (FileMachine::progression($o, $maintenant)['finEstimee'] ?? $maintenant->modify('+30 minutes'));
+                : (AtelierProduction::finSurRouleau($o, $maintenant) ?? FileMachine::progression($o, $maintenant)['finEstimee'] ?? $maintenant->modify('+30 minutes'));
             if ($fin !== null && $fin > $maintenant && ($libre === null || $fin > $libre)) {
                 $libre = $fin;
             }

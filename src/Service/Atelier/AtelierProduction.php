@@ -16,6 +16,7 @@ use App\Entity\OrdreProduction;
 use App\Entity\Pointage;
 use App\Entity\ProduitArticleStock;
 use App\Entity\User;
+use App\Service\Production\ProgressionRouleau;
 use App\Service\TableauProduction;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -175,7 +176,8 @@ final class AtelierProduction
             if ($o->estADemarrer()) {
                 $place[$n] = ['duree' => $avancement['duree'], 'fixe' => $o->getDebutPrevuLe()];
             } else {
-                $fin = $avancement['finEstimee'] ?? $maintenant;
+                // Sur un rouleau en impression : la machine se libère à la fin de l'impression (PD04), pas après le séchage.
+                $fin = self::finSurRouleau($o, $maintenant) ?? $avancement['finEstimee'] ?? $maintenant;
                 $creneaux[$n] = ['debut' => $o->getDemarreLe() ?? $maintenant, 'fin' => $fin];
                 $depart = max($depart, $fin);
             }
@@ -217,6 +219,18 @@ final class AtelierProduction
         }
 
         return $this->files[$id] = $file;
+    }
+
+    /** Fin d'impression du rouleau en cours qui porte l'ordre (ProgressionRouleau), sinon null. */
+    public static function finSurRouleau(OrdreProduction $ordre, \DateTimeImmutable $maintenant): ?\DateTimeImmutable
+    {
+        $tirage = $ordre->getTirage();
+        if (null === $tirage || !$tirage->estLance()) {
+            return null;
+        }
+        $fin = ProgressionRouleau::duTirage($tirage, $maintenant)['fin'] ?? null;
+
+        return null !== $fin ? max($fin, $maintenant) : null;
     }
 
     /** Raison du blocage : fichier ou BAT pas prêt (contrôle prépresse ni validé ni envoyé). */

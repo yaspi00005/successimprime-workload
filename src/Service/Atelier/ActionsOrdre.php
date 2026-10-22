@@ -7,7 +7,9 @@ use App\Entity\Machines;
 use App\Entity\OrdreProduction;
 use App\Entity\StockSorties;
 use App\Entity\User;
+use App\Service\Production\SortiesProduction;
 use App\Service\StockService;
+use App\Service\SuiviMetiers\FileMachine;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -26,6 +28,7 @@ final class ActionsOrdre
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly StockService $stock,
+        private readonly SortiesProduction $sorties,
     ) {
     }
 
@@ -85,6 +88,15 @@ final class ActionsOrdre
         // Une reprise sort sa matière sous sa propre référence (PROD-000123-R1) : la sortie du premier passage n'est pas rejouée.
         $reprise = $ordre->getPiecesARefaire() !== null;
         $this->stock->consommerPourDetail($detail, StockSorties::ORIGINE_PRODUCTION, $ordre->referenceStock(), (float) $imprime);
+        // Imprimé seul (pas sur un rouleau en impression, qui mesure ses pièces) : temps d'impression réel et encre (PD06).
+        if (true !== $ordre->getTirage()?->estLance()) {
+            $maintenant = new \DateTimeImmutable();
+            $p = FileMachine::progression($ordre, $maintenant);
+            if (null !== $p['debut']) {
+                $ordre->noterImpression($p['debut'], $maintenant, (int) round($p['secondes'] / 60), self::impressionPrevue($ordre));
+            }
+            $this->sorties->encreOrdre($ordre, $imprime);
+        }
         $detail->terminerProduction($operateur, $imprime + ($reprise ? $detail->getQuantiteProduite() : 0), $gache + ($reprise ? $detail->getQuantiteRebut() : 0), $note);
         $ordre->terminer($operateur, $imprime, $gache, $note);
 
@@ -99,6 +111,23 @@ final class ActionsOrdre
 
         // « Commande prête » part au passage à « Prête » (contrôle final et colis scannés, ColisCommandes), plus à la fin de la production.
         $this->em->flush();
+    }
+
+    /**
+     * Temps d'impression proposé avant correction (FacteursEstimation
+     * apprend du rapport réel ÷ proposé), sinon null.
+     */
+    public static function impressionPrevue(OrdreProduction $ordre): ?int
+    {
+        foreach ($ordre->getEstimation()['etapes'] ?? [] as $e) {
+            if ('impression' === ($e['cle'] ?? null)) {
+                $minutes = $e['brut'] ?? $e['propose'] ?? null;
+
+                return null !== $minutes && (int) $minutes > 0 ? (int) $minutes : null;
+            }
+        }
+
+        return null;
     }
 
     /** Surface d'une pièce en m² : dimensions de la ligne, sinon celles du format. */

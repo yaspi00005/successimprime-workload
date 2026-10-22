@@ -1,0 +1,28 @@
+{#
+	PD04 : démarré, vitesse, encre, pièces terminées. Relu toutes les 20 s.
+	Vitesse réelle : m² des pièces confirmées ÷ temps sans les pauses ;
+	encre ≈ m² imprimés × ml/m² du profil (la sortie de stock reprend ce chiffre).
+#}
+{% set p = progression %}
+<div class="si-fe-stats">
+	<div>
+		<span>Démarré</span>
+		<b>{{ tirage.demarreLe ? tirage.demarreLe|date('H:i') : '—' }}</b>
+		<small>{% if demarrePar %}par {{ demarrePar }}{% endif %}{% if tirage.demarreLe and tirage.demarreLe|date('Y-m-d') != maintenant|date('Y-m-d') %} le {{ tirage.demarreLe|date('d/m') }}{% endif %}</small>
+	</div>
+	<div>
+		<span>Vitesse</span>
+		<b>{{ p.vitesseReelle is not null ? p.vitesseReelle|nombre_atelier(1) ~ ' m²/h' : '—' }}</b>
+		<small>{% if reperes.vitesse %}prévu {{ reperes.vitesse|nombre_atelier(1) }}{% endif %}{% if p.vitesseReelle is null %}{{ reperes.vitesse ? ' · ' }}après la 1re pièce{% endif %}</small>
+	</div>
+	<div>
+		<span>Encre utilisée</span>
+		<b>{{ p.encreMl is not null ? '≈ ' ~ p.encreMl ~ ' ml' : '—' }}</b>
+		<small>{% if tirage.encreMl %}sur {{ tirage.encreMl }} estimés{% else %}profil sans encre par m²{% endif %}</small>
+	</div>
+	<div>
+		<span>Pièces terminées</span>
+		<b>{{ p.faites }} / {{ p.total }}</b>
+		<small>{% if sechent is not empty %}{{ sechent|join(', ') }} sèche{{ sechent|length > 1 ? 'nt' }}{% elseif p.faites > 0 %}sèches{% else %}aucune encore{% endif %}</small>
+	</div>
+</div>

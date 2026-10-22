@@ -38,6 +38,7 @@ Une file par machine : commande, travail, matière, surface, temps, date promise
 - **Ordre automatique** : le travail en cours reste en tête, puis les retards, puis par date promise ; le même jour, la même matière est groupée pour changer moins souvent de rouleau ; les travaux bloqués restent en bas.
 - Le chef d'atelier **glisse une ligne** (sur téléphone : flèches haut et bas) ; « Réordonner automatiquement » revient aux règles. Un nouveau travail se place selon les règles après ceux qui ont été rangés.
 - Un travail est **bloqué** tant que son contrôle prépresse n'est pas validé (fichier à corriger, attente du client).
+- Un travail sur un rouleau en impression libère la machine à la **fin estimée de l'impression du rouleau** (`docs/production-rouleau.md`, PD04), pas après son séchage : le travail suivant de la file part à cette heure-là.
 - La **matière** vient de la nomenclature du produit (famille Supports) ; à droite, le stock de cette matière et les niveaux d'encre.
 
 ## Planning de la semaine (AT03)

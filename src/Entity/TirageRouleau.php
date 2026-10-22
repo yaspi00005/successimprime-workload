@@ -18,8 +18,10 @@ use Doctrine\ORM\Mapping as ORM;
  * seul tirage. ERP local seulement (jamais synchronisé).
  *
  * Statuts : préparé → envoyé au RIP → en impression (en pause) → imprimé →
- * terminé, ou annulé. L'impression en direct (PD04) se servira des trois
- * statuts du milieu et du statut de chaque pièce.
+ * terminé, ou annulé. L'impression en direct (PD04, ImpressionEnCours) suit
+ * les pièces une à une, garde les pauses (le temps effectif les retire) et
+ * les pièces ratées par ordre ; « imprimé » à « Impression terminée »,
+ * « terminé » quand tous ses travaux ont passé le contrôle final.
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'tirage_rouleau')]
@@ -171,6 +173,31 @@ class TirageRouleau
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(onDelete: 'SET NULL')]
     private ?User $demarrePar = null;
+
+    /**
+     * Pauses de l'impression (PD04), la dernière ouverte pendant une pause :
+     * [{debut, fin}] en ATOM, fin null tant qu'elle dure.
+     *
+     * @var list<array{debut: string, fin: ?string}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $pauses = null;
+
+    /** Pièces ratées notées pendant l'impression (« Signaler un problème ») : id de l'ordre => nombre. */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $gaches = null;
+
+    /** « Impression terminée » : la machine est libre à partir de là (le séchage se fait hors machine). */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $imprimeLe = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $imprimePar = null;
+
+    /** Tous les travaux du rouleau ont passé le contrôle final. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $termineLe = null;
 
     #[ORM\Column]
     private \DateTimeImmutable $creeLe;
@@ -548,6 +575,116 @@ class TirageRouleau
         $this->modifieLe = $le;
 
         return $this;
+    }
+
+    public function estEnImpression(): bool
+    {
+        return self::STATUT_EN_IMPRESSION === $this->statut;
+    }
+
+    public function estEnPause(): bool
+    {
+        return self::STATUT_EN_PAUSE === $this->statut;
+    }
+
+    /** En impression ou en pause : le rouleau est sur la machine. */
+    public function estLance(): bool
+    {
+        return $this->estEnImpression() || $this->estEnPause();
+    }
+
+    public function mettreEnPause(\DateTimeImmutable $le): static
+    {
+        if (!$this->estEnImpression()) {
+            throw new \LogicException('Seul un rouleau en impression peut être mis en pause.');
+        }
+        $pauses = $this->pauses ?? [];
+        $pauses[] = ['debut' => $le->format(\DATE_ATOM), 'fin' => null];
+        $this->pauses = $pauses;
+        $this->statut = self::STATUT_EN_PAUSE;
+        $this->modifieLe = $le;
+
+        return $this;
+    }
+
+    public function reprendre(\DateTimeImmutable $le): static
+    {
+        if (!$this->estEnPause()) {
+            throw new \LogicException('Seul un rouleau en pause peut être repris.');
+        }
+        $pauses = $this->pauses ?? [];
+        $dernier = array_key_last($pauses);
+        if (null !== $dernier && null === $pauses[$dernier]['fin']) {
+            $pauses[$dernier]['fin'] = max($le, new \DateTimeImmutable($pauses[$dernier]['debut']))->format(\DATE_ATOM);
+        }
+        $this->pauses = $pauses;
+        $this->statut = self::STATUT_EN_IMPRESSION;
+        $this->modifieLe = $le;
+
+        return $this;
+    }
+
+    /** @return list<array{debut: \DateTimeImmutable, fin: ?\DateTimeImmutable}> */
+    public function getPauses(): array
+    {
+        return array_map(static fn (array $p): array => ['debut' => new \DateTimeImmutable($p['debut']), 'fin' => null !== ($p['fin'] ?? null) ? new \DateTimeImmutable($p['fin']) : null], array_values($this->pauses ?? []));
+    }
+
+    /** @return array<int, int> id de l'ordre => pièces ratées */
+    public function getGaches(): array
+    {
+        return array_map('intval', $this->gaches ?? []);
+    }
+
+    public function noterGache(int $ordreId, int $pieces): static
+    {
+        $gaches = $this->getGaches();
+        $gaches[$ordreId] = max(0, ($gaches[$ordreId] ?? 0) + $pieces);
+        $this->gaches = $gaches;
+
+        return $this;
+    }
+
+    /** « Impression terminée » : toutes les pièces sont sorties de la machine. */
+    public function terminerImpression(User $par, \DateTimeImmutable $le): static
+    {
+        if (!$this->estEnImpression()) {
+            throw new \LogicException(self::STATUT_EN_PAUSE === $this->statut ? 'Reprenez le rouleau avant de le terminer.' : 'Ce rouleau n\'est pas en impression.');
+        }
+        $this->statut = self::STATUT_IMPRIME;
+        $this->imprimeLe = $le;
+        $this->imprimePar = $par;
+        $this->modifieLe = $le;
+
+        return $this;
+    }
+
+    /** Tous ses travaux ont passé le contrôle final. */
+    public function terminer(\DateTimeImmutable $le): static
+    {
+        if (self::STATUT_IMPRIME !== $this->statut) {
+            throw new \LogicException('Le rouleau doit être imprimé avant d\'être terminé.');
+        }
+        $this->statut = self::STATUT_TERMINE;
+        $this->termineLe = $le;
+        $this->modifieLe = $le;
+
+        return $this;
+    }
+
+    public function getImprimeLe(): ?\DateTimeImmutable
+    {
+        return $this->imprimeLe;
+    }
+
+    public function getImprimePar(): ?User
+    {
+        return $this->imprimePar;
+    }
+
+    public function getTermineLe(): ?\DateTimeImmutable
+    {
+        return $this->termineLe;
     }
 
     public function annuler(\DateTimeImmutable $le): static

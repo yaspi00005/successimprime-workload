@@ -140,24 +140,34 @@ final class FileMachine
     }
 
     /**
-     * Progression estimée d'un ordre en cours d'après sa durée prévue.
+     * Progression estimée d'un ordre en cours d'après sa durée prévue. Une
+     * pièce à refaire (contrôle final, PD06) compte son propre passage :
+     * depuis son redémarrage, pour la part de la durée de ses pièces.
      *
-     * @return array{secondes: int, m2: ?float, fait: ?float, finEstimee: ?\DateTimeImmutable}
+     * @return array{secondes: int, m2: ?float, fait: ?float, finEstimee: ?\DateTimeImmutable, debut: ?\DateTimeImmutable, duree: ?int}
      */
     public static function progression(OrdreProduction $o, \DateTimeImmutable $maintenant): array
     {
-        $debut = $o->getDemarreLe();
-        if ($debut === null) {
-            return ['secondes' => 0, 'm2' => self::m2($o), 'fait' => null, 'finEstimee' => null];
-        }
-        $pause = $o->getDureePauseMinutes() * 60 + ($o->getPauseDebuteLe() !== null ? $maintenant->getTimestamp() - $o->getPauseDebuteLe()->getTimestamp() : 0);
-        $secondes = max(0, $maintenant->getTimestamp() - $debut->getTimestamp() - $pause);
-        $duree = $o->getDureeEstimeeMinutes();
+        $reprise = $o->getRepriseDebuteeLe();
+        $debut = $reprise ?? $o->getDemarreLe();
         $m2 = self::m2($o);
+        $duree = $o->getDureeEstimeeMinutes();
+        if ($reprise !== null && $duree !== null) {
+            $quantite = max(1, (int) ($o->getQuantite() ?? 1));
+            $duree = max(1, (int) ceil($duree * min($quantite, max(1, (int) $o->getPiecesARefaire())) / $quantite));
+            $m2 = $m2 !== null ? round($m2 * min($quantite, max(1, (int) $o->getPiecesARefaire())) / $quantite, 2) : null;
+        }
+        // Prêt à démarrer (une pièce à refaire garde l'heure du premier démarrage) : rien ne tourne.
+        if ($debut === null || $o->estADemarrer()) {
+            return ['secondes' => 0, 'm2' => $m2, 'fait' => null, 'finEstimee' => null, 'debut' => null, 'duree' => $duree];
+        }
+        $pausesFaites = max(0, $o->getDureePauseMinutes() - ($reprise !== null ? $o->getReprisePauseMinutes() : 0));
+        $pause = $pausesFaites * 60 + ($o->getPauseDebuteLe() !== null ? max(0, $maintenant->getTimestamp() - $o->getPauseDebuteLe()->getTimestamp()) : 0);
+        $secondes = max(0, $maintenant->getTimestamp() - $debut->getTimestamp() - $pause);
         $fait = $duree !== null && $duree > 0 && $m2 !== null ? round(min(0.99, $secondes / ($duree * 60)) * $m2, 1) : null;
         $finEstimee = $duree !== null ? $debut->modify('+'.($duree * 60 + $pause).' seconds') : null;
 
-        return ['secondes' => $secondes, 'm2' => $m2, 'fait' => $fait, 'finEstimee' => $finEstimee];
+        return ['secondes' => $secondes, 'm2' => $m2, 'fait' => $fait, 'finEstimee' => $finEstimee, 'debut' => $debut, 'duree' => $duree];
     }
 
     public function signaler(Machines $machine, User $operateur, string $type, \DateTimeImmutable $le, ?OrdreProduction $ordre, ?float $quantite, ?string $note): JournalMachine

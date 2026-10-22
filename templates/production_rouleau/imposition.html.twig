@@ -122,7 +122,7 @@
 			<section class="si-fab-carte" aria-labelledby="si-fr-estim-titre">
 				<h2 id="si-fr-estim-titre">Estimation</h2>
 				<dl class="si-fr-chiffres">
-					<div><dt>Durée d'impression</dt><dd>{{ tirage.dureeImpressionMin is not null ? tirage.dureeImpressionMin ~ ' min' : 'vitesse à régler' }}</dd></div>
+					<div><dt>Durée d'impression</dt><dd>{{ dureeImpression is not null ? dureeImpression|temps_estime : 'vitesse à régler' }}{% if correction %}<small class="d-block si-fab-muet" title="Durée calculée avec la vitesse du profil : {{ tirage.dureeImpressionMin|temps_estime }}">{{ correction }}</small>{% endif %}</dd></div>
 					<div><dt>Séchage avant finition</dt><dd>{{ tirage.sechageMin is not null ? tirage.sechageMin ~ ' min' : '—' }}</dd></div>
 					<div><dt>Encre</dt><dd>{{ tirage.encreMl is not null ? '≈ ' ~ tirage.encreMl ~ ' ml' : 'profil à régler' }}</dd></div>
 					{% if voitCout %}

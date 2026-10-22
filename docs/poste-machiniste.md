@@ -4,7 +4,7 @@ Le poste du machiniste, d'après les maquettes OP01 à OP06 (« Poste machiniste
 
 Le code : `src/Controller/MaFileController.php`, `src/Service/Atelier/PosteMachiniste.php` (ce que montrent les pages), `src/Service/Atelier/TempsEstime.php` (les calculs, testés dans `tests/Unit/Service/Atelier/TempsEstimeTest.php`), `src/Service/Atelier/ActionsOrdre.php` (démarrer, pause, terminer : le même chemin que l'atelier et le poste de production), `src/Entity/RetourPrepresse.php`, `templates/ma_file/`, `public/css/poste-machiniste.css`, `public/js/poste-machiniste.js`.
 
-Les travaux au rouleau (bâches, kakémonos, vinyle) se regroupent d'abord sur un rouleau : imposition, envoi au RIP et fiche de production, dont « Démarrer » fait passer tous les travaux « en cours » ici (`docs/production-rouleau.md`).
+Les travaux au rouleau (bâches, kakémonos, vinyle) se regroupent d'abord sur un rouleau : imposition, envoi au RIP et fiche de production, dont « Démarrer » fait passer tous les travaux « en cours » (`docs/production-rouleau.md`). Tant que leur rouleau s'imprime, pause, problème et fin se font sur l'impression en cours (PD04) : la page du travail montre « Rouleau R-1022-03 : suivre l'impression » à la place de Terminé et Pause, et ces boutons envoyés quand même renvoient vers l'impression en cours.
 
 ## Le parcours d'un travail
 
@@ -43,10 +43,12 @@ Un fichier qui ne va pas repart au prépresse (« Retourné au prépresse ») et
   - séchage avant finition : 30 min, seulement quand il y a des finitions ;
   - finitions : 10 min par finition et par exemplaire en grand format (pièce de plus de 0,25 m²), sinon 15 min par lot de 100 ;
   - contrôle et emballage : 10 min.
-  Chaque durée est arrondie aux 5 minutes. Le machiniste corrige ce qu'il veut (« 1 h 30 », « 1h30 », « 90 », « 45 min ») et peut noter la raison de l'écart. Le total et l'heure de fin se recalculent pendant la saisie.
+  Chaque durée est arrondie aux 5 minutes. Quand la machine a assez de travaux terminés avec leurs temps réels (5 au moins), la durée proposée est corrigée et le dit : « corrigé d'après les 12 derniers travaux (× 1,1) » (`docs/production-colis.md`, « Temps réels par étape »). Le machiniste corrige ce qu'il veut (« 1 h 30 », « 1h30 », « 90 », « 45 min ») et peut noter la raison de l'écart. Le total et l'heure de fin se recalculent pendant la saisie.
 - Début : maintenant (arrondi aux 5 minutes) ou l'heure où la machine se libère. La fin prévue est comparée à la date promise.
 - « Vos estimations récentes » : les trois derniers travaux terminés avec l'estimé et le réel, et l'écart moyen du mois. Ce n'est pas une sanction : cela sert à mieux proposer la prochaine fois.
 - « Démarrer à … » quand la machine est libre ; sinon « Prévoir à … ». L'estimation remplit le planning de l'atelier (durée, début et fin prévus).
+
+**Pièce refaite** (« Refaire une pièce » au contrôle final, `docs/production-colis.md`) : le travail revient « Prêt à démarrer ». Une fois redémarré, la barre, « reprise démarrée », la fin estimée et le temps passé comptent la reprise seule : sa part de la durée estimée (pièces refaites ÷ quantité) depuis son redémarrage. « Sorti avant l'heure prévue » n'est plus possible pour ce travail ; la page le dit.
 
 ## Retourner au prépresse (OP04)
 

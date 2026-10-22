@@ -1,0 +1,266 @@
+{#
+	PD04 Impression en cours (poste) et PD07 écran 1 (téléphone, 390 px) :
+	la machine en direct, la vitesse, l'encre, les pièces, la suite de la
+	file ; « Pièce imprimée », pause, problème, « Impression terminée », puis
+	le séchage et « Commencer la finition ». L'état se relit toutes les 20 s
+	(sans bibliothèque, arrêté quand l'onglet est caché) ; sans JavaScript,
+	tout marche en rechargeant la page. Aucun montant.
+	Variables : ImpressionEnCours::etat() + peutAgir, raison, problemes.
+#}
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}{{ tirage.statut in ['en_impression', 'en_pause'] ? 'Impression en cours' : 'Rouleau imprimé' }} · {{ tirage.numero }}{% endblock %}
+{% block fab_actif %}en_cours{% endblock %}
+
+{% set lance = tirage.statut in ['en_impression', 'en_pause'] %}
+{% set pause = tirage.statut == 'en_pause' %}
+{% set jeton = csrf_token('production-rouleau') %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete si-fe-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › <a href="{{ path('app_atelier_production_rouleaux') }}">Rouleaux</a> › {{ machine.nom }}</p>
+			<h1 class="si-fab-titre">{{ lance ? 'Impression en cours' : 'Rouleau ' ~ tirage.numero ~ ' imprimé' }}</h1>
+			<p class="si-fab-muet mb-0">Rouleau <a href="{{ path('app_atelier_production_fiche', {id: tirage.id}) }}">{{ tirage.numero }}</a> · {{ tirage.libelleSupport }} · <span class="si-fab-pastille {{ lance ? 'orange' : (tirage.statut == 'termine' ? 'vert' : 'bleu') }}">{{ tirage.libelleStatut }}</span></p>
+		</div>
+		{% if lance and peutAgir %}
+			<div class="si-fab-actions si-fe-haut">
+				<form method="post" action="{{ path('app_atelier_production_en_cours_action', {id: tirage.id, action: pause ? 'reprendre' : 'pause'}) }}" class="si-fr-inline">
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<button type="submit" class="si-fab-bouton"><i class="fas {{ pause ? 'fa-play' : 'fa-pause' }}" aria-hidden="true"></i>{{ pause ? 'Reprendre' : 'Pause' }}</button>
+				</form>
+				<a href="#si-fe-probleme" class="si-fab-bouton"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i>Signaler un problème</a>
+			</div>
+		{% endif %}
+	</header>
+
+	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous suivez l'impression sans pouvoir agir.</p>{% endif %}
+	{% if arret %}<p class="si-fr-alerte rouge"><b>{{ machine.nom }} est à l'arrêt :</b> {{ arret.titre }} (signalé à {{ arret.signaleLe|date('H:i') }}). Le chef d'atelier est prévenu.</p>{% endif %}
+
+	{% if lance %}
+		<div class="si-fe-grille" data-en-cours="{{ path('app_atelier_production_en_cours_etat', {id: tirage.id}) }}" data-statut="{{ tirage.statut }}">
+			<div class="si-fe-principal">
+				<div data-bloc="direct">{% include 'production_rouleau/_en_cours_direct.html.twig' %}</div>
+
+				{% for r in rappels %}<p class="si-fe-rappel si-fe-telephone"><b>Rappel :</b> {{ r }}</p>{% endfor %}
+
+				{% if peutAgir %}
+					<div class="si-fe-gestes">
+						{% if courante %}
+							<form method="post" action="{{ path('app_atelier_production_en_cours_action', {id: tirage.id, action: 'piece'}) }}">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<button type="submit" class="si-fab-bouton principal si-fe-gros" {{ pause ? 'disabled' }}><i class="fas fa-check" aria-hidden="true"></i>Pièce imprimée{% if courante %} · {{ courante.nom }}{% endif %}</button>
+							</form>
+						{% else %}
+							<a href="#si-fe-terminer" class="si-fab-bouton principal si-fe-gros"><i class="fas fa-flag-checkered" aria-hidden="true"></i>Impression terminée</a>
+						{% endif %}
+						<div class="si-fe-gestes-telephone">
+							<form method="post" action="{{ path('app_atelier_production_en_cours_action', {id: tirage.id, action: pause ? 'reprendre' : 'pause'}) }}">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<button type="submit" class="si-fab-bouton si-fe-contour"><i class="fas {{ pause ? 'fa-play' : 'fa-pause' }}" aria-hidden="true"></i>{{ pause ? 'Reprendre' : 'Pause' }}</button>
+							</form>
+							<a href="#si-fe-probleme" class="si-fab-bouton si-fe-rouge"><i class="fas fa-exclamation-triangle" aria-hidden="true"></i>Problème</a>
+						</div>
+					</div>
+					{% if pause %}<p class="si-fab-note">Le rouleau est en pause : « Reprendre » avant de confirmer une pièce.</p>{% endif %}
+				{% endif %}
+
+				<div data-bloc="stats">{% include 'production_rouleau/_en_cours_stats.html.twig' %}</div>
+
+				{% if ensuite is not empty %}
+					<section class="si-fab-carte si-fe-ensuite" aria-labelledby="si-fe-ensuite-titre">
+						<h2 id="si-fe-ensuite-titre">Ensuite sur cette machine</h2>
+						<ul>
+							{% for e in ensuite %}
+								<li>
+									<span class="heure">{{ e.heure ? e.heure|date('H:i') : '' }}</span>
+									<b>{% if e.lien %}<a href="{{ path(e.lien.route, {id: e.lien.id}) }}">{{ e.titre }}</a>{% else %}{{ e.titre }}{% endif %}</b>
+									<span class="detail">{{ e.detail }}</span>
+									{% if e.memeRouleau is same as(true) %}<span class="si-fr-vert">même rouleau</span>{% elseif e.memeRouleau is same as(false) %}<span class="si-fe-changer">changer de rouleau</span>{% endif %}
+								</li>
+							{% endfor %}
+						</ul>
+					</section>
+				{% endif %}
+
+				{% if peutAgir %}
+					<section class="si-fab-carte" id="si-fe-terminer" aria-labelledby="si-fe-terminer-titre">
+						<h2 id="si-fe-terminer-titre">Impression terminée</h2>
+						<p class="si-fab-muet">Les pièces pas encore confirmées le sont maintenant ; chaque travail passe « Terminé » ; la chute du rouleau et l'encre sortent du stock. La machine est libre tout de suite, le séchage se fait à côté.</p>
+						<form method="post" action="{{ path('app_atelier_production_en_cours_action', {id: tirage.id, action: 'terminer'}) }}">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<table class="si-fr-table" data-sans-filtres>
+								<thead><tr><th scope="col">Travail</th><th scope="col">Pièces</th><th scope="col">Ratées et réimprimées</th></tr></thead>
+								<tbody>
+									{% for o in ordres %}
+										<tr>
+											<td><b>{{ o.nom }}</b><br><small class="si-fab-muet">{{ o.produit }}</small></td>
+											<td data-label="Pièces">{{ o.pieces }}</td>
+											<td data-label="Ratées et réimprimées"><label class="visually-hidden" for="si-fe-gache-{{ o.ordre.id }}">Pièces ratées de {{ o.nom }}</label><input type="number" id="si-fe-gache-{{ o.ordre.id }}" name="gache[{{ o.ordre.id }}]" min="0" max="999" value="{{ o.gache }}" class="si-fe-nombre" inputmode="numeric"></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+							<button type="submit" class="si-fab-bouton sombre mt-2"><i class="fas fa-flag-checkered" aria-hidden="true"></i>Impression terminée</button>
+						</form>
+					</section>
+				{% endif %}
+			</div>
+
+			<aside class="si-fe-cote">
+				<section class="si-fab-carte" aria-labelledby="si-fe-pieces-titre">
+					<h2 id="si-fe-pieces-titre">Pièces du rouleau</h2>
+					<div data-bloc="pieces">{% include 'production_rouleau/_en_cours_pieces.html.twig' %}</div>
+				</section>
+
+				<section class="si-fab-carte si-fe-encres" aria-labelledby="si-fe-encres-titre">
+					<div class="si-fr-carte-entete">
+						<h2 id="si-fe-encres-titre">Encres</h2>
+						{% if encres is not empty %}
+							<div class="si-fr-encres si-fe-tubes" role="list" aria-label="Niveaux d'encre">
+								{% for code, pct in encres %}
+									{% set c = {C: '#00AEEF', M: '#EC008C', J: '#FFD400', N: '#1F2937', B: '#E5E7EB'}[code] ?? '#9CA3AF' %}
+									<div class="{{ pct < seuilEncre ? 'bas' }}" role="listitem" aria-label="{{ code }} {{ pct }} %">
+										<span class="tube"><span style="height: {{ pct }}%; background: {{ c }}"></span></span>
+										<b>{{ pct }}</b>
+									</div>
+								{% endfor %}
+							</div>
+						{% endif %}
+					</div>
+					{% if encres is empty %}
+						<p class="si-fab-muet mb-0">Niveaux pas encore relevés.</p>
+					{% elseif encresBasses is not empty %}
+						<p class="si-fr-rouge mb-0">{% for code in encresBasses %}{{ {C: 'Cyan', M: 'Magenta', J: 'Jaune', N: 'Noir', B: 'Blanc'}[code] ?? code }} à {{ encres[code] }} %{{ not loop.last ? ', ' }}{% endfor %} : à remplacer (seuil {{ seuilEncre }} %).</p>
+					{% else %}
+						<p class="si-fr-vert mb-0">{% if encresLe %}Relevé à {{ encresLe|date('H:i') }}{% if encresLe|date('Y-m-d') != maintenant|date('Y-m-d') %} le {{ encresLe|date('d/m') }}{% endif %}{% if encresPar %} par {{ encresPar }}{% endif %} · {% endif %}tout est bon</p>
+					{% endif %}
+					{% if peutAgir %}<p class="mb-0 mt-1"><a href="{{ path('app_atelier_production_fiche', {id: tirage.id, _fragment: 'si-fr-encres'}) }}" class="si-fab-muet">Relever les niveaux</a></p>{% endif %}
+				</section>
+
+				{% for r in rappels %}<p class="si-fe-rappel si-fe-bureau"><b>Rappel :</b> {{ r }}</p>{% endfor %}
+
+				{% if peutAgir %}
+					<section class="si-fab-carte" id="si-fe-probleme" aria-labelledby="si-fe-probleme-titre">
+						<h2 id="si-fe-probleme-titre">Signaler un problème</h2>
+						<form method="post" action="{{ path('app_atelier_production_en_cours_action', {id: tirage.id, action: 'probleme'}) }}" class="si-fe-probleme">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<fieldset>
+								<legend class="visually-hidden">Quel problème ?</legend>
+								{% for cle, libelle in problemes %}
+									<label><input type="radio" name="motif" value="{{ cle }}" {{ loop.first ? 'required' }}> {{ libelle }}{% if cle == 'piece_ratee' and courante %} <small class="si-fab-muet">({{ courante.nom }})</small>{% endif %}</label>
+								{% endfor %}
+							</fieldset>
+							<label for="si-fe-detail" class="si-fab-muet">En quelques mots (facultatif)</label>
+							<textarea id="si-fe-detail" name="detail" rows="2" maxlength="500"></textarea>
+							<label class="si-fe-arret"><input type="checkbox" name="arret" value="1"> La machine est à l'arrêt (le rouleau passe en pause)</label>
+							<button type="submit" class="si-fab-bouton principal"><i class="fas fa-bell" aria-hidden="true"></i>Prévenir le chef d'atelier</button>
+						</form>
+					</section>
+				{% endif %}
+			</aside>
+		</div>
+	{% else %}
+		{# Après l'impression : séchage et finition, ce qui est sorti du stock, la suite. #}
+		<div class="si-fe-grille">
+			<div class="si-fe-principal">
+				<section class="si-fab-carte si-fe-bilan" aria-label="Bilan de l'impression">
+					<p class="si-fe-etat vert"><span class="point" aria-hidden="true"></span>{{ machine.nom|upper }} · {{ tirage.statut == 'termine' ? 'TERMINÉ' : 'IMPRIMÉ' }}</p>
+					<p class="mb-1"><b>{{ progression.total }} pièce{{ progression.total > 1 ? 's' }} · {{ progression.m2Total|nombre_atelier(1) }} m²</b>{% if tirage.imprimeLe %} · imprimé à {{ tirage.imprimeLe|date('H:i') }}{% if imprimePar %} par {{ imprimePar }}{% endif %}{% endif %}{% if dureeMin is not null %} · {{ dureeMin|temps_estime }} d'impression{% endif %}</p>
+					<p class="si-fab-muet mb-0">{% if progression.vitesseReelle %}Vitesse {{ progression.vitesseReelle|nombre_atelier(1) }} m²/h{% if reperes.vitesse %} (prévu {{ reperes.vitesse|nombre_atelier(1) }}){% endif %} · {% endif %}{% if progression.encreMl %}encre ≈ {{ progression.encreMl }} ml{% if tirage.encreMl %} sur {{ tirage.encreMl }} estimés{% endif %}{% endif %}</p>
+				</section>
+
+				<section class="si-fab-carte" id="apres" aria-labelledby="si-fe-apres-titre">
+					<h2 id="si-fe-apres-titre">Séchage et finition</h2>
+					<ul class="si-fr-liste">
+						{% for o in ordres %}
+							<li>
+								<div>
+									<b>{{ o.nom }}</b> <small class="si-fab-muet">{{ o.produit }} · {{ o.pieces }} pièce{{ o.pieces > 1 ? 's' }}{% if o.gache > 0 %} · {{ o.gache }} ratée{{ o.gache > 1 ? 's' }}{% endif %}</small><br>
+									{% if o.finition %}
+										<span class="si-fr-vert">Finition commencée à {{ o.finition|date('H:i') }}</span>
+									{% elseif o.ordre.pretLivraison %}
+										<span class="si-fr-vert">Prêt pour la livraison</span>
+									{% elseif o.secheA %}
+										<small class="{{ o.sec ? 'si-fr-vert' : 'si-fab-muet' }}">{{ o.sec ? 'Sec depuis ' ~ o.secheA|date('H:i') : 'Sèche jusqu\'à ' ~ o.secheA|date('H:i') }}</small>
+									{% endif %}
+								</div>
+								{% if peutAgir and not o.finition and o.ordre.termine and not o.ordre.pretLivraison %}
+									<form method="post" action="{{ path('app_atelier_production_finition', {id: o.ordre.id}) }}">
+										<input type="hidden" name="_token" value="{{ jeton }}">
+										<button type="submit" class="si-fab-bouton si-fr-petit-bouton {{ o.sec ? 'sombre' }}"><i class="fas fa-cut" aria-hidden="true"></i>Commencer la finition</button>
+									</form>
+								{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-fab-note">Sans appui, la finition est comptée à partir de la fin du séchage ({{ reperes.sechageMin }} min). Ensuite : <a href="{{ path('app_atelier_production_etiquettes') }}">étiquettes</a> puis <a href="{{ path('app_atelier_production_controle') }}">contrôle final</a>.</p>
+				</section>
+
+				{% if ensuite is not empty %}
+					<section class="si-fab-carte si-fe-ensuite" aria-labelledby="si-fe-ensuite-titre">
+						<h2 id="si-fe-ensuite-titre">Ensuite sur cette machine</h2>
+						<ul>
+							{% for e in ensuite %}
+								<li>
+									<span class="heure">{{ e.heure ? e.heure|date('H:i') : '' }}</span>
+									<b>{% if e.lien %}<a href="{{ path(e.lien.route, {id: e.lien.id}) }}">{{ e.titre }}</a>{% else %}{{ e.titre }}{% endif %}</b>
+									<span class="detail">{{ e.detail }}</span>
+									{% if e.memeRouleau is same as(true) %}<span class="si-fr-vert">même rouleau</span>{% elseif e.memeRouleau is same as(false) %}<span class="si-fe-changer">changer de rouleau</span>{% endif %}
+								</li>
+							{% endfor %}
+						</ul>
+					</section>
+				{% endif %}
+			</div>
+			<aside class="si-fe-cote">
+				<section class="si-fab-carte" aria-labelledby="si-fe-pieces-titre">
+					<h2 id="si-fe-pieces-titre">Pièces du rouleau</h2>
+					{% include 'production_rouleau/_en_cours_pieces.html.twig' %}
+				</section>
+				<section class="si-fab-carte" aria-labelledby="si-fe-stock-titre">
+					<h2 id="si-fe-stock-titre">Sorti du stock</h2>
+					{% if sorties is empty %}
+						<p class="si-fab-muet mb-0">Rien n'est sorti pour ce rouleau (support ou encre sans article de stock).</p>
+					{% else %}
+						<table class="si-fr-table" data-sans-filtres><tbody>
+							{% for s in sorties %}<tr><td>{{ s.article }}</td><td class="text-end"><b>{{ s.quantite }}</b></td></tr>{% endfor %}
+						</tbody></table>
+						<p class="si-fab-note">Chute du rouleau et encre, en plus de la matière des pièces sortie à « Terminé ».</p>
+					{% endif %}
+				</section>
+			</aside>
+		</div>
+	{% endif %}
+
+	{% if lance %}
+		<script>
+			(function () {
+				var grille = document.querySelector('[data-en-cours]');
+				if (!grille || !window.fetch) { return; }
+				var url = grille.getAttribute('data-en-cours');
+				var statut = grille.getAttribute('data-statut');
+				var minuteur = null;
+				function relire() {
+					fetch(url, {headers: {'Accept': 'application/json'}, credentials: 'same-origin', cache: 'no-store'})
+						.then(function (r) { return r.ok ? r.json() : null; })
+						.then(function (etat) {
+							if (!etat) { return; }
+							if (etat.statut !== statut) { window.location.reload(); return; }
+							Object.keys(etat.blocs || {}).forEach(function (cle) {
+								var bloc = grille.querySelector('[data-bloc="' + cle + '"]');
+								if (bloc) { bloc.innerHTML = etat.blocs[cle]; }
+							});
+						})
+						.catch(function () {});
+				}
+				function lancer() { arreter(); minuteur = window.setInterval(relire, 20000); }
+				function arreter() { if (minuteur) { window.clearInterval(minuteur); minuteur = null; } }
+				document.addEventListener('visibilitychange', function () {
+					if (document.hidden) { arreter(); } else { relire(); lancer(); }
+				});
+				if (!document.hidden) { lancer(); }
+			})();
+		</script>
+	{% endif %}
+{% endblock %}

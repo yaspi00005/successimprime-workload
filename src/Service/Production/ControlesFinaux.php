@@ -3,6 +3,7 @@
 namespace App\Service\Production;
 
 use App\Entity\BonLivraison;
+use App\Entity\ColisProduction;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
 use App\Entity\ControleFinal;
@@ -10,8 +11,10 @@ use App\Entity\JournalActivite;
 use App\Entity\JournalMachine;
 use App\Entity\OrdreProduction;
 use App\Entity\StockSorties;
+use App\Entity\TirageRouleau;
 use App\Entity\User;
 use App\Repository\ControleFinalRepository;
+use App\Service\Atelier\ActionsOrdre;
 use App\Service\Atelier\ImagesAtelier;
 use App\Service\Atelier\PosteMachiniste;
 use App\Service\EspaceClient\EspaceClient;
@@ -42,8 +45,6 @@ final class ControlesFinaux
     /** Créneau proposé quand le client n'a rien programmé. */
     public const CRENEAU_DEFAUT = '10-12';
 
-    private const ETAPES_COURTES = ['impression' => 'Impression', 'sechage' => 'Séchage', 'finitions' => 'Finition', 'controle' => 'Contrôle'];
-
     public function __construct(
         private readonly EntityManagerInterface $em,
         private readonly ColisCommandes $colis,
@@ -54,6 +55,7 @@ final class ControlesFinaux
         private readonly FileMachine $file,
         private readonly PreparationLivraison $preparation,
         private readonly Tournee $tournee,
+        private readonly SortiesProduction $sorties,
         #[Autowire('%kernel.project_dir%')]
         private readonly string $projet,
     ) {
@@ -155,7 +157,7 @@ final class ControlesFinaux
             'controle' => $etat['controle'],
             'prete' => $prete,
             'peutValider' => !$prete && [] !== $aControler && 0 === $this->colis->lignesEnProduction($commande),
-            'temps' => $this->temps($montres),
+            'temps' => $this->temps($montres, $etat['controle']),
             'consomme' => $this->consomme($commande),
             'livraison' => $this->colis->livraison($commande),
             'apres' => $prete ? $this->apresPrete($commande, $moi, $peutPlanifier, $maintenant) : null,
@@ -226,27 +228,22 @@ final class ControlesFinaux
     }
 
     /**
-     * Temps estimé par étape (OP03) et temps réel total sans les pauses, par
-     * ligne et pour la commande. Bloc à part : le temps réel par étape
-     * viendra s'y ajouter.
+     * Temps réel comparé au temps estimé, étape par étape (PD06,
+     * TempsEtapes) : impression mesurée sur la machine (rouleau ou Ma file,
+     * pauses retirées), séchage jusqu'à « Commencer la finition », finition
+     * jusqu'aux étiquettes, contrôle jusqu'à sa validation.
      *
      * @param list<OrdreProduction> $ordres
      *
      * @return array{lignes: list<array<string, mixed>>, estime: ?int, reel: ?int}
      */
-    public function temps(array $ordres): array
+    public function temps(array $ordres, ?ControleFinal $controle): array
     {
+        $etiquettes = $this->etiquettesLe($ordres);
         $lignes = [];
         foreach ($ordres as $o) {
-            $etapes = [];
-            foreach ($o->getEstimation()['etapes'] ?? [] as $e) {
-                $minutes = (int) ($e['estime'] ?? $e['propose'] ?? 0);
-                if ($minutes > 0) {
-                    $etapes[] = ['libelle' => self::ETAPES_COURTES[$e['cle'] ?? ''] ?? (string) ($e['libelle'] ?? 'Étape'), 'estime' => $minutes];
-                }
-            }
-            $estime = [] !== $etapes ? array_sum(array_column($etapes, 'estime')) : $o->getDureeEstimeeMinutes();
-            $lignes[] = ['nom' => null !== $o->getCommandeDetail() ? PosteMachiniste::titre($o->getCommandeDetail()) : (string) $o->getNumero(), 'etapes' => $etapes, 'estime' => $estime, 'reel' => $o->getDureeReelleMinutes()];
+            $t = $this->tempsOrdre($o, $etiquettes[(int) $o->getId()] ?? null, $controle?->getValideLe());
+            $lignes[] = ['nom' => null !== $o->getCommandeDetail() ? PosteMachiniste::titre($o->getCommandeDetail()) : (string) $o->getNumero()] + $t;
         }
         $somme = static fn (string $cle): ?int => [] === $lignes || \in_array(null, array_column($lignes, $cle), true) ? null : array_sum(array_column($lignes, $cle));
 
@@ -254,22 +251,180 @@ final class ControlesFinaux
     }
 
     /**
-     * Ce qui est sorti du stock pour les lignes de la commande à « Terminé »
-     * (reprises comprises), par article, en unités lisibles. Jamais de prix.
+     * Les étapes d'un travail : estimé (OP03, ou le rouleau et le profil de
+     * la machine), réel, et le temps proposé dont les estimations apprennent.
      *
-     * @return list<array{article: string, quantite: string}>
+     * @return array{etapes: list<array{cle: string, libelle: string, estime: ?int, reel: ?int, prevu: ?int}>, estime: ?int, reel: ?int, partiel: bool}
+     */
+    private function tempsOrdre(OrdreProduction $o, ?\DateTimeImmutable $etiquettesLe, ?\DateTimeImmutable $controleLe): array
+    {
+        $tirage = $o->getTirage();
+        $surRouleau = null !== $tirage && !$tirage->estAnnule() && null !== $tirage->getDemarreLe();
+        $ligne = $o->getCommandeDetail();
+        $machine = $surRouleau ? $tirage->getMachine() : $o->getMachine();
+        $sechage = $surRouleau ? $tirage->getSechageMin() : null;
+        if (null === $sechage && null !== $machine && null !== $ligne) {
+            $sechage = $this->sorties->profilLigne($machine, $ligne)['sechageMin'] ?? null;
+        }
+        $mesure = $o->getTempsReels()['etapes']['impression']['prevu'] ?? null;
+        $prevus = [
+            'impression' => null !== $mesure ? (int) $mesure : ActionsOrdre::impressionPrevue($o),
+            'sechage' => null !== $sechage && $sechage > 0 ? $sechage : null,
+        ];
+
+        // Étiquettes imprimées après le contrôle : la finition s'arrête au contrôle.
+        return TempsEtapes::calculer($o->getEstimation()['etapes'] ?? [], $prevus, $o->getTempsReels(), $o->getDureeReelleMinutes(), $o->getTermineLe(), $etiquettesLe ?? $controleLe, $controleLe, (int) $sechage, $ligne?->getFinitions()->count() > 0);
+    }
+
+    /**
+     * Première impression des étiquettes de chaque travail (PD05, ou OP05).
+     *
+     * @param list<OrdreProduction> $ordres
+     *
+     * @return array<int, \DateTimeImmutable> id du travail => le
+     */
+    private function etiquettesLe(array $ordres): array
+    {
+        $le = [];
+        $commandes = [];
+        foreach ($ordres as $o) {
+            if (null !== $o->getEtiquettesImprimeesLe()) {
+                $le[(int) $o->getId()] = $o->getEtiquettesImprimeesLe();
+            }
+            if (null !== ($c = $o->getCommandeDetail()?->getCommande())) {
+                $commandes[(int) $c->getId()] = $c;
+            }
+        }
+        if ([] === $commandes) {
+            return $le;
+        }
+        /** @var list<ColisProduction> $colis */
+        $colis = $this->em->getRepository(ColisProduction::class)->findBy(['commande' => array_values($commandes)]);
+        foreach ($colis as $c) {
+            foreach ($c->getContenu() as $contenu) {
+                $id = (int) ($contenu['ordre'] ?? 0);
+                if ($id > 0 && (!isset($le[$id]) || $c->getImprimeLe() < $le[$id])) {
+                    $le[$id] = $c->getImprimeLe();
+                }
+            }
+        }
+
+        return $le;
+    }
+
+    /**
+     * Ce que la production a sorti du stock pour la commande (PD06) : la
+     * matière (recette et chute du rouleau : « 6,6 m² dont 0,6 de chute »),
+     * l'encre en ml, les œillets et attaches en nombre. Quantités
+     * seulement, jamais de prix.
+     *
+     * @return array{lignes: list<array{article: string, quantite: string, chute: ?string}>, notes: list<string>}
      */
     public function consomme(Commandes $commande): array
     {
         $rangs = $this->em->createQueryBuilder()
-            ->select('a.id AS id', 'a.designation AS designation', 'a.unite AS unite', 'SUM(s.quantite) AS quantite')
+            ->select('a.id AS id', 'a.designation AS designation', 'a.unite AS unite', 'a.quantiteParUniteAchat AS parUnite', 'a.laize AS laize', 'a.longueurUniteAchat AS longueur', 'IDENTITY(a.machine) AS machine', 'IDENTITY(s.commandeDetail) AS ligne', 's.referenceOrigine AS ref', 'SUM(s.quantite) AS quantite')
             ->from(StockSorties::class, 's')->join('s.article', 'a')->join('s.commandeDetail', 'd')
             ->where('d.commande = :c')->andWhere('s.origine = :origine')
             ->setParameter('c', $commande)->setParameter('origine', StockSorties::ORIGINE_PRODUCTION)
-            ->groupBy('a.id', 'a.designation', 'a.unite')->orderBy('a.designation', 'ASC')
+            ->groupBy('a.id', 'a.designation', 'a.unite', 'a.quantiteParUniteAchat', 'a.laize', 'a.longueurUniteAchat', 'a.machine', 's.commandeDetail', 's.referenceOrigine')
+            ->orderBy('a.designation', 'ASC')
             ->getQuery()->getArrayResult();
 
-        return array_values(array_map(static fn (array $r): array => ['article' => (string) $r['designation'], 'quantite' => QuantiteLisible::texte((float) $r['quantite'], (string) $r['unite'])], array_filter($rangs, static fn (array $r): bool => (float) $r['quantite'] > 0)));
+        $ordres = $this->ordres($commande);
+        $imprime = $this->imprimeSurRouleaux($ordres);
+        $articles = [];
+        $encre = 0.0;
+        foreach ($rangs as $r) {
+            $q = (float) $r['quantite'];
+            if ($q <= 0) {
+                continue;
+            }
+            $ref = (string) $r['ref'];
+            if ('litre' === $r['unite'] && null !== $r['machine']) {
+                $encre += $q;
+                continue;
+            }
+            $id = (int) $r['id'];
+            $articles[$id] ??= ['ligne' => $r, 'total' => 0.0, 'rouleau' => false, 'finition' => false];
+            $articles[$id]['total'] += $q;
+            $articles[$id]['rouleau'] = $articles[$id]['rouleau'] || str_starts_with($ref, 'ROUL-');
+            $articles[$id]['finition'] = $articles[$id]['finition'] || str_starts_with($ref, 'FIN-');
+        }
+        // Totaux de la chute : les lignes passées sur un rouleau de ce support.
+        $parLigne = [];
+        foreach ($rangs as $r) {
+            $parLigne[(int) $r['id']][(int) $r['ligne']] = ($parLigne[(int) $r['id']][(int) $r['ligne']] ?? 0.0) + (float) $r['quantite'];
+        }
+
+        $lignes = [];
+        foreach ($articles as $id => $a) {
+            $r = $a['ligne'];
+            $parUnite = (float) ($r['parUnite'] ?? 0);
+            $chute = null;
+            if ($a['rouleau'] && isset($imprime[$id])) {
+                $surRouleau = array_sum(array_intersect_key($parLigne[$id], $imprime[$id]['lignes']));
+                $imprimeStock = ConsommationProduction::versUniteStock((string) $r['unite'], array_sum($imprime[$id]['lignes']), null !== $r['laize'] ? (float) $r['laize'] : $imprime[$id]['laize'], null !== $r['longueur'] ? (float) $r['longueur'] : null);
+                if (null !== $imprimeStock && $surRouleau - $imprimeStock > 0.0005) {
+                    $chute = QuantiteLisible::nombre($surRouleau - $imprimeStock, 1);
+                }
+            }
+            $lignes[] = [
+                'article' => (string) $r['designation'],
+                'quantite' => $a['finition'] && 'unite' !== $r['unite'] && $parUnite > 1 ? QuantiteLisible::nombre($a['total'] * $parUnite, 0) : QuantiteLisible::texte($a['total'], (string) $r['unite']),
+                'chute' => $chute,
+            ];
+        }
+        if ($encre > 0) {
+            $lignes[] = ['article' => 'Encre', 'quantite' => QuantiteLisible::texte($encre, 'litre'), 'chute' => null];
+        }
+
+        $notes = [];
+        if ($encre <= 0) {
+            foreach ($ordres as $o) {
+                $machine = $o->getTirage()?->getMachine() ?? $o->getMachine();
+                if (null !== $machine && $o->estTermine() && [] === $this->sorties->encres($machine)) {
+                    $notes[(int) $machine->getId()] = \sprintf('%s n\'a pas d\'article d\'encre en stock : l\'encre n\'est pas sortie.', $machine->getNom());
+                }
+            }
+        }
+
+        return ['lignes' => $lignes, 'notes' => array_values($notes)];
+    }
+
+    /**
+     * m² imprimés sur les rouleaux par ligne de la commande, par article du
+     * support (pour dire la chute).
+     *
+     * @param list<OrdreProduction> $ordres
+     *
+     * @return array<int, array{lignes: array<int, float>, laize: ?float}> id de l'article => m² par ligne
+     */
+    private function imprimeSurRouleaux(array $ordres): array
+    {
+        $lignes = [];
+        $tirages = [];
+        foreach ($ordres as $o) {
+            $t = $o->getTirage();
+            if (null !== $o->getCommandeDetail() && null !== $t && !$t->estAnnule() && null !== $t->getImprimeLe()) {
+                $lignes[(int) $o->getCommandeDetail()->getId()] = true;
+                $tirages[(int) $t->getId()] = $t;
+            }
+        }
+        $imprime = [];
+        foreach ($tirages as $t) {
+            $article = $t->getSupport();
+            if (null === $article) {
+                continue;
+            }
+            $id = (int) $article->getId();
+            $imprime[$id] ??= ['lignes' => [], 'laize' => $t->getLaizeM()];
+            foreach (array_intersect_key(SortiesProduction::m2ParLigne($t), $lignes) as $ligne => $m2) {
+                $imprime[$id]['lignes'][$ligne] = ($imprime[$id]['lignes'][$ligne] ?? 0.0) + $m2;
+            }
+        }
+
+        return $imprime;
     }
 
     /**
@@ -279,7 +434,7 @@ final class ControlesFinaux
      *
      * @param array<string, mixed> $saisie par ligne : cases, mesures, écart confirmé
      *
-     * @return array{manque: list<string>, prete: bool}
+     * @return array{manque: list<string>, prete: bool, notes?: list<string>}
      */
     public function valider(Commandes $commande, array $saisie, User $par, \DateTimeImmutable $le): array
     {
@@ -325,9 +480,39 @@ final class ControlesFinaux
             $this->em->persist($controle);
         }
         $controle->valider($verifications, $par, $le);
+        // Temps réels des étapes (ils améliorent les prochaines estimations), œillets et attaches sortis du stock.
+        $etiquettes = $this->etiquettesLe($ordres);
+        $notes = [];
+        $tirages = [];
+        foreach ($ordres as $o) {
+            $etapes = [];
+            foreach ($this->tempsOrdre($o, $etiquettes[(int) $o->getId()] ?? null, $le)['etapes'] as $e) {
+                $etapes[$e['cle']] = ['reel' => $e['reel'], 'prevu' => $e['prevu']];
+            }
+            $o->noterEtapes($etapes);
+            array_push($notes, ...$this->sorties->finitions($o));
+            $t = $o->getTirage();
+            if (null !== $t && TirageRouleau::STATUT_IMPRIME === $t->getStatut()) {
+                $tirages[(int) $t->getId()] = $t;
+            }
+        }
+        $this->em->flush();
+        $prete = $this->colis->passerPrete($commande, $par, $le);
+
+        // Le rouleau est terminé quand tous ses travaux ont passé le contrôle final.
+        $attend = function (OrdreProduction $o): bool {
+            $c = $o->getCommandeDetail()?->getCommande();
+
+            return !$o->estAnnule() && !$o->estPretLivraison() && null !== $c && !($this->controles->deLaCommande($c)?->estValide() ?? false);
+        };
+        foreach ($tirages as $t) {
+            if ([] === array_filter($t->ordres(), $attend)) {
+                $t->terminer($le);
+            }
+        }
         $this->em->flush();
 
-        return ['manque' => [], 'prete' => $this->colis->passerPrete($commande, $par, $le)];
+        return ['manque' => [], 'prete' => $prete, 'notes' => array_values(array_unique($notes))];
     }
 
     /**

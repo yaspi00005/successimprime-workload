@@ -5,7 +5,7 @@
 	<li>L'imposition montre les pièces sur la laize et le rouleau utilisé. Pour déplacer une pièce : « Manuel », glissez-la (ou flèches du clavier, R pour la tourner), puis « Enregistrer le placement ».</li>
 	<li>Touchez « Envoyer au RIP » : un seul PDF part avec toutes les pièces, les repères de coupe et le nom de chaque commande dans la marge.</li>
 	<li>Ouvrez « Fiche de production ». Scannez le code du rouleau (ou tapez-le), faites le test de buses (« Test fait »), relevez les encres, puis cochez les points restants.</li>
-	<li>Quand tout est vert, touchez « Démarrer ». Les travaux passent « en cours » : la suite se fait dans « Ma file ».</li>
+	<li>Quand tout est vert, touchez « Démarrer ». La page « Impression en cours » s'ouvre (fiche « Suivre l'impression d'un rouleau »).</li>
 </ol>
 {% endblock %}
 
@@ -14,6 +14,7 @@
 	<li>« Parcours d'un fichier » suit un travail du BAT au colis, avec son nom de production (commande, ligne, support, taille, quantité, finitions).</li>
 	<li>Un point rouge (mauvais rouleau, encre sous le seuil, buses bouchées) bloque « Démarrer ». Un point orange se surveille pendant l'impression.</li>
 	<li>Les couleurs sont converties par le RIP de la machine : l'ERP ne convertit rien.</li>
+	<li>Un travail ne va que sur un rouleau à la fois. S'il est déjà sur un autre rouleau, l'ERP le refuse et dit lequel.</li>
 	<li>Agir sur un rouleau : les opérateurs de la machine, le chef d'atelier ou le poste de la machine. Les autres voient la fiche sans pouvoir cocher.</li>
 	<li>« Machines et dossiers » et « Règles de nommage » : le chef d'atelier règle le dossier, les profils de chaque machine et les codes des fichiers.</li>
 </ul>

@@ -2,7 +2,6 @@
 
 namespace App\Command;
 
-use App\Entity\Articles;
 use App\Entity\Clients;
 use App\Entity\ColisProduction;
 use App\Entity\CommandeDetailFichier;
@@ -15,12 +14,17 @@ use App\Entity\Finition;
 use App\Entity\Machines;
 use App\Entity\OrdreProduction;
 use App\Entity\ProduitConfiguration;
-use App\Entity\StockSorties;
+use App\Entity\PieceTirage;
+use App\Entity\TirageRouleau;
 use App\Entity\User;
 use App\Repository\ControleFinalRepository;
+use App\Service\Atelier\ActionsOrdre;
 use App\Service\Livraisons\ProgrammationLivraison;
 use App\Service\Production\ColisCommandes;
 use App\Service\Production\ControlesFinaux;
+use App\Service\Production\FichierProduction;
+use App\Service\Production\SortiesProduction;
+use App\Service\Production\TiragesRouleau;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
@@ -36,7 +40,10 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
  * (Awa Diarra 2 bâches, Koita 1 kakémono, Clinique Pasteur (Mariam Traoré) 2 kakémonos,
  * Awa Diarra 1 000 flyers), une commande étiquetée avec 1 colis sur 2
  * scanné et son contrôle à faire (Pharmacie du Fleuve), trois commandes
- * prêtes dans la tournée de demo.bakary demain de 10 h à 12 h. Clients
+ * prêtes dans la tournée de demo.bakary demain de 10 h à 12 h, une pièce
+ * refaite en cours (Ma file). Les bâches sont imprimées sur un rouleau
+ * (chute et encre sorties comme à « Impression terminée »), avec les temps
+ * réels de chaque étape ; les œillets sortent au contrôle final. Clients
  * DEMO-PC…, commandes CMD-PC…, identifiants >= 900001, relançable.
  * Les commandes prêtes passent par les vrais services (étiquettes, scan,
  * contrôle, tournée). Lancée par app:demo.
@@ -57,6 +64,8 @@ final class ProductionColisDemoCommand extends Command
         "DELETE x FROM controle_final x JOIN commandes c ON c.id = x.commande_id WHERE c.numero LIKE 'CMD-PC%'",
         "DELETE s FROM stock_sorties s JOIN commandes_details d ON d.id = s.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
         "DELETE j FROM journal_machine j JOIN ordre_production o ON o.id = j.ordre_id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
+        "DELETE t FROM tirage_rouleau t JOIN ordre_production o ON o.tirage_id = t.id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
+        "DELETE p FROM piece_tirage p JOIN ordre_production o ON o.id = p.ordre_id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
         "DELETE f FROM ordre_production_fichier f JOIN ordre_production o ON o.id = f.ordre_production_id JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
         "DELETE o FROM ordre_production o JOIN commandes_details d ON d.id = o.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
         "DELETE f FROM controle_pre_presse_fichier f JOIN controle_pre_presse p ON p.id = f.controle_pre_presse_id JOIN commandes_details d ON d.id = p.commande_detail_id JOIN commandes c ON c.id = d.commande_id WHERE c.numero LIKE 'CMD-PC%'",
@@ -85,6 +94,9 @@ final class ProductionColisDemoCommand extends Command
         private readonly ColisCommandes $colis,
         private readonly ControlesFinaux $controles,
         private readonly ControleFinalRepository $depotControles,
+        private readonly TiragesRouleau $tirages,
+        private readonly SortiesProduction $sorties,
+        private readonly ActionsOrdre $actions,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
         #[Autowire('%env(bool:APP_EN_LIGNE)%')] private readonly bool $enLigne = false,
@@ -153,8 +165,15 @@ final class ProductionColisDemoCommand extends Command
         }
         $this->em->flush();
 
+        // Les œillets de la finition « tous les 50 cm » sortent du stock au contrôle final (boîte de 500).
+        $connexion->executeStatement("UPDATE articles SET quantite_par_unite_achat = 500 WHERE id = 900016 AND designation LIKE '%500%' AND quantite_par_unite_achat <= 1");
+        $connexion->executeStatement('UPDATE finition SET article_stock_id = 900016 WHERE id = 900001 AND article_stock_id IS NULL AND EXISTS (SELECT 1 FROM articles WHERE id = 900016)');
+
         $maintenant = new \DateTimeImmutable();
-        $h = static fn (string $decalage): \DateTimeImmutable => $maintenant->modify($decalage);
+        // Heures d'ouverture de l'atelier : la finition et le contrôle se mesurent entre 8 h et 19 h.
+        $heure = (int) $maintenant->format('G');
+        $ancre = $heure >= 11 && $heure < 19 ? $maintenant : ($heure >= 19 ? $maintenant->setTime(17, 0) : $maintenant->setTime(17, 0)->modify('-1 day'));
+        $h = static fn (string $decalage): \DateTimeImmutable => $ancre->modify($decalage);
         $demain = $maintenant->setTime(0, 0)->modify('+1 day');
         $apresDemain = $maintenant->setTime(0, 0)->modify('+2 days');
         $programmation = static fn (Clients $c, \DateTimeImmutable $jour, string $creneau): array => [
@@ -178,13 +197,15 @@ final class ProductionColisDemoCommand extends Command
         ], $apresDemain, $programmation($clients['DEMO-PC01'], $apresDemain, '14-16'), $h('-4 hours'), 'termine');
 
         // PD06 : étiquettes collées, 1 colis sur 2 scanné, photo prise, contrôle à faire.
+        // Temps de la maquette : impression 28 / 26 min, séchage 45 / 45, finition 40 / 52.
+        $debut = $h('-3 hours');
         $pharmacie = $this->commande('0179', $clients['DEMO-PC04'], $oumar, $seydou, $grand, [
             ['config' => 900001, 'designation' => 'Banderole', 'l' => 4.0, 'h' => 0.8, 'q' => 2, 'finitions' => [900002, 900001], 'image' => 'pharmacie', 'observation' => 'Le vert de la croix doit être identique au BAT.'],
-        ], $demain, $programmation($clients['DEMO-PC04'], $demain, '14-16'), $h('-3 hours'), 'termine', ['impression' => 28, 'sechage' => 45, 'finitions' => 40, 'controle' => 10], 113);
-        $colis = $this->colis->imprimer($pharmacie, 2, $oumar, $h('-50 minutes'));
-        $this->colis->scanner($colis[0], $oumar, $h('-25 minutes'));
-        $this->photo($pharmacie, 'pharmacie', $oumar, $h('-30 minutes'));
-        $this->sorties($pharmacie, [[900001, 6.6], [900006, 0.078], [900009, 0.052]], $h('-67 minutes'));
+        ], $demain, $programmation($clients['DEMO-PC04'], $demain, '14-16'), $debut, 'termine', ['impression' => 28, 'sechage' => 45, 'finitions' => 40], 26);
+        $this->imprimeSurRouleau($pharmacie, $grand, $oumar, $debut, 26, 28, 45);
+        $colis = $this->colis->imprimer($pharmacie, 2, $oumar, $debut->modify('+123 minutes'));
+        $this->colis->scanner($colis[0], $oumar, $debut->modify('+133 minutes'));
+        $this->photo($pharmacie, 'pharmacie', $oumar, $debut->modify('+128 minutes'));
 
         // Prêtes, dans la tournée de Bakary demain de 10 h à 12 h : le vrai chemin (étiquettes, scan, contrôle, tournée).
         $pretes = [
@@ -197,25 +218,39 @@ final class ProductionColisDemoCommand extends Command
             if (!$client instanceof Clients) {
                 continue;
             }
-            $commande = $this->commande($numero, $client, $oumar, $seydou, 900008 === $lignes[0]['config'] ? $petit : $grand, $lignes, $demain, $programmation($client, $demain, '10-12'), $h('-'.(7 - $i).' hours'), 'termine', ['impression' => 26, 'sechage' => 45, 'finitions' => 52, 'controle' => 10], 113);
-            $etiquetees = $this->colis->imprimer($commande, $nombreColis, $oumar, $h('-'.(6 - $i).' hours'));
+            $debut = $h('-'.(7 - $i).' hours');
+            $commande = $this->commande($numero, $client, $oumar, $seydou, 900008 === $lignes[0]['config'] ? $petit : $grand, $lignes, $demain, $programmation($client, $demain, '10-12'), $debut, 'termine', ['impression' => 28, 'sechage' => 45, 'finitions' => 40, 'controle' => 10], 26);
+            if (900008 !== $lignes[0]['config']) {
+                $this->imprimeSurRouleau($commande, $grand, $oumar, $debut, 26, 28, 45);
+            }
+            // Étiquettes 52 min après le début de la finition, contrôle validé 12 min après.
+            $etiquetees = $this->colis->imprimer($commande, $nombreColis, $oumar, $debut->modify('+123 minutes'));
             if ('0177' === $numero) {
-                $this->photo($commande, 'awa', $oumar, $h('-'.(6 - $i).' hours')->modify('+8 minutes'));
-                $this->sorties($commande, [[900001, 6.6], [900006, 0.078], [900009, 0.041]], $h('-'.(6 - $i).' hours'));
+                $this->photo($commande, 'awa', $oumar, $debut->modify('+128 minutes'));
             }
             foreach ($etiquetees as $k => $c) {
-                $this->colis->scanner($c, $oumar, $h('-'.(6 - $i).' hours')->modify('+'.(12 + $k).' minutes'));
+                $this->colis->scanner($c, $oumar, $debut->modify('+'.(133 + $k).' minutes'));
             }
             $saisie = [];
             foreach ($commande->getCommandesDetails() as $d) {
                 $saisie[(string) $d->getId()] = array_fill_keys(ControleFinal::POINTS, '1');
             }
-            $this->controles->valider($commande, $saisie, $oumar, $h('-'.(6 - $i).' hours')->modify('+15 minutes'));
+            $this->controles->valider($commande, $saisie, $oumar, $debut->modify('+135 minutes'));
             $this->controles->ajouterATournee($commande, $kadiatou, $bakary, $demain, ProgrammationLivraison::CRENEAUX['10-12']);
             ++$n;
         }
 
-        $io->success(\sprintf('Colis et contrôle final : 4 commandes à étiqueter, 1 à contrôler, %d prêtes dans la tournée de demo.bakary demain (commandes %s…).', $n, self::PREFIXE));
+        // Ma file : une bâche refaite au contrôle final, la reprise démarrée sur la Solvant 3,20 m.
+        $reprise = $this->commande('0172', $clients['DEMO-PC04'], $oumar, $seydou, $grand, [
+            ['config' => 900001, 'designation' => 'Bâche 510 g', 'l' => 2.0, 'h' => 1.0, 'q' => 3, 'finitions' => [900002, 900001]],
+        ], $apresDemain, $programmation($clients['DEMO-PC04'], $apresDemain, '10-12'), $h('-5 hours'), 'termine', ['impression' => 15, 'sechage' => 45, 'finitions' => 30, 'controle' => 10], 16);
+        $ordre = $this->controles->ordres($reprise)[0] ?? null;
+        if (null !== $ordre) {
+            $this->controles->refaire($ordre, 1, 'Bande claire sur la 3e bâche, à réimprimer.', $oumar, $h('-40 minutes'));
+            $this->actions->demarrer($ordre, $oumar, $grand);
+        }
+
+        $io->success(\sprintf('Colis et contrôle final : 4 commandes à étiqueter, 1 à contrôler, %d prêtes dans la tournée de demo.bakary demain, 1 pièce refaite en cours (commandes %s…).', $n, self::PREFIXE));
 
         return Command::SUCCESS;
     }
@@ -338,25 +373,46 @@ final class ProductionColisDemoCommand extends Command
     }
 
     /**
-     * Matière sortie du stock à « Terminé » (bloc « Consommé »), comme le fait
-     * la recette du produit.
-     *
-     * @param list<array{0: int, 1: float}> $articles identifiant de l'article, quantité dans son unité de stock
+     * La commande imprimée sur un rouleau de la machine (PD04) : pièces
+     * placées et imprimées, temps d'impression mesuré, puis la chute et
+     * l'encre sorties du stock comme à « Impression terminée » ; la
+     * finition commence à la fin du séchage.
      */
-    private function sorties(Commandes $commande, array $articles, \DateTimeImmutable $le): void
+    private function imprimeSurRouleau(Commandes $commande, Machines $machine, User $par, \DateTimeImmutable $debut, int $minutes, int $prevu, int $sechage): void
     {
-        $ligne = $commande->getCommandesDetails()->first();
-        $ordre = $this->controles->ordres($commande)[0] ?? null;
-        if (!$ligne instanceof CommandesDetails || null === $ordre) {
+        $ordres = $this->controles->ordres($commande);
+        $ligne = $ordres[0]?->getCommandeDetail();
+        if (null === $ligne) {
             return;
         }
-        foreach ($articles as [$article, $quantite]) {
-            $a = $this->em->find(Articles::class, $article);
-            if ($a instanceof Articles) {
-                $this->em->persist((new StockSorties())->setArticle($a)->setCommandeDetail($ligne)->setQuantite($quantite)->setDate($le)
-                    ->setOrigine(StockSorties::ORIGINE_PRODUCTION)->setReferenceOrigine(OrdreProduction::referenceStockDe((int) $ordre->getId(), 0)));
+        $code = (string) FichierProduction::codeSupport($ligne);
+        $article = $this->tirages->articleRouleau($machine, $code);
+        $r = $this->tirages->reglages();
+        $tirage = new TirageRouleau($this->tirages->numeroSuivant($debut), $machine, (string) ($article?->getDesignation() ?? $code), $code, $this->tirages->laize($machine, $article), $r['marge'], $r['espace'], $par, $debut->modify('-20 minutes'));
+        $tirage->setSupport($article);
+        foreach ($ordres as $o) {
+            for ($i = 1; $i <= max(1, (int) $o->getQuantite()); ++$i) {
+                new PieceTirage($tirage, $o, $i);
             }
+            $o->setTirage($tirage);
         }
+        $this->em->persist($tirage);
+        $this->tirages->placerAuto($tirage, $debut);
+        $this->em->flush();
+
+        $fin = $debut->modify('+'.$minutes.' minutes');
+        $connexion = $this->em->getConnection();
+        $connexion->executeStatement("UPDATE tirage_rouleau SET statut = ?, demarre_le = ?, demarre_par_id = ?, imprime_le = ?, imprime_par_id = ?, envoye_le = ? WHERE id = ?", [TirageRouleau::STATUT_IMPRIME, $debut->format('Y-m-d H:i:s'), $par->getId(), $fin->format('Y-m-d H:i:s'), $par->getId(), $debut->modify('-5 minutes')->format('Y-m-d H:i:s'), $tirage->getId()]);
+        $connexion->executeStatement('UPDATE piece_tirage SET statut = ?, debutee_le = ?, imprimee_le = ? WHERE tirage_id = ?', [PieceTirage::STATUT_IMPRIMEE, $debut->format('Y-m-d H:i:s'), $fin->format('Y-m-d H:i:s'), $tirage->getId()]);
+        $this->em->refresh($tirage);
+        foreach ($tirage->getPieces() as $p) {
+            $this->em->refresh($p);
+        }
+        foreach ($ordres as $o) {
+            $o->noterImpression($debut, $fin, $minutes, $prevu);
+            $o->commencerFinition($fin->modify('+'.$sechage.' minutes'), $par->getEmploye()?->getPrenom());
+        }
+        $this->sorties->apresRouleau($tirage, $this->sorties->profilLigne($machine, $ligne)['encreMlM2'] ?? null);
         $this->em->flush();
     }
 

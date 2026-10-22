@@ -357,6 +357,28 @@ final class TiragesRouleau
     }
 
     /**
+     * Les travaux du rouleau passés entre-temps sur un autre rouleau (deux
+     * rouleaux préparés en même temps) : un ordre n'est que sur un rouleau
+     * à la fois.
+     *
+     * @return list<string> messages (vide : rien d'autre ne les tient)
+     */
+    public static function ordresAilleurs(TirageRouleau $tirage): array
+    {
+        $messages = [];
+        foreach ($tirage->ordres() as $o) {
+            $autre = $o->getTirage();
+            if ($autre !== $tirage) {
+                $messages[] = null !== $autre && !$autre->estAnnule()
+                    ? \sprintf('%s est passé sur le rouleau %s.', $o->getNumero(), $autre->getNumero())
+                    : \sprintf('%s n\'est plus sur ce rouleau.', $o->getNumero());
+            }
+        }
+
+        return $messages;
+    }
+
+    /**
      * Placement automatique, par urgence ou dans l'ordre donné (ids des
      * ordres). Un ordre dont une pièce ne tient pas sort du tirage. Rend
      * les messages des ordres retirés. Ne flushe pas.
@@ -369,6 +391,10 @@ final class TiragesRouleau
     {
         if (!$tirage->estModifiable()) {
             throw new \DomainException('Ce rouleau est en impression : le placement ne change plus.');
+        }
+        $ailleurs = self::ordresAilleurs($tirage);
+        if ([] !== $ailleurs) {
+            throw new \DomainException(implode(' ', $ailleurs).' Retirez-le de ce rouleau ou annulez celui-ci.');
         }
         $avant = self::signaturePlacement($tirage);
         $ordres = $tirage->ordres();
@@ -429,6 +455,10 @@ final class TiragesRouleau
     {
         if (!$tirage->estModifiable()) {
             return ['Ce rouleau est en impression : le placement ne change plus.'];
+        }
+        $ailleurs = self::ordresAilleurs($tirage);
+        if ([] !== $ailleurs) {
+            return $ailleurs;
         }
         $pieces = [];
         $parCle = [];
@@ -679,6 +709,16 @@ final class TiragesRouleau
      */
     public function couleurs(TirageRouleau $tirage): array
     {
+        return array_values(array_unique($this->couleursParOrdre($tirage)));
+    }
+
+    /**
+     * Les mêmes, travail par travail (rappel de PD04).
+     *
+     * @return array<int, string> id de l'ordre => couleur à surveiller
+     */
+    public function couleursParOrdre(TirageRouleau $tirage): array
+    {
         $couleurs = [];
         foreach ($tirage->ordres() as $o) {
             $ligne = $o->getCommandeDetail();
@@ -691,11 +731,11 @@ final class TiragesRouleau
             }
             $c = ControlesTirage::couleurSensible($remarques, '' !== $qui ? $qui : $o->getNumero());
             if (null !== $c) {
-                $couleurs[] = $c;
+                $couleurs[(int) $o->getId()] = $c;
             }
         }
 
-        return array_values(array_unique($couleurs));
+        return $couleurs;
     }
 
     /**
@@ -783,6 +823,10 @@ final class TiragesRouleau
         if ([] === $ordres) {
             throw new \DomainException('Le rouleau n\'a plus de travail.');
         }
+        $ailleurs = self::ordresAilleurs($tirage);
+        if ([] !== $ailleurs) {
+            throw new \DomainException(implode(' ', $ailleurs).' Rien n\'a démarré.');
+        }
         foreach ($ordres as $o) {
             $raison = self::raisonNePeutDemarrer($o);
             if (null !== $raison) {
@@ -797,7 +841,7 @@ final class TiragesRouleau
             }
             foreach ($tirage->getPieces() as $p) {
                 if (1 === $p->getRang()) {
-                    $p->mettreEnCours();
+                    $p->mettreEnCours($maintenant);
                 }
             }
             $tirage->demarrer($par, $maintenant);
@@ -856,8 +900,9 @@ final class TiragesRouleau
     }
 
     /**
-     * Tirages par état pour la liste (préparés, envoyés, en impression,
-     * terminés aujourd'hui), les plus récents d'abord.
+     * Tirages par état pour la liste : en impression d'abord, puis préparés,
+     * envoyés, imprimés (en finition jusqu'au contrôle final) et terminés
+     * ou annulés aujourd'hui, les plus récents d'abord.
      *
      * @return array<string, list<TirageRouleau>>
      */
@@ -866,16 +911,17 @@ final class TiragesRouleau
         /** @var list<TirageRouleau> $tirages */
         $tirages = $this->em->createQueryBuilder()->select('t', 'm')->from(TirageRouleau::class, 't')->join('t.machine', 'm')
             ->where('t.statut IN (:actifs) OR t.modifieLe >= :jour OR t.creeLe >= :jour')
-            ->setParameter('actifs', [TirageRouleau::STATUT_PREPARE, TirageRouleau::STATUT_ENVOYE, TirageRouleau::STATUT_EN_IMPRESSION, TirageRouleau::STATUT_EN_PAUSE])
+            ->setParameter('actifs', [TirageRouleau::STATUT_PREPARE, TirageRouleau::STATUT_ENVOYE, TirageRouleau::STATUT_EN_IMPRESSION, TirageRouleau::STATUT_EN_PAUSE, TirageRouleau::STATUT_IMPRIME])
             ->setParameter('jour', $maintenant->setTime(0, 0))
             ->orderBy('t.creeLe', 'DESC')->setMaxResults(200)
             ->getQuery()->getResult();
-        $groupes = ['prepare' => [], 'envoye' => [], 'impression' => [], 'faits' => []];
+        $groupes = ['impression' => [], 'prepare' => [], 'envoye' => [], 'imprime' => [], 'faits' => []];
         foreach ($tirages as $t) {
             $groupe = match ($t->getStatut()) {
                 TirageRouleau::STATUT_PREPARE => 'prepare',
                 TirageRouleau::STATUT_ENVOYE => 'envoye',
                 TirageRouleau::STATUT_EN_IMPRESSION, TirageRouleau::STATUT_EN_PAUSE => 'impression',
+                TirageRouleau::STATUT_IMPRIME => 'imprime',
                 default => 'faits',
             };
             $groupes[$groupe][] = $t;

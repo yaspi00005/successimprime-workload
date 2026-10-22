@@ -9,8 +9,8 @@ use Doctrine\ORM\Mapping as ORM;
  * Une pièce posée sur un tirage (maquette PD02) : un exemplaire d'un ordre
  * de production, à sa place sur le rouleau (en cm, coin en haut à gauche,
  * y croît dans le sens du rouleau), tournée ou non, avec son rang
- * d'impression. Le statut (à imprimer, en cours, imprimée) servira au
- * suivi en direct (PD04).
+ * d'impression. Le statut (à imprimer, en cours, imprimée) et ses heures
+ * de début et de fin font le suivi en direct (PD04, ProgressionRouleau).
  */
 #[ORM\Entity]
 #[ORM\Table(name: 'piece_tirage')]
@@ -58,6 +58,10 @@ class PieceTirage
 
     #[ORM\Column(length: 12)]
     private string $statut = self::STATUT_A_IMPRIMER;
+
+    /** Passée « en cours » : la machine a commencé cette pièce. */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $debuteeLe = null;
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $imprimeeLe = null;
@@ -139,9 +143,10 @@ class PieceTirage
         return $this->statut;
     }
 
-    public function mettreEnCours(): static
+    public function mettreEnCours(?\DateTimeImmutable $le = null): static
     {
         $this->statut = self::STATUT_EN_COURS;
+        $this->debuteeLe ??= $le ?? new \DateTimeImmutable();
 
         return $this;
     }
@@ -152,6 +157,11 @@ class PieceTirage
         $this->imprimeeLe = $le;
 
         return $this;
+    }
+
+    public function getDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->debuteeLe;
     }
 
     public function getImprimeeLe(): ?\DateTimeImmutable

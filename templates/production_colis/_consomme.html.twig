@@ -1,21 +1,24 @@
 {#
-	Consommé (PD06) : ce qui est sorti du stock pour les lignes de la
-	commande à « Terminé » (ActionsOrdre::terminer), en quantités. Jamais de
-	prix. Bloc à part : chute du rouleau, encre et œillets s'ajouteront ici.
+	Consommé (PD06) : ce que la production a sorti du stock pour la
+	commande : matière de la recette et chute du rouleau, encre, œillets et
+	attaches des finitions. Quantités seulement, jamais de prix.
 	Variable consomme : ControlesFinaux::consomme().
 #}
 <section class="si-fab-carte" data-bloc="consomme">
 	<h2>Consommé</h2>
-	{% if consomme is empty %}
-		<p class="si-fab-muet mb-0">Rien n'est sorti du stock pour cette commande (la matière sort à « Terminé » quand le produit a sa recette).</p>
+	{% if consomme.lignes is empty %}
+		<p class="si-fab-muet mb-0">Rien n'est sorti du stock pour cette commande (la matière sort à « Terminé » quand le produit a sa recette, la chute et l'encre à « Impression terminée » du rouleau).</p>
 	{% else %}
 		<table class="si-ctl-table" data-sans-filtres>
 			<tbody>
-				{% for c in consomme %}
-					<tr><td>{{ c.article }}</td><td class="num"><b>{{ c.quantite }}</b></td></tr>
+				{% for c in consomme.lignes %}
+					<tr><td>{{ c.article }}</td><td class="num"><b>{{ c.quantite }}{% if c.chute %} (dont {{ c.chute }} de chute){% endif %}</b></td></tr>
 				{% endfor %}
 			</tbody>
 		</table>
 		<p class="si-fab-note">Déduit du stock automatiquement.</p>
 	{% endif %}
+	{% for n in consomme.notes %}
+		<p class="si-fab-note si-fab-muet mb-0"><i class="fas fa-info-circle" aria-hidden="true"></i> {{ n }}</p>
+	{% endfor %}
 </section>

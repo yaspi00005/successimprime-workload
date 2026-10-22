@@ -274,6 +274,19 @@ class OrdreProduction
     #[ORM\JoinColumn(name: 'fichier_machine_par_id', nullable: true, onDelete: 'SET NULL')]
     private ?User $fichierMachinePar = null;
 
+    /**
+     * Temps réel par étape (PD04 et PD06, docs/production-colis.md) :
+     * impression_debut et impression_fin (ATOM), finition_debut (« Commencer
+     * la finition », sinon fin d'impression + séchage), reprise_debut et
+     * reprise_pause (une pièce à refaire), et etapes {impression, sechage,
+     * finitions, controle} => {reel, prevu} en minutes. prevu est le temps
+     * proposé avant correction (FacteursEstimation apprend de reel ÷ prevu).
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $tempsReels = null;
+
     public function __construct()
     {
         $this->fichiers = new ArrayCollection();
@@ -742,6 +755,14 @@ class OrdreProduction
             $this->pauseDebuteLe = null;
         }
 
+        // Une pièce à refaire : son passage se mesure à part (Ma file montre ce passage, pas le premier).
+        if ($this->statut === self::STATUT_A_PRODUIRE && $this->piecesARefaire !== null) {
+            $temps = $this->tempsReels ?? [];
+            $temps['reprise_debut'] = $maintenant->format(\DATE_ATOM);
+            $temps['reprise_pause'] = $this->dureePauseMinutes;
+            $this->tempsReels = $temps;
+        }
+
         $this->operateur = $operateur;
         $this->machine = $machine ?? $this->machine;
         $this->demarreLe ??= $maintenant;
@@ -926,6 +947,120 @@ class OrdreProduction
         return $this->planifier($this->estEnCours() || $this->estEnPause() ? ($this->demarreLe ?? $debutPrevu) : $debutPrevu, $total);
     }
 
+    /** @return array<string, mixed> */
+    public function getTempsReels(): array
+    {
+        return $this->tempsReels ?? [];
+    }
+
+    private function dateTemps(string $cle): ?\DateTimeImmutable
+    {
+        $v = $this->tempsReels[$cle] ?? null;
+
+        return \is_string($v) && $v !== '' ? new \DateTimeImmutable($v) : null;
+    }
+
+    public function getImpressionDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('impression_debut');
+    }
+
+    public function getImpressionFinieLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('impression_fin');
+    }
+
+    public function getFinitionDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('finition_debut');
+    }
+
+    public function getRepriseDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->piecesARefaire !== null && !$this->estADemarrer() ? $this->dateTemps('reprise_debut') : null;
+    }
+
+    /**
+     * Pièces refaites à chaque reprise (« Refaire une pièce », PD06).
+     *
+     * @return array<int, int> numéro de la reprise => pièces
+     */
+    public function getPiecesReprises(): array
+    {
+        $reprises = [];
+        foreach ((array) ($this->tempsReels['reprises'] ?? []) as $n => $pieces) {
+            if ((int) $n > 0 && (int) $pieces > 0) {
+                $reprises[(int) $n] = (int) $pieces;
+            }
+        }
+
+        return $reprises;
+    }
+
+    /** Pauses déjà comptées au début de la reprise (l'attente depuis la première fin comprise). */
+    public function getReprisePauseMinutes(): int
+    {
+        return (int) ($this->tempsReels['reprise_pause'] ?? 0);
+    }
+
+    /**
+     * Temps d'impression mesuré (un passage) : du début à la fin, en
+     * minutes effectives. Une reprise s'ajoute au premier passage et
+     * marque l'étape (elle n'apprend pas aux estimations).
+     */
+    public function noterImpression(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $minutes, ?int $prevu): static
+    {
+        $temps = $this->tempsReels ?? [];
+        $etape = $temps['etapes']['impression'] ?? null;
+        $reprise = \is_array($etape) && isset($etape['reel']);
+        $temps['impression_debut'] = $reprise ? ($temps['impression_debut'] ?? $debut->format(\DATE_ATOM)) : $debut->format(\DATE_ATOM);
+        $temps['impression_fin'] = $fin->format(\DATE_ATOM);
+        $temps['etapes']['impression'] = [
+            'reel' => max(0, $minutes) + ($reprise ? (int) $etape['reel'] : 0),
+            'prevu' => $reprise ? ($etape['prevu'] ?? null) : ($prevu !== null ? max(0, $prevu) : null),
+        ] + ($reprise ? ['reprise' => true] : []);
+        unset($temps['finition_debut'], $temps['finition_par']);
+        $this->tempsReels = $temps;
+
+        return $this;
+    }
+
+    /** « Commencer la finition » (PD04, PD05) : la première fois seulement. */
+    public function commencerFinition(\DateTimeImmutable $le, ?string $par = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('La finition commence une fois l\'impression terminée.');
+        }
+        $temps = $this->tempsReels ?? [];
+        if (!isset($temps['finition_debut'])) {
+            $temps['finition_debut'] = $le->format(\DATE_ATOM);
+            $temps['finition_par'] = $par !== null ? mb_substr($par, 0, 60) : null;
+            $this->tempsReels = $temps;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Étapes mesurées au contrôle final (séchage, finitions, contrôle) :
+     * cle => {reel, prevu}. L'impression garde la sienne.
+     *
+     * @param array<string, array{reel: ?int, prevu: ?int}> $etapes
+     */
+    public function noterEtapes(array $etapes): static
+    {
+        $temps = $this->tempsReels ?? [];
+        foreach ($etapes as $cle => $e) {
+            if ($cle === 'impression') {
+                continue;
+            }
+            $temps['etapes'][$cle] = ['reel' => $e['reel'] !== null ? max(0, (int) $e['reel']) : null, 'prevu' => $e['prevu'] !== null ? max(0, (int) $e['prevu']) : null];
+        }
+        $this->tempsReels = $temps;
+
+        return $this;
+    }
+
     public function getNombreColis(): ?int
     {
         return $this->nombreColis;
@@ -980,6 +1115,10 @@ class OrdreProduction
         $this->piecesARefaire = $pieces;
         ++$this->reimpressions;
         $this->quantiteRebut += $pieces;
+        // Les pièces de chaque reprise : leurs œillets et attaches sortent à part au contrôle final (FIN-…-R1).
+        $temps = $this->tempsReels ?? [];
+        $temps['reprises'][(string) $this->reimpressions] = $pieces;
+        $this->tempsReels = $temps;
         $this->pauseDebuteLe = $this->termineLe ?? $le ?? new \DateTimeImmutable();
         $this->termineLe = null;
         $this->terminePar = null;

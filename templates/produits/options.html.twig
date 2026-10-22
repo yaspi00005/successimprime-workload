@@ -95,6 +95,20 @@
 					<button class="btn btn-primary btn-sm">Appliquer partout</button>
 				</form>
 			{% endif %}
+			{% if finition and modifiable %}
+				{# Article posé avec la finition, sorti du stock au contrôle final (PD06) : ERP local seulement. #}
+				<form method="post" action="{{ path('app_produits_options_finition_article', {id: finition.finition.id}) }}" class="si-pd-prix-finition mt-2">
+					<input type="hidden" name="_token" value="{{ csrf_token('option-finition-article-' ~ finition.finition.id) }}">
+					<label for="article-finition" class="small text-muted align-self-center mb-0">Article du stock posé (œillets : le nombre compté au contrôle final ; sinon un par pièce)</label>
+					<select id="article-finition" name="article" class="form-select form-select-sm">
+						<option value="0">Aucun</option>
+						{% for a in articles_finition %}
+							<option value="{{ a.id }}" {{ finition.finition.articleStock and finition.finition.articleStock.id == a.id ? 'selected' }}>{{ a.designation }} ({{ a.uniteCourte }})</option>
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-primary btn-sm">Enregistrer</button>
+				</form>
+			{% endif %}
 		</section>
 	{% endif %}
 

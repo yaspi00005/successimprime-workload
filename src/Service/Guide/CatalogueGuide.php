@@ -474,6 +474,16 @@ final class CatalogueGuide
                 ],
             ],
             [
+                'cle' => 'impression-rouleau', 'groupe' => 'production', 'titre' => 'Suivre l\'impression d\'un rouleau',
+                'but' => 'Noter chaque pièce imprimée, faire une pause, signaler un problème et terminer le rouleau, au bureau ou sur le téléphone.',
+                'droits' => ['ROLE_PRODUCTION_VOIR', 'ROLE_PRODUCTION_GERER'], 'route' => 'app_atelier_operateur_en_cours',
+                'ecrans' => ['app_atelier_production_en_cours', 'app_atelier_operateur_en_cours'],
+                'captures' => [
+                    ['nom' => 'rouleau-en-cours', 'legende' => 'L\'impression en cours : la pièce, la vitesse, l\'encre, la suite sur la machine.'],
+                    ['nom' => 'rouleau-telephone', 'legende' => 'Le suivi sur le téléphone, avec Pause, Problème et « Pièce imprimée ».', 'mobile' => true],
+                ],
+            ],
+            [
                 'cle' => 'planning-machines', 'groupe' => 'production', 'titre' => 'Le planning des machines',
                 'but' => 'Voir la semaine de chaque machine, sa charge, et déplacer un travail.',
                 'droits' => ['ROLE_PRODUCTION_VOIR'], 'route' => 'app_atelier_planning', 'consultation' => true,

@@ -85,6 +85,9 @@ final class ControleFinalController extends AbstractController
                     ? 'Contrôle validé. Imprimez et collez les étiquettes des colis : la commande passera « Prête » au dernier scan.'
                     : \sprintf('Contrôle validé. %d colis sur %d scannés : la commande passera « Prête » au dernier scan.', $etat['scannes'], $etat['total']));
             }
+            if ([] !== ($r['notes'] ?? [])) {
+                $this->addFlash('warning', implode(' ', $r['notes']));
+            }
         } catch (\LogicException|\InvalidArgumentException $e) {
             $this->addFlash('danger', $e->getMessage());
         }

@@ -63,8 +63,8 @@ La page d'une commande : `/atelier/production/controle/{commande}`, « Contrôle
   - aucune trace, rayure ou bande.
   Qui a validé et à quelle heure sont gardés.
 - **Scanner les étiquettes collées** : les colis et leur heure de scan (« Colis 1/2 scanné 11:02 »), le champ de scan et le lien vers le scanner du téléphone.
-- **Temps réel vs estimé** : les étapes estimées par le machiniste (impression, séchage, finition, contrôle) et le temps réel total du travail, pauses déduites (vert : dans l'estimé ; orange : jusqu'à 10 % de plus ; rouge au-delà). Le temps réel par étape s'ajoutera dans ce bloc.
-- **Consommé** : ce qui est sorti du stock pour les lignes de la commande à « Terminé » (reprises comprises), en unités lisibles : « 6,6 m² », « 78 ml », « 2 boîtes ». **Quantités seulement, jamais de prix ni de coût.** « Déduit du stock automatiquement. »
+- **Temps réel vs estimé** : par travail puis pour la commande, chaque étape estimée et réelle (« Impression 28 min / 26 min, Séchage 45 / 45, Finition 40 / 52, Contrôle 10 / 12, Total 2 h 03 / 2 h 15 ») ; vert : dans l'estimé, orange : jusqu'à 10 % de plus, rouge au-delà ; « – » pour une étape pas encore mesurée. « Ces temps améliorent les prochaines estimations de délai. » Voir « Temps réels par étape » plus bas.
+- **Consommé** : ce qui est sorti du stock pour les lignes de la commande (reprises comprises), en unités lisibles : « Bâche 510 g · laize 3,20 m 6,5 m² (dont 0,5 de chute) », « Encre 66 ml », « Œillets laiton 32 » (le nombre d'œillets, jamais « 0,064 boîte »). Sans article d'encre pour la machine : « … n'a pas d'article d'encre en stock : l'encre n'est pas sortie. » **Quantités seulement, jamais de prix ni de coût.** « Déduit du stock automatiquement. »
 - **Avant « Prête »** : ce qui manque encore (contrôle validé, colis scannés : 1 sur 2).
 
 ### Refaire une pièce
@@ -78,6 +78,25 @@ Le bouton « Refaire une pièce » (avec une confirmation) demande le travail, l
 - la matière de la reprise sort du stock sous sa propre référence (`PROD-000123-R1`), sans toucher à la première sortie.
 
 Même règle que l'atelier pour agir sur un travail : le chef d'atelier, le poste de la machine, un opérateur affecté à la machine, ou une personne qui a pointé aujourd'hui (`docs/atelier-production.md`). Impossible quand la commande est déjà prête.
+
+## Temps réels par étape
+
+Chaque travail garde ses temps réels (`ordre_production.temps_reels`, ERP local) :
+
+| Étape | Mesurée de … à … |
+|---|---|
+| Impression | sur un rouleau : de sa première pièce commencée à sa dernière pièce imprimée, pauses du rouleau retirées au prorata ; imprimé seul (Ma file) : Démarré → Terminé, pauses retirées |
+| Séchage | fin de l'impression → début de la finition (heures de l'horloge) |
+| Finition | « Commencer la finition » (impression en cours PD04, ou étiquettes PD05 ; sans appui : fin du séchage du profil) → étiquettes imprimées pour sa commande (heures d'ouverture, 8 h – 19 h, dimanche fermé) |
+| Contrôle | étiquettes imprimées → contrôle final validé (heures d'ouverture) |
+
+À la validation du contrôle, les temps de chaque étape sont gardés sur le travail avec le temps proposé. Une pièce refaite ajoute son passage à l'impression et marque l'étape « reprise ».
+
+**Les estimations apprennent** (`FacteursEstimation` et `CorrectionsEstimation`, testés) : par machine et par étape, le facteur est la médiane de réel ÷ proposé sur les 20 derniers travaux terminés qui ont les deux, avec au moins 5 travaux, borné entre 0,5 et 2. Il corrige les temps **proposés** de Ma file (« Modifier l'estimation » : « corrigé d'après les 12 derniers travaux (× 1,1) ») et la durée affichée de l'imposition d'un rouleau (PD02). Les travaux avec une pièce refaite ne comptent pas. L'estimation que tape l'opérateur et les points (comparés à sa propre estimation) ne changent pas ; le temps proposé avant correction est gardé, pour que l'apprentissage ne se nourrisse pas de sa propre correction.
+
+## Sorties du stock du contrôle final
+
+À la validation du contrôle, les articles posés avec les finitions sortent du stock (`FIN-<n° du travail>`, `FIN-…-R1` pour les pièces d'une reprise, idempotent) : œillets = le nombre compté pour le contrôle × pièces (16 par bâche 300 × 100 × 2 bâches = 32), autre finition = un par pièce, convertis dans l'unité de l'article (une boîte de 500 : 32 œillets = 0,064 boîte). Le lien entre une finition et son article se règle dans les options partagées du catalogue, sur la finition (« Article du stock posé », direction, ERP local). La chute du rouleau et l'encre sortent à « Impression terminée » (`docs/production-rouleau.md`).
 
 ## « Prête »
 
@@ -114,15 +133,21 @@ Aucun montant sur ces écrans ni sur les étiquettes. Le livreur seul (`LivreurS
 - `controle_final` : un par commande : cases cochées par ligne (et tailles mesurées), validé le / par, photo (nom du fichier) prise le / par, nombre de reprises.
 - `ordre_production.pieces_a_refaire` et `reimpressions` : la reprise en cours et leur nombre.
 - `commandes_details.prete_livraison_le` : l'heure où la ligne est passée « prête » (synchronisée avec le statut de la ligne pour l'espace client).
+- `ordre_production.temps_reels` (JSON) : début et fin d'impression, début de la finition, pièces de chaque reprise, et par étape le temps réel et le temps proposé.
+- `finition.article_stock_id` : l'article de stock posé avec la finition (œillets, attaches).
 
 ## Démonstration
 
 `php bin/console app:production-colis:demo` (lancé aussi par `app:demo`), clients `DEMO-PC…`, commandes `CMD-PC…`, relançable ; `--purger` enlève tout :
 
 - à étiqueter : CMD-PC0183 Awa Diarra (2 bâches 300 × 100, ourlet et œillets → 2 colis), CMD-PC0430 Moussa Koita (1 kakémono, retrait), CMD-PC0186 Clinique Pasteur (2 kakémonos → 1 colis), CMD-PC0181 Awa Diarra (1 000 flyers → 2 cartons) ;
-- à contrôler : CMD-PC0179 Pharmacie du Fleuve (2 banderoles, étiquettes imprimées, 1 colis sur 2 scanné, photo prise, matière sortie) ;
-- prêtes, dans la tournée de demo.bakary demain de 10 h à 12 h : CMD-PC0177 (Awa Diarra, 2 bâches, photo), CMD-PC0175 et CMD-PC0174, passées par les vrais services (étiquettes, scan, contrôle, tournée).
+- à contrôler : CMD-PC0179 Pharmacie du Fleuve (2 banderoles imprimées sur un rouleau, étiquettes imprimées, 1 colis sur 2 scanné, photo prise ; temps de la maquette : impression 28 / 26 min, séchage 45 / 45, finition 40 / 52 ; chute et encre sorties) ;
+- prêtes, dans la tournée de demo.bakary demain de 10 h à 12 h : CMD-PC0177 (Awa Diarra, 2 bâches, photo ; temps, chute, encre et 32 œillets sortis), CMD-PC0175 et CMD-PC0174, passées par les vrais services (étiquettes, scan, contrôle, tournée) ;
+- Ma file : CMD-PC0172 Pharmacie du Fleuve, une bâche sur 3 refaite au contrôle (« Bande claire sur la 3e bâche ») et sa reprise démarrée : la barre, la fin estimée et le temps passé comptent la reprise seule.
 
-## Ce qui viendra ensuite
+La finition « Œillets tous les 50 cm » de la démonstration est liée à l'article « Œillets laiton (boîte de 500) ».
 
-Le temps réel par étape (impression, séchage, finition), la chute du rouleau, les sorties d'encre et d'œillets, et « ces temps améliorent les prochaines estimations » s'ajouteront dans les blocs « Temps réel vs estimé » et « Consommé » (`templates/production_colis/_temps.html.twig`, `_consomme.html.twig`).
+## Ce qui reste à décider
+
+- La finition se mesure jusqu'aux étiquettes imprimées : un travail étiqueté longtemps après la fin de sa finition allonge son temps de finition. Un appui « Finition terminée » serait plus juste, au prix d'un geste de plus.
+- Les autres finitions qu'œillets sortent un article par pièce (une attache, une barre) ; un nombre par pièce réglable sur la finition reste à prévoir si un article en demande plusieurs.

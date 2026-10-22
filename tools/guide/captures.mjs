@@ -708,6 +708,18 @@ await scene(['colis-etiquettes', 'controle-final'], async () => {
     await capture(page, 'controle-final');
 });
 
+/* ---------- Impression en cours (PD04) et suivi au téléphone (PD07) ---------- */
+
+// Le rouleau R-…-03 de la démonstration, démarré par Oumar : la 2e pièce s'imprime.
+await scene(['rouleau-en-cours', 'rouleau-telephone'], async () => {
+    const page = await session('demo.oumar');
+    await aller(page, '/atelier/operateur/en-cours');
+    await capture(page, 'rouleau-en-cours');
+    const telephone = await session('demo.oumar', { mobile: true });
+    await aller(telephone, '/atelier/operateur/en-cours');
+    await capture(telephone, 'rouleau-telephone');
+});
+
 await navigateur.close();
 
 const total = fs.readdirSync(SORTIE).filter((f) => f.endsWith('.webp')).reduce((s, f) => s + fs.statSync(path.join(SORTIE, f)).size, 0);

@@ -1,0 +1,47 @@
+{#
+	« Mon travail » › impression en cours (PD07) : sans rouleau à suivre sur
+	ma machine, ou plusieurs (chef d'atelier), la liste ; un seul rouleau
+	redirige directement (ImpressionEnCoursController::operateur).
+#}
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Impression en cours{% endblock %}
+{% block fab_actif %}en_cours{% endblock %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Mon travail</p>
+			<h1 class="si-fab-titre">Impression en cours</h1>
+			{% if machines is not empty %}<p class="si-fab-muet mb-0">{{ machines|join(', ') }}</p>{% endif %}
+		</div>
+	</header>
+
+	{% if rouleaux is empty %}
+		<section class="si-fab-carte">
+			<h2>Aucun rouleau en impression</h2>
+			<p class="si-fab-muet">{{ machines is empty ? 'Aucune machine ne vous est affectée et ce poste n\'est celui d\'aucune machine.' : 'Rien ne s\'imprime en ce moment sur ' ~ machines|join(', ') ~ '.' }} Un rouleau apparaît ici dès qu'il est démarré depuis sa fiche de production.</p>
+			<div class="si-fab-actions">
+				<a href="{{ path('app_ma_file_index') }}" class="si-fab-bouton sombre"><i class="fas fa-stream" aria-hidden="true"></i>Ma file</a>
+				<a href="{{ path('app_atelier_operateur_scanner') }}" class="si-fab-bouton"><i class="fas fa-qrcode" aria-hidden="true"></i>Scanner une étiquette</a>
+				<a href="{{ path('app_atelier_production_rouleaux') }}" class="si-fab-bouton"><i class="fas fa-scroll" aria-hidden="true"></i>Rouleaux</a>
+			</div>
+		</section>
+	{% else %}
+		<section class="si-fab-carte">
+			<h2>Rouleaux en impression <small>{{ rouleaux|length }}</small></h2>
+			<ul class="si-fr-liste">
+				{% for t in rouleaux %}
+					<li>
+						<div>
+							<a class="si-fe-lien-rouleau" href="{{ path('app_atelier_production_en_cours', {id: t.id}) }}">{{ t.machine.nom }} · {{ t.numero }}</a>
+							<span class="si-fab-pastille orange">{{ t.libelleStatut }}</span><br>
+							<small class="si-fab-muet">{{ t.libelleSupport }} · {{ t.pieces|length }} pièce{{ t.pieces|length > 1 ? 's' }}{% if t.demarreLe %} · démarré à {{ t.demarreLe|date('H:i') }}{% endif %}</small>
+						</div>
+						<a href="{{ path('app_atelier_production_en_cours', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton sombre"><i class="fas fa-print" aria-hidden="true"></i>Suivre</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</section>
+	{% endif %}
+{% endblock %}

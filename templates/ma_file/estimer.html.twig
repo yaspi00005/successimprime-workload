@@ -96,7 +96,7 @@
 							{% for e in etapes %}
 								{% set v = deja[e.cle] ?? e.propose %}
 								<tr>
-									<td>{{ e.libelle }}</td>
+									<td>{{ e.libelle }}{% if e.correction is defined %}<small class="d-block si-pm-lien-bleu" title="Proposé avant correction : {{ e.brut|temps_estime }}">{{ e.correction }}</small>{% endif %}</td>
 									<td class="num">{{ e.propose is null ? '—' : e.propose|temps_estime }}</td>
 									<td class="num"><input name="estime[{{ e.cle }}]" value="{{ v is null ? '' : v|temps_estime }}" inputmode="text" aria-label="Votre estimation : {{ e.libelle }}" placeholder="ex. 1 h 30" data-si-pm-etape{{ not peutAgir ? ' disabled' }}></td>
 								</tr>

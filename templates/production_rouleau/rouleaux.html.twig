@@ -3,8 +3,8 @@
 {% block title %}Rouleaux{% endblock %}
 {% block fab_actif %}rouleaux{% endblock %}
 
-{% set titres = {prepare: 'Préparés', envoye: 'Envoyés au RIP', impression: 'En impression', faits: 'Terminés ou annulés aujourd\'hui'} %}
-{% set pastilles = {prepare: '', envoye: 'bleu', impression: 'orange', faits: 'vert'} %}
+{% set titres = {impression: 'En impression', prepare: 'Préparés', envoye: 'Envoyés au RIP', imprime: 'Imprimés · en finition', faits: 'Terminés ou annulés aujourd\'hui'} %}
+{% set pastilles = {prepare: '', envoye: 'bleu', impression: 'orange', imprime: 'bleu', faits: 'vert'} %}
 
 {% block fab_contenu %}
 	<header class="si-fab-entete">
@@ -30,12 +30,19 @@
 					{% for t in liste %}
 						<li class="si-fr-rouleau">
 							<div>
-								<a class="titre" href="{{ path(t.statut in ['prepare'] ? 'app_atelier_production_imposition' : 'app_atelier_production_fiche', {id: t.id}) }}">{{ t.numero }}</a>
+								{% set suivi = cle in ['impression', 'imprime'] %}
+								<a class="titre" href="{{ path(suivi ? 'app_atelier_production_en_cours' : (t.statut in ['prepare'] ? 'app_atelier_production_imposition' : 'app_atelier_production_fiche'), {id: t.id}) }}">{{ t.numero }}</a>
 								<span class="si-fab-pastille {{ pastilles[cle] }}">{{ t.libelleStatut }}</span><br>
 								<small class="si-fab-muet">{{ t.machine.nom }} · {{ t.libelleSupport }} · {{ t.pieces|length }} pièce{{ t.pieces|length > 1 ? 's' }} · {{ t.consommeM|number_format(1, ',', ' ') }} m · {{ t.pourcent }} %</small>
+								{% set p = progressions[t.id] ?? null %}
+								{% if p %}<br><small><b>pièce {{ p.courante ?? p.total }} sur {{ p.total }}</b> · {{ p.m2Fait|number_format(1, ',', ' ') }} m² sur {{ p.m2Total|number_format(1, ',', ' ') }}{% if p.fin %} · fin vers {{ p.fin|date('H:i') }}{% endif %}</small>{% endif %}
 							</div>
 							<div class="si-fr-ligne">
-								<a href="{{ path('app_atelier_production_imposition', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton">Imposition</a>
+								{% if suivi %}
+									<a href="{{ path('app_atelier_production_en_cours', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton sombre"><i class="fas fa-print" aria-hidden="true"></i>{{ cle == 'impression' ? 'Suivre' : 'Finition' }}</a>
+								{% else %}
+									<a href="{{ path('app_atelier_production_imposition', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton">Imposition</a>
+								{% endif %}
 								<a href="{{ path('app_atelier_production_fiche', {id: t.id}) }}" class="si-fab-bouton si-fr-petit-bouton">Fiche</a>
 							</div>
 						</li>

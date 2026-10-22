@@ -79,6 +79,34 @@
 				</section>
 			{% endif %}
 
+			{% set aFinir = choisi ? choisi.lignes|filter(l => l.finitions != '') : [] %}
+			{% if aFinir is not empty %}
+				{# « Commencer la finition » : mesure le séchage et la finition (PD06, temps réel vs estimé). #}
+				{% set parOrdre = {} %}
+				{% for o in choisi.ordres %}{% set parOrdre = parOrdre|merge({('o' ~ o.id): o}) %}{% endfor %}
+				<section class="si-fab-carte">
+					<h2>Finition</h2>
+					<ul class="si-colis-finitions">
+						{% for l in aFinir %}
+							{% set o = parOrdre['o' ~ l.ordre] %}
+							<li>
+								<span><b>{{ l.nom }}</b> · {{ l.finitions }}</span>
+								{% if o.finitionDebuteeLe %}
+									<span class="si-fab-muet">commencée à {{ o.finitionDebuteeLe|date('H:i') }}</span>
+								{% elseif peutAgir %}
+									<form method="post" action="{{ path('app_atelier_production_finition', {id: o.id}) }}">
+										<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+										<input type="hidden" name="retour" value="etiquettes">
+										<button class="si-fab-bouton">Commencer la finition</button>
+									</form>
+								{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-fab-note">Sans appui, la finition compte à partir de la fin du séchage.</p>
+				</section>
+			{% endif %}
+
 			<section class="si-fab-carte">
 				<h2>Où coller</h2>
 				{% set emballages = choisi ? choisi.colis|map(p => p.emballage) : [] %}

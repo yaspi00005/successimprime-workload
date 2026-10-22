@@ -391,15 +391,15 @@ final class Formation
                     ],
                     [
                         'heure' => '10:00',
-                        'titre' => 'Gâche, incident, réimpression',
-                        'fiches' => ['ma-file'],
-                        'faire' => 'Exercice 4.',
+                        'titre' => 'Gâche, incident, réimpression ; le rouleau en impression',
+                        'fiches' => ['ma-file', 'impression-rouleau'],
+                        'faire' => 'Exercices 4 et 5.',
                     ],
                     [
                         'heure' => '10:30',
                         'titre' => 'Pause, puis le pointage',
                         'fiches' => ['pointer'],
-                        'faire' => 'Exercice 5.',
+                        'faire' => 'Exercice 6.',
                     ],
                     [
                         'heure' => '11:00',
@@ -444,6 +444,15 @@ final class Formation
                             '« Terminer » : « Quantité bonne », « Rebut », « Confirmer la fin ».',
                         ],
                         'attendu' => 'Le travail quitte la file ; les m² du jour augmentent.',
+                    ],
+                    [
+                        'titre' => 'Suivre un rouleau en impression',
+                        'compte' => 'demo.oumar',
+                        'consigne' => [
+                            'Sur le téléphone : « Mon travail », puis « Suivre l\'impression en cours ».',
+                            'Quand la pièce sort : « Pièce imprimée ». Puis « Pause » et « Reprendre ».',
+                        ],
+                        'attendu' => 'La pièce suivante passe « en cours » ; l\'employé lit la fin prévue et sait que les chiffres « estimé » viennent de ses appuis.',
                     ],
                     [
                         'titre' => 'Pointer',

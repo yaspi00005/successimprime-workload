@@ -42,6 +42,15 @@ class Finition implements AUnNomCommercial
     #[ORM\Column(nullable: true)]
     private ?int $coutUnitaire = null;
 
+    /*
+     * Article du stock posé avec la finition (œillets, attaches) : sorti au
+     * contrôle final (PD06, docs/production-colis.md). Réglé par la
+     * Direction sur l'ERP, jamais synchronisé (CatalogueSynchro liste ses champs).
+     */
+    #[ORM\ManyToOne(targetEntity: Articles::class)]
+    #[ORM\JoinColumn(name: 'article_stock_id', nullable: true, onDelete: 'SET NULL')]
+    private ?Articles $articleStock = null;
+
     /**
      * @var Collection<int, TypesImpression>
      */
@@ -102,6 +111,18 @@ private Collection $supports;
     public function setOrdre(int $ordre): static
     {
         $this->ordre = $ordre;
+
+        return $this;
+    }
+
+    public function getArticleStock(): ?Articles
+    {
+        return $this->articleStock;
+    }
+
+    public function setArticleStock(?Articles $articleStock): static
+    {
+        $this->articleStock = $articleStock;
 
         return $this;
     }

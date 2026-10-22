@@ -14,15 +14,20 @@ use App\Security\Droits;
 use App\Security\FichierEnvoye;
 use App\Security\FichiersPrivesVoter;
 use App\Service\Atelier\AtelierProduction;
+use App\Service\Atelier\CorrectionsEstimation;
+use App\Service\Atelier\FacteursEstimation;
 use App\Service\Atelier\PosteMachiniste;
 use App\Service\Http\Entree;
 use App\Service\Production\ControlesTirage;
 use App\Service\Production\EnvoiRip;
 use App\Service\Production\FichierProduction;
 use App\Service\Production\ImpositionRouleau;
+use App\Service\Production\ImpressionEnCours;
 use App\Service\Production\NomFichierProduction;
 use App\Service\Production\ParcoursFichier;
+use App\Service\Production\ProgressionRouleau;
 use App\Service\Production\TiragesRouleau;
+use Doctrine\DBAL\LockMode;
 use Doctrine\ORM\EntityManagerInterface;
 use Endroid\QrCode\Encoding\Encoding;
 use Endroid\QrCode\ErrorCorrectionLevel;
@@ -41,7 +46,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 /**
  * Production au rouleau (maquettes PD01 à PD03, docs/production-rouleau.md) :
  * le parcours d'un fichier, les rouleaux et leur imposition, l'envoi au
- * RIP, la fiche de production et « Démarrer ».
+ * RIP, la fiche de production et « Démarrer » (la suite, PD04 :
+ * ImpressionEnCoursController).
  *
  * Tout voir : « Production ». Agir (créer, placer, envoyer, cocher,
  * démarrer) : « Statuts de production » et la règle de l'atelier (chef
@@ -63,6 +69,7 @@ final class ProductionRouleauController extends AbstractController
         private readonly MachinesRepository $machinesRepository,
         private readonly PointageRepository $pointages,
         private readonly AtelierProduction $atelierProduction,
+        private readonly CorrectionsEstimation $corrections,
     ) {
     }
 
@@ -135,12 +142,19 @@ final class ProductionRouleauController extends AbstractController
     // ------------------------------------------------------------------
 
     #[Route('/rouleaux', name: 'rouleaux', methods: ['GET'])]
-    public function rouleaux(): Response
+    public function rouleaux(ImpressionEnCours $impression): Response
     {
         $maintenant = new \DateTimeImmutable();
+        $groupes = $this->tirages->parEtat($maintenant);
+        $progressions = [];
+        foreach ($groupes['impression'] as $t) {
+            $r = $impression->reperes($t);
+            $progressions[(int) $t->getId()] = ProgressionRouleau::duTirage($t, $maintenant, $r['vitesse'], $r['encreMlM2']);
+        }
 
         return $this->render('production_rouleau/rouleaux.html.twig', [
-            'groupes' => $this->tirages->parEtat($maintenant),
+            'groupes' => $groupes,
+            'progressions' => $progressions,
             'machines' => $this->tirages->machinesRouleau(),
             'libres' => \count($this->tirages->ordresLibres()),
             'peutGerer' => $this->isGranted('ROLE_PRODUCTION_GERER'),
@@ -175,19 +189,30 @@ final class ProductionRouleauController extends AbstractController
             $this->exigerAction($machine, $request);
             $choisis = array_map('intval', (array) $request->request->all('ordres'));
             $ordres = array_values(array_filter($candidats['ordres'], static fn (OrdreProduction $o): bool => \in_array((int) $o->getId(), $choisis, true)));
+            $connexion = $this->em->getConnection();
+            $connexion->beginTransaction();
             try {
                 if (\count($ordres) !== \count(array_unique($choisis))) {
                     throw new \DomainException('Un travail coché n\'est plus disponible : la liste a été rafraîchie.');
                 }
+                // Deux rouleaux préparés en même temps : le second attend le premier et voit ses travaux déjà pris.
+                foreach ($ordres as $o) {
+                    $this->em->refresh($o, LockMode::PESSIMISTIC_WRITE);
+                }
                 $tirage = $this->tirages->creer($machine, $code, $ordres, $this->moi(), $maintenant);
                 $this->em->flush();
+                $connexion->commit();
                 $this->addFlash('success', \sprintf('Rouleau %s préparé : %d pièce%s placée%s.', $tirage->getNumero(), $tirage->getPieces()->count(), $tirage->getPieces()->count() > 1 ? 's' : '', $tirage->getPieces()->count() > 1 ? 's' : ''));
 
                 return $this->redirectToRoute('app_atelier_production_imposition', ['id' => $tirage->getId()]);
             } catch (\DomainException $e) {
+                $connexion->rollBack();
                 $this->addFlash('danger', $e->getMessage());
 
                 return $this->redirectToRoute('app_atelier_production_nouveau', ['machine' => $machine->getId(), 'support' => $code]);
+            } catch (\Throwable $e) {
+                $connexion->rollBack();
+                throw $e;
             }
         }
 
@@ -241,9 +266,14 @@ final class ProductionRouleauController extends AbstractController
         }
         $profil = $this->tirages->profil($tirage);
         $peutAgir = $this->peutAgirSur($tirage->getMachine(), $request);
+        // Les temps réels de la machine corrigent la durée proposée (affichage seulement : le rouleau garde la sienne).
+        $facteur = $this->corrections->facteurs($tirage->getMachine())['impression'] ?? null;
+        $duree = FacteursEstimation::corriger($tirage->getDureeImpressionMin(), $facteur);
 
         return $this->render('production_rouleau/imposition.html.twig', [
             'tirage' => $tirage,
+            'dureeImpression' => $duree,
+            'correction' => null !== $facteur && $duree !== $tirage->getDureeImpressionMin() ? FacteursEstimation::texte($facteur) : null,
             'travaux' => $travaux,
             'pieces' => $pieces,
             'longueur' => max(1.0, $tirage->getConsommeM() * 100),
@@ -561,7 +591,10 @@ final class ProductionRouleauController extends AbstractController
         try {
             $this->tirages->demarrer($tirage, $this->moi(), new \DateTimeImmutable());
             $n = \count($tirage->ordres());
-            $this->addFlash('success', \sprintf('%d travau%s du rouleau passe%s « en cours ».', $n, $n > 1 ? 'x' : '', $n > 1 ? 'nt' : ''));
+            $this->addFlash('success', \sprintf('%d travau%s du rouleau passe%s « en cours ». Appuyez sur « Pièce imprimée » à chaque pièce sortie.', $n, $n > 1 ? 'x' : '', $n > 1 ? 'nt' : ''));
+
+            // PD04 : le suivi de l'impression.
+            return $this->redirectToRoute('app_atelier_production_en_cours', ['id' => $tirage->getId()]);
         } catch (\DomainException $e) {
             $this->addFlash('danger', $e->getMessage());
         }

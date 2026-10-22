@@ -82,7 +82,7 @@
 								<small>
 									{% if cle == 'a_verifier' %}{{ c.m2 ? c.m2|number_format(c.m2 == c.m2|round ? 0 : 1, ',', ' ') ~ ' m²' : (c.machine ?? 'machine à choisir') }}
 									{% elseif cle == 'pret' %}estimé {{ c.estime ?? '—' }}{% if c.machine %} · {{ c.machine }}{% endif %}{% if c.debutPrevu and c.debutPrevu > maintenant %} · vers {{ c.debutPrevu|date('H:i') }}{% endif %}
-									{% elseif cle == 'en_cours' %}{{ c.enPause ? 'en pause' : 'démarré ' ~ o.demarreLe|date('H:i') }}{% if c.pourcent is not null %} · {{ c.pourcent }} %{% endif %}{% if c.machine %} · {{ c.machine }}{% endif %}
+									{% elseif cle == 'en_cours' %}{{ c.enPause ? 'en pause' : 'démarré ' ~ (c.demarre ?? o.demarreLe)|date('H:i') }}{% if c.pourcent is not null %} · {{ c.pourcent }} %{% endif %}{% if c.machine %} · {{ c.machine }}{% endif %}
 									{% elseif cle == 'a_etiqueter' %}terminé {{ o.termineLe|date(o.termineLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{% if o.etiquettesImprimeesLe %} · {{ o.nombreColis }} étiquette{{ o.nombreColis > 1 ? 's' }} imprimée{{ o.nombreColis > 1 ? 's' }}{% endif %}
 									{% else %}{{ c.colis ?? 1 }} colis · {{ c.livraison ? (c.livreur ?? 'livreur à choisir') : 'retrait' }}{% endif %}
 								</small>

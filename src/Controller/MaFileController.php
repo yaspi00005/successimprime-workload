@@ -13,6 +13,7 @@ use App\Repository\MachinesRepository;
 use App\Repository\OrdreProductionRepository;
 use App\Repository\PointageRepository;
 use App\Repository\RetourPrepresseRepository;
+use App\Service\Atelier\CorrectionsEstimation;
 use App\Service\Atelier\PosteMachiniste;
 use App\Service\Atelier\TempsEstime;
 use App\Service\Parametres\Parametres;
@@ -55,6 +56,7 @@ final class MaFileController extends AbstractController
         private readonly PointageRepository $pointages,
         private readonly EntityManagerInterface $em,
         private readonly Parametres $parametres,
+        private readonly CorrectionsEstimation $corrections,
     ) {
     }
 
@@ -267,7 +269,7 @@ final class MaFileController extends AbstractController
         }
         $selection ??= array_values(array_filter($choix, static fn (array $c): bool => $c['recommandee']))[0] ?? null;
         $machine = $selection['machine'] ?? $ordre->getMachine();
-        $etapes = PosteMachiniste::etapesProposees($ordre, $machine);
+        $etapes = $this->corrections->etapesProposees($ordre, $machine);
         $deja = [];
         foreach ($ordre->getEstimation()['etapes'] ?? [] as $e) {
             $deja[$e['cle']] = (int) $e['estime'];
@@ -321,7 +323,7 @@ final class MaFileController extends AbstractController
         }
         $saisies = $request->request->all('estime');
         $etapes = [];
-        foreach (PosteMachiniste::etapesProposees($ordre, $machine) as $e) {
+        foreach ($this->corrections->etapesProposees($ordre, $machine) as $e) {
             $saisie = TempsEstime::lire(\is_string($saisies[$e['cle']] ?? null) ? $saisies[$e['cle']] : null);
             $etapes[] = $e + ['estime' => $saisie ?? (int) ($e['propose'] ?? 0)];
         }
@@ -360,6 +362,9 @@ final class MaFileController extends AbstractController
 
             return $this->redirectToRoute('app_ma_file_travail', ['id' => $ordre->getId()]);
         }
+        if (null !== ($sur = $this->surRouleauLance($ordre))) {
+            return $sur;
+        }
         try {
             match ($action) {
                 'demarrer' => $this->demarrer($ordre),
@@ -389,6 +394,9 @@ final class MaFileController extends AbstractController
 
             return $this->redirectToRoute('app_ma_file_travail', ['id' => $ordre->getId()]);
         }
+        if (null !== ($sur = $this->surRouleauLance($ordre))) {
+            return $sur;
+        }
         try {
             $motif = (string) $request->request->get('motif_gache');
             // Pièce refaite après le contrôle final (docs/production-colis.md) : retour au contrôle de la commande.
@@ -411,6 +419,21 @@ final class MaFileController extends AbstractController
 
             return $this->redirectToRoute('app_ma_file_travail', ['id' => $ordre->getId()]);
         }
+    }
+
+    /**
+     * Un travail sur un rouleau en impression se pause et se termine avec
+     * son rouleau (PD04) : vers l'impression en cours.
+     */
+    private function surRouleauLance(OrdreProduction $ordre): ?Response
+    {
+        $tirage = $ordre->getTirage();
+        if (true !== $tirage?->estLance()) {
+            return null;
+        }
+        $this->addFlash('warning', \sprintf('Ce travail s\'imprime sur le rouleau %s : pause, problème et fin se font depuis l\'impression en cours.', $tirage->getNumero()));
+
+        return $this->redirectToRoute('app_atelier_production_en_cours', ['id' => $tirage->getId()]);
     }
 
     /** Gâche, incident, entretien des têtes, réimpression (journal de la machine, points du barème). */

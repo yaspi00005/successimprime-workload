@@ -32,18 +32,19 @@
 
 		<div class="si-pm-grille-2">
 			<div class="si-pm-pile si-pm-travail">
-				<section class="si-pm-panneau si-pm-machine-carte" {% if o.statut == 'en_cours' %}data-si-pm-chrono="{{ p.secondes }}" data-duree="{{ o.dureeEstimeeMinutes ?? 0 }}"{% endif %}>
+				<section class="si-pm-panneau si-pm-machine-carte" {% if o.statut == 'en_cours' %}data-si-pm-chrono="{{ p.secondes }}" data-duree="{{ p.duree ?? 0 }}"{% endif %}>
 					<div class="haut">
 						<b>{{ o.machine.nom ?? 'Machine à choisir' }}</b>
 						<span class="si-pm-statut{{ o.statut == 'en_pause' ? ' pause' : (o.statut == 'a_produire' ? ' attente') }}">{{ o.statut == 'en_cours' ? 'En cours' : (o.statut == 'en_pause' ? 'En pause' : (o.estTermine ? 'Terminé' : 'Prêt')) }}</span>
 					</div>
 					<div class="barre" role="progressbar" aria-label="Avancement estimé" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ o.estTermine ? 100 : (c.pourcent ?? 0) }}"><i data-barre style="width: {{ o.estTermine ? 100 : (c.pourcent ?? 0) }}%"></i></div>
 					<div class="bas">
-						<span>{{ o.demarreLe ? 'démarré' : 'début prévu' }}<b>{{ o.demarreLe ? o.demarreLe|date('H:i') : (o.debutPrevuLe ? o.debutPrevuLe|date('H:i') : '—') }}</b></span>
-						<span>fin estimée{{ c.estime ? ' · ' ~ c.estime }}<b>{{ fin ? fin|date(fin|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : '—' }}</b></span>
-						{% if o.demarreLe %}<span>temps passé<b data-texte>{{ '%02d:%02d:%02d'|format(p.secondes // 3600, (p.secondes // 60) % 60, p.secondes % 60) }}</b></span>{% endif %}
+						<span>{{ p.debut ? (o.piecesARefaire ? 'reprise démarrée' : 'démarré') : 'début prévu' }}<b>{{ p.debut ? p.debut|date('H:i') : (o.debutPrevuLe ? o.debutPrevuLe|date('H:i') : '—') }}</b></span>
+						{% set estime = o.piecesARefaire and p.duree ? p.duree|temps_estime : c.estime %}
+						<span>fin estimée{{ estime ? ' · ' ~ estime }}<b>{{ fin ? fin|date(fin|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : '—' }}</b></span>
+						{% if p.debut %}<span>temps passé<b data-texte>{{ '%02d:%02d:%02d'|format(p.secondes // 3600, (p.secondes // 60) % 60, p.secondes % 60) }}</b></span>{% endif %}
 					</div>
-					{% if p.m2 and o.demarreLe %}<small class="si-pm-note">Imprimé{{ o.estTermine ? '' : ' (estimé)' }} : {{ (o.estTermine ? p.m2 : (p.fait ?? 0))|number_format(1, ',', ' ') }} / {{ p.m2|number_format(1, ',', ' ') }} m²{{ prevue ? ' · sortie prévue ' ~ prevue|date('d/m H:i') }}</small>{% endif %}
+					{% if p.m2 and o.demarreLe %}<small class="si-pm-note">Imprimé{{ o.estTermine ? '' : ' (estimé)' }} : {{ (o.estTermine ? p.m2 : (p.fait ?? 0))|number_format(1, ',', ' ') }} / {{ p.m2|number_format(1, ',', ' ') }} m²{% if o.piecesARefaire %} · reprise de {{ o.piecesARefaire }} pièce{{ o.piecesARefaire > 1 ? 's' }}{% elseif prevue %} · sortie prévue {{ prevue|date('d/m H:i') }}{% endif %}</small>{% endif %}
 				</section>
 
 				{% if etatLie and etatLie != 'identique' and etatLie != 'hors_atelier' %}
@@ -57,14 +58,17 @@
 				<div class="si-pm-gros">
 					{# Une pièce à refaire (contrôle final, docs/production-colis.md) a déjà une heure de démarrage : elle se redémarre. #}
 					{% if o.demarreLe and not o.estADemarrer %}
-						<span class="btn si-pm-fait" aria-disabled="true"><i class="fas fa-play"></i>Démarré · {{ o.demarreLe|date('H:i') }} <i class="fas fa-check"></i></span>
+						<span class="btn si-pm-fait" aria-disabled="true"><i class="fas fa-play"></i>Démarré · {{ (p.debut ?? o.demarreLe)|date('H:i') }} <i class="fas fa-check"></i></span>
 					{% elseif o.machine is null %}
 						<a href="{{ path('app_ma_file_estimer', {id: o.id}) }}" class="btn si-pm-btn-rouge"><i class="far fa-clock"></i>Machine et temps estimé</a>
 					{% else %}
 						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-btn-vert"{{ not peutAgir ? ' disabled' }}><i class="fas fa-play"></i>{{ o.piecesARefaire ? 'Refaire ' ~ o.piecesARefaire ~ ' pièce' ~ (o.piecesARefaire > 1 ? 's') ~ ' sur ' : 'Démarrer sur ' }}{{ o.machine.nom }}</button></form>
 					{% endif %}
 
-					{% if o.statut == 'en_cours' %}
+					{% if o.tirage and o.tirage.estLance %}
+						{# Sur un rouleau en impression : pause et fin se font avec le rouleau (PD04). #}
+						<a href="{{ path('app_atelier_production_en_cours', {id: o.tirage.id}) }}" class="btn si-pm-btn-nuit"><i class="fas fa-print"></i>Rouleau {{ o.tirage.numero }} : suivre l'impression</a>
+					{% elseif o.statut == 'en_cours' %}
 						<details>
 							<summary class="btn si-pm-btn-nuit"{{ not peutAgir ? ' aria-disabled=true' }}><i class="fas fa-stop"></i>Terminé</summary>
 							{% if peutAgir %}
@@ -143,6 +147,7 @@
 
 				<p class="si-pm-panneau si-pm-note">
 					{% if o.estTermine %}Points de ce travail : <b>{{ bareme.points(faits) > 0 ? '+' }}{{ bareme.points(faits) }} pts</b>
+					{% elseif o.piecesARefaire %}Pièce refaite : le point « sorti avant l'heure prévue » n'est plus possible
 					{% else %}Terminé avant {{ prevue ? prevue|date('H:i') : 'l\'heure prévue' }} : <b>+{{ bareme.points({p_avant_heure: 1}) }} pts</b>{% endif %}
 					· +{{ bareme.valeur('p_10m2') }} pt par 10 m²
 				</p>

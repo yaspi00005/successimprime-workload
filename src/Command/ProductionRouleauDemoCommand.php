@@ -20,6 +20,7 @@ use App\Service\AnalyseFichierImpression;
 use App\Service\Atelier\AtelierProduction;
 use App\Service\Production\EnvoiRip;
 use App\Service\Production\FichierProduction;
+use App\Service\Production\ImpressionEnCours;
 use App\Service\Production\TiragesRouleau;
 use Doctrine\ORM\EntityManagerInterface;
 use Dompdf\Dompdf;
@@ -37,12 +38,15 @@ use Symfony\Component\HttpFoundation\Session\Storage\MockArraySessionStorage;
 
 /**
  * Démonstration de la production au rouleau (docs/production-rouleau.md,
- * maquettes PD01 à PD03) : dossiers et profils des machines, un traceur de
+ * maquettes PD01 à PD04) : dossiers et profils des machines, un traceur de
  * découpe, la bâche 440 g en laize 3,20 m, trois commandes (Koita,
- * Clinique Pasteur, Awa Diarra) regroupées sur le rouleau R-MMJJ-03 déjà
- * envoyé au RIP, le jaune à 18 % qui bloque « Démarrer », et une bâche
- * 510 g qui attend un autre rouleau. Commandes CMD-PR…, clients DEMO-PR…,
- * relançable. Lancée par app:demo après le poste machiniste.
+ * Clinique Pasteur, Awa Diarra) regroupées sur le rouleau R-MMJJ-03 envoyé
+ * au RIP puis démarré il y a 10 minutes (jaune remplacé juste avant : la
+ * 1re pièce sèche, la 2e s'imprime), une bâche 510 g qui attend un autre
+ * rouleau et une bâche 440 g pour le même (« Ensuite »), et sur la
+ * Solvant 1,80 m le rouleau R-MMJJ-04 envoyé que le jaune à 18 % bloque.
+ * Commandes CMD-PR…, clients DEMO-PR…, relançable. Lancée par app:demo
+ * après le poste machiniste.
  */
 #[AsCommand(name: 'app:production-rouleau:demo', description: 'Charge la démonstration de la production au rouleau (commandes CMD-PR…).')]
 final class ProductionRouleauDemoCommand extends Command
@@ -76,6 +80,7 @@ final class ProductionRouleauDemoCommand extends Command
         private readonly TiragesRouleau $tirages,
         private readonly EnvoiRip $rip,
         private readonly AtelierProduction $atelier,
+        private readonly ImpressionEnCours $impression,
         #[Autowire('%kernel.project_dir%')] private readonly string $projet,
         #[Autowire('%kernel.environment%')] private readonly string $environnement,
     ) {
@@ -120,8 +125,9 @@ final class ProductionRouleauDemoCommand extends Command
         $oumar = $users->findOneBy(['username' => 'demo.oumar']);
         $seydou = $users->findOneBy(['username' => 'demo.seydou']);
         $grand = $this->em->find(Machines::class, 900001);
-        if (!$oumar instanceof User || !$seydou instanceof User || !$grand instanceof Machines) {
-            $io->warning('Démonstration absente (demo.oumar, demo.seydou, machine 900001) : rien à faire.');
+        $petit = $this->em->find(Machines::class, 900002);
+        if (!$oumar instanceof User || !$seydou instanceof User || !$grand instanceof Machines || !$petit instanceof Machines) {
+            $io->warning('Démonstration absente (demo.oumar, demo.seydou, machines 900001 et 900002) : rien à faire.');
 
             return Command::SUCCESS;
         }
@@ -152,18 +158,24 @@ final class ProductionRouleauDemoCommand extends Command
             ['n' => '0186', 'client' => ['DEMO-PR02', 'Traoré', 'Mariam', 'Clinique Pasteur', Clients::TYPE_COMPTE_ENTREPRISE], 'config' => $configKakemono, 'support' => $support440, 'designation' => 'Kakémono', 'l' => 0.85, 'h' => 2.0, 'q' => 2, 'finitions' => [900003], 'promis' => $demain->setTime(10, 0), 'image' => 'pasteur'],
             ['n' => '0183', 'client' => ['DEMO-PR03', 'Diarra', 'Awa', 'Awa Mode', Clients::TYPE_COMPTE_PARTICULIER], 'config' => $configBache, 'support' => $support440, 'designation' => 'Bâche', 'l' => 3.0, 'h' => 1.0, 'q' => 2, 'finitions' => [900002, 900001], 'promis' => $demain->setTime(10, 0), 'image' => 'awa',
                 'observation' => 'Le rouge Awa Mode doit être fidèle au BAT imprimé.'],
-            ['n' => '0187', 'client' => ['DEMO-PR04', 'Sow', 'Ibrahima', 'Pharmacie du Fleuve', Clients::TYPE_COMPTE_ENTREPRISE], 'config' => $configBache, 'support' => null, 'designation' => 'Bâche', 'l' => 4.0, 'h' => 1.5, 'q' => 1, 'finitions' => [900002, 900001], 'promis' => $demain->modify('+1 day')->setTime(12, 0), 'image' => 'pharmacie'],
+            ['n' => '0187', 'client' => ['DEMO-PR04', 'Sow', 'Ibrahima', 'Pharmacie du Fleuve', Clients::TYPE_COMPTE_ENTREPRISE], 'config' => $configBache, 'support' => null, 'designation' => 'Bâche', 'l' => 4.0, 'h' => 1.5, 'q' => 1, 'finitions' => [900002, 900001], 'promis' => $demain->modify('+1 day')->setTime(12, 0), 'image' => 'pharmacie', 'transmis' => [10, 5, '-15 minutes']],
+            // « Ensuite » sur la Solvant 3,20 m : même support que le rouleau en impression.
+            ['n' => '0189', 'client' => ['DEMO-PR05', 'Coulibaly', 'Adama', 'Hôtel Niger', Clients::TYPE_COMPTE_ENTREPRISE], 'config' => $configBache, 'support' => $support440, 'designation' => 'Bâche', 'l' => 2.0, 'h' => 1.0, 'q' => 6, 'finitions' => [900002, 900001], 'promis' => $demain->modify('+1 day')->setTime(16, 0), 'image' => 'niger', 'transmis' => [10, 12, '-12 minutes']],
+            // PD03 sur la Solvant 1,80 m : rouleau envoyé, le jaune à 18 % bloque « Démarrer ».
+            ['n' => '0191', 'client' => ['DEMO-PR06', 'Maïga', 'Oumou', 'Lycée Askia', Clients::TYPE_COMPTE_ENTREPRISE], 'config' => $configBache, 'support' => $support440, 'designation' => 'Bâche', 'l' => 1.5, 'h' => 1.0, 'q' => 2, 'finitions' => [900002, 900001], 'promis' => $demain->setTime(15, 0), 'image' => 'askia', 'machine' => $petit,
+                'observation' => 'Le bleu du logo doit être fidèle au BAT imprimé.'],
         ];
 
         $ordres = [];
         foreach ($travaux as $i => $t) {
-            $ordres[$t['n']] = $this->travail($t, $i, $oumar, $seydou, $grand, $a);
+            $ordres[$t['n']] = $this->travail($t, $i, $oumar, $seydou, $t['machine'] ?? $grand, $a);
         }
         $this->em->flush();
 
         // Heures du prépresse : BAT validé, envoyé en production par Seydou à 09:48.
+        $transmis = array_column($travaux, 'transmis', 'n');
         foreach ($ordres as $n => $o) {
-            $envoye = '0187' === $n ? $a(10, 5, '-15 minutes') : $a(9, 48, '-40 minutes');
+            $envoye = isset($transmis[$n]) ? $a(...$transmis[$n]) : $a(9, 48, '-40 minutes');
             $connexion->executeStatement('UPDATE controle_pre_presse SET traite_le = ?, valide_le = ?, envoye_production_le = ? WHERE id = ?', [
                 $envoye->modify('-50 minutes')->format('Y-m-d H:i:s'), $envoye->modify('-35 minutes')->format('Y-m-d H:i:s'), $envoye->format('Y-m-d H:i:s'), $o->getControlePrePresse()?->getId(),
             ]);
@@ -200,15 +212,61 @@ final class ProductionRouleauDemoCommand extends Command
         $this->em->flush();
 
         // « Envoyer au RIP » : un seul PDF, envoyé par morceaux comme depuis le navigateur.
-        $envoi = $this->envoyer($tirage, $oumar, $a(9, 56, '-26 minutes'), $io);
+        $envoi = $this->envoyer($tirage, $oumar, $a(9, 56, '-46 minutes'), $io);
         $this->em->flush();
 
-        $io->success(\sprintf('Production au rouleau : rouleau %s (%d pièces, %d %% utilisé%s), une bâche 510 g en attente, jaune à 18 %% sur la Solvant 3,20 m.', $tirage->getNumero(), \count($tirage->getPieces()), $tirage->getPourcent(), null !== $envoi ? ', envoyé au RIP' : ''));
+        // PD04 : le jaune remplacé 4 minutes avant, R-…-03 démarré il y a 10 minutes par Oumar ;
+        // la 1re pièce imprimée sèche, la 2e s'imprime, 3 à venir.
+        $debut = $maintenant->modify('-10 minutes');
+        $demarre = false;
+        if (null !== $envoi) {
+            $this->atelier->atelier($grand)->saisirNiveauxEncre(['C' => 62, 'M' => 55, 'J' => 100, 'N' => 70], $oumar, $debut->modify('-4 minutes'));
+            $this->em->flush();
+            try {
+                $this->tirages->demarrer($tirage, $oumar, $debut);
+                $this->impression->pieceImprimee($tirage, $debut->modify('+6 minutes'));
+                $connexion->executeStatement('UPDATE ordre_production SET demarre_le = ? WHERE tirage_id = ?', [$debut->format('Y-m-d H:i:s'), $tirage->getId()]);
+                $demarre = true;
+            } catch (\DomainException|\LogicException $e) {
+                $io->warning('Le rouleau '.$tirage->getNumero().' reste envoyé : '.$e->getMessage());
+            }
+        }
+
+        // PD03 sur la Solvant 1,80 m : R-…-04 envoyé au RIP, le jaune à 18 % bloque « Démarrer ».
+        $askia = $this->em->find(OrdreProduction::class, $ordres['0191']->getId());
+        $petit = $this->em->find(Machines::class, 900002);
+        \assert($askia instanceof OrdreProduction && $petit instanceof Machines);
+        $bloque = $this->tirages->creer($petit, (string) FichierProduction::codeSupport($askia->getCommandeDetail()), [$askia], $oumar, $a(10, 0, '-40 minutes'));
+        $this->em->flush();
+        $numero = 'R-'.$jour->format('md').'-04';
+        if (null === $this->em->getRepository(TirageRouleau::class)->findOneBy(['numero' => $numero])) {
+            $connexion->executeStatement('UPDATE tirage_rouleau SET numero = ? WHERE id = ?', [$numero, $bloque->getId()]);
+            $this->em->refresh($bloque);
+        }
+        $bloque->confirmerRouleau(null, $oumar, $a(10, 2, '-38 minutes'));
+        foreach (['profil', 'mode', 'sechage', 'miroir'] as $cle) {
+            $bloque->cocher($cle, true);
+        }
+        if (null === $this->tirages->busesDuJour($petit, $maintenant)) {
+            $this->tirages->noterTestBuses($petit, $oumar, 0, $a(8, 20, '-60 minutes'));
+        }
+        $this->em->flush();
+        $envoiBloque = $this->envoyer($bloque, $oumar, $a(10, 4, '-36 minutes'), $io);
+        $this->em->flush();
+
+        // « Ensuite sur cette machine » (PD04) : le chef a mis en tête de la file l'Hôtel Niger (même bâche 440,
+        // « même rouleau ») puis la Pharmacie du Fleuve (bâche 510, « changer de rouleau »).
+        $file = $this->atelier->atelier($grand);
+        $restants = array_filter($file->getOrdreFile(), fn (int $id): bool => null !== $this->em->find(OrdreProduction::class, $id));
+        $file->setOrdreFile(array_values(array_unique([(int) $ordres['0189']->getId(), (int) $ordres['0187']->getId(), ...$restants])));
+        $this->em->flush();
+
+        $io->success(\sprintf('Production au rouleau : rouleau %s (%d pièces, %d %% utilisé%s), une bâche 510 g et une bâche 440 g ensuite ; rouleau %s%s, jaune à 18 %% sur la Solvant 1,80 m.', $tirage->getNumero(), \count($tirage->getPieces()), $tirage->getPourcent(), $demarre ? ', en impression' : (null !== $envoi ? ', envoyé au RIP' : ''), $bloque->getNumero(), null !== $envoiBloque ? ' envoyé au RIP' : ' préparé'));
 
         return Command::SUCCESS;
     }
 
-    /** Dossiers, têtes, usages et profils des machines ; encres de la Solvant 3,20 m (jaune à 18 %). */
+    /** Dossiers, têtes, usages et profils des machines ; encres des Solvant (jaune à 18 %, remplacé sur la 3,20 m avant son rouleau). */
     private function machines(User $oumar, \DateTimeImmutable $encresLe): void
     {
         $profil440 = ['support' => 'BACHE440', 'profilIcc' => 'Bache440_Solvant_8pass.icc', 'mode' => '8 passes · bidirectionnel', 'vitesseM2h' => 25, 'encreMlM2' => 12, 'chauffeC' => 45, 'sechageMin' => 45, 'miroir' => false];
@@ -235,6 +293,8 @@ final class ProductionRouleauDemoCommand extends Command
             $a->setCodeDossier($code)->setTeteImpression($tete)->setUsages($usages)->setMiroir($miroir)->setProfils($profils);
             if (900001 === $id) {
                 $a->saisirNiveauxEncre(['C' => 62, 'M' => 55, 'J' => 18, 'N' => 70], $oumar, $encresLe);
+            } elseif (900002 === $id) {
+                $a->saisirNiveauxEncre(['C' => 48, 'M' => 66, 'J' => 18, 'N' => 57], $oumar, $encresLe);
             }
         }
 
@@ -361,7 +421,7 @@ final class ProductionRouleauDemoCommand extends Command
         if (null !== $fichier) {
             $ordre->addFichier($fichier);
         }
-        $ordre->transmettre('0187' === $t['n'] ? $a(10, 5, '-15 minutes') : $a(9, 48, '-40 minutes')->modify('+'.$rang.' seconds'));
+        $ordre->transmettre(isset($t['transmis']) ? $a(...$t['transmis']) : $a(9, 48, '-40 minutes')->modify('+'.$rang.' seconds'));
         $ligne->setStatutProduction(CommandesDetails::PRODUCTION_A_PRODUIRE);
         FichierProduction::preparer($ordre);
         $this->em->persist($ordre);
@@ -426,6 +486,18 @@ final class ProductionRouleauDemoCommand extends Command
                 imagefilledpolygon($im, [(int) ($l * 0.62), 0, $l, 0, $l, $h, (int) ($l * 0.52), $h], $c(222, 16, 40));
                 $this->texte($im, 'AWA MODE', (int) ($l * 0.06), (int) ($h * 0.28), (int) ($l * 0.42), $blanc);
                 $this->texte($im, 'PRET-A-PORTER - HAMDALLAYE ACI', (int) ($l * 0.06), (int) ($h * 0.68), (int) ($l * 0.42), $c(255, 212, 0));
+                break;
+            case 'niger':
+                imagefilledrectangle($im, 0, 0, $l, $h, $c(12, 74, 110));
+                imagefilledrectangle($im, 0, (int) ($h * 0.78), $l, $h, $c(212, 160, 23));
+                $this->texte($im, 'HOTEL NIGER', (int) ($l * 0.1), (int) ($h * 0.22), (int) ($l * 0.8), $blanc);
+                $this->texte($im, 'RESTAURANT - PISCINE', (int) ($l * 0.2), (int) ($h * 0.56), (int) ($l * 0.6), $c(212, 160, 23));
+                break;
+            case 'askia':
+                imagefilledrectangle($im, 0, 0, $l, $h, $blanc);
+                imagefilledellipse($im, (int) ($l * 0.18), (int) ($h * 0.5), (int) ($h * 0.7), (int) ($h * 0.7), $c(29, 78, 216));
+                $this->texte($im, 'LYCEE ASKIA', (int) ($l * 0.36), (int) ($h * 0.28), (int) ($l * 0.58), $c(29, 78, 216));
+                $this->texte($im, 'INSCRIPTIONS OUVERTES', (int) ($l * 0.36), (int) ($h * 0.6), (int) ($l * 0.58), $c(20, 33, 61));
                 break;
             default:
                 imagefilledrectangle($im, 0, 0, $l, $h, $blanc);

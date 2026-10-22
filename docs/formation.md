@@ -238,8 +238,8 @@ Résultat attendu : Les fichiers sont associés, le contrôle validé (« Docume
 | 08:30 | Le tableau de production | Le tableau de production | Exercice 1. |
 | 09:00 | Le planning des machines | Le planning des machines | Exercice 2. |
 | 09:30 | Ma file machine, au poste de la machine | Poste machiniste : vérifier, estimer, imprimer, étiqueter | Exercice 3. |
-| 10:00 | Gâche, incident, réimpression | Poste machiniste : vérifier, estimer, imprimer, étiqueter | Exercice 4. |
-| 10:30 | Pause, puis le pointage | Pointer à l'arrivée et au départ | Exercice 5. |
+| 10:00 | Gâche, incident, réimpression ; le rouleau en impression | Poste machiniste : vérifier, estimer, imprimer, étiqueter · Suivre l'impression d'un rouleau | Exercices 4 et 5. |
+| 10:30 | Pause, puis le pointage | Pointer à l'arrivée et au départ | Exercice 6. |
 | 11:00 | Mon espace : absence, prime, statistiques | Déclarer une absence, demander un congé · Ma prime · Mes statistiques | Lire sa prime estimée et ses points. |
 | 11:30 | Exercice final | — | Seul, au poste de la machine. |
 
@@ -267,7 +267,13 @@ Résultat attendu : Les fichiers sont associés, le contrôle validé (« Docume
 
    Résultat attendu : Le travail quitte la file ; les m² du jour augmentent.
 
-5. **Pointer** (`demo.oumar`)
+5. **Suivre un rouleau en impression** (`demo.oumar`)
+   - Sur le téléphone : « Mon travail », puis « Suivre l'impression en cours ».
+   - Quand la pièce sort : « Pièce imprimée ». Puis « Pause » et « Reprendre ».
+
+   Résultat attendu : La pièce suivante passe « en cours » ; l'employé lit la fin prévue et sait que les chiffres « estimé » viennent de ses appuis.
+
+6. **Pointer** (`demo.oumar`)
    - Sur le téléphone : « Pointer », l'affiche, la photo.
 
    Résultat attendu : « Arrivée enregistrée » (après la validation du téléphone par la RH).

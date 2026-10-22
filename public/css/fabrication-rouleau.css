@@ -183,6 +183,88 @@
 .si-fab details.si-fr-modifier > summary { cursor: pointer; font-weight: 700; color: var(--fab-bleu); font-size: 13px; margin-top: 10px; }
 .si-fab .si-fr-codes input { width: 140px; min-height: 32px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 2px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-transform: uppercase; }
 
+/* ---------- PD04 · Impression en cours (préfixe .si-fe-) ; PD07 écran 1 en dessous de 576 px ---------- */
+.si-fab .si-fe-grille { display: grid; grid-template-columns: minmax(0, 2.4fr) minmax(260px, 1fr); gap: 16px; align-items: start; }
+.si-fab .si-fe-direct { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; align-items: center; background: linear-gradient(135deg, #0B1E4A, #14213D 60%, #0F2B5B); color: #fff; border-radius: var(--fab-rayon); padding: 18px 22px; margin-bottom: 14px; box-shadow: 0 6px 18px rgba(20, 33, 61, .18); }
+.si-fab .si-fe-machine { width: 100%; height: auto; display: block; }
+.si-fab .si-fe-etat { font-size: 11px; font-weight: 800; letter-spacing: .06em; color: #4ADE80; margin: 0 0 4px; display: flex; align-items: center; gap: 6px; }
+.si-fab .si-fe-etat .point { width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px rgba(74, 222, 128, .25); }
+.si-fab .si-fe-direct.pause .si-fe-etat { color: #FBBF24; }
+.si-fab .si-fe-etat.vert { color: var(--fab-vert); }
+.si-fab .si-fe-piece { font-size: 26px; font-weight: 800; margin: 0; line-height: 1.15; }
+.si-fab .si-fe-titre { font-size: 14px; color: #CBD5E1; margin: 2px 0 12px; }
+.si-fab .si-fe-barre { height: 8px; border-radius: 999px; background: rgba(255, 255, 255, .18); overflow: hidden; }
+.si-fab .si-fe-barre > span { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #22C55E, #EAB308); transition: width .6s ease; }
+.si-fab .si-fe-chiffres { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; color: #CBD5E1; margin: 6px 0 0; }
+.si-fab .si-fe-chiffres small { color: #94A3B8; }
+.si-fab .si-fe-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.si-fab .si-fe-stats > div { background: #fff; border: 1px solid var(--fab-bord); border-radius: var(--fab-rayon); padding: 12px 14px; display: flex; flex-direction: column; min-width: 0; }
+.si-fab .si-fe-stats span { font-size: 12px; color: var(--fab-gris); }
+.si-fab .si-fe-stats b { font-size: 22px; font-weight: 800; color: var(--fab-nuit); line-height: 1.2; }
+.si-fab .si-fe-stats small { font-size: 12px; color: var(--fab-gris); overflow-wrap: anywhere; }
+.si-fab .si-fe-gestes { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.si-fab .si-fe-gestes > form { flex: 1 1 260px; margin: 0; }
+.si-fab .si-fe-gros { width: 100%; justify-content: center; min-height: 52px; font-size: 16px; }
+.si-fab .si-fe-gestes-telephone { display: none; }
+.si-fab .si-fe-contour { border: 2px solid var(--fab-bleu); color: var(--fab-bleu); }
+.si-fab .si-fe-rouge { background: var(--fab-rouge); border-color: var(--fab-rouge); color: #fff; }
+.si-fab .si-fe-pieces { list-style: none; margin: 0; padding: 0; }
+.si-fab .si-fe-pieces > li { display: grid; grid-template-columns: 28px minmax(0, 1fr) 6px; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fe-pieces > li:last-child { border-bottom: 0; }
+.si-fab .si-fe-pieces .rond { width: 26px; height: 26px; border-radius: 50%; background: #CBD5E1; color: #fff; font-size: 11px; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; }
+.si-fab .si-fe-pieces .imprimee .rond { background: var(--fab-vert); }
+.si-fab .si-fe-pieces .en_cours .rond { background: var(--fab-bleu); }
+.si-fab .si-fe-pieces .texte b { display: block; font-size: 13px; color: var(--fab-nuit); }
+.si-fab .si-fe-pieces .texte small { font-size: 11px; color: var(--fab-gris); }
+.si-fab .si-fe-pieces .pastille { width: 6px; height: 26px; border-radius: 3px; }
+.si-fab .si-fe-tubes { height: 46px; margin: 0; gap: 6px; }
+.si-fab .si-fe-tubes > div { flex: 0 0 18px; }
+.si-fab .si-fe-tubes .tube { width: 12px; }
+.si-fab .si-fe-rappel { background: #FFF4D6; color: #6B4B00; border-radius: 12px; padding: 12px 14px; font-size: 13px; margin: 0 0 14px; }
+.si-fab .si-fe-rappel.si-fe-telephone { display: none; }
+.si-fab .si-fe-ensuite ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.si-fab .si-fe-ensuite li { border: 1px solid var(--fab-bord); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
+.si-fab .si-fe-ensuite .heure { color: var(--fab-bleu); font-weight: 800; font-size: 12px; }
+.si-fab .si-fe-ensuite b a { color: var(--fab-nuit); text-decoration: none; }
+.si-fab .si-fe-ensuite .detail { color: var(--fab-gris); font-size: 12px; }
+.si-fab .si-fe-changer { color: var(--fr-orange); font-weight: 700; }
+.si-fab .si-fe-probleme { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.si-fab .si-fe-probleme fieldset { display: flex; flex-direction: column; gap: 4px; border: 0; margin: 0; padding: 0; }
+.si-fab .si-fe-probleme textarea { border: 1px solid var(--fab-bord); border-radius: 8px; padding: 6px 8px; width: 100%; }
+.si-fab .si-fe-nombre { width: 76px; min-height: 36px; border: 1px solid var(--fab-bord); border-radius: 8px; padding: 2px 8px; }
+.si-fab .si-fe-bilan .si-fe-etat { font-size: 12px; }
+.si-fab .si-fe-lien-rouleau { font-weight: 800; color: var(--fab-nuit); text-decoration: none; }
+.si-fab #si-fe-probleme, .si-fab #si-fe-terminer, .si-fab #apres { scroll-margin-top: 80px; }
+
+@media (max-width: 1199.98px) {
+	.si-fab .si-fe-grille { grid-template-columns: minmax(0, 1fr); }
+	.si-fab .si-fe-cote { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0 16px; }
+	.si-fab .si-fe-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+/* PD07 : sur le téléphone, la carte compacte de la maquette et les gros boutons en bas. */
+@media (max-width: 575.98px) {
+	.si-fab .si-fe-entete .si-fe-haut, .si-fab .si-fe-entete .si-fab-titre, .si-fab .si-fe-entete .si-fab-ariane { display: none; }
+	.si-fab .si-fe-direct { grid-template-columns: minmax(0, 1fr); background: #fff; color: var(--fab-nuit); border: 1px solid var(--fab-bord); box-shadow: none; padding: 14px; gap: 10px; }
+	.si-fab .si-fe-direct .si-fe-machine { order: 2; background: linear-gradient(135deg, #0B1E4A, #14213D); border-radius: 14px; padding: 8px; }
+	.si-fab .si-fe-direct-texte { display: contents; }
+	.si-fab .si-fe-direct .si-fe-etat { order: 0; color: var(--fab-bleu); }
+	.si-fab .si-fe-direct.pause .si-fe-etat { color: #B45309; }
+	.si-fab .si-fe-direct .si-fe-piece, .si-fab .si-fe-direct .si-fe-titre { order: 1; }
+	.si-fab .si-fe-direct .si-fe-titre { color: var(--fab-gris); margin: 0; }
+	.si-fab .si-fe-direct .si-fe-barre { order: 3; background: var(--fab-fond); }
+	.si-fab .si-fe-direct .si-fe-chiffres { order: 4; color: var(--fab-nuit); margin: 0; }
+	.si-fab .si-fe-direct .si-fe-chiffres > span:last-child { font-weight: 700; }
+	.si-fab .si-fe-rappel.si-fe-telephone { display: block; }
+	.si-fab .si-fe-rappel.si-fe-bureau, .si-fab [data-bloc="stats"], .si-fab .si-fe-ensuite, .si-fab .si-fe-encres { display: none; }
+	.si-fab .si-fe-gestes { position: sticky; bottom: 0; z-index: 5; background: #fff; margin: 0 -12px 14px; padding: 10px 12px; border-top: 1px solid var(--fab-bord); box-shadow: 0 -6px 14px rgba(20, 33, 61, .08); }
+	.si-fab .si-fe-gestes > form, .si-fab .si-fe-gestes > a { flex: 1 1 100%; order: 2; }
+	.si-fab .si-fe-gestes-telephone { display: flex; gap: 10px; flex: 1 1 100%; order: 1; }
+	.si-fab .si-fe-gestes-telephone > * { flex: 1 1 0; margin: 0; }
+	.si-fab .si-fe-gestes-telephone .si-fab-bouton { width: 100%; justify-content: center; min-height: 48px; border-radius: 999px; }
+	.si-fab .si-fe-gros { border-radius: 999px; }
+	.si-fab .si-fe-cote { display: block; }
+}
+
 @media (max-width: 1199.98px) {
 	.si-fab .si-fr-fiche { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
 	.si-fab .si-fr-fiche > .colonne-machine { grid-column: 1 / -1; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
@@ -211,6 +293,8 @@
 	.si-fab .si-fr-table thead { display: none; }
 	.si-fab .si-fr-table tr { display: block; border-bottom: 1px solid var(--fab-bord); padding: 6px 0; }
 	.si-fab .si-fr-table td { display: block; border: 0; padding: 2px 0; }
+	.si-fab .si-fr-table td[data-label] { display: flex; align-items: center; gap: 10px; }
+	.si-fab .si-fr-table td[data-label]::before { content: attr(data-label); color: var(--fab-gris); font-size: 12px; flex: 1 1 auto; }
 	.si-fab .si-fr-profil-saisie-boite { overflow-x: auto; }
 }
 @media print {

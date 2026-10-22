@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<title>{% block titre %}{% endblock %}</title>
+	{#
+		Page A4 des exports de statistiques et du rapport de la semaine :
+		en-tête de l'entreprise principale (Réglages › Entreprises), titre,
+		période, puis le contenu. Mise en page en tableaux pour Dompdf.
+	#}
+	{% set c = entreprise.couleurs %}
+	<style>
+		@page { margin: 12mm 0 0; }
+		@page :first { margin-top: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: DejaVu Sans, sans-serif; font-size: 8.4px; line-height: 1.4; color: #1f2937; }
+		.page { padding: 0 14mm 22mm; }
+		table { width: 100%; border-collapse: collapse; }
+		td { vertical-align: top; }
+		.bandes td { height: 5px; padding: 0; }
+		.entete { margin-top: 8mm; }
+		.logo { max-height: 42px; max-width: 170px; }
+		.nom { font-size: 10.5px; font-weight: bold; margin-top: 5px; color: #111827; }
+		.coord { font-size: 7.4px; color: #4b5563; margin-top: 2px; }
+		.titre { font-size: 17px; font-weight: bold; color: {{ c[0] }}; text-align: right; }
+		.periode { font-size: 9.5px; font-weight: bold; color: #111827; text-align: right; margin-top: 3px; }
+		.edite { font-size: 7.4px; color: #6b7280; text-align: right; margin-top: 2px; }
+
+		h2 { font-size: 10.5px; color: {{ c[0] }}; margin: 14px 0 5px; }
+		.donnees th { background: {{ c[0] }}; color: #fff; font-size: 7.6px; text-align: left; padding: 5px 6px; }
+		.donnees td { padding: 4px 6px; border-bottom: 1px solid #e5e7eb; }
+		.donnees tr.paire td { background: #f8fafc; }
+		.donnees tr.total td { font-weight: bold; border-top: 1.2px solid {{ c[0] }}; border-bottom: 0; }
+		.droite, .donnees th.droite { text-align: right; }
+		.vide { color: #6b7280; font-style: italic; }
+		.note { font-size: 7.4px; color: #6b7280; margin-top: 4px; }
+
+		.cartes td { width: 25%; padding: 0 6px 0 0; }
+		.carte { border: 1px solid #e5e7eb; border-radius: 6px; padding: 7px 9px; }
+		.carte .lib { font-size: 7.4px; color: #4b5563; }
+		.carte .val { font-size: 13px; font-weight: bold; color: #111827; margin-top: 2px; }
+		.carte .sous { font-size: 7.2px; color: #4b5563; margin-top: 2px; }
+		.jauge { height: 5px; background: #eef2f7; border-radius: 3px; margin-top: 4px; }
+		.jauge div { height: 5px; border-radius: 3px; background: {{ c[0] }}; }
+		.vert { color: #15803d; }
+		.orange { color: #c2410c; }
+		.rouge { color: #b91c1c; }
+		.alerte { padding: 4px 7px; border-left: 3px solid #f97316; background: #fff7ed; margin-bottom: 3px; }
+		.alerte.danger { border-color: #dc2626; background: #fef2f2; }
+
+		.pied { position: fixed; bottom: 7mm; left: 14mm; right: 14mm; border-top: 1px solid #e5e7eb; padding-top: 4px; font-size: 6.8px; color: #6b7280; }
+	</style>
+</head>
+<body>
+	<table class="bandes"><tr>
+		{% for couleur in c %}<td style="background: {{ couleur }}"></td>{% endfor %}
+	</tr></table>
+
+	<div class="pied">
+		<table><tr>
+			<td>{{ entreprise.mentionsLegales }} · Document interne, confidentiel</td>
+			<td class="droite" style="width: 22%"></td>
+		</tr></table>
+	</div>
+
+	<div class="page">
+		<table class="entete"><tr>
+			<td style="width: 52%">
+				{% if images.logo %}<img src="{{ images.logo }}" class="logo" alt="{{ entreprise.nomAffiche }}">{% endif %}
+				<div class="nom">{{ entreprise.nomAffiche }}</div>
+				<div class="coord">
+					{{ [entreprise.adresse, entreprise.rccm ? 'RCCM ' ~ entreprise.rccm, entreprise.nif ? 'NIF ' ~ entreprise.nif]|filter(v => v)|join(' · ') }}<br>
+					{{ [entreprise.telephone, entreprise.email, entreprise.siteWeb]|filter(v => v)|join(' · ') }}
+				</div>
+			</td>
+			<td>
+				<div class="titre">{{ block('titre') }}</div>
+				<div class="periode">{% block periode %}{% endblock %}</div>
+				<div class="edite">Édité le {{ edite_le|date('d/m/Y à H:i') }} par {{ edite_par }}</div>
+			</td>
+		</tr></table>
+
+		{% block contenu %}{% endblock %}
+	</div>
+</body>
+</html>

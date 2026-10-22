@@ -1,0 +1,127 @@
+{% extends 'controle_pre_presse/_base.html.twig' %}
+
+{#
+	Fichiers manquants · relances (maquette PQ04, docs/prepresse.md) : les
+	commandes sans fichier, de la plus ancienne à la plus récente, avec les
+	relances déjà faites (J+1, J+3, J+7) et la réponse du client. Les
+	relances partent par des liens wa.me (pas d'API Meta) : chaque lien
+	ouvert est noté envoyé (date, étape, par qui).
+#}
+
+{% block title %}Fichiers manquants · relances{% endblock %}
+
+{% set etapes = {J1: ['J+1', 'WhatsApp avec la liste des fichiers manquants'], J3: ['J+3', 'WhatsApp + notification espace client'], J7: ['J+7', 'Appel par la caisse, noté dans la fiche'], J15: ['J+15', 'Commande mise en pause, date de livraison retirée']} %}
+
+{% block body %}
+	<div class="pq-page" data-sans-filtres data-pq-relances data-envoyee="{{ path('app_controle_pre_presse_relance_envoyee') }}" data-csrf="{{ csrf_token('prepresse-relances') }}">
+		{% include 'controle_pre_presse/_entete.html.twig' with {titre: 'Fichiers manquants · relances', vue: 'relances'} %}
+
+		<div class="pq-relances">
+			<div style="min-width: 0">
+				<section class="pq-carte">
+					<div class="pq-barre-outils">
+						<h2 class="h6 fw-bold mb-0">Sans fichier, du plus ancien au plus récent</h2>
+						<button type="button" class="pq-btn vert" data-pq-relancer disabled><i class="fab fa-whatsapp"></i> Relancer la sélection (0)</button>
+					</div>
+					{% if lignes is empty %}
+						<p class="pq-vide">Aucune commande n'attend de fichier.</p>
+					{% else %}
+						<div class="table-responsive-sm">
+							<table class="pq-table pq-table-relances">
+								<thead>
+									<tr><th></th><th>Commande</th><th>Client</th><th>Attente</th><th>Manque</th><th>Relances</th><th>Réponse</th></tr>
+								</thead>
+								<tbody>
+									{% for l in lignes %}
+										{% set preselection = l.impossible is null and (choisie ? choisie == l.id : l.attente >= 1) %}
+										<tr class="{{ choisie == l.id ? 'choisie' }}" id="relance-{{ l.id }}">
+											<td>
+												<input type="checkbox" class="form-check-input" value="{{ l.id }}" aria-label="Relancer {{ l.numero }}"
+													data-pq-relance-case data-message="{{ l.message }}" data-wa="{{ l.whatsapp }}" data-numero="{{ l.numero }}" data-client="{{ l.client }}"
+													{{ l.impossible ? 'disabled' }} {{ preselection ? 'checked' }}>
+											</td>
+											<td class="text-nowrap"><a class="fw-bold" href="{{ path('app_controle_pre_presse_index', {onglet: 'sans_fichier', commande: l.id}) }}">{{ l.numero }}</a>
+												{% if l.enPause %}<div class="pq-pause"><i class="fas fa-pause-circle me-1"></i>en pause</div>{% endif %}</td>
+											<td>
+												{% if l.client is null %}
+													<span class="pq-sans-client">— sans client</span>
+												{% else %}
+													{{ l.client }}
+												{% endif %}
+											</td>
+											<td><span class="pq-attente {{ l.attente >= 7 ? 'rouge' : (l.attente >= 1 ? 'orange') }}">{{ l.attente }} j</span></td>
+											<td>{% if l.manquants > 0 or l.decoupesListe is empty %}{{ l.manquants }} fichier{{ l.manquants > 1 ? 's' }}{% if l.total > 1 %} <span class="pq-muet">sur {{ l.total }}</span>{% endif %}{% endif %}
+												{% if l.decoupesListe is not empty %}<span class="pq-badge ambre d-inline-flex"><i class="fas fa-cut"></i>{{ l.decoupesListe|length > 1 ? l.decoupesListe|length ~ ' fichiers de découpe' : 'Fichier de découpe' }} manquant{{ l.decoupesListe|length > 1 ? 's' }}</span>{% endif %}</td>
+											<td>
+												{% if l.impossible %}
+													<span class="pq-muet">{{ l.impossible }}</span>
+												{% else %}
+													<span class="pq-frise">{% for e in l.frise %}{{ not loop.first ? ' · ' }}<span class="{{ e.faite ? 'fait' }}">{{ e.libelle }}{{ e.faite ? ' ✓' }}</span>{% endfor %}</span>
+												{% endif %}
+											</td>
+											<td>
+												{% if l.reponse %}<span class="pq-reponse {{ l.reponse.couleur }}">{{ l.reponse.texte }}</span>{% endif %}
+												{% if l.impossible %}
+													<div><a class="pq-muet" href="{{ path('app_commandes_edit', {id: l.id}) }}">Associer un client ›</a></div>
+												{% else %}
+													<form class="pq-form-reponse" method="post" action="{{ path('app_controle_pre_presse_relance_reponse', {id: l.id}) }}">
+														<input type="hidden" name="_token" value="{{ csrf_token('prepresse-relances') }}">
+														<input type="text" name="reponse" maxlength="255" placeholder="Noter sa réponse…" aria-label="Réponse du client {{ l.client }}">
+														<button type="submit" class="pq-btn petit" aria-label="Noter la réponse"><i class="fas fa-check"></i></button>
+													</form>
+												{% endif %}
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+						<div data-pq-liens class="pq-liens-wa" hidden></div>
+					{% endif %}
+				</section>
+
+				{% if lignes is not empty %}
+					<section class="pq-carte">
+						<h2 class="h6 fw-bold">Message envoyé</h2>
+						{% set premiere = lignes|filter(l => l.impossible is null)|first %}
+						<div class="pq-message" data-pq-apercu>{{ premiere ? premiere.message : (lignes|first).message }}</div>
+						<p class="pq-muet mt-2 mb-0">Le message liste les formats qui manquent : le client sait exactement quoi envoyer.</p>
+					</section>
+				{% endif %}
+			</div>
+
+			<aside style="min-width: 0">
+				<section class="pq-carte">
+					<h2 class="h6 fw-bold">Relances automatiques</h2>
+					{% for etape, e in etapes %}
+						<div class="pq-reglage">
+							<b>{{ e[0] }}</b><span>{{ e[1] }}</span>
+							<span class="pq-interrupteur {{ actives[etape] ? 'on' }}" role="img" aria-label="{{ actives[etape] ? 'activée' : 'désactivée' }}"></span>
+						</div>
+					{% endfor %}
+					{% if peutRegler %}
+						<a class="pq-muet d-inline-block mt-2" href="{{ path('app_reglages_parametres_panneau', {tuile: 'relances_fichiers'}) }}"><i class="fas fa-cog me-1"></i>Changer dans les Réglages ›</a>
+					{% endif %}
+				</section>
+
+				<section class="pq-carte">
+					<h2 class="h6 fw-bold">À la caisse</h2>
+					<p class="mb-2" style="font-size: 13px">Une commande s'enregistre toujours avec un client qui a un numéro de téléphone. Si le fichier n'est pas fourni, la caisse coche « fichier à venir » et le client reçoit tout de suite le lien d'envoi.</p>
+					<p class="mb-0 fw-bold {{ sansClient > 0 ? 'text-danger' : 'text-success' }}" style="font-size: 13px">{{ sansClient }} commande{{ sansClient > 1 ? 's' }} sans client ou sans numéro ce mois-ci</p>
+				</section>
+
+				<section class="pq-carte">
+					<div class="pq-muet">Temps moyen avant réception du fichier</div>
+					<div class="pq-grand">{{ tempsMoyen is null ? '—' : tempsMoyen|number_format(1, ',', ' ') ~ ' j' }}</div>
+					<div class="fw-bold" style="font-size: 12px; color: {{ tempsMoyen is not null and tempsMoyen < 1 ? 'var(--pq-vert)' : 'var(--pq-orange)' }}">objectif : moins de 1 jour</div>
+					<div class="pq-muet">sur les commandes des 30 derniers jours</div>
+				</section>
+			</aside>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/prepresse.js') }}" defer></script>
+{% endblock %}

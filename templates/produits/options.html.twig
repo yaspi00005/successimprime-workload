@@ -1,0 +1,143 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Options partagées (maquette PR04, docs/produits.md) : matières,
+	finitions, délais et services réutilisés par tous les produits. Le prix
+	d'achat et le coût au m² ne sont dans la page qu'avec le droit
+	« Marges et coûts de revient » (avec_couts).
+#}
+
+{% import 'produits/_macros.html.twig' as pd %}
+
+{% block title %}Options partagées{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/produits.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if modifiable %}
+		<li class="nav-item dropdown">
+			<a href="#" class="btn btn-danger btn-sm si-btn-entete dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-plus me-1"></i>Option</a>
+			<div class="dropdown-menu dropdown-menu-end">
+				<a class="dropdown-item" href="{{ path('app_support_index') }}">Matière (support)</a>
+				<a class="dropdown-item" href="{{ path('app_finition_index') }}">Finition</a>
+				<a class="dropdown-item" href="{{ path('app_format_index') }}">Format</a>
+				<a class="dropdown-item" href="{{ path('app_reglages_parametres_index', {tuile: 'espace_client'}) }}">Délais et express</a>
+			</div>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% macro option(o, voir, valeur) %}
+	<a href="{{ path('app_produits_options_index', {voir: o.cle}) }}#ou" class="si-pd-option{{ voir == o.cle ? ' actif' }}"><span>{{ o.nom }}{% if o.commercial|default(null) %} <small class="si-pd-gris">({{ o.commercial }})</small>{% endif %}</span><b class="{{ valeur in ['base', 'incluse'] ? 'base' }}">{{ valeur }}</b></a>
+{% endmacro %}
+{% import _self as m %}
+
+{% block body %}
+	{{ pd.onglets('options') }}
+	<p class="si-pd-note mt-0 mb-3">Une option modifiée ici change le prix sur tous les produits qui l'utilisent.</p>
+
+	<div class="si-pd-quatre">
+		<section class="si-pd-carte">
+			<div class="si-pd-carte-tete"><h3>Matières</h3><span class="si-pd-gris small">sur {{ matieres|reduce((t, o) => t|merge(o.produits|map(p => p.id)), [])|reduce((u, id) => id in u ? u : u|merge([id]), [])|length }} produits</span></div>
+			{% for o in matieres %}
+				{{ m.option(o, voir, o.depart is null ? '—' : 'dès ' ~ pd.f(o.depart) ~ (o.unite == 'm²' ? '/m²' : '')) }}
+			{% endfor %}
+			{% if matieres_sans_produit > 0 %}<p class="si-pd-note">{{ matieres_sans_produit }} autre{{ matieres_sans_produit > 1 ? 's' }} sans produit.</p>{% endif %}
+			{% if modifiable %}<p class="mt-2 mb-0 small"><a href="{{ path('app_support_index') }}">+ Ajouter</a></p>{% endif %}
+		</section>
+
+		<section class="si-pd-carte">
+			<div class="si-pd-carte-tete"><h3>Finitions</h3><span class="si-pd-gris small">sur {{ finitions|reduce((t, o) => t|merge(o.produits|map(p => p.id)), [])|reduce((u, id) => id in u ? u : u|merge([id]), [])|length }} produits</span></div>
+			{% for o in finitions %}
+				{{ m.option(o, voir, o.prix) }}
+			{% endfor %}
+			{% if modifiable %}<p class="mt-2 mb-0 small"><a href="{{ path('app_finition_index') }}">+ Ajouter</a></p>{% endif %}
+		</section>
+
+		<section class="si-pd-carte">
+			<div class="si-pd-carte-tete"><h3>Délais</h3><span class="si-pd-gris small">tous les produits</span></div>
+			{% for o in delais %}
+				{{ m.option(o, voir, o.valeur) }}
+			{% endfor %}
+			<p class="si-pd-note">Standard : {{ delais[0].heures }} h, ou le délai de la fiche produit. Réglés dans Paramètres › Espace client.</p>
+		</section>
+
+		<section class="si-pd-carte">
+			<div class="si-pd-carte-tete"><h3>Services</h3></div>
+			{% for o in services %}
+				{{ m.option(o, voir, o.valeur) }}
+			{% endfor %}
+		</section>
+	</div>
+
+	{% if utilisation %}
+		<section class="si-pd-carte" id="ou">
+			<div class="si-pd-carte-tete"><h3>Où est utilisée « {{ utilisation.nom }} » ?</h3></div>
+			{% if utilisation.produits is empty %}
+				<p class="text-muted mb-0">Sur aucun produit pour l'instant.</p>
+			{% else %}
+				<div class="si-pd-chips">
+					{% for p in utilisation.produits|slice(0, 12) %}
+						<a href="{{ path('app_produits_fiche', {id: p.id}) }}" class="si-pd-chip">{{ p.nom }}</a>
+					{% endfor %}
+					{% if utilisation.produits|length > 12 %}<span class="si-pd-chip">+ {{ utilisation.produits|length - 12 }} autres</span>{% endif %}
+				</div>
+			{% endif %}
+			{% set finition = finitions|filter(f => f.cle == voir)|first %}
+			{% if finition and modifiable and finition.configurations > 0 %}
+				<form method="post" action="{{ path('app_produits_options_finition', {id: finition.finition.id}) }}" class="si-pd-prix-finition">
+					<input type="hidden" name="_token" value="{{ csrf_token('option-finition-' ~ finition.finition.id) }}">
+					<label for="prix-finition" class="small text-muted align-self-center mb-0">Prix sur les {{ finition.configurations }} configurations (F, 0 = incluse)</label>
+					<input id="prix-finition" name="prix" inputmode="numeric" class="form-control form-control-sm" value="{{ finition.unique }}" required>
+					<button class="btn btn-primary btn-sm">Appliquer partout</button>
+				</form>
+			{% endif %}
+			{% if finition and modifiable %}
+				{# Article posé avec la finition, sorti du stock au contrôle final (PD06) : ERP local seulement. #}
+				<form method="post" action="{{ path('app_produits_options_finition_article', {id: finition.finition.id}) }}" class="si-pd-prix-finition mt-2">
+					<input type="hidden" name="_token" value="{{ csrf_token('option-finition-article-' ~ finition.finition.id) }}">
+					<label for="article-finition" class="small text-muted align-self-center mb-0">Article du stock posé (œillets : le nombre compté au contrôle final ; sinon un par pièce)</label>
+					<select id="article-finition" name="article" class="form-select form-select-sm">
+						<option value="0">Aucun</option>
+						{% for a in articles_finition %}
+							<option value="{{ a.id }}" {{ finition.finition.articleStock and finition.finition.articleStock.id == a.id ? 'selected' }}>{{ a.designation }} ({{ a.uniteCourte }})</option>
+						{% endfor %}
+					</select>
+					<button class="btn btn-outline-primary btn-sm">Enregistrer</button>
+				</form>
+			{% endif %}
+		</section>
+	{% endif %}
+
+	<section class="si-pd-carte">
+		<div class="si-pd-carte-tete"><h3>Matières liées au stock</h3>{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_stock_articles_index') }}">Ouvrir le stock</a>{% endif %}</div>
+		{% if stock is empty %}
+			<p class="text-muted mb-0">Aucune matière du stock n'est liée à un produit.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="si-pd-mini">
+					<thead><tr><th>Matière</th><th class="si-pd-masque-mobile">Format</th>{% if avec_couts %}<th class="si-pd-num si-pd-masque-mobile">Prix d'achat</th><th class="si-pd-num">Coût unitaire</th>{% endif %}<th class="si-pd-num">En stock</th><th class="si-pd-masque-mobile">Produits</th></tr></thead>
+					<tbody>
+						{% for s in stock %}
+							{% set a = s.article %}
+							<tr>
+								<td><b>{{ a.designation }}</b></td>
+								<td class="si-pd-masque-mobile si-pd-gris">{{ s.format }}</td>
+								{% if avec_couts %}
+									<td class="si-pd-num si-pd-masque-mobile">{{ pd.f(a.prixAchat) }}</td>
+									<td class="si-pd-num"><b>{{ pd.f(a.coutUnitaireStock) }}</b><small class="si-pd-gris"> / {{ a.uniteCourte }}</small></td>
+								{% endif %}
+								<td class="si-pd-num">{{ a.stock|number_format(a.stock == a.stock|round ? 0 : 1, ',', ' ') }} {{ a.uniteCourte }}</td>
+								<td class="si-pd-masque-mobile si-pd-gris">{{ s.produits|join(', ') }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<p class="si-pd-note">Quand un nouvel achat change le prix, le coût de revient et la marge de chaque produit sont recalculés.</p>
+		{% endif %}
+	</section>
+{% endblock %}

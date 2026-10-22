@@ -1,151 +1,104 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	{{ campagne.nom }}
+{% set canaux = {whatsapp: 'WhatsApp', sms: 'SMS', email: 'E-mail'} %}
+{% set statuts = {envoye: 'Envoyé', echec: 'Échec', ignore: 'Ignoré', en_attente: 'En attente'} %}
+
+{% block title %}{{ campagne.nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_campagne_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Campagnes</a>
+	</li>
 {% endblock %}
 
 {% block body %}
-
-	{% include "alert.html.twig" %}
-
-	<div class="page-header">
-		<ol class="breadcrumb">
-			<li class="breadcrumb-item">
-				<a href="{{ path('app_campagne_index') }}">Campagnes</a>
-			</li>
-			<li class="breadcrumb-item active">
-				{{ campagne.nom }}
-			</li>
-		</ol>
-	</div>
-
-	<div class="row row-cards">
-
-		<div class="col-lg-4">
-			<div class="card">
-				<div class="card-body text-center">
-					<div class="h1 mb-0">{{ campagne.nombreTotal }}</div>
-					<div class="text-muted">Destinataires</div>
-				</div>
-			</div>
+	<div class="si-campagne-detail">
+		<div class="si-campagne-chiffres">
+			<article class="card"><h2>Destinataires</h2><strong>{{ campagne.nombreTotal }}</strong></article>
+			<article class="card"><h2>Envoyés</h2><strong class="text-success" data-si-envoyes>{{ compteurs.envoye }}</strong></article>
+			<article class="card"><h2>En attente</h2><strong data-si-attente>{{ compteurs.en_attente }}</strong></article>
+			<article class="card"><h2>Devis · commandes</h2><strong>{{ resultat.devis }} · {{ resultat.commandes }}</strong></article>
 		</div>
 
-		<div class="col-lg-4">
-			<div class="card">
-				<div class="card-body text-center">
-					<div class="h1 mb-0 text-success">{{ compteurs.envoye }}</div>
-					<div class="text-muted">Envoyés</div>
-				</div>
-			</div>
-		</div>
+		<section class="card si-campagne-bloc">
+			<header>
+				<h2>{{ canaux[campagne.canal]|default(campagne.canal) }}{% if campagne.segment %} · {{ constant('App\\Service\\SegmentsClients::SEGMENTS')[campagne.segment]|default(campagne.segment) }}{% endif %}</h2>
+				<span>
+					{% if campagne.estProgrammee(date()) %}Programmée le {{ campagne.envoiPrevuLe|date('d/m/Y à H\\hi') }}
+					{% elseif campagne.statut == 'terminee' %}Terminée
+					{% else %}En cours{% endif %}
+					· créée le {{ campagne.dateCreation|date('d/m/Y') }}{% if campagne.creePar %} par {{ campagne.creePar.username }}{% endif %}
+				</span>
+			</header>
+			{% if campagne.message %}
+				<p class="si-campagne-texte">{{ campagne.message }}</p>
+			{% elseif campagne.modeleMessage %}
+				<p class="si-campagne-texte">Modèle : {{ campagne.modeleMessage }}</p>
+			{% endif %}
+			{% if envoi_manuel %}
+				<p class="si-campagne-alerte"><i class="fab fa-whatsapp"></i> L’API WhatsApp n’est pas branchée : ouvrez chaque lien, envoyez le message, il est marqué envoyé.</p>
+			{% endif %}
+		</section>
 
-		<div class="col-lg-4">
-			<div class="card">
-				<div class="card-body text-center">
-					<div class="h1 mb-0 {{ compteurs.echec > 0 ? 'text-danger' : '' }}">{{ compteurs.echec }}</div>
-					<div class="text-muted">Échecs</div>
-				</div>
-			</div>
-		</div>
-
-	</div>
-
-	<div class="row">
-
-		<div class="col-lg-12">
-
-			<div class="card">
-
-				<div class="card-header">
-					<div>
-						<h3 class="card-title mb-1">
-							Détail des envois
-						</h3>
-						<small class="text-muted">
-							Modèle : {{ campagne.modeleMessage }} ({{ campagne.modeleMessage.canalLabel }})
-							· Statut : {{ campagne.statut == 'terminee' ? 'Terminée' : 'En cours' }}
-							{% if compteurs.en_attente > 0 %}
-								· {{ compteurs.en_attente }} en attente
-							{% endif %}
-							{% if compteurs.ignore > 0 %}
-								· {{ compteurs.ignore }} ignoré(s) (SMS refusé)
-							{% endif %}
-						</small>
-					</div>
-				</div>
-
-				<div class="table-responsive">
-
-					<table class="table table-bordered table-hover mb-0">
-
-						<thead>
+		<section class="card si-campagne-bloc">
+			<h2>Destinataires</h2>
+			<div class="table-responsive">
+				<table class="table si-campagne-table si-campagne-dest">
+					<thead>
+						<tr><th>Client</th><th>Statut</th><th>Envoi</th><th>Détail</th></tr>
+					</thead>
+					<tbody>
+						{% for d in destinataires %}
 							<tr>
-								<th>Client</th>
-								<th class="text-center">Statut</th>
-								<th>Date d'envoi</th>
-								<th>Détail</th>
+								<td>
+									{% if d.client %}
+										<a href="{{ path('app_clients_show', {publicId: d.client.publicId}) }}">{{ d.client.nomComplet }}</a>
+									{% else %}Client supprimé{% endif %}
+								</td>
+								<td><span class="si-statut-envoi si-envoi-{{ d.statut }}" data-si-statut>{{ statuts[d.statut]|default(d.statut) }}</span></td>
+								<td class="text-nowrap" data-si-date>{{ d.dateEnvoi ? d.dateEnvoi|date('d/m H:i') : '—' }}</td>
+								<td>
+									{% if envoi_manuel and d.client and d.client.telephone and d.statut != 'envoye' %}
+										{% set tel = d.client.telephone|replace({'+': '', ' ': ''}) %}
+										<a href="https://wa.me/{{ tel|length == 8 ? '223' ~ tel : tel }}?text={{ campagne.rendreMessage(d.client)|url_encode }}" target="_blank" rel="noopener" class="btn btn-success btn-sm js-envoi-manuel" data-url="{{ path('app_campagne_marquer_envoye', {id: campagne.id, destinataire: d.id}) }}"><i class="fab fa-whatsapp me-1"></i>Envoyer</a>
+									{% else %}
+										<span class="text-muted">{{ d.erreur|default('') }}</span>
+									{% endif %}
+								</td>
 							</tr>
-						</thead>
-
-						<tbody>
-
-							{% for destinataire in destinataires %}
-
-								<tr>
-
-									<td class="align-middle">
-										{{ destinataire.client ? destinataire.client.nomComplet : 'Client supprimé' }}
-									</td>
-
-									<td class="align-middle text-center">
-										{% if destinataire.statut == 'envoye' %}
-											<span class="badge badge-success">Envoyé</span>
-										{% elseif destinataire.statut == 'echec' %}
-											<span class="badge badge-danger">Échec</span>
-										{% elseif destinataire.statut == 'ignore' %}
-											<span class="badge badge-warning">Ignoré</span>
-										{% else %}
-											<span class="badge badge-light">En attente</span>
-										{% endif %}
-									</td>
-
-									<td class="align-middle">
-										{{ destinataire.dateEnvoi ? destinataire.dateEnvoi|date('d/m/Y H:i') : '—' }}
-									</td>
-
-									<td class="align-middle text-muted">
-										{{ destinataire.erreur|default('') }}
-									</td>
-
-								</tr>
-
-							{% else %}
-
-								<tr>
-									<td colspan="4" class="text-center text-muted py-5">
-										Aucun destinataire.
-									</td>
-								</tr>
-
-							{% endfor %}
-
-						</tbody>
-
-					</table>
-
-				</div>
-
-				<div class="card-footer text-right">
-					<a href="{{ path('app_campagne_index') }}" class="btn btn-secondary">
-						<i class="fa fa-arrow-left mr-1"></i>
-						Retour
-					</a>
-				</div>
-
+						{% else %}
+							<tr><td colspan="4" class="text-muted">Aucun destinataire.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
 			</div>
-
-		</div>
-
+		</section>
 	</div>
 
+	{% if envoi_manuel %}
+		<script>
+			(() => {
+				const jeton = '{{ csrf_token('campagne_manuel') }}';
+				document.querySelectorAll('.js-envoi-manuel').forEach((lien) => lien.addEventListener('click', () => {
+					const corps = new FormData();
+					corps.append('_token', jeton);
+					fetch(lien.dataset.url, {method: 'POST', body: corps, headers: {'X-Requested-With': 'XMLHttpRequest'}}).then((r) => {
+						if (!r.ok) return;
+						const ligne = lien.closest('tr');
+						const statut = ligne.querySelector('[data-si-statut]');
+						if (statut.textContent !== 'Envoyé') {
+							const attente = document.querySelector('[data-si-attente]');
+							if (statut.textContent === 'En attente') attente.textContent = Math.max(0, +attente.textContent - 1);
+							const envoyes = document.querySelector('[data-si-envoyes]');
+							envoyes.textContent = +envoyes.textContent + 1;
+						}
+						statut.textContent = 'Envoyé';
+						statut.className = 'si-statut-envoi si-envoi-envoye';
+						ligne.querySelector('[data-si-date]').textContent = new Date().toLocaleString('fr-FR', {day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'}).replace(',', '');
+						lien.replaceWith(Object.assign(document.createElement('span'), {className: 'text-muted', textContent: 'envoyé à la main'}));
+					});
+				}));
+			})();
+		</script>
+	{% endif %}
 {% endblock %}

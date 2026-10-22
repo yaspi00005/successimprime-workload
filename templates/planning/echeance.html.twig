@@ -1,0 +1,209 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set fin = e.finLe ? 'date' : (e.finNombre ? 'nombre' : 'jamais') %}
+
+{% block title %}{{ nouvelle ? 'Nouvelle tâche' : e.titre }}{% endblock %}
+
+{% block header_actions %}
+	{% if not nouvelle %}<li class="nav-item"><a href="#si-pl-historique" class="btn btn-light btn-sm si-btn-entete">Historique</a></li>{% endif %}
+	<li class="nav-item"><button form="si-pl-form" class="btn btn-danger btn-sm">Enregistrer</button></li>
+{% endblock %}
+
+{% block body %}
+	<form method="post" id="si-pl-form" class="si-pl si-pl-echeance" data-apercu="{{ path('app_planning_echeance_apercu') }}">
+		<input type="hidden" name="_token" value="{{ token }}">
+		<div class="si-pl-principal">
+			<section class="card si-ac-bloc si-pl-champs">
+				<div class="si-pl-2">
+					<label>Titre<input name="titre" required maxlength="150" class="form-control" value="{{ e.titre }}" placeholder="Ex. Payer le loyer"></label>
+					<label>Catégorie
+						<select name="categorie" class="form-select">
+							{% for k, c in constant('App\\Entity\\Echeance::CATEGORIES') %}<option value="{{ k }}"{{ e.categorie == k ? ' selected' }}>{{ c[0] }}</option>{% endfor %}
+						</select>
+					</label>
+					<label>Responsable
+						<select name="responsable" class="form-select"{{ direction ? '' : ' disabled' }}>
+							{% if direction %}<option value="">Personne</option>{% endif %}
+							{% for u in utilisateurs %}<option value="{{ u.id }}"{{ e.responsable == u ? ' selected' }}>{{ u|nom_pointage }}</option>{% endfor %}
+						</select>
+					</label>
+					{% if direction %}
+						<label>En copie
+							<select name="copie" class="form-select">
+								<option value="">Personne</option>
+								{% for u in utilisateurs %}<option value="{{ u.id }}"{{ e.copie == u ? ' selected' }}>{{ u|nom_pointage }}</option>{% endfor %}
+							</select>
+						</label>
+					{% endif %}
+					<label>Entreprise
+						<select name="entreprise" class="form-select">
+							<option value="">—</option>
+							{% for en in entreprises %}<option value="{{ en.id }}"{{ e.entreprise == en ? ' selected' }}>{{ en.nomAffiche }}</option>{% endfor %}
+						</select>
+					</label>
+					<label>Heure<input type="time" name="heure" class="form-control" value="{{ e.heure }}"></label>
+					<label data-si-cat="entretien">Fin du créneau<input type="time" name="heureFin" class="form-control" value="{{ e.heureFin }}"></label>
+					<label data-si-cat="entretien" class="si-pl-case-label"><span><input type="checkbox" name="fermeture" value="1"{{ e.fermeture ? ' checked' }}> Checklist de fermeture</span><small class="text-muted fw-normal">Toutes les étapes cochées rapportent les points de fermeture.</small></label>
+				</div>
+
+				<h2 class="mt-3">Répétition</h2>
+				<div class="si-pl-pills" role="radiogroup" aria-label="Répétition">
+					{% for k, l in constant('App\\Service\\Planning\\Calendrier::FREQUENCES') %}
+						<label class="si-tr-mode"><input type="radio" name="frequence" value="{{ k }}"{{ e.frequence == k ? ' checked' }}> {{ l }}</label>
+					{% endfor %}
+				</div>
+				<div class="si-pl-2 mt-2">
+					<label data-si-pour="mois trimestre annee">Jour
+						<select name="jourMois" class="form-select">
+							{% for j in 1..31 %}<option value="{{ j }}"{{ (e.jourMois ?? e.debut|date('j')) == j ? ' selected' }}>Le {{ j == 1 ? '1er' : j }} du mois</option>{% endfor %}
+							<option value="0"{{ e.jourMois is same as(0) ? ' selected' }}>Le dernier jour du mois</option>
+						</select>
+					</label>
+					<fieldset data-si-pour="semaine" class="si-pl-jours">
+						<legend>Jours</legend>
+						{% for n, l in constant('App\\Service\\Planning\\Calendrier::JOURS') %}
+							<label><input type="checkbox" name="joursSemaine[]" value="{{ n }}"{{ n in e.joursSemaine ? ' checked' }}> {{ l|slice(0, 3) }}</label>
+						{% endfor %}
+					</fieldset>
+					<label data-si-pour="mois trimestre annee semaine une_fois">Si week-end ou jour férié
+						<select name="decalage" class="form-select">
+							{% for k, l in constant('App\\Service\\Planning\\Calendrier::DECALAGES') %}<option value="{{ k }}"{{ e.decalage == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+					<label><span data-si-libelle-debut>Début</span><input type="date" name="debut" required class="form-control" value="{{ e.debut|date('Y-m-d') }}"></label>
+					<label data-si-pour="jour semaine mois trimestre annee">Fin
+						<select name="fin" class="form-select">
+							<option value="jamais"{{ fin == 'jamais' ? ' selected' }}>Sans fin</option>
+							<option value="date"{{ fin == 'date' ? ' selected' }}>Jusqu'au…</option>
+							<option value="nombre"{{ fin == 'nombre' ? ' selected' }}>Un nombre de fois</option>
+						</select>
+					</label>
+					<label data-si-fin="date">Dernier jour<input type="date" name="finLe" class="form-control" value="{{ e.finLe ? e.finLe|date('Y-m-d') }}"></label>
+					<label data-si-fin="nombre">Nombre de fois<input type="number" min="1" max="500" name="finNombre" class="form-control" value="{{ e.finNombre }}"></label>
+				</div>
+				{% if e.frequence == 'jour' %}<p class="si-pg-note mt-2 mb-0">« Chaque jour » suit les jours d'ouverture de la tuile Horaires, hors jours fériés.</p>{% endif %}
+
+				<h2 class="mt-3">Étapes</h2>
+				<ul class="si-pl-etapes" id="si-pl-etapes">
+					{% for et in e.etapes %}
+						<li><i class="far fa-square" aria-hidden="true"></i><input name="etapes[]" class="form-control form-control-sm" value="{{ et }}" maxlength="150" aria-label="Étape {{ loop.index }}"><button type="button" class="btn btn-link btn-sm" data-si-retirer aria-label="Retirer l'étape">×</button></li>
+					{% endfor %}
+				</ul>
+				<button type="button" class="btn btn-light btn-sm si-btn-entete" id="si-pl-ajouter"><i class="fas fa-plus me-1"></i>Ajouter une étape</button>
+				<p class="si-pg-note mt-2 mb-0">Les étapes sont recopiées sur chaque tâche, à cocher une à une.</p>
+			</section>
+		</div>
+
+		<aside class="si-pl-cote">
+			<section class="card si-ac-bloc">
+				<h2>Rappels</h2>
+				<ul class="si-pl-rappels">
+					{% for k, r in constant('App\\Entity\\Echeance::RAPPELS') %}
+						<li>
+							<label class="form-check form-switch m-0 d-flex justify-content-between align-items-center w-100 ps-0">
+								<span><b>{{ r[0] }}</b><small>{{ r[1] }}</small></span>
+								<input class="form-check-input" type="checkbox" role="switch" name="rappels[{{ k }}]" value="1"{{ e.rappel(k) ? ' checked' }}>
+							</label>
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+
+			{% if voitMontants %}
+				<section class="card si-ac-bloc">
+					<h2>Montant et trésorerie</h2>
+					<label class="w-100">Montant estimé (F)<input name="montant" inputmode="numeric" class="form-control" value="{{ e.montantEstime }}" placeholder="Facultatif"></label>
+					<div class="row g-2 mt-1">
+						<label class="col-sm-6">Payé depuis
+							<select name="compte" class="form-select">
+								<option value="">Première caisse active</option>
+								{% for c in comptes %}<option value="{{ c.id }}"{{ e.compte and e.compte.id == c.id ? ' selected' }}>{{ c.nom }}</option>{% endfor %}
+							</select>
+						</label>
+						<label class="col-sm-6">Catégorie de dépense
+							<select name="categorieDepense" class="form-select">
+								<option value="">Selon la catégorie de la tâche</option>
+								{% for k, l in categoriesDepense %}<option value="{{ k }}"{{ e.categorieDepense == k ? ' selected' }}>{{ l }}</option>{% endfor %}
+							</select>
+						</label>
+					</div>
+					<p class="si-pg-note mt-2 mb-0">Visible seulement avec le droit trésorerie. Chaque tâche non faite compte dans la trésorerie prévisionnelle à sa date. Quand elle est cochée faite, une dépense de ce montant est préparée : elle attend la validation dans Finances › À valider, elle n'est jamais passée toute seule.</p>
+				</section>
+			{% endif %}
+
+			<section class="card si-ac-bloc">
+				<h2>Prochaines dates</h2>
+				<p class="si-pl-resume" id="si-pl-resume"></p>
+				<ul class="si-pl-dates" id="si-pl-dates"><li class="text-muted">Calcul…</li></ul>
+			</section>
+
+			{% if not nouvelle %}
+				<section class="card si-ac-bloc" id="si-pl-historique">
+					<h2>Historique</h2>
+					{% if historique is empty %}
+						<p class="si-ac-vide mb-0">Aucune occurrence faite pour l'instant.</p>
+					{% else %}
+						<ul class="si-tr-heures">
+							{% for t in historique %}<li><span>{{ t.prevueLe|date('d/m/Y') }}</span><b>{{ t.faitPar ? t.faitPar|nom_pointage }} · {{ t.faitLe|date('d/m H:i') }}</b></li>{% endfor %}
+						</ul>
+					{% endif %}
+				</section>
+			{% endif %}
+		</aside>
+	</form>
+	{% if not nouvelle %}
+		<form method="post" action="{{ path('app_planning_echeance_arreter', {id: e.id}) }}" class="si-pl-arreter" data-confirmer="Arrêter cette échéance ? Ses tâches futures non commencées seront retirées.">
+			<input type="hidden" name="_token" value="{{ token }}">
+			<button class="btn btn-outline-danger btn-sm">Arrêter l'échéance</button>
+		</form>
+	{% endif %}
+	<script>
+	(function () {
+		var f = document.getElementById('si-pl-form');
+		function maj() {
+			var freq = (f.querySelector('input[name=frequence]:checked') || {}).value;
+			f.querySelectorAll('[data-si-pour]').forEach(function (el) { el.hidden = el.dataset.siPour.split(' ').indexOf(freq) < 0; });
+			var fin = f.querySelector('select[name=fin]').value;
+			f.querySelectorAll('[data-si-fin]').forEach(function (el) { el.hidden = freq === 'une_fois' || el.dataset.siFin !== fin; });
+			f.querySelector('[data-si-libelle-debut]').textContent = freq === 'une_fois' ? 'Date' : 'Début';
+			var cat = f.querySelector('select[name=categorie]').value;
+			f.querySelectorAll('[data-si-cat]').forEach(function (el) { el.hidden = el.dataset.siCat !== cat; });
+		}
+		var minuterie;
+		function apercu() {
+			clearTimeout(minuterie);
+			minuterie = setTimeout(function () {
+				var donnees = new FormData(f);
+				fetch(f.dataset.apercu, {method: 'POST', body: donnees, credentials: 'same-origin'}).then(function (r) { return r.json(); }).then(function (j) {
+					document.getElementById('si-pl-resume').textContent = j.resume;
+					var ul = document.getElementById('si-pl-dates');
+					ul.textContent = '';
+					var fmt = function (s) { return new Date(s + 'T12:00:00').toLocaleDateString('fr-FR', {weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric'}); };
+					if (!j.dates.length) { var v = document.createElement('li'); v.className = 'text-muted'; v.textContent = 'Aucune date à venir.'; ul.appendChild(v); }
+					j.dates.forEach(function (d) {
+						var li = document.createElement('li');
+						if (d.date !== d.origine) {
+							li.append(fmt(d.origine) + ' → ');
+							var b = document.createElement('b'); b.textContent = fmt(d.date); li.appendChild(b);
+						} else {
+							li.append(fmt(d.date));
+						}
+						if (d.raison) { var s = document.createElement('small'); s.textContent = ' (' + d.raison + ')'; li.appendChild(s); }
+						ul.appendChild(li);
+					});
+				}).catch(function () {});
+			}, 250);
+		}
+		document.getElementById('si-pl-ajouter').addEventListener('click', function () {
+			var li = document.createElement('li');
+			li.innerHTML = '<i class="far fa-square" aria-hidden="true"></i><input name="etapes[]" class="form-control form-control-sm" maxlength="150" aria-label="Nouvelle étape"><button type="button" class="btn btn-link btn-sm" data-si-retirer aria-label="Retirer l\'étape">×</button>';
+			document.getElementById('si-pl-etapes').appendChild(li);
+			li.querySelector('input').focus();
+		});
+		document.getElementById('si-pl-etapes').addEventListener('click', function (e) { if (e.target.matches('[data-si-retirer]')) { e.target.closest('li').remove(); } });
+		f.addEventListener('change', function () { maj(); apercu(); });
+		maj(); apercu();
+	})();
+	</script>
+{% endblock %}

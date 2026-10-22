@@ -1,0 +1,165 @@
+{#
+	Équipe › Performance et primes (maquette N01) : score de chaque
+	personne de l'équipe pour le mois, prime calculée et statut. Le
+	responsable voit son équipe, l'admin tout le monde (PrimesVoter).
+#}
+{% extends 'primes/_base.html.twig' %}
+{% import 'primes/_macros.html.twig' as p %}
+
+{% block title %}Performance et primes · {{ p.mois(mois) }}{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_bareme_primes') }}" class="btn btn-light btn-sm si-btn-entete">Barème</a>
+		</li>
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_primes_export', {mois: mois|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export paie</a>
+		</li>
+		<li class="nav-item">
+			<form method="post" action="{{ path('app_primes_valider_primes') }}" data-confirmer="Valider les primes de {{ p.mois(mois) }} ? Elles passent en sommes dues sur les bulletins de paie en brouillon ; rien n'est versé automatiquement.">
+				<input type="hidden" name="_token" value="{{ csrf_token('valider-primes') }}">
+				<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+				<button class="btn btn-success btn-sm si-btn-entete" {{ aValiderPrimes == 0 ? 'disabled' }} title="{{ aValiderPrimes == 0 ? (termine ? 'Aucune évaluation validée en attente de prime.' : 'Le mois n’est pas terminé.') : aValiderPrimes ~ ' prime(s) à valider' }}">Valider les primes</button>
+			</form>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{# Montants des primes : Direction et RH seulement (demande de Yaya du 18/10/2026) ; un responsable d'équipe voit les scores et les taux. #}
+	{% set voit_montants = is_granted('ROLE_RH') %}
+	<div class="si-fin si-pr">
+		<form method="get" class="si-pr-mois" aria-label="Mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_primes_index', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+			<input type="month" name="mois" value="{{ mois|date('Y-m') }}" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_primes_index', {mois: mois|date_modify('+1 month')|date('Y-m')}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>
+			{% if courant %}<span class="text-muted">Mois en cours : les scores bougent chaque jour avec les données de l'ERP.</span>{% endif %}
+		</form>
+
+		<section class="si-fin-kpis" aria-label="Le mois en chiffres">
+			<article class="card si-fin-kpi">
+				<h2>Score moyen de l'équipe</h2>
+				<strong>{{ moyenne is null ? '—' : moyenne|number_format(1, ',', ' ') ~ ' / 100' }}</strong>
+				{% if ecart is not null %}
+					<span class="{{ ecart >= 0 ? 'si-fin-vert' : 'si-fin-rouge' }}">{{ ecart >= 0 ? '▲ +' : '▼ −' }}{{ ecart|abs|number_format(1, ',', ' ') }} vs {{ p.mois(mois|date_modify('-1 month')) }}</span>
+				{% else %}
+					<span class="si-fin-gris">{{ lignes|length }} personne{{ lignes|length > 1 ? 's' }} évaluée{{ lignes|length > 1 ? 's' }}</span>
+				{% endif %}
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Primes calculées</h2>
+				{% if voit_montants %}
+					<strong>{{ p.f(primes) }}</strong>
+					<span class="si-fin-vert">sur {{ possibles|number_format(0, ',', ' ') }} F possibles</span>
+				{% else %}
+					<strong>{{ possibles > 0 ? (primes * 100 / possibles)|round : 0 }} %</strong>
+					<span class="si-fin-gris">des primes possibles (montants : Direction et RH)</span>
+				{% endif %}
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Évaluations à finaliser</h2>
+				<strong>{{ aFinaliser }}</strong>
+				{% if sansAppreciation > 0 %}
+					<span class="si-fin-rouge">{{ sansAppreciation }} appréciation{{ sansAppreciation > 1 ? 's' }} manager manquante{{ sansAppreciation > 1 ? 's' }}</span>
+				{% elseif aFinaliser > 0 %}
+					<span class="si-fin-orange">{{ termine ? 'à valider' : 'mois en cours' }}</span>
+				{% else %}
+					<span class="si-fin-vert">toutes validées</span>
+				{% endif %}
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Période</h2>
+				<strong>1–{{ mois|date('t') }} {{ p.mois(mois) }}</strong>
+				{% if aValiderPrimes > 0 or aFinaliser > 0 %}
+					<span class="si-fin-vert">validation avant la paie du {{ paie|date('j') }}{{ paie|date('n') != mois|date_modify('+1 month')|date('n') ? ' ' ~ p.mois(paie) }}</span>
+				{% else %}
+					<span class="si-fin-gris">primes du mois validées</span>
+				{% endif %}
+			</article>
+		</section>
+
+		<section class="card" aria-labelledby="titre-equipe">
+			<h2 id="titre-equipe" class="visually-hidden">Équipe</h2>
+			{% if lignes is empty %}
+				<p class="si-fin-note mt-0">Personne à évaluer pour ce mois. Le rôle de prime vient du profil de la personne (caisse, graphiste, production, livreur, comptabilité, entretien) ou se règle depuis son évaluation.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table si-fin-table si-pr-table">
+						<thead>
+							<tr>
+								<th scope="col">Agent</th>
+								<th scope="col" class="si-masque-mobile">Rôle</th>
+								<th scope="col">Score</th>
+								<th scope="col" class="text-end si-masque-mobile">Prime cible</th>
+								<th scope="col" class="text-end si-masque-mobile">Taux</th>
+								<th scope="col" class="text-end">Prime calculée</th>
+								<th scope="col">Statut</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set r = l.resultat %}
+								<tr>
+									<td>
+										<div class="si-pr-agent">
+											{{ p.avatar(l.agent, l.agent|nom_pointage) }}
+											<a href="{{ path('app_primes_agent', {id: l.agent.id, mois: mois|date('Y-m')}) }}">{{ l.agent|nom_pointage }}</a>
+										</div>
+									</td>
+									<td class="si-pr-role si-masque-mobile">{{ roles[l.role] ?? l.role }}</td>
+									<td>
+										<div class="si-pr-score {{ p.couleur(r.score) }}">
+											{% if r.score is null %}
+												<b>—</b><small class="text-muted">pas de données</small>
+											{% else %}
+												<b>{{ r.score }}<small> / 100</small></b>
+												<span class="si-fin-jauge"><span style="width: {{ r.score }}%"></span></span>
+											{% endif %}
+										</div>
+									</td>
+									<td class="text-end si-masque-mobile">{{ voit_montants ? p.f(r.primeCible, false) : '—' }}</td>
+									<td class="text-end si-masque-mobile">{{ r.taux }} %</td>
+									<td class="text-end">
+										<b>{{ voit_montants ? p.f(r.prime) : r.taux ~ ' %' }}</b>
+										{% if l.evaluation and l.evaluation.suspendue %}<small class="si-fin-rouge">prime suspendue</small>{% endif %}
+									</td>
+									<td>
+										<span class="si-fin-statut si-fin-statut-{{ l.statut[1] }}">{{ l.statut[0] }}</span>
+										{% if l.evaluation and l.evaluation.version > 1 %}<small>version {{ l.evaluation.version }}</small>{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+
+			<div class="si-pr-paliers" aria-label="Paliers">
+				{% for palier in paliers %}
+					<span class="si-pr-palier {{ p.couleur(palier.de) }}">Score {{ palier.de is null ? palier.libelle : palier.de ~ ' à ' ~ palier.a }} → {{ palier.taux }} % de la prime</span>
+				{% endfor %}
+			</div>
+
+			{% if sansRole is not empty %}
+				<p class="si-fin-note">
+					Sans rôle de prime :
+					{% for u in sansRole -%}
+						{%- if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_primes_agent', {id: u.id, mois: mois|date('Y-m')}) }}">{{ u|nom_pointage }}</a>{% else %}{{ u|nom_pointage }}{% endif %}{{ not loop.last ? ', ' -}}
+					{%- endfor %}.
+					{{ is_granted('ROLE_ADMIN') ? 'Ouvrez leur fiche pour leur donner un rôle de prime.' : 'La direction peut leur en donner un.' }}
+				</p>
+			{% endif %}
+			{% if sansActivite is not empty %}
+				<p class="si-fin-note">
+					Aucune donnée en {{ p.mois(mois) }} (congé, arrivée en cours de mois ou compte inutilisé) :
+					{% for u in sansActivite -%}
+						<a href="{{ path('app_primes_agent', {id: u.id, mois: mois|date('Y-m')}) }}">{{ u|nom_pointage }}</a>{{ not loop.last ? ', ' -}}
+					{%- endfor %}.
+					Pas de note à 0 : ouvrez la fiche pour les évaluer quand même.
+				</p>
+			{% endif %}
+			<p class="si-fin-note">Le score se calcule chaque jour avec les données de l'ERP. Le responsable saisit son appréciation puis « Valider l'évaluation » une fois le mois terminé ; la direction valide ensuite les primes, qui passent sur le bulletin de paie comme somme due (rien n'est versé automatiquement).</p>
+		</section>
+	</div>
+{% endblock %}

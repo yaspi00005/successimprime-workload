@@ -1,0 +1,129 @@
+{# Panneau d'édition rapide d'une tuile (maquette S02, volet bas sur mobile S04). #}
+{% set tuile = panneau.tuile %}
+{% set jeton = csrf_token('parametres') %}
+{% set interrupteurs = tuile.champs|filter(c => c.type == 'interrupteur') %}
+{% set autres = tuile.champs|filter(c => c.type != 'interrupteur') %}
+<div class="si-pp si-pf-{{ panneau.famille.couleur }}" data-si-pp="{{ panneau.cle }}">
+	<span class="si-pp-poignee" aria-hidden="true"></span>
+	<header class="si-pp-entete">
+		<span class="si-pt-icone"><i class="fas {{ tuile.icone }}"></i></span>
+		<div>
+			<small>{{ panneau.famille.libelle }}</small>
+			<h2 id="si-pp-titre">{{ tuile.libelle }}</h2>
+		</div>
+		<a href="{{ path('app_reglages_parametres_index') }}" class="si-pp-fermer" data-si-pp-fermer aria-label="Fermer"><i class="fas fa-times"></i></a>
+	</header>
+
+	<div class="si-pp-corps">
+		{% if panneau.proposition is not empty %}
+			<div class="si-pp-proposition">
+				<strong><i class="fas fa-hourglass-half me-1"></i>Changement proposé depuis l'admin en ligne</strong>
+				<span>{{ panneau.propose_par ? panneau.propose_par.username : 'Admin en ligne' }}{{ panneau.propose_le ? ' · ' ~ panneau.propose_le|date('d/m à H:i') }}</span>
+				<ul>
+					{% for p in panneau.proposition %}
+						<li>{{ p.libelle }} : <s>{{ p.avant }}</s> → <b>{{ p.apres }}</b></li>
+					{% endfor %}
+				</ul>
+				{% if panneau.peut_valider %}
+					<div class="si-pp-proposition-actions">
+						<form method="post" action="{{ path('app_reglages_parametres_refuser', {tuile: panneau.cle}) }}">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<button type="submit" class="btn btn-light btn-sm">Refuser</button>
+						</form>
+						<form method="post" action="{{ path('app_reglages_parametres_valider', {tuile: panneau.cle}) }}">
+							<input type="hidden" name="_token" value="{{ jeton }}">
+							<button type="submit" class="btn btn-success btn-sm">Valider et appliquer</button>
+						</form>
+					</div>
+				{% else %}
+					<span class="si-pp-attente">Il sera appliqué après validation sur l'ERP local.</span>
+				{% endif %}
+			</div>
+		{% endif %}
+
+		{% if tuile.champs is not empty %}
+			<form method="post" action="{{ path('app_reglages_parametres_enregistrer', {tuile: panneau.cle}) }}" id="si-pp-form" data-si-pp-form novalidate>
+				<input type="hidden" name="_token" value="{{ jeton }}">
+
+				{% for champ in interrupteurs %}
+					<label class="si-pp-interrupteur">
+						<span>
+							<strong>{{ champ.libelle }}</strong>
+							{% if champ.aide is defined %}<small>{{ champ.aide }}</small>{% endif %}
+						</span>
+						<input type="checkbox" role="switch" name="{{ champ.cle }}" value="1" {{ panneau.valeurs[champ.cle] ? 'checked' }}>
+						<i aria-hidden="true"></i>
+					</label>
+				{% endfor %}
+
+				{% if autres is not empty %}
+					<div class="si-pp-champs">
+						{% for champ in autres %}
+							{% set valeur = panneau.valeurs[champ.cle] ?? '' %}
+							<div class="si-pp-champ {{ erreurs[champ.cle] is defined ? 'si-pp-erreur' }}">
+								<label for="si-pp-{{ champ.cle }}">{{ champ.libelle }}</label>
+								<div class="si-pp-saisie">
+									{% if champ.type == 'choix' %}
+										<select id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}">
+											{% for code, libelle in champ.options %}
+												<option value="{{ code }}" {{ code == valeur ? 'selected' }}>{{ libelle }}</option>
+											{% endfor %}
+										</select>
+									{% elseif champ.type == 'nombre' %}
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="number" inputmode="decimal" step="{{ (champ.decimales ?? 0) > 0 ? '0.01' : '1' }}" min="{{ champ.min }}" max="{{ champ.max }}" value="{{ valeur }}">
+									{% elseif champ.type == 'heure' %}
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="time" value="{{ valeur }}">
+									{% elseif champ.type == 'date' %}
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="date" value="{{ valeur }}"{{ (champ.requis ?? false) ? ' required' }}>
+									{% elseif champ.type == 'dates' %}
+										<textarea id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" rows="3">{{ valeur }}</textarea>
+									{% else %}
+										<input id="si-pp-{{ champ.cle }}" name="{{ champ.cle }}" type="text" maxlength="{{ champ.longueur ?? 120 }}" value="{{ valeur }}">
+									{% endif %}
+									{% if champ.suffixe is defined %}<span>{{ champ.suffixe }}</span>{% endif %}
+								</div>
+								{% if erreurs[champ.cle] is defined %}<small class="si-pp-message">{{ erreurs[champ.cle] }}</small>{% endif %}
+							</div>
+						{% endfor %}
+					</div>
+				{% endif %}
+			</form>
+		{% endif %}
+
+		{% if panneau.details is not empty %}
+			<ul class="si-pp-details">
+				{% for d in panneau.details %}
+					<li><strong>{{ d.libelle }}</strong><span>{{ d.valeur }}</span></li>
+				{% endfor %}
+			</ul>
+		{% elseif tuile.champs is empty %}
+			<div class="si-pp-resume">
+				<strong>{{ panneau.etat }}</strong>
+				{% if tuile.route %}<span>Ce réglage se fait sur sa page complète.</span>{% endif %}
+			</div>
+		{% endif %}
+
+		{% if tuile.note is defined %}
+			<p class="si-pp-note"><i class="fas fa-info-circle me-1"></i>{{ tuile.note }}</p>
+		{% endif %}
+
+		<p class="si-pp-trace">
+			{% if panneau.modifie_le %}Modifié par {{ panneau.modifie_par ? panneau.modifie_par.username : 'un utilisateur supprimé' }} le {{ panneau.modifie_le|date('d/m') }} · {% endif %}les changements sont enregistrés dans le journal.
+			{% if panneau.en_ligne and tuile.champs is not empty %}<br><b>Depuis l'admin en ligne : validé ensuite sur l'ERP local.</b>{% endif %}
+		</p>
+	</div>
+
+	<footer class="si-pp-pied">
+		{% if tuile.route %}
+			<a href="{{ path(tuile.route) }}" class="si-pp-complet">Ouvrir la page complète <i class="fas fa-arrow-right"></i></a>
+		{% else %}
+			<span></span>
+		{% endif %}
+		<div>
+			<a href="{{ path('app_reglages_parametres_index') }}" class="btn btn-light btn-sm si-masque-mobile" data-si-pp-fermer>{{ tuile.champs is empty ? 'Fermer' : 'Annuler' }}</a>
+			{% if tuile.champs is not empty %}
+				<button type="submit" form="si-pp-form" class="btn btn-success btn-sm si-pp-enregistrer">Enregistrer</button>
+			{% endif %}
+		</div>
+	</footer>
+</div>

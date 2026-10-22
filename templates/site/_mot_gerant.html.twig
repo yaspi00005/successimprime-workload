@@ -1,0 +1,32 @@
+{#
+	« Le mot du gérant » de la page « Qui sommes-nous ? », avant « Notre
+	équipe » (demande de Yaya du 17/10/2026) : sa photo (portrait carré
+	réencodé, sans métadonnées), son mot, son nom et son poste. Seulement
+	quand la photo et le texte sont remplis, qu'il est visible et qu'il a
+	donné son accord (MembreEquipe::estMotVisible). Le texte est montré tel
+	quel, échappé, un paragraphe par ligne.
+	Variable : gerant.
+#}
+{% set petite = site_image(gerant.photo, 'petite') %}
+{% set grande = petite ? site_image(gerant.photo, 'grande') : null %}
+<section class="sc-mot-gerant" id="mot-du-gerant" aria-labelledby="sc-mot-gerant-titre">
+	<h2 id="sc-mot-gerant-titre" class="sc-titre-section">{{ gerant.titreMot }}</h2>
+	<figure class="sc-mot-gerant-corps">
+		<div class="sc-mot-gerant-photo">
+			{% if petite %}
+				<img src="{{ asset((grande ?? petite).chemin) }}"
+					{%- if grande and grande.largeur > petite.largeur %} srcset="{{ asset(petite.chemin) }} {{ petite.largeur }}w, {{ asset(grande.chemin) }} {{ grande.largeur }}w" sizes="(max-width: 959px) 152px, 216px"{% endif %}
+					width="{{ (grande ?? petite).largeur }}" height="{{ (grande ?? petite).hauteur }}" alt="{{ gerant.texteAlternatif }}" loading="lazy" decoding="async">
+			{% else %}
+				<span class="sc-mot-gerant-initiales" aria-hidden="true">{{ gerant.initiales }}</span>
+			{% endif %}
+		</div>
+		<blockquote class="sc-mot-gerant-texte">
+			{% for paragraphe in gerant.paragraphesMot %}<p>{{ paragraphe }}</p>{% endfor %}
+		</blockquote>
+		<figcaption class="sc-mot-gerant-signature">
+			<strong>{{ gerant.nom }}</strong>
+			{% if gerant.poste %}<span>{{ gerant.poste }}</span>{% endif %}
+		</figcaption>
+	</figure>
+</section>

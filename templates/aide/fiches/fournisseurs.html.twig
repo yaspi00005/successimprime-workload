@@ -1,0 +1,20 @@
+{# Fiche du guide « fournisseurs » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu Stock et achats › « Fournisseurs ».</li>
+	<li>En haut : « Achats du mois », « Dû aux fournisseurs », « En route » et « À commander bientôt ».</li>
+	<li>Chaque ligne donne ce que le fournisseur fournit, son origine, son « Délai moyen » réel, sa part « À l'heure », ses achats de l'année et ce qui lui est dû.</li>
+	<li>« Prochaine commande » : son article le plus pressé. En rouge « sous le minimum » ou « maintenant », en orange dans la semaine. Touchez-la pour préparer la commande d'achat.</li>
+	<li>Touchez le nom pour ouvrir la fiche : conditions de paiement, délai promis et délai réel, performance sur 12 mois, prix d'achat et « Coût rendu Bamako ».</li>
+	<li>« + Fournisseur » crée une fiche, « Exporter » donne le tableau pour Excel.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>« À l'heure » : livraisons arrivées à la date promise, sur 12 mois. Barre verte, jaune ou rouge.</li>
+	<li>Quand le délai réel dépasse le délai promis, la fiche le dit dans « Conseil » : la prochaine commande compte déjà le délai réel.</li>
+	<li>Le bouton WhatsApp de la fiche écrit au contact du fournisseur.</li>
+	<li>Le montant dû ne s'affiche qu'avec le droit « Trésorerie et soldes ».</li>
+</ul>
+{% endblock %}

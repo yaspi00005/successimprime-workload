@@ -1,10 +1,22 @@
 {% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
 
 {% block title %}
 	Statistiques globales
 {% endblock %}
 
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if local %}{{ st.exporter('app_statistiques_globales_export', filtres|merge({granularite_stock: granulariteStock})) }}{% endif %}
+{% endblock %}
+
 {% block body %}
+
+{% set libelleActivite = {imprimerie: 'imprimerie', hors: 'hors imprimerie', tout: 'imprimerie et hors imprimerie'}[activite] %}
 
 <div class="side-app">
 
@@ -39,7 +51,7 @@
 
 			<form method="get" class="row align-items-end">
 
-				<div class="col-md-4 mb-2">
+				<div class="col-md-3 mb-2">
 
 					<label class="form-label">
 						Du
@@ -54,7 +66,7 @@
 
 				</div>
 
-				<div class="col-md-4 mb-2">
+				<div class="col-md-3 mb-2">
 
 					<label class="form-label">
 						Au
@@ -69,7 +81,10 @@
 
 				</div>
 
-				<div class="col-md-4 mb-2">
+				{# Ventes par agent, top produits, ventes d'articles : imprimerie par défaut (docs/hors-imprimerie.md). #}
+				{{ st.filtre_activite(activite, 'col-md-3 mb-2') }}
+
+				<div class="col-md-3 mb-2">
 
 					<button type="submit" class="btn btn-primary btn-block">
 						<i class="fa fa-filter mr-1"></i>
@@ -85,6 +100,8 @@
 	</div>
 
 
+	{{ st.repartition(repartition, 'Imprimerie et hors imprimerie', 'Factures émises sur la période · commandes de la période') }}
+
 	<div class="row">
 
 		{# ==========================================================
@@ -99,6 +116,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-shopping-cart mr-1"></i>
 						Ventes par agent
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 
@@ -112,7 +130,7 @@
 							<tr>
 								<th>Agent</th>
 								<th class="text-right">Commandes</th>
-								<th class="text-right">Montant (FCFA)</th>
+								{% if droits.ventes %}<th class="text-right">Montant (FCFA)</th>{% endif %}
 							</tr>
 						</thead>
 						<tbody>
@@ -120,7 +138,7 @@
 								<tr>
 									<td>{{ ligne.nom }}</td>
 									<td class="text-right">{{ ligne.nombre }}</td>
-									<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+									{% if droits.ventes %}<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>{% endif %}
 								</tr>
 							{% else %}
 								<tr>
@@ -139,9 +157,10 @@
 
 
 		{# ==========================================================
-		   ENCAISSEMENTS PAR CAISSIÈRE
+		   ENCAISSEMENTS PAR CAISSIÈRE (droit Paiements)
 		   ========================================================== #}
 
+		{% if parCaissiere is not null %}
 		<div class="col-lg-6">
 
 			<div class="card">
@@ -187,6 +206,7 @@
 			</div>
 
 		</div>
+		{% endif %}
 
 
 		{# ==========================================================
@@ -299,6 +319,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-star mr-1"></i>
 						Top des produits commandés
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 
@@ -379,6 +400,7 @@
 					<h3 class="card-title">
 						<i class="fa fa-tags mr-1"></i>
 						Ventes d'articles (livrés directement au client)
+						<small class="text-muted">· {{ libelleActivite }}</small>
 					</h3>
 				</div>
 
@@ -393,7 +415,7 @@
 								<th>Article</th>
 								<th class="text-right">Sorties</th>
 								<th class="text-right">Quantité</th>
-								<th class="text-right">Montant (FCFA)</th>
+								{% if droits.ventes %}<th class="text-right">Montant (FCFA)</th>{% endif %}
 							</tr>
 						</thead>
 						<tbody>
@@ -402,7 +424,7 @@
 									<td>{{ ligne.nom }}</td>
 									<td class="text-right">{{ ligne.nombre }}</td>
 									<td class="text-right">{{ ligne.quantite }}</td>
-									<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+									{% if droits.ventes %}<td class="text-right">{{ ligne.montant|number_format(0, ',', ' ') }}</td>{% endif %}
 								</tr>
 							{% else %}
 								<tr>
@@ -425,12 +447,12 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ asset('vendor/chart.js-4.4.4/chart.umd.js') }}"></script>
 
 <script>
 	(function () {
 		var donneesVentesAgent = {{ parAgent|json_encode|raw }};
-		var donneesCaissiere = {{ parCaissiere|json_encode|raw }};
+		var donneesCaissiere = {{ (parCaissiere ?? [])|json_encode|raw }};
 		var donneesProduction = {{ parProduction|json_encode|raw }};
 		var donneesMachine = {{ parMachine|json_encode|raw }};
 		var donneesTopProduits = {{ topProduits|json_encode|raw }};
@@ -467,7 +489,11 @@
 			});
 		}
 
+		{% if droits.ventes %}
 		creerGraphiqueBarres('graphiqueVentesAgent', donneesVentesAgent, 'montant', 'Montant (FCFA)', '#467fcf');
+		{% else %}
+		creerGraphiqueBarres('graphiqueVentesAgent', donneesVentesAgent, 'nombre', 'Commandes', '#467fcf');
+		{% endif %}
 		creerGraphiqueBarres('graphiqueEncaissementsCaissiere', donneesCaissiere, 'montant', 'Montant (FCFA)', '#5eba00');
 		creerGraphiqueBarres('graphiqueProductionAgent', donneesProduction, 'nombre', 'Travaux terminés', '#f1c40f');
 		creerGraphiqueBarres('graphiqueRendementMachine', donneesMachine, 'quantite', 'Surface (m²)', '#6f42c1');

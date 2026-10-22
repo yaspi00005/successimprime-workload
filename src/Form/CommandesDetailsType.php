@@ -13,6 +13,8 @@ use App\Entity\Supports;
 use App\Entity\TypesImpression;
 use App\Entity\Articles;
 use App\Repository\ProduitConfigurationRepository;
+use App\Service\Catalogue\NomCommercial;
+use App\Service\PiecesParMetreCarre;
 use Doctrine\ORM\EntityRepository;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
@@ -40,7 +42,8 @@ class CommandesDetailsType extends AbstractType
 {
     public function __construct(
         private readonly ProduitConfigurationRepository $configurationRepository,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ?PiecesParMetreCarre $piecesM2 = null,
     ) {}
 
     public function buildForm(
@@ -88,6 +91,7 @@ class CommandesDetailsType extends AbstractType
 
             ->add('produit', EntityType::class, [
                 'class' => Produits::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
                 'query_builder' => static function (
                     \Doctrine\ORM\EntityRepository $repository
                 ) {
@@ -97,7 +101,8 @@ class CommandesDetailsType extends AbstractType
                         ->orderBy('p.ordre', 'ASC')
                         ->addOrderBy('p.nom', 'ASC');
                 },
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Produit',
                 'placeholder' => 'Sélectionnez un produit',
                 'required' => false,
@@ -111,6 +116,9 @@ class CommandesDetailsType extends AbstractType
 
             ->add('produitConfiguration', EntityType::class, [
                 'class' => ProduitConfiguration::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
+                // Désignations et noms commerciaux : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (ProduitConfiguration $c): string => NomCommercial::texteConfigurationInterne($c),
                 'choice_attr' => static function (
                     ProduitConfiguration $configuration
                 ): array {
@@ -157,7 +165,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('typeImpression', EntityType::class, [
                 'class' => TypesImpression::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (TypesImpression $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Type d’impression',
               //  'placeholder' => 'Sélectionnez un type d’impression',
                 'required' => false,
@@ -170,7 +179,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('support', EntityType::class, [
                 'class' => Supports::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Supports $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Support',
                 'placeholder' => 'Sélectionnez un support',
                 'required' => false,
@@ -182,7 +192,8 @@ class CommandesDetailsType extends AbstractType
 
             ->add('format', EntityType::class, [
                 'class' => Format::class,
-                'choice_label' => 'nom',
+                // Nom commercial entre parenthèses (Yaya, 18/10/2026) : la recherche trouve l'un ou l'autre.
+                'choice_label' => static fn (Format $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Format',
                 'placeholder' => 'Sélectionnez un format',
                 'required' => false,
@@ -322,20 +333,6 @@ class CommandesDetailsType extends AbstractType
                     'data-detail-field' => 'modeCalcul',
                 ],
             ])
-            ->add('coutRevient', IntegerType::class, [
-                'label' => 'Coût de revient',
-                'required' => false,
-                'empty_data' => '0',
-                'attr' => [
-                    'class' => 'form-control js-cout-revient',
-                    'min' => 0,
-                    'step' => 1,
-                    'data-detail-field' => 'coutRevient',
-                ],
-                'constraints' => [
-                    new GreaterThanOrEqual(0),
-                ],
-            ])
 
             /*
              * Remise en FCFA par unité facturable (par m², par mètre
@@ -361,6 +358,20 @@ class CommandesDetailsType extends AbstractType
                 ],
                 'constraints' => [
                     new PositiveOrZero(),
+                ],
+            ])
+
+            /*
+             * Promotion de la ligne (docs/promotions.md) : le serveur la
+             * calcule à l'enregistrement ; l'agent peut seulement la
+             * retirer (elle ne revient alors pas toute seule).
+             */
+            ->add('promotionRetiree', CheckboxType::class, [
+                'label' => 'Promotion retirée',
+                'required' => false,
+                'attr' => [
+                    'class' => 'js-promotion-retiree',
+                    'data-detail-field' => 'promotionRetiree',
                 ],
             ])
 
@@ -506,6 +517,7 @@ class CommandesDetailsType extends AbstractType
             ])
             ->add('article', EntityType::class, [
     'class' => Articles::class,
+    'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
 
     'choice_label' => static function (
         Articles $article
@@ -513,7 +525,7 @@ class CommandesDetailsType extends AbstractType
         return sprintf(
             '%s — %s',
             $article->getReference(),
-            $article->getDesignation()
+            NomCommercial::texteInterne($article->getNomCommercial(), $article->getDesignation())
         );
     },
 
@@ -630,9 +642,8 @@ class CommandesDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     $prix = $configurationFinition->getPrix();
 
@@ -682,13 +693,12 @@ class CommandesDetailsType extends AbstractType
         }
 
         /*
-         * Repli sur "manuel" (pas "automatique") : le champ
-         * modeConfiguration est desormais cache a l'utilisateur, le
-         * groupe de radios ne soumet donc plus jamais aucune cle
-         * pour ce champ -- $data['modeConfiguration'] est toujours
-         * absent ici.
+         * Toujours "manuel" (ou l'ancien "libre") : une ancienne
+         * ligne enregistree en "automatique" renvoie son radio coche,
+         * qu'il ne faut plus suivre (voir ModeConfigurationLigne).
          */
-        $mode = $data['modeConfiguration'] ?? 'manuel';
+        $mode = ModeConfigurationLigne::soumis($data);
+        $data['modeConfiguration'] = $mode;
 
         /*
          * En mode automatique, on ne doit pas envoyer
@@ -809,24 +819,16 @@ class CommandesDetailsType extends AbstractType
                 }
 
                 /*
-                 * Repli sur "manuel" (pas "automatique") : le champ
-                 * modeConfiguration est desormais cache a
-                 * l'utilisateur, la cle est donc toujours absente
-                 * des donnees soumises. Avec un repli sur
-                 * "automatique", cette ligne finissait toujours en
-                 * mode automatique sans configuration catalogue
-                 * choisie, ce que le validateur d'entite refusait
-                 * ("Une configuration est obligatoire en mode
-                 * automatique.") -- avant meme que le controleur
-                 * n'ait la main pour forcer "manuel".
+                 * "manuel" (ou l'ancien "libre"), jamais "automatique" :
+                 * le champ modeConfiguration est cache a l'utilisateur
+                 * et le controleur enregistre toute ligne produit en
+                 * "manuel". Une ancienne ligne "automatique" renvoie
+                 * pourtant son radio coche : la suivre reappliquait la
+                 * configuration du catalogue (dimensions effacees, voir
+                 * ModeConfigurationLigne). La branche automatique
+                 * ci-dessous n'est donc plus jamais prise.
                  */
-                $mode = strtolower(trim(
-                    (string) ($donnees['modeConfiguration'] ?? 'manuel')
-                ));
-
-                if (!in_array($mode, ['automatique', 'manuel', 'libre'], true)) {
-                    $mode = 'manuel';
-                }
+                $mode = ModeConfigurationLigne::soumis($donnees);
 
                 $donnees['modeConfiguration'] = $mode;
                 $configuration = null;
@@ -1029,6 +1031,9 @@ class CommandesDetailsType extends AbstractType
                 }
             }
         );
+        // Case « Pièces au m² » (docs/saisie-devis-commandes.md).
+        ChampPiecesAuM2::ajouter($builder, $this->piecesM2);
+
         /*
          * La commande n’apparaît que lorsque ce formulaire
          * est utilisé seul.
@@ -1189,9 +1194,8 @@ class CommandesDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     return sprintf(
                         '%s — %s FCFA',

@@ -1,0 +1,229 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Facture validée (maquette FD03) : le PDF A4 avec son numéro définitif,
+	le statut, les envois (WhatsApp, espace client, lien ouvert) et les
+	actions. Elle ne se modifie plus : une correction passe par un avoir.
+#}
+
+{% set nom = facture.estAcompte ? 'Facture d\'acompte' : 'Facture' %}
+{% block title %}{{ nom }} {{ facture.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set payee = facture.resteAPayer <= 0 %}
+	{% set voirPaiements = chaine.voirPaiements %}
+	{% set echue = not payee and facture.dateEcheance and facture.dateEcheance < date('today') %}
+	<div class="fd-page">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › {{ facture.numero }}</div>
+				<h1>{{ nom }} {{ facture.numero }}</h1>
+			</div>
+			<div class="fd-actions">
+				<a href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank" class="btn fd-btn-blanc"><i class="fa fa-download me-1"></i>PDF</a>
+				<button type="button" class="btn fd-btn-blanc" onclick="var f=document.querySelector('[data-pdf-cadre]');f&&f.contentWindow.print()"><i class="fa fa-print me-1"></i>Imprimer</button>
+				{% if client and client.telephone %}
+					<form method="post" action="{{ path('app_factures_whatsapp_lien', {id: facture.id}) }}" target="_blank">
+						<input type="hidden" name="_token" value="{{ csrf_token('whatsapp-lien-' ~ facture.id) }}">
+						<button type="submit" class="btn fd-vert-plein"><i class="fab fa-whatsapp me-1"></i>Envoyer sur WhatsApp</button>
+					</form>
+				{% endif %}
+			</div>
+		</div>
+
+		{% if recu %}
+			{% set enAttente = recu.paiement.statut == 'en_attente' %}
+			<div class="fd-recu {{ enAttente ? 'attente' }}">
+				<span><i class="fa {{ enAttente ? 'fa-hourglass-half' : 'fa-check-circle' }} me-1"></i>
+					Paiement de <b>{{ recu.paiement.montant|number_format(0, ',', ' ') }} F</b> ({{ recu.paiement.modeLabel }}{{ recu.paiement.reference ? ', réf. ' ~ recu.paiement.reference }}) enregistré.
+					{% if enAttente %}Il reste « à confirmer » jusqu'à ce que la trésorière le retrouve sur le relevé.{% endif %}</span>
+				<span class="d-flex flex-wrap gap-2">
+					{% if not enAttente %}<a href="{{ path('app_caisse_recu', {id: recu.paiement.id}) }}" target="_blank" rel="noopener" class="btn btn-sm fd-btn-blanc"><i class="fa fa-print me-1"></i>Reçu {{ recu.paiement.numeroRecu ?? 'R-%06d'|format(recu.paiement.id) }}</a>{% endif %}
+					{% if recu.envoi %}<a href="{{ recu.envoi.lien }}" target="_blank" rel="noopener" class="btn btn-sm fd-vert-plein {{ recu.ouvrir ? 'fd-a-envoyer' }}"><i class="{{ recu.envoi.canal == 'whatsapp' ? 'fab fa-whatsapp' : 'fa fa-comment' }} me-1"></i>Envoyer le reçu par {{ recu.envoi.canal == 'whatsapp' ? 'WhatsApp' : 'SMS' }}{{ enAttente ? ' (en cours de validation)' }}</a>{% endif %}
+				</span>
+			</div>
+		{% endif %}
+
+		{% include 'facturation/_chaine.html.twig' %}
+
+		<div class="fd-grille large validee">
+			<div class="fd-apercu grand">
+				<iframe src="{{ path('app_factures_apercu', {id: facture.id}) }}" title="Facture {{ facture.numero }}" data-pdf-cadre data-ajuster></iframe>
+			</div>
+
+			<div>
+				<div class="fd-carte">
+					<h2 class="d-flex align-items-center gap-2">Statut
+						{% if payee and voirPaiements %}<span class="fd-badge ok">Payée</span>
+						{% elseif echue and voirPaiements %}<span class="fd-badge retard">Échue</span>
+						{% else %}<span class="fd-badge envoye">Validée{{ facture.envoyeeWhatsappLe ? ' · envoyée' }}</span>{% endif %}
+					</h2>
+					<p class="mb-2 small">Validée{% if facture.valideePar %} par {{ facture.valideePar.employe ? facture.valideePar.employe.prenom ~ ' ' ~ facture.valideePar.employe.nom : facture.valideePar.userIdentifier }}{% endif %}{% if facture.valideeLe %} le {{ facture.valideeLe|date('d/m à H:i') }}{% endif %}. Le numéro est définitif : la facture ne peut plus être modifiée. Pour corriger, créez un avoir.</p>
+					<div class="fd-ligne-solde"><span>Total</span><b>{{ facture.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+					{% for a in avoirs %}<div class="fd-ligne-solde"><a href="{{ path('app_factures_avoir_show', {id: a.id}) }}" class="fd-lien avoir">Avoir {{ a.numero }}</a><span class="fd-violet">− {{ a.total|number_format(0, ',', ' ') }} F</span></div>{% endfor %}
+					{% if chaine.voirPaiements and chaine.equilibre.aConfirmer > 0 %}<div class="fd-ligne-solde"><span>Payé, à confirmer</span><span class="fd-orange">{{ chaine.equilibre.aConfirmer|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+					{% if chaine.voirPaiements %}<div class="fd-ligne-solde"><span>Payé</span><span>− {{ (facture.montantPaye - (avoirs|reduce((s, a) => s + a.deduit, 0)))|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+					{% if voirPaiements %}<div class="fd-ligne-solde"><span>Reste à payer</span><b class="{{ echue ? 'fd-rouge' }}">{{ facture.resteAPayer|number_format(0, ',', ' ') }} F{% if facture.dateEcheance and not payee %} <small class="fd-muet fw-normal">avant le {{ facture.dateEcheance|date('d/m') }}</small>{% endif %}</b></div>{% endif %}
+				</div>
+
+				<div class="fd-carte">
+					<h2>Envois</h2>
+					<div class="fd-envoi"><span><i class="fab fa-whatsapp me-1 fd-vert"></i><b>WhatsApp</b></span>
+						<span class="fd-muet">{% if facture.envoyeeWhatsappLe %}{{ client ? client.nomComplet ~ ' · ' }}{{ facture.envoyeeWhatsappLe|date('d/m H:i') }}{% else %}pas encore envoyée{% endif %}</span>
+						{% if facture.lienOuvertLe %}<span class="fd-badge ok">lu {{ facture.lienOuvertLe|date('d/m H:i') }}</span>{% endif %}</div>
+					<div class="fd-envoi"><span><i class="fa fa-user me-1 fd-bleu"></i><b>Espace client</b></span>
+						<span class="fd-muet">{{ client ? 'visible depuis la validation' : 'vente sans compte client' }}</span></div>
+				</div>
+
+				<div class="fd-carte">
+					<h2>Actions</h2>
+					{% if paiement %}
+						<button type="button" class="btn fd-vert-plein fd-bouton-action" data-fd-ouvrir="fd-paiement">Enregistrer un paiement</button>
+					{% endif %}
+					{% if facture.estFacture %}
+						<a href="{{ path('app_factures_avoir', {id: facture.id}) }}" class="btn fd-btn-blanc fd-bouton-action"><i class="fa fa-undo me-1"></i>Créer un avoir</a>
+					{% endif %}
+					{% if not payee and client and client.telephone %}
+						<form method="post" action="{{ path('app_creances_relancer') }}" class="fd-bouton-action">
+							<input type="hidden" name="_token" value="{{ csrf_token('relancer-creances') }}">
+							<input type="hidden" name="commandes[]" value="{{ commande.id }}">
+							<button type="submit" class="btn fd-btn-blanc w-100"><i class="fa fa-clock-o me-1"></i>Relancer le client</button>
+						</form>
+					{% endif %}
+					<a href="{{ path('app_factures_documents_lies', {id: commande.id}) }}" class="btn fd-btn-blanc fd-bouton-action"><i class="fa fa-link me-1"></i>Voir tous les documents liés</a>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	{# FENÊTRE « ENREGISTRER UN PAIEMENT » (FD07) : le formulaire de la caisse, retour ici avec le reçu. #}
+	{% if paiement %}
+		{% set f = paiement.formulaire %}
+		<div class="fd-fond-modal" id="fd-paiement" hidden>
+			{{ form_start(f, {attr: {class: 'fd-page fd-modal fd-modal-etroit', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'fd-paiement-titre', novalidate: 'novalidate'}}) }}
+				<div class="d-flex justify-content-between align-items-start mb-3">
+					<div>
+						<h2 id="fd-paiement-titre" class="fd-modal-titre">Enregistrer un paiement</h2>
+						<div class="fd-muet small">{{ facture.numero }}{{ client ? ' · ' ~ client.nomComplet }} · reste {{ facture.resteAPayer|number_format(0, ',', ' ') }} F{{ avoirs is not empty ? ' (avoir déduit)' }}</div>
+					</div>
+					<button type="button" class="btn-close" data-fd-fermer aria-label="Fermer"></button>
+				</div>
+
+				<div class="fd-titre-bloc">Moyen</div>
+				<div class="fd-modes" role="radiogroup" aria-label="Moyen de paiement">
+					{% for valeur, libelle in paiement.modes %}
+						<button type="button" class="fd-mode {{ valeur }}" role="radio" data-mode="{{ valeur }}" aria-checked="{{ f.mode.vars.value == valeur ? 'true' : 'false' }}">{{ libelle }}</button>
+					{% endfor %}
+				</div>
+				{{ form_widget(f.mode, {attr: {class: 'd-none', 'aria-hidden': 'true', tabindex: '-1'}}) }}
+
+				<div class="row g-3 mt-1">
+					<div class="col-sm-6 fd-champ">
+						<label for="{{ f.montant.vars.id }}">Montant</label>
+						{{ form_widget(f.montant, {attr: {class: 'form-control', inputmode: 'numeric', autocomplete: 'off'}}) }}
+						{{ form_errors(f.montant) }}
+					</div>
+					<div class="col-sm-6 fd-champ">
+						<label for="fd-compte">Compte qui reçoit</label>
+						<select class="form-select" id="fd-compte" name="{{ f.compteTresorerie.vars.full_name }}" required>
+							{% for compte in paiement.comptes %}<option value="{{ compte.id }}" data-type="{{ compte.type }}">{{ compte.nom }} · {{ compte.typeLabel }}</option>{% endfor %}
+						</select>
+						{% do f.compteTresorerie.setRendered() %}
+					</div>
+					<div class="col-sm-6 fd-champ" data-fd-reference>
+						<label for="{{ f.reference.vars.id }}">Référence de transaction</label>
+						{{ form_widget(f.reference, {attr: {class: 'form-control', autocomplete: 'off', placeholder: 'MP261022.1407.A55821'}}) }}
+					</div>
+				</div>
+
+				{# Orange Money : frais payés par le client en plus, cochés d'office (Réglages › Paiements). Le serveur recalcule. #}
+				{% if paiement.frais.fonds > 0 or paiement.frais.retrait > 0 %}
+					<div class="fd-frais mt-2" data-seulement-om data-taux-fonds="{{ paiement.frais.fonds }}" data-taux-retrait="{{ paiement.frais.retrait }}">
+						{% for cle, ligne in {fonds: {champ: f.fondsSoutienInclus, libelle: 'Fonds de soutien', taux: paiement.frais.fonds}, retrait: {champ: f.fraisRetraitInclus, libelle: 'Frais de retrait', taux: paiement.frais.retrait}} %}
+							{% if ligne.taux > 0 %}
+								<label><input type="checkbox" class="form-check-input me-1" name="{{ ligne.champ.vars.full_name }}" value="1" data-frais="{{ cle }}" checked> {{ ligne.libelle }} ({{ ligne.taux|frais_taux }}) <b data-montant-frais="{{ cle }}"></b></label>
+							{% endif %}
+						{% endfor %}
+						<span>Total reçu <b data-total-om></b></span>
+					</div>
+				{% endif %}
+				{% do f.fraisRetraitInclus.setRendered() %}
+				{% do f.fondsSoutienInclus.setRendered() %}
+
+				<label class="fd-case mt-3" data-seulement-om><input type="checkbox" class="form-check-input" name="a_confirmer" value="1" checked> Reçu à distance : à confirmer par la trésorière</label>
+				<div class="fd-alerte mt-2" data-note-confirmer><b>Paiement reçu à distance :</b> il reste « à confirmer » jusqu'à ce que la trésorière le retrouve sur le relevé Orange Money. Le client reçoit tout de suite un message avec la mention « en cours de validation » ; le reçu numéroté suit la confirmation.</div>
+				{% if client and client.telephone %}
+					<label class="fd-case mt-2"><input type="checkbox" class="form-check-input" name="envoyer_recu" value="1" checked> Envoyer le reçu au client sur WhatsApp</label>
+				{% endif %}
+
+				<div class="d-flex gap-2 mt-3">
+					<button type="submit" class="btn fd-vert-plein flex-grow-1">Enregistrer · générer le reçu</button>
+					<button type="button" class="btn fd-btn-blanc" data-fd-fermer>Annuler</button>
+				</div>
+			{{ form_end(f) }}
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	// Aperçu A4 réduit à la largeur du cadre.
+	document.querySelectorAll('iframe[data-ajuster]').forEach(function (f) {
+		function ajuster() { try { var d = f.contentDocument; if (!d || !d.body) return; var e = Math.min(1, (f.clientWidth - 8) / 808); d.documentElement.style.zoom = e; f.style.height = Math.ceil((d.body.scrollHeight + 60) * e) + 'px'; } catch (x) {} }
+		f.addEventListener('load', ajuster); window.addEventListener('resize', ajuster); ajuster();
+	});
+	</script>
+
+	<script>
+	(function () {
+		// « Enregistrer un paiement » (FD07).
+		var fond = document.getElementById('fd-paiement');
+		if (!fond) return;
+		var form = fond.querySelector('form');
+		var select = form.querySelector('select[name$="[mode]"]'), compte = document.getElementById('fd-compte');
+		var montant = form.querySelector('input[name$="[montant]"]'), aConfirmer = form.querySelector('input[name=a_confirmer]');
+		var typeParMode = {especes: 'caisse', orange_money: 'orange_money', virement_bancaire: 'banque', cheque: 'banque'};
+		var francs = function (n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/ /g, ' ') + ' F'; };
+		function maj() {
+			var mode = select.value, om = mode === 'orange_money';
+			form.querySelectorAll('.fd-mode').forEach(function (b) { b.setAttribute('aria-checked', b.dataset.mode === mode ? 'true' : 'false'); });
+			form.querySelectorAll('[data-seulement-om]').forEach(function (e) { e.hidden = !om; });
+			form.querySelector('[data-fd-reference]').hidden = mode === 'especes';
+			form.querySelector('[data-note-confirmer]').hidden = !(om && aConfirmer && aConfirmer.checked);
+			var frais = form.querySelector('.fd-frais');
+			if (frais) {
+				var valeur = parseInt(String(montant.value).replace(/\D/g, ''), 10) || 0, total = valeur;
+				frais.querySelectorAll('input[data-frais]').forEach(function (c) {
+					var x = Math.round(valeur * +(c.dataset.frais === 'fonds' ? frais.dataset.tauxFonds : frais.dataset.tauxRetrait) / 100);
+					frais.querySelector('[data-montant-frais="' + c.dataset.frais + '"]').textContent = francs(x);
+					total += c.checked ? x : 0;
+				});
+				frais.querySelector('[data-total-om]').textContent = francs(total);
+			}
+		}
+		function choisir(mode) {
+			select.value = mode;
+			var actuel = compte.options[compte.selectedIndex];
+			Array.prototype.forEach.call(compte.options, function (o) { o.hidden = o.dataset.type !== typeParMode[mode]; });
+			if (!actuel || actuel.hidden) { var p = Array.prototype.find.call(compte.options, function (o) { return !o.hidden; }); compte.value = p ? p.value : ''; }
+			maj();
+		}
+		form.querySelectorAll('.fd-mode').forEach(function (b) { b.addEventListener('click', function () { choisir(b.dataset.mode); }); });
+		form.addEventListener('input', maj); form.addEventListener('change', maj);
+		function ouvrir() { fond.hidden = false; montant.focus(); }
+		function fermer() { fond.hidden = true; }
+		document.querySelectorAll('[data-fd-ouvrir="fd-paiement"]').forEach(function (b) { b.addEventListener('click', ouvrir); });
+		fond.querySelectorAll('[data-fd-fermer]').forEach(function (b) { b.addEventListener('click', fermer); });
+		fond.addEventListener('click', function (e) { if (e.target === fond) fermer(); });
+		document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && !fond.hidden) fermer(); });
+		var premier = form.querySelector('.fd-mode');
+		choisir(select.value || (premier ? premier.dataset.mode : ''));
+	}());
+	</script>
+{% endblock %}

@@ -1,0 +1,88 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Suivi d'une demande partie à l'atelier : acompte, prise en charge,
+	BAT (le parcours de validation habituel), impression. Le statut suit
+	la synchronisation avec l'atelier. Un compte en lecture seule le voit
+	aussi pour une demande en préparation, sans montant.
+#}
+
+{% block title %}Demande {{ demande.numero }}{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_conception_demandes') }}"><span class="fl">‹</span>Demande {{ demande.numero }}</a>{% endblock %}
+
+{% set ia = demande.choix == 'ia' %}
+{% set statut = demande.statut %}
+{% set batPasse = statut in ['bat_envoye', 'terminee'] %}
+{% set envoyee = demande.envoyeeLe is not null %}
+
+{% block contenu %}
+	{% if controle and controle.statut == 'en_attente_bat' %}
+		<a class="ec-alerte" href="{{ path('app_espace_bat', {id: controle.id}) }}"><div><b>BAT à valider</b><small>{{ demande.titreSupport }} · {{ demande.numero }}</small></div><span class="ec-bouton-blanc">Voir</span></a>
+	{% endif %}
+
+	<div class="ec-carte">
+		<div class="ec-ligne" style="align-items:flex-start">
+			<div>
+				<b style="font-size:1.1rem">{{ demande.titre ?? demande.titreSupport }}</b>
+				<div class="ec-petit">{{ demande.titreSupport }} · {{ ia ? 'génération par IA' : 'graphiste Succès Imprim' }}{% if demande.auteur %} · {{ demande.auteur }}{% endif %}</div>
+			</div>
+			<span class="ec-pastille {{ statut == 'annulee' ? 'gris' : (statut in ['terminee', 'commandee'] ? 'vert' : '') }}">{{ demande.libelleStatut }}</span>
+		</div>
+		{% if ia and demande.imageChoisie %}
+			<img class="dc-image-choisie" style="margin-top:.8rem" src="{{ path('app_espace_fichier', {id: demande.imageChoisie.id}) }}" alt="Image choisie">
+		{% endif %}
+	</div>
+
+	{% if statut == 'annulee' %}
+		<div class="ec-note">Cette demande a été annulée par l'atelier. Une question ? Écrivez-nous sur WhatsApp ou passez à l'imprimerie.</div>
+	{% endif %}
+
+	<div class="ec-carte">
+		<h2>Suivi</h2>
+		<ol class="ec-frise">
+			{% if ia %}
+				<li class="faite"><b>{{ demande.nombreImages }} image{{ demande.nombreImages > 1 ? 's' }} générée{{ demande.nombreImages > 1 ? 's' }}</b><small>proposition IA choisie</small></li>
+				<li class="{{ envoyee ? 'faite' : 'en_cours' }}"><b>{{ envoyee ? 'Impression commandée' : 'Image à choisir' }}</b><small>{{ demande.envoyeeLe ? demande.envoyeeLe|date('d/m/Y à H:i') }}{{ demande.finalisationGraphiste ? ' · avec finalisation par un graphiste' }}</small></li>
+				<li class="{{ demande.priseEnChargeLe ? 'faite' : 'en_cours' }}"><b>Textes replacés par le graphiste</b><small>{{ demande.priseEnChargeLe ? 'pris en charge le ' ~ demande.priseEnChargeLe|date('d/m/Y') : 'l\'atelier confirme le prix et prépare le fichier' }}</small></li>
+			{% else %}
+				<li class="{{ envoyee ? 'faite' : 'en_cours' }}"><b>{{ envoyee ? 'Demande envoyée' : 'En préparation' }}</b><small>{{ envoyee ? demande.envoyeeLe|date('d/m/Y à H:i') : 'pas encore envoyée à l\'atelier' }}</small></li>
+				{% if acompteStatut %}
+					<li class="{{ acompteStatut == 'valide' ? 'faite' : 'en_cours' }}">
+						<b>Acompte{{ coque.montants ? ' de ' ~ (acompte|francs_conception) }}</b>
+						<small>
+							{% if acompteStatut == 'valide' %}reçu, merci
+							{% elseif acompteStatut == 'a_valider' %}payé par Orange Money · en validation à la caisse
+							{% elseif acompteStatut == 'rejete' %}paiement non reçu par la caisse : contactez-nous
+							{% else %}à régler par Orange Money au numéro marchand ou à l'imprimerie, en indiquant {{ demande.numero }}{% endif %}
+							{# Frais Orange Money payés en plus de l'acompte : pour qui paie seulement. #}
+							{% set pa = demande.paiementAcompte %}
+							{% if conceptionPeutPayer and pa and acompteStatut in ['valide', 'a_valider'] and pa.montantTotalEncaisse > pa.montant %}
+								· {{ pa.montantTotalEncaisse|francs_conception }} payés avec Orange Money ({% if pa.montantFondsSoutien > 0 %}fonds de soutien {{ pa.montantFondsSoutien|francs_conception }}{% endif %}{% if pa.montantFondsSoutien > 0 and pa.montantFraisRetrait > 0 %}, {% endif %}{% if pa.montantFraisRetrait > 0 %}frais de retrait {{ pa.montantFraisRetrait|francs_conception }}{% endif %})
+							{% endif %}
+						</small>
+					</li>
+				{% endif %}
+				<li class="{{ demande.priseEnChargeLe ? 'faite' : (statut == 'recue' ? 'en_cours' : 'a_venir') }}"><b>Prise en charge par un graphiste</b><small>{{ demande.priseEnChargeLe ? demande.priseEnChargeLe|date('d/m/Y à H:i') : 'premier BAT sous ' ~ demande.delaiBatHeures ~ ' h ouvrées' }}</small></li>
+			{% endif %}
+			<li class="{{ batPasse ? 'faite' : (demande.priseEnChargeLe ? 'en_cours' : 'a_venir') }}"><b>BAT envoyé</b><small>{{ ia ? 'vous validez le visuel final avant l\'impression' : demande.correctionsIncluses ~ ' corrections incluses' }}</small></li>
+			<li class="{{ statut == 'terminee' ? 'faite' : 'a_venir' }}"><b>BAT validé</b><small>{{ statut == 'terminee' and demande.termineeLe ? demande.termineeLe|date('d/m/Y') : (ia ? 'puis l\'impression' : (coque.montants ? 'solde de ' ~ (solde|francs_conception) : 'solde') ~ ' avec la commande d\'impression') }}</small></li>
+		</ol>
+	</div>
+
+	{% if commande %}
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_commande', {id: commande.publicId}) }}"><span><b>Commande {{ commande.numero }}</b><span class="ec-petit">détail, paiement et reçus</span></span><span class="fl">›</span></a>
+	{% endif %}
+
+	<details class="ec-carte">
+		<summary><b>Ce que vous avez demandé</b></summary>
+		<ul class="ec-liste" style="margin-top:.6rem">
+			{% for libelle, texte in {'Titre': demande.titre, 'Sous-titre': demande.sousTitre, 'Date et heure': demande.dateHeure, 'Coordonnées': demande.coordonnees, 'Consignes': demande.consignes} %}
+				{% if texte %}<li><span class="ec-petit">{{ libelle }}</span><div>{{ texte }}</div></li>{% endif %}
+			{% endfor %}
+			{% if demande.quantite %}<li><span class="ec-petit">Quantité à imprimer</span><div>{{ demande.quantite }}</div></li>{% endif %}
+			{% if demande.pourQuand %}<li><span class="ec-petit">Pour le</span><div>{{ demande.pourQuand|date('d/m/Y') }}</div></li>{% endif %}
+			{% if demande.elements|length > 0 %}<li><span class="ec-petit">Éléments</span><div>{{ demande.elements|map(f => f.nomOriginal)|join(', ') }}</div></li>{% endif %}
+		</ul>
+	</details>
+{% endblock %}

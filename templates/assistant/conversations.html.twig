@@ -1,0 +1,90 @@
+{#
+	Clients › Assistant du site › Conversations : ce que les visiteurs et les
+	clients ont demandé, les avis (pouces), les passages à un conseiller.
+	Seulement sur l'ERP de l'imprimerie, où elles arrivent par la synchronisation.
+#}
+{% extends 'assistant/_admin.html.twig' %}
+{% import 'assistant/_admin.html.twig' as m %}
+
+{% block title %}Assistant du site{% endblock %}
+{% block sous_ecran %}conversations{% endblock %}
+
+{% block header_actions %}
+	{% if not enLigne %}
+		{{ m.periode(periodes, filtres.periode, 'app_assistant_conversations', {contexte: filtres.contexte, filtre: filtres.filtre, q: filtres.q}) }}
+	{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	<section class="card">
+		{% if enLigne %}
+			<h2>Conversations</h2>
+			<p class="as-ad-vide">Les conversations de l'assistant se lisent sur l'ERP de l'imprimerie, où elles arrivent par la synchronisation.</p>
+		{% else %}
+			<h2>Conversations <span class="si-pg-compte">{{ lignes|length }}</span></h2>
+			<nav class="as-ad-filtres" aria-label="Où">
+				{% for cle, libelle in {'': 'Partout'}|merge(contextes) %}
+					<a href="{{ path('app_assistant_conversations', filtres|merge({contexte: cle})|filter(v => v is not same as(''))) }}" class="{{ filtres.contexte == cle ? 'actif' }}">{{ libelle }}</a>
+				{% endfor %}
+			</nav>
+			<nav class="as-ad-filtres" aria-label="Filtrer">
+				{% for cle, libelle in choixFiltres %}
+					<a href="{{ path('app_assistant_conversations', filtres|merge({filtre: cle})|filter(v => v is not same as(''))) }}" class="{{ filtres.filtre == cle ? 'actif' }}">{{ libelle }}</a>
+				{% endfor %}
+			</nav>
+			<form method="get" action="{{ path('app_assistant_conversations') }}" class="as-ad-recherche" role="search">
+				{% for cle in ['periode', 'contexte', 'filtre'] %}{% if filtres[cle] is not same as('') %}<input type="hidden" name="{{ cle }}" value="{{ filtres[cle] }}">{% endif %}{% endfor %}
+				<label class="visually-hidden" for="as-ad-q">Chercher</label>
+				<input id="as-ad-q" type="search" name="q" value="{{ filtres.q }}" class="form-control form-control-sm" placeholder="Numéro, client, mot d'une question…">
+				<button class="btn btn-sm btn-primary">Chercher</button>
+			</form>
+
+			{% if lignes is empty %}
+				<p class="as-ad-vide">Aucune conversation sur la période{{ filtres.filtre or filtres.contexte or filtres.q ? ' avec ces filtres' }}.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table as-ad-table">
+						<thead>
+							<tr><th>Conversation</th><th>Première question</th><th>Avis</th><th>Issue</th><th class="num">Dépense</th></tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set c = l.c %}
+								<tr>
+									<td>
+										<a href="{{ path('app_assistant_conversation', {id: c.id}) }}"><b>{{ c.numero }}</b></a>
+										<small>{{ c.derniereLe|date('d/m à H:i') }} · {{ c.libelleContexte }}</small>
+									</td>
+									<td>
+										<div class="as-ad-question">{{ l.question ?? '—' }}</div>
+										<small>
+											{{ c.nombreQuestions }} question{{ c.nombreQuestions > 1 ? 's' }}
+											{%- if c.client %} · {{ c.client.nomComplet }}{% endif %}
+											{%- if c.interlocuteur %} · {{ c.interlocuteur }}{% endif %}
+											{%- if c.page %} · {{ c.page }}{% endif %}
+										</small>
+									</td>
+									<td class="as-ad-pouces">
+										{% if l.utile or l.pasUtile %}
+											{% if l.utile %}<span class="as-ad-vert" title="Réponses utiles"><i class="fas fa-thumbs-up"></i> {{ l.utile }}</span>{% endif %}
+											{% if l.pasUtile %}<span class="as-ad-rouge" title="Réponses pas utiles"><i class="fas fa-thumbs-down"></i> {{ l.pasUtile }}</span>{% endif %}
+										{% else %}
+											<span class="as-ad-gris">—</span>
+										{% endif %}
+									</td>
+									<td>
+										{% if c.passageAgentLe %}<span class="si-pastille si-pastille-orange">Conseiller</span>{% endif %}
+										{% if l.sansReponse %}<span class="si-pastille si-pastille-rouge">{{ l.sansReponse }} sans réponse</span>{% endif %}
+										{% if not c.passageAgentLe and not l.sansReponse %}<span class="si-pastille si-pastille-vert">Répondue</span>{% endif %}
+									</td>
+									<td class="num">{{ l.depense|number_format(0, ',', ' ') }} F</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+			<p class="as-ad-note">« Conseiller » : l'assistant a proposé WhatsApp avec un résumé prêt (paiement, réclamation, question hors de sa portée). « Sans réponse » : refus, erreur, plafond du jour ou limite atteinte. La dépense est calculée sur les jetons facturés par l'API, au taux des réglages.</p>
+		{% endif %}
+	</section>
+{% endblock %}

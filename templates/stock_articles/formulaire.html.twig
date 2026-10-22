@@ -1,0 +1,198 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ article.id ? 'Modifier ' ~ article.reference : 'Nouvel article' }}{% endblock %}
+
+{% set v = article %}
+
+{% block body %}
+	<form method="post" class="si-formulaire-article">
+		<input type="hidden" name="_token" value="{{ csrf_token('article-stock') }}">
+
+		{% for erreur in erreurs %}
+			<div class="alert alert-danger py-2">{{ erreur }}</div>
+		{% endfor %}
+
+		<div class="row">
+			<div class="col-xl-6">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Article</h4></div>
+					<div class="row g-2">
+						<div class="col-md-8">
+							<label class="si-libelle-champ" for="designation">Désignation</label>
+							<input type="text" name="designation" id="designation" value="{{ v.designation }}" class="form-control form-control-sm" maxlength="255" placeholder="Bâche 510 g frontlit · laize 3,20 m" required>
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="reference">Code</label>
+							<input type="text" name="reference" id="reference" value="{{ v.reference }}" class="form-control form-control-sm" maxlength="100" placeholder="Automatique">
+						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="nom_commercial">Nom commercial <span class="text-muted fw-normal">(facultatif)</span></label>
+							<input type="text" name="nom_commercial" id="nom_commercial" value="{{ v.nomCommercial }}" class="form-control form-control-sm" maxlength="120" placeholder="Le nom que tout le monde connaît : rouleau d'autocollant" aria-describedby="nom_commercial_aide">
+							<small id="nom_commercial_aide" class="text-muted">Vu par le client avant la désignation quand l'article est vendu ; la recherche trouve l'un ou l'autre.</small>
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="famille">Famille</label>
+							<select name="famille" id="famille" class="form-select form-select-sm">
+								<option value="">Sans famille</option>
+								{% for famille in familles %}
+									<option value="{{ famille.id }}" {{ v.famille == famille ? 'selected' }}>{{ famille.nom }} ({{ famille.prefixe }})</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="emplacement">Emplacement</label>
+							<input type="text" name="emplacement" id="emplacement" value="{{ v.emplacement }}" class="form-control form-control-sm" maxlength="120" placeholder="Rayon A1">
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="machine">Machine compatible</label>
+							<select name="machine" id="machine" class="form-select form-select-sm">
+								<option value="">Aucune en particulier</option>
+								{% for machine in machines %}
+									<option value="{{ machine.id }}" {{ v.machine == machine ? 'selected' }}>{{ machine.nom }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="prix_vente">Prix de vente direct (F)</label>
+							<input type="text" inputmode="numeric" name="prix_vente" id="prix_vente" value="{{ v.prixVente }}" class="form-control form-control-sm" placeholder="Si l'article se vend tel quel">
+						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="description">Note</label>
+							<textarea name="description" id="description" rows="2" class="form-control form-control-sm">{{ v.description }}</textarea>
+						</div>
+						<div class="col-12 d-flex flex-wrap gap-3 pt-1">
+							<label class="form-check"><input type="checkbox" class="form-check-input" name="actif" value="1" {{ v.id is null or v.actif ? 'checked' }}> Actif</label>
+							<label class="form-check"><input type="checkbox" class="form-check-input" name="consommable_production" value="1" {{ v.consommableProduction ? 'checked' }}> Consommé en production</label>
+							<label class="form-check"><input type="checkbox" class="form-check-input" name="vendable" value="1" {{ v.id is null or v.vendable ? 'checked' }}> Vendu au client</label>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="col-xl-6">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Unités, conversion et seuils</h4></div>
+					<div class="row g-2">
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="unite_achat">Unité d'achat</label>
+							<input type="text" name="unite_achat" id="unite_achat" value="{{ v.uniteAchat }}" class="form-control form-control-sm js-conversion" maxlength="50" placeholder="rouleau">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="longueur_unite_achat">Longueur (m)</label>
+							<input type="text" inputmode="decimal" name="longueur_unite_achat" id="longueur_unite_achat" value="{{ v.longueurUniteAchat }}" class="form-control form-control-sm js-conversion" placeholder="50">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="laize">Laize (m)</label>
+							<input type="text" inputmode="decimal" name="laize" id="laize" value="{{ v.laize }}" class="form-control form-control-sm js-conversion" placeholder="3,20">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="unite">Unité de stock</label>
+							<select name="unite" id="unite" class="form-select form-select-sm js-conversion">
+								{% for code, libelle in unites|filter((l, c) => c != 'm') %}
+									<option value="{{ code }}" {{ v.unite == code or (v.unite == 'm' and code == 'metre') ? 'selected' }}>{{ libelle }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="quantite_par_unite_achat">Quantité par unité d'achat</label>
+							<input type="text" inputmode="decimal" name="quantite_par_unite_achat" id="quantite_par_unite_achat" value="{{ v.quantiteParUniteAchat }}" class="form-control form-control-sm js-conversion" placeholder="Calculée si longueur × laize">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="unite_vente">Unité de vente</label>
+							<input type="text" name="unite_vente" id="unite_vente" value="{{ v.uniteVente }}" class="form-control form-control-sm" maxlength="30" placeholder="m² ou pièce">
+						</div>
+						<div class="col-12">
+							<p class="si-apercu-conversion" id="apercu-conversion" aria-live="polite"></p>
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="stock_min">Seuil minimum</label>
+							<input type="text" inputmode="decimal" name="stock_min" id="stock_min" value="{{ v.stockMin > 0 ? v.stockMin }}" class="form-control form-control-sm" placeholder="En unité de stock">
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="stock_max">Seuil maximum</label>
+							<input type="text" inputmode="decimal" name="stock_max" id="stock_max" value="{{ v.stockMax }}" class="form-control form-control-sm" placeholder="Pour le réapprovisionnement">
+						</div>
+					</div>
+				</div>
+
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Fournisseurs</h4><button type="button" class="btn btn-sm si-btn-discret" id="ajouter-fournisseur">+ Fournisseur</button></div>
+					<div id="lignes-fournisseurs" class="si-lignes-fournisseurs">
+						{% set liens = v.fournisseurs|length > 0 ? v.fournisseurs : [null] %}
+						{% for lien in liens %}
+							<div class="si-ligne-fournisseur">
+								<select name="fournisseur_id[]" class="form-select form-select-sm" aria-label="Fournisseur">
+									<option value="">Choisir…</option>
+									{% for f in fournisseurs %}
+										<option value="{{ f.id }}" {{ lien and lien.fournisseur == f ? 'selected' }}>{{ f.nom }}</option>
+									{% endfor %}
+								</select>
+								<input type="text" inputmode="numeric" name="fournisseur_prix[]" value="{{ lien ? lien.prixAchat }}" class="form-control form-control-sm" placeholder="Prix / unité d'achat" aria-label="Prix HT par unité d'achat">
+								<input type="text" inputmode="numeric" name="fournisseur_delai[]" value="{{ lien ? lien.delaiJours }}" class="form-control form-control-sm" placeholder="Délai (j)" aria-label="Délai en jours">
+								<label class="si-principal" title="Fournisseur habituel"><input type="radio" name="fournisseur_principal" value="{{ loop.index0 }}" {{ (lien and lien.principal) or (not lien and loop.first) ? 'checked' }}> ★</label>
+								<button type="button" class="btn btn-sm si-btn-discret js-retirer" aria-label="Retirer">×</button>
+							</div>
+						{% endfor %}
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="d-flex gap-2">
+			<button type="submit" class="btn btn-danger">Enregistrer</button>
+			<a href="{{ article.id ? path('app_stock_articles_fiche', {id: article.id}) : path('app_stock_articles_index') }}" class="btn btn-light">Annuler</a>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	(function () {
+		var lignes = document.getElementById('lignes-fournisseurs');
+
+		function renumeroter() {
+			lignes.querySelectorAll('input[type=radio]').forEach(function (radio, i) { radio.value = i; });
+		}
+
+		document.getElementById('ajouter-fournisseur').addEventListener('click', function () {
+			var modele = lignes.querySelector('.si-ligne-fournisseur');
+			var copie = modele.cloneNode(true);
+			copie.querySelectorAll('input[type=text]').forEach(function (champ) { champ.value = ''; });
+			copie.querySelector('select').value = '';
+			copie.querySelector('input[type=radio]').checked = false;
+			lignes.appendChild(copie);
+			renumeroter();
+		});
+
+		lignes.addEventListener('click', function (e) {
+			if (!e.target.closest('.js-retirer')) return;
+			var ligne = e.target.closest('.si-ligne-fournisseur');
+			if (lignes.children.length > 1) { ligne.remove(); } else { ligne.querySelectorAll('input[type=text]').forEach(function (c) { c.value = ''; }); ligne.querySelector('select').value = ''; }
+			renumeroter();
+		});
+
+		/* Aperçu de la conversion : « 1 rouleau = 50 m × 3,20 m = 160 m² » */
+		var unites = {{ unites|json_encode|raw }};
+		function nombre(id) { var v = parseFloat((document.getElementById(id).value || '').replace(/\s/g, '').replace(',', '.')); return isNaN(v) ? null : v; }
+		function fr(v) { return v.toLocaleString('fr-FR', {maximumFractionDigits: 3}); }
+		function apercu() {
+			var achat = document.getElementById('unite_achat').value.trim();
+			var unite = document.getElementById('unite').value;
+			var u = unites[unite] || unite;
+			var quantite = nombre('quantite_par_unite_achat');
+			var longueur = nombre('longueur_unite_achat');
+			var laize = nombre('laize');
+			var texte = '';
+			if (achat) {
+				if (quantite) { texte = '1 ' + achat + ' = ' + fr(quantite) + ' ' + u; }
+				else if (longueur && laize && unite === 'm2') { texte = '1 ' + achat + ' = ' + fr(longueur) + ' m × ' + fr(laize) + ' m = ' + fr(longueur * laize) + ' m²'; }
+				else { texte = 'Indiquez combien de ' + u + ' contient 1 ' + achat + '.'; }
+			}
+			document.getElementById('apercu-conversion').textContent = texte;
+		}
+		document.querySelectorAll('.js-conversion').forEach(function (c) { c.addEventListener('input', apercu); c.addEventListener('change', apercu); });
+		apercu();
+	})();
+	</script>
+{% endblock %}

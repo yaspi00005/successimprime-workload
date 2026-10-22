@@ -78,6 +78,10 @@
 							<div class="col-md-6 mb-3">
 								<small class="text-muted d-block">Montant</small>
 								<strong>{{ paiement.montant|number_format(0, ',', ' ') }} FCFA</strong>
+								{# Frais mobile money payés par le client en plus : ils ne comptent pas dans la commande. #}
+								{% if paiement.montantFondsSoutien > 0 %}<small class="d-block text-muted">+ fonds de soutien {{ paiement.montantFondsSoutien|number_format(0, ',', ' ') }} FCFA</small>{% endif %}
+								{% if paiement.montantFraisRetrait > 0 %}<small class="d-block text-muted">+ frais de retrait {{ paiement.montantFraisRetrait|number_format(0, ',', ' ') }} FCFA</small>{% endif %}
+								{% if paiement.montantTotalEncaisse > paiement.montant %}<small class="d-block">Reçu au total : <strong>{{ paiement.montantTotalEncaisse|number_format(0, ',', ' ') }} FCFA</strong></small>{% endif %}
 							</div>
 
 							<div class="col-md-6 mb-3">
@@ -238,14 +242,16 @@
 
 						{% endif %}
 
-						<hr>
+						{% if paiement.estEnAttente and is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+							<hr>
 
-						<a href="{{ path('app_paiements_edit', { id: paiement.id }) }}" class="btn btn-light btn-block">
-							<i class="fa fa-pencil mr-1"></i>
-							Modifier
-						</a>
+							<a href="{{ path('app_paiements_edit', { id: paiement.id }) }}" class="btn btn-light btn-block">
+								<i class="fa fa-pencil mr-1"></i>
+								Modifier
+							</a>
 
-						{{ include('paiements/_delete_form.html.twig') }}
+							{{ include('paiements/_delete_form.html.twig') }}
+						{% endif %}
 
 					</div>
 

@@ -1,0 +1,283 @@
+<?php
+
+namespace App\Service\Site;
+
+use App\Service\Parametres\Parametres;
+
+/**
+ * Page Contact du site (maquette 11) : horaires de l'imprimerie (tuile
+ * Horaires des Paramètres), ouvert ou fermé en ce moment, lien du plan et
+ * repère de la carte (tuile « Site : page Contact », par défaut la position
+ * de l'imprimerie sur sa fiche Google).
+ */
+final class ContactSite
+{
+    private const JOURS = ['lun-ven' => [1, 5], 'lun-sam' => [1, 6], 'lun-dim' => [1, 7]];
+    private const NOMS_JOURS = [1 => 'lundi', 2 => 'mardi', 3 => 'mercredi', 4 => 'jeudi', 5 => 'vendredi', 6 => 'samedi', 7 => 'dimanche'];
+
+    public function __construct(private readonly Parametres $parametres)
+    {
+    }
+
+    /**
+     * Horaires du réglage Horaires : « Lun – sam : 8 h – 18 h », les jours
+     * fermés qui s'en déduisent (« Dimanche : fermé »), la version courte du
+     * bandeau du haut (« Lun – sam 8 h – 18 h · dim. fermé ») et l'état
+     * en ce moment.
+     *
+     * @return array{texte: string, fermes: ?string, court: string, ouverture: string, fermeture: string, ouvert: bool, etat: string, exceptionnel: bool}
+     */
+    public function horaires(\DateTimeImmutable $maintenant): array
+    {
+        $jours = (string) $this->parametres->valeur('horaires', 'jours');
+        $ouverture = (string) $this->parametres->valeur('horaires', 'ouverture');
+        $fermeture = (string) $this->parametres->valeur('horaires', 'fermeture');
+
+        // Jours fériés de la tuile Horaires (comme l'atelier), puis fermeture exceptionnelle de la tuile « Site : contact et accueil ».
+        $heures = $this->parametres->heuresTravail();
+        $etat = $this->fermetureExceptionnelle() ?? self::etat($jours, $ouverture, $fermeture, $maintenant, $heures->estOuvre(...));
+
+        return [
+            'texte' => self::texteHoraires($jours, $ouverture, $fermeture),
+            'fermes' => self::joursFermes($jours),
+            'court' => self::texteCourt($jours, $ouverture, $fermeture),
+            'ouverture' => self::heure($ouverture),
+            'fermeture' => self::heure($fermeture),
+            'semaine' => self::semaine($jours, $ouverture, $fermeture, $maintenant, $heures->estOuvre(...)),
+        ] + $etat;
+    }
+
+    /**
+     * Fermeture exceptionnelle activée (tuile « Site : contact et accueil »),
+     * avec son motif s'il est saisi ; sinon null.
+     *
+     * @return array{ouvert: bool, etat: string, exceptionnel: bool}|null
+     */
+    public function fermetureExceptionnelle(): ?array
+    {
+        if (!(bool) $this->parametres->valeur('site_contact', 'fermeture')) {
+            return null;
+        }
+        $motif = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'fermeture_motif')));
+
+        return ['ouvert' => false, 'etat' => 'Fermé exceptionnellement'.('' === $motif ? '' : ' : '.mb_substr($motif, 0, 100)), 'exceptionnel' => true];
+    }
+
+    /**
+     * Les 7 jours à partir de lundi, avec le jour courant marqué (bloc
+     * Horaires de la page Contact, maquette EC04). Un jour férié de cette
+     * semaine est dit fermé.
+     *
+     * @return list<array{nom: string, plage: ?string, aujourdhui: bool}>
+     */
+    public static function semaine(string $jours, string $ouverture, string $fermeture, \DateTimeImmutable $maintenant, ?callable $estOuvre = null): array
+    {
+        [$premier, $dernier] = self::JOURS[$jours] ?? self::JOURS['lun-sam'];
+        $lundi = $maintenant->setTime(0, 0)->modify('-'.((int) $maintenant->format('N') - 1).' days');
+        $liste = [];
+        for ($n = 1; $n <= 7; ++$n) {
+            $jour = $lundi->modify('+'.($n - 1).' days');
+            $ouvert = null !== $estOuvre ? $estOuvre($jour) : ($n >= $premier && $n <= $dernier);
+            $liste[] = [
+                'nom' => ucfirst(self::NOMS_JOURS[$n]),
+                'plage' => $ouvert ? self::heure($ouverture).' – '.self::heure($fermeture) : null,
+                'aujourdhui' => $jour->format('Y-m-d') === $maintenant->format('Y-m-d'),
+            ];
+        }
+
+        return $liste;
+    }
+
+    /**
+     * Accès et livraison de « Comment venir » (maquette EC07), tels que
+     * réglés ; un texte vide n'est pas montré.
+     *
+     * @return array{voiture: ?string, moto: ?string, livraison: ?string}
+     */
+    public function acces(): array
+    {
+        $lire = function (string $cle): ?string {
+            $t = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', $cle)));
+
+            return '' === $t ? null : mb_substr($t, 0, 200);
+        };
+
+        return ['voiture' => $lire('acces_voiture'), 'moto' => $lire('acces_moto'), 'livraison' => $lire('acces_livraison')];
+    }
+
+    /** Jours fermés d'après les jours travaillés : « Dimanche : fermé », « Samedi et dimanche : fermé », ou null (tous les jours). */
+    public static function joursFermes(string $jours): ?string
+    {
+        return match ($jours) {
+            'lun-dim' => null,
+            'lun-ven' => 'Samedi et dimanche : fermé',
+            default => 'Dimanche : fermé',
+        };
+    }
+
+    /** « Lun – sam 8 h – 18 h · dim. fermé » (bandeau du haut du site). */
+    public static function texteCourt(string $jours, string $ouverture, string $fermeture): string
+    {
+        $plage = match ($jours) {
+            'lun-ven' => 'Lun – ven',
+            'lun-dim' => 'Tous les jours',
+            default => 'Lun – sam',
+        };
+        $fermes = match ($jours) {
+            'lun-dim' => '',
+            'lun-ven' => ' · sam. et dim. fermé',
+            default => ' · dim. fermé',
+        };
+
+        return $plage.' '.self::heure($ouverture).' – '.self::heure($fermeture).$fermes;
+    }
+
+    /** Repère de l'adresse (« près de… »), réglé dans la tuile « Site : contact et accueil » ; vide : rien. */
+    public function repereAdresse(): ?string
+    {
+        $repere = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'repere')));
+
+        return '' === $repere ? null : mb_substr($repere, 0, 120);
+    }
+
+    /** Délai de réponse affiché sous le formulaire de contact ; vide : rien. */
+    public function delaiReponse(): ?string
+    {
+        $delai = trim((string) preg_replace('/\s+/u', ' ', (string) $this->parametres->valeur('site_contact', 'delai_reponse')));
+
+        return '' === $delai ? null : mb_substr($delai, 0, 120);
+    }
+
+    /** Largeur d'impression la plus grande annoncée sur l'accueil (« 3,20 m ») ; vide : l'accueil n'en parle pas. */
+    public function largeurMax(): ?string
+    {
+        $largeur = trim((string) $this->parametres->valeur('site_contact', 'largeur_max'));
+
+        return '' === $largeur ? null : mb_substr($largeur, 0, 20);
+    }
+
+    /** Adresse à ouvrir pour l'itinéraire, ou null tant que rien n'est réglé. */
+    public function lienPlan(): ?string
+    {
+        return self::lien((string) $this->parametres->valeur('site_contact', 'lien_plan'));
+    }
+
+    /**
+     * Lien « Itinéraire » toujours disponible (bandeau « Venez nous voir »
+     * de l'accueil) : celui du réglage (position de l'imprimerie), sinon une
+     * recherche Google Maps sur le nom et l'adresse de l'imprimerie.
+     */
+    public function itineraire(string $nom, ?string $adresse): string
+    {
+        return self::itineraireDe((string) $this->parametres->valeur('site_contact', 'lien_plan'), $nom, $adresse);
+    }
+
+    /** Le lien du réglage tel que la page Contact le retient (lien()), sinon la recherche sur l'adresse. */
+    public static function itineraireDe(string $saisi, string $nom, ?string $adresse): string
+    {
+        return self::lien($saisi) ?? self::recherche($nom, $adresse);
+    }
+
+    /** Recherche Google Maps « Succès Imprim Bamako, Sotuba ACI » (Bamako ajouté si l'adresse ne le dit pas). */
+    public static function recherche(string $nom, ?string $adresse): string
+    {
+        $adresse = trim((string) preg_replace('/\s+/u', ' ', (string) $adresse));
+        if (!str_contains(mb_strtolower($adresse), 'bamako')) {
+            $adresse = ('' === $adresse ? '' : $adresse.', ').'Bamako, Mali';
+        }
+
+        return 'https://www.google.com/maps/search/?api=1&query='.rawurlencode(trim($nom.' '.$adresse));
+    }
+
+    /**
+     * Repère de l'imprimerie pour la carte de la page Contact (coordonnées
+     * saisies ou lues dans un lien long, DonneesStructurees::position),
+     * seulement s'il y a aussi un lien d'itinéraire ; sinon null (plan
+     * dessiné seul).
+     *
+     * @return array{latitude: float, longitude: float}|null
+     */
+    public function position(): ?array
+    {
+        return self::repere((string) $this->parametres->valeur('site_contact', 'lien_plan'));
+    }
+
+    /** @return array{latitude: float, longitude: float}|null */
+    public static function repere(string $saisi): ?array
+    {
+        $position = null === self::lien($saisi) ? null : DonneesStructurees::position($saisi);
+
+        return null === $position ? null : ['latitude' => $position['latitude'], 'longitude' => $position['longitude']];
+    }
+
+    /** « Lun – sam : 8 h – 18 h 30 ». */
+    public static function texteHoraires(string $jours, string $ouverture, string $fermeture): string
+    {
+        $plage = match ($jours) {
+            'lun-ven' => 'Lun – ven',
+            'lun-dim' => 'Tous les jours',
+            default => 'Lun – sam',
+        };
+
+        return $plage.' : '.self::heure($ouverture).' – '.self::heure($fermeture);
+    }
+
+    /**
+     * Ouvert en ce moment, sinon prochaine ouverture. $estOuvre (jours
+     * fériés de la tuile Horaires, HeuresTravail::estOuvre) remplace la
+     * seule règle des jours travaillés quand il est donné.
+     *
+     * @param (callable(\DateTimeImmutable): bool)|null $estOuvre
+     *
+     * @return array{ouvert: bool, etat: string, exceptionnel: bool}
+     */
+    public static function etat(string $jours, string $ouverture, string $fermeture, \DateTimeImmutable $maintenant, ?callable $estOuvre = null): array
+    {
+        [$premier, $dernier] = self::JOURS[$jours] ?? self::JOURS['lun-sam'];
+        $ouvre = $estOuvre ?? static fn (\DateTimeImmutable $j): bool => (int) $j->format('N') >= $premier && (int) $j->format('N') <= $dernier;
+        $a = static fn (\DateTimeImmutable $j, string $h): \DateTimeImmutable => $j->setTime(...array_map('intval', explode(':', $h.':0')) + [1 => 0]);
+
+        if ($ouvre($maintenant) && $maintenant >= $a($maintenant, $ouverture) && $maintenant < $a($maintenant, $fermeture)) {
+            return ['ouvert' => true, 'etat' => 'Ouvert maintenant, jusqu\'à '.self::heure($fermeture), 'exceptionnel' => false];
+        }
+        for ($i = 0; $i <= 14; ++$i) {
+            $jour = $maintenant->modify('+'.$i.' day');
+            if ($ouvre($jour) && $a($jour, $ouverture) > $maintenant) {
+                $quand = match ($i) {
+                    0 => 'aujourd\'hui',
+                    1 => 'demain',
+                    default => self::NOMS_JOURS[(int) $jour->format('N')],
+                };
+
+                return ['ouvert' => false, 'etat' => 'Fermé, ouvre '.$quand.' à '.self::heure($ouverture), 'exceptionnel' => false, 'prochaine' => $a($jour, $ouverture)];
+            }
+        }
+
+        return ['ouvert' => false, 'etat' => 'Fermé', 'exceptionnel' => false];
+    }
+
+    /**
+     * Lien de partage Google Maps (https) tel quel ; coordonnées
+     * « 12.6392, -8.0029 » changées en lien d'itinéraire ; sinon null.
+     */
+    public static function lien(string $saisi): ?string
+    {
+        $saisi = trim($saisi);
+        if (preg_match('/^(-?\d{1,2}(?:\.\d+)?)\s*[,;]\s*(-?\d{1,3}(?:\.\d+)?)$/', $saisi, $m) && abs((float) $m[1]) <= 90 && abs((float) $m[2]) <= 180) {
+            return 'https://www.google.com/maps/dir/?api=1&destination='.$m[1].','.$m[2];
+        }
+        if (str_starts_with($saisi, 'https://') && false !== filter_var($saisi, \FILTER_VALIDATE_URL) && !preg_match('/[\s"<>]/', $saisi)) {
+            return $saisi;
+        }
+
+        return null;
+    }
+
+    /** « 8 h », « 18 h 30 », avec des espaces insécables (jamais « 8 » en fin de ligne). */
+    public static function heure(string $hhmm): string
+    {
+        [$h, $m] = array_map('intval', explode(':', $hhmm) + [1 => '0']);
+
+        return $h."\u{a0}h".($m > 0 ? "\u{a0}".str_pad((string) $m, 2, '0', \STR_PAD_LEFT) : '');
+    }
+}

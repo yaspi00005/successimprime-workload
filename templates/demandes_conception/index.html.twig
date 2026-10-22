@@ -1,0 +1,39 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Demandes de conception{% endblock %}
+{% block stylesheets %}<link href="{{ asset('css/demandes-conception.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_demandes_conception_index', toutes ? {} : {toutes: 1}) }}" class="btn btn-light btn-sm si-btn-entete">{{ toutes ? 'En cours' : 'Toutes' }}</a></li>
+{% endblock %}
+
+{% block body %}
+	{% if coutMois %}
+		<section class="card si-ac-bloc si-dc-cout">
+			<span>Images IA générées ce mois-ci : <b>{{ coutMois.images }}</b></span>
+			{% if coutMois.cout > 0 %}<span>Coût estimé chez le fournisseur : <b>{{ coutMois.cout|number_format(0, ',', ' ') }} F</b> <small>(direction seulement)</small></span>{% endif %}
+		</section>
+	{% endif %}
+
+	<section class="card si-ac-bloc">
+		<h2>{{ toutes ? 'Toutes les demandes' : 'En cours' }} <span class="si-pg-compte">{{ liste|length }}</span></h2>
+		{% if liste is empty %}
+			<p class="si-ac-vide">{{ toutes ? 'Aucune demande de conception.' : 'Aucune demande de conception en cours.' }}</p>
+		{% else %}
+			<ul class="si-rc-liste">
+				{% for d in liste %}
+					{% set date = d.envoyeeLe ?? d.creeLe %}
+					<li>
+						<a href="{{ path('app_demandes_conception_voir', {id: d.id}) }}" class="si-rc-ligne">
+							<span class="si-rc-num">{{ d.numero }}<small>{{ date|date(date|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m') }}</small></span>
+							<span class="si-rc-texte"><b>{{ d.titre ?? d.titreSupport }}</b><small>{{ d.client ? d.client.nomComplet }}{{ d.auteur ? ' · ' ~ d.auteur }} · {{ d.titreSupport }}{{ d.pourQuand ? ' · pour le ' ~ d.pourQuand|date('d/m') }}</small></span>
+							<span class="si-dc-choix si-dc-{{ d.choix }}">{{ d.choix == 'ia' ? 'IA' : 'Graphiste' }}</span>
+							<span class="si-rc-statut si-dc-statut-{{ d.statut }}">{{ d.libelleStatut }}{{ d.prisePar and d.statut == 'en_cours' ? ' · ' ~ d.prisePar }}</span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+		<p class="si-pg-note">Les clients décrivent leur visuel dans leur espace : graphiste (acompte payé par Orange Money, à valider à la caisse) ou image générée par IA puis commandée. Prenez la demande en charge, puis le travail suit le parcours habituel : pré-presse, BAT au client, production.</p>
+	</section>
+{% endblock %}

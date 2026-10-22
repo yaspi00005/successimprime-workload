@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{# Résultat du scan d'un colis envoyé par formulaire (page du QR, scanner sans JavaScript). #}
+
+{% block title %}Scan d'un colis{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-colis.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="si-scan">
+		<h1>Scanner une étiquette</h1>
+		<div class="si-scan-resultat">
+			<div class="si-scan-tete">
+				<span class="si-scan-ok{{ r.ok ? '' : ' non' }}" aria-hidden="true"><i class="fas {{ r.ok ? 'fa-check' : 'fa-times' }}"></i></span>
+				<div>
+					<b>{{ r.colis is defined ? r.colis.numero ~ ' · colis ' ~ r.colis.rang ~ '/' ~ r.colis.total : (r.ok ? 'Colis scanné' : 'Code refusé') }}</b>
+					{% if r.colis is defined %}<small>{{ r.colis.client }} · {{ r.colis.contenu }}</small>{% endif %}
+				</div>
+			</div>
+			<p class="si-scan-suite{{ not r.ok ? ' non' : (r.prete ? '' : ' attente') }}">{{ r.message }}{% if r.ok %} {{ r.suite }}{% endif %}</p>
+			<a class="si-scan-bouton" href="{{ path('app_atelier_operateur_scanner') }}">Scanner le suivant</a>
+		</div>
+		{% if r.colis is defined %}
+			<a class="si-scan-bouton clair" href="{{ r.colis.controle }}">Contrôle final de {{ r.colis.numero }}</a>
+		{% endif %}
+	</div>
+{% endblock %}

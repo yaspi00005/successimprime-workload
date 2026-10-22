@@ -10,6 +10,7 @@ use App\Repository\FinitionRepository;
 use App\Repository\FormatRepository;
 use App\Repository\SupportsRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Service\Parametres\LongueursCatalogue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -653,6 +654,15 @@ final class SupportsController extends AbstractController
     ): ?string {
         if ($nom === '') {
             return 'Le nom du support est obligatoire.';
+        }
+
+        // Au-delà de sa colonne, la base refuserait le nom (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du support' => [$nom, LongueursCatalogue::SUPPORT_NOM],
+        ]);
+
+        if ($tropLong !== null) {
+            return $tropLong;
         }
 
         if ($description === '') {

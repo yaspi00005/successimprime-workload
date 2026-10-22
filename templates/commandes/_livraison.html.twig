@@ -1,0 +1,34 @@
+{#
+	Bloc « Livraison » de la commande (Direction, caisse, prépresse) : chaque
+	bon de livraison avec son statut (à livrer, en tournée, livrée, échec),
+	le moment, le livreur et la personne qui a reçu. Sans montant.
+#}
+{% set bonsLivraison = livraisons_de_la_commande(commande) %}
+{% if bonsLivraison is not empty or commande.estALivrer %}
+	<div class="card si-bloc">
+		<div class="si-bloc-tete">
+			<h4>Livraison</h4>
+			{# Le suivi est sur l'ERP local seulement (le site en ligne ne connaît ni le livreur ni le réceptionnaire). #}
+			{% if not site_en_ligne() %}<a href="{{ path('app_livraisons_suivi') }}">Suivi des livraisons</a>{% endif %}
+		</div>
+		{% for bl in bonsLivraison %}
+			{% set e = bl.etatSuivi %}
+			{% set le = bl.momentSuivi %}
+			<div class="si-paiement d-block">
+				<div class="d-flex justify-content-between align-items-center gap-2">
+					<strong>{{ bl.numero }}</strong>
+					<span class="si-pastille si-pastille-{{ {livree: 'vert', echec: 'rouge', en_tournee: 'bleu'}[e]|default('gris') }}">{{ attribute(constant('App\\Entity\\BonLivraison::ETATS_SUIVI'), e) }}{{ e == 'en_tournee' and bl.etape ? ' · ' ~ attribute(constant('App\\Entity\\BonLivraison::ETAPES'), bl.etape)|lower }}</span>
+				</div>
+				<small class="d-block text-muted">
+					{% if le %}{{ e == 'livree' ? 'Remise' : (e == 'echec' ? 'Échec' : 'Depuis') }} le {{ le|date('d/m') }} à {{ le|date('H:i') }}{% elseif bl.prevuLe %}Prévue le {{ bl.prevuLe|date('d/m') }}{{ bl.creneau ? ' · ' ~ bl.creneau }}{% elseif bl.statut == 'brouillon' %}Bon à valider{% else %}À planifier{% endif %}
+					{% if bl.livreurSuivi %} · {{ bl.livreurSuivi|nom_pointage }}{% endif %}
+				</small>
+				{% if e == 'livree' %}<small class="d-block">Reçue par {{ bl.receptionnaireSuivi ?? '—' }}{{ bl.estPartielle ? ' · remise partielle' }}</small>{% endif %}
+				{% if e == 'echec' %}<small class="d-block si-p-alerte">{{ bl.echecMotif }} : à replanifier</small>{% elseif bl.echecLe %}<small class="d-block text-muted">Échec le {{ bl.echecLe|date('d/m H:i') }} : {{ bl.echecMotif }}</small>{% endif %}
+				{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_livraisons_bl', {id: bl.id}) }}" class="small">Détail de la livraison</a>{% endif %}
+			</div>
+		{% else %}
+			<p class="text-muted mb-0">À livrer : pas encore de bon de livraison.</p>
+		{% endfor %}
+	</div>
+{% endif %}

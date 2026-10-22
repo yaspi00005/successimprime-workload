@@ -175,6 +175,8 @@
 				border-radius: 4px;
 			}
 
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.nc-technique { font-weight: normal; font-size: 0.85em; color: #6B7280; }
 		</style>
 
 	</head>
@@ -233,7 +235,7 @@
 					{% for ligne in commandes %}
 
 						<tr class="commande-header">
-							<td>{{ ligne.commande.numero }}</td>
+							<td>{{ ligne.commande.libelle }}</td>
 							<td>{{ ligne.commande.dateCommande ? ligne.commande.dateCommande|date('d/m/Y') : '—' }}</td>
 							<td class="text-right">{{ ligne.totalTtc|number_format(0, ',', ' ') }} FCFA</td>
 							<td class="text-right">{{ ligne.totalPaye|number_format(0, ',', ' ') }} FCFA</td>
@@ -247,14 +249,14 @@
 							{% if detail.largeur is defined and detail.longueur is defined and detail.largeur and detail.longueur %}
 								{% set dimensionsDetail = detail.largeur ~ ' × ' ~ detail.longueur ~ ' cm' %}
 							{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
-								{% set dimensionsDetail = detail.produitConfiguration.format.nom %}
+								{% set dimensionsDetail = detail.produitConfiguration.format|texte_client %}
 							{% endif %}
 
 							{% set montantPayeDetail = ligne.totalTtc > 0 ? (ligne.totalPaye * detail.totalTtc / ligne.totalTtc)|round : 0 %}
 
 							<tr class="ligne-detail">
 								<td colspan="2">
-									{{ detail.produit ? detail.produit.nom : detail.designation|default('Article') }}
+									{{ detail|ligne_client('Article') }}
 									{% if dimensionsDetail %}
 										({{ dimensionsDetail }})
 									{% endif %}

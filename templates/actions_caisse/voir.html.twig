@@ -1,0 +1,96 @@
+{% extends 'base.html.twig' %}
+
+{% set a = action %}
+{% set liens = liens_action(a) %}
+{% set faite = a.etat == 'faite' %}
+
+{% block title %}{{ a.libelleType }} · {{ a.libelle }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_actions_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left me-1"></i>Mes actions</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-ac si-ac-voir">
+		<section class="card si-ac-entete">
+			<p>{% include 'actions_caisse/_pastille.html.twig' with {action: a} %} {{ a.detail ?: a.libelleType }}</p>
+			{% if is_granted('ROLE_PAIEMENT_VOIR') and a.montant %}<strong>{{ a.montant|number_format(0, ',', ' ') }} F</strong>{% else %}<strong>{{ a.libelle }}</strong>{% endif %}
+			<div>
+				<span>Créée {{ a.creeLe|date_fr('EEE dd/MM HH:mm') }}{% if a.departLe != a.creeLe %} · délai repris {{ a.departLe|date_fr('EEE HH:mm') }}{% endif %}</span>
+				<b>avant {{ a.echeance|date_fr('EEE HH:mm') }}</b>
+			</div>
+			{% if not faite and a.etat == 'a_faire' %}{% include 'actions_caisse/_compteur.html.twig' with {action: a, etat: compteur.etat, reste: compteur.reste} %}{% endif %}
+			{% if a.cibleType and a.cibleId %}
+				{% set routes = {facture: 'app_factures_show', devis: 'app_devis_show', commande: 'app_commandes_show'} %}
+				{% if routes[a.cibleType] is defined %}<a href="{{ path(routes[a.cibleType], {id: a.cibleId}) }}" class="si-ac-piece">Ouvrir la pièce</a>{% endif %}
+				{% if a.cibleType == 'fichier_a_classer' %}<a href="{{ path('app_dossiers_clients_a_classer') }}#fichier-{{ a.cibleId }}" class="si-ac-piece">Ouvrir les fichiers à classer</a>{% endif %}
+			{% endif %}
+		</section>
+
+		{% if faite %}
+			<section class="card si-ac-confirmation">
+				<i class="fas fa-check-circle"></i>
+				<div>
+					<b>Faite à {{ a.faiteLe|date('H:i') }}</b>{% if a.faiteLe|date('Y-m-d') != 'now'|date('Y-m-d') %} le {{ a.faiteLe|date('d/m') }}{% endif %}
+					<small>en {{ ecoule|duree_pointage }} de travail · avant {{ a.echeance|date('H:i') }} · {{ a.libelleResultat }}{% if a.promesseLe %} le {{ a.promesseLe|date_fr('EEE dd/MM') }}{% if a.promesseMoyen %} · {{ a.promesseMoyen }}{% endif %}{% endif %}</small>
+					{% if a.note %}<p>{{ a.note }}</p>{% endif %}
+					{% if a.controleLe %}<p class="si-ac-controle">{{ a.pointsAnnules ? 'Points annulés au contrôle : ' ~ a.motifControle : 'Vérifiée par le responsable.' }}</p>{% endif %}
+				</div>
+				<em class="{{ a.total > 0 ? 'si-ac-plus' : 'si-ac-zero' }}">{{ a.total > 0 ? '+' }}{{ a.total }} pts</em>
+			</section>
+		{% elseif a.etat == 'sans_objet' %}
+			<section class="card si-ac-confirmation"><div><b>Ligne fermée sans objet</b><small>La cause a disparu (paiement reçu, devis traité…) : ni points ni pénalité.</small></div></section>
+		{% else %}
+			<section class="card si-ac-appel">
+				<h2>{{ a.type in ['facture', 'verifier', 'commande', 'avis'] ? 'Appel du client' : 'Contact' }}</h2>
+				<p class="si-ac-qui">{{ a.libelle }}{% if a.telephone %} · {{ a.telephone }}{% endif %}{% if a.contactLe %} · {{ a.contactCanal == 'whatsapp' ? 'WhatsApp ouvert' : 'appel lancé' }} à {{ a.contactLe|date('H:i') }}{% endif %}</p>
+				{% if liens.tel %}
+					<div class="si-ac-contact">
+						<a href="{{ liens.tel }}" class="btn btn-primary" data-si-contact="appel" data-url="{{ path('app_actions_contact', {id: a.id}) }}"><i class="fas fa-phone me-1"></i>Appeler</a>
+						<a href="{{ liens.whatsapp }}" target="_blank" rel="noopener" class="btn btn-light si-btn-entete" data-si-contact="whatsapp" data-url="{{ path('app_actions_contact', {id: a.id}) }}"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>
+					</div>
+				{% else %}
+					<p class="si-ac-vide">Pas de numéro sur la fiche : notez ce qui a été fait.</p>
+				{% endif %}
+
+				<form method="post" action="{{ path('app_actions_faire', {id: a.id}) }}" class="si-ac-form" data-si-resultat>
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<fieldset>
+						<legend>Résultat (obligatoire)</legend>
+						<div class="si-ac-puces">
+							{% for cle, libelle in resultats %}
+								<label><input type="radio" name="resultat" value="{{ cle }}" required><span>{{ libelle }}</span></label>
+							{% endfor %}
+						</div>
+					</fieldset>
+					<div class="si-ac-date" data-si-date hidden>
+						<label>Date <span data-si-date-libelle>promise</span><input type="date" name="date" class="form-control" min="{{ 'now'|date('Y-m-d') }}"></label>
+						<label data-si-moyen>Moyen
+							<select name="moyen" class="form-select">
+								<option value="">—</option>
+								{% for m in ['Orange Money', 'Espèces', 'Virement', 'Wave', 'Chèque'] %}<option>{{ m }}</option>{% endfor %}
+							</select>
+						</label>
+					</div>
+					<label class="si-ac-note">Note{{ a.contactLe ? '' : ' (obligatoire sans appel ni WhatsApp)' }}<textarea name="note" rows="2" class="form-control" maxlength="1000" placeholder="Ex. le comptable paie mercredi matin."></textarea></label>
+					<button type="submit" class="btn btn-success btn-lg si-ac-enregistrer">Enregistrer · action faite</button>
+				</form>
+			</section>
+		{% endif %}
+	</div>
+	{% include 'actions_caisse/_contact.html.twig' %}
+	<script>
+		(function () {
+			var form = document.querySelector('[data-si-resultat]');
+			if (!form) { return; }
+			var bloc = form.querySelector('[data-si-date]');
+			form.addEventListener('change', function () {
+				var choix = (form.querySelector('[name=resultat]:checked') || {}).value;
+				bloc.hidden = !(choix === 'promesse' || choix === 'a_rappeler');
+				form.querySelector('[data-si-moyen]').hidden = choix !== 'promesse';
+				form.querySelector('[data-si-date-libelle]').textContent = choix === 'promesse' ? 'promise' : 'du rappel';
+				form.date.required = choix === 'promesse';
+			});
+		})();
+	</script>
+{% endblock %}

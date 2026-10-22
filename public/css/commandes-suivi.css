@@ -1,0 +1,267 @@
+/*
+ * Commandes : liste (maquette GC01), tableau par étape (GC02) et fiche
+ * d'une commande côté admin (DT02). Préfixe si-cs-.
+ */
+
+/* ---------- En-tête de page ---------- */
+.si-cs-tete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.si-cs-tete small { display: block; color: #6B7A90; font-size: .8rem; }
+.si-cs-tete h1 { font-size: 1.5rem; font-weight: 800; color: #12213A; margin: 0; letter-spacing: -.01em; }
+.si-cs-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.si-cs-actions .btn { border-radius: .65rem; font-weight: 700; font-size: .85rem; padding: .45rem .9rem; }
+.si-cs-actions .si-cs-btn-blanc, .si-cs-btn-blanc { background: #fff; border: 1px solid #DCE3EE; color: #12213A; }
+.si-cs-btn-blanc:hover { background: #F6F8FC; color: #12213A; }
+
+/* ---------- Cartes du haut ---------- */
+.si-cs-cartes { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: .9rem; margin-bottom: 1rem; }
+.si-cs-carte { display: block; background: #fff; border-radius: 1rem; box-shadow: var(--si-carte-ombre); padding: .85rem 1.1rem; color: inherit; text-decoration: none; border: 2px solid transparent; }
+a.si-cs-carte:hover { border-color: #DCE5F3; color: inherit; }
+.si-cs-carte.actif { border-color: var(--primary, #0F4590); }
+.si-cs-carte span { display: block; color: #6B7A90; font-size: .78rem; }
+.si-cs-carte strong { display: block; font-size: 1.6rem; font-weight: 800; color: #12213A; line-height: 1.2; margin: .15rem 0; white-space: nowrap; }
+.si-cs-carte small { display: block; color: #6B7A90; font-size: .75rem; }
+.si-cs-carte .si-cs-rouge { color: #DE1028; }
+.si-cs-carte .si-cs-orange { color: #D97706; }
+
+/* ---------- Puces d'étape, bascule ---------- */
+.si-cs-barre { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .9rem; }
+.si-cs-puces { display: flex; flex-wrap: wrap; gap: .45rem; }
+.si-cs-puce { display: inline-flex; align-items: center; gap: .3rem; padding: .38rem .8rem; border-radius: 999px; background: #fff; border: 1px solid #E3E8F0; color: #12213A; font-size: .8rem; font-weight: 700; text-decoration: none; white-space: nowrap; }
+.si-cs-puce:hover { border-color: #B9C7DD; color: #12213A; }
+.si-cs-puce.actif { background: #12213A; border-color: #12213A; color: #fff; }
+.si-cs-puce-rouge.actif { background: #DE1028; border-color: #DE1028; }
+.si-cs-bascule { display: inline-flex; gap: .35rem; }
+.si-cs-bascule a, .si-cs-bascule button { display: inline-flex; align-items: center; gap: .35rem; padding: .38rem .8rem; border-radius: .65rem; background: #fff; border: 1px solid #E3E8F0; color: #12213A; font-size: .8rem; font-weight: 700; text-decoration: none; }
+.si-cs-bascule a.actif { background: #E5EEFA; border-color: #BFD3F2; color: #0F4590; }
+.si-cs-bascule .si-cs-pastille-filtre { background: var(--primary, #0F4590); color: #fff; border-radius: 999px; font-size: .7rem; padding: 0 .4rem; }
+
+.si-cs-recherche { margin-bottom: 1rem; }
+.si-cs-recherche .card-body { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: .75rem 1rem; align-items: end; }
+.si-cs-recherche .form-label { font-size: .78rem; color: #6B7A90; margin-bottom: .2rem; }
+.si-cs-recherche .si-cs-boutons { display: flex; gap: .5rem; }
+
+/* ---------- Liste ---------- */
+.si-cs-liste { background: #fff; border-radius: 1rem; box-shadow: var(--si-carte-ombre); padding: .4rem 1rem .6rem; }
+.si-cs-table { margin: 0; }
+.si-cs-liste .si-cs-table thead th { font-size: .78rem !important; font-weight: 600; color: #6B7A90 !important; text-transform: none !important; letter-spacing: 0; border-bottom: 1px solid #EEF1F6; padding: .7rem .5rem; white-space: nowrap; }
+.si-cs-liste .si-cs-table tbody td { padding: .75rem .5rem; border-bottom: 1px solid #F1F4F9; vertical-align: middle; font-size: .88rem; color: #12213A; }
+.si-cs-table tbody tr:last-child td { border-bottom: 0; }
+.si-cs-table tbody tr.si-cs-retard td { background: #FFF6F7; }
+.si-cs-table tbody tr[data-lien] { cursor: pointer; }
+.si-cs-table tbody tr[data-lien]:hover td { background: #F7F9FD; }
+.si-cs-table tbody tr.si-cs-retard[data-lien]:hover td { background: #FFEFF1; }
+.si-cs-num { font-weight: 800; color: #12213A; white-space: nowrap; text-decoration: none; }
+.si-cs-num:hover { color: var(--primary, #0F4590); }
+.si-cs-client { display: flex; align-items: center; gap: .55rem; min-width: 0; }
+.si-cs-client span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 11rem; }
+.si-cs-pastille { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.75rem; height: 1.75rem; border-radius: .45rem; color: #fff; font-size: .62rem; font-weight: 800; letter-spacing: .02em; }
+.si-cs-teinte-0 { background: #0F4590; }
+.si-cs-teinte-1 { background: #13787A; }
+.si-cs-teinte-2 { background: #E8398A; }
+.si-cs-teinte-3 { background: #D99A06; }
+.si-cs-teinte-4 { background: #2E9BDA; }
+.si-cs-teinte-5 { background: #7C3AED; }
+.si-cs-produit { max-width: 13rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-cs-produit small { color: #6B7A90; }
+.si-cs-montant { font-weight: 800; white-space: nowrap; text-align: right; }
+.si-cs-paye { display: flex; align-items: center; gap: .4rem; min-width: 6.5rem; }
+.si-cs-paye-piste { flex: 1; height: .32rem; border-radius: 999px; background: #EEF1F6; overflow: hidden; min-width: 3.5rem; }
+.si-cs-paye-piste span { display: block; height: 100%; border-radius: 999px; background: #0F4590; }
+.si-cs-paye-piste span.complet { background: #1FA855; }
+.si-cs-paye small { color: #6B7A90; font-size: .75rem; white-space: nowrap; min-width: 2.4rem; text-align: right; }
+.si-cs-date { white-space: nowrap; }
+.si-cs-date.retard { color: #DE1028; font-weight: 800; }
+.si-cs-personne { display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
+.si-cs-disque { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; border-radius: 50%; color: #fff; font-size: .6rem; font-weight: 800; }
+.si-cs-vide { color: #A0AABB; }
+.si-cs-modifier { color: #8A97AB; padding: .2rem .35rem; border-radius: .4rem; }
+.si-cs-modifier:hover { color: var(--primary, #0F4590); background: #EEF3FB; }
+
+/* Étapes (pastilles colorées) */
+.si-cs-etape { display: inline-block; border-radius: .45rem; padding: .18rem .5rem; font-size: .74rem; font-weight: 800; white-space: nowrap; }
+.si-cs-etape-orange { background: #FFF1DC; color: #C46A00; }
+.si-cs-etape-magenta { background: #FDE7F1; color: #C21A6B; }
+.si-cs-etape-bleu { background: #E5EEFA; color: #0F4590; }
+.si-cs-etape-vert { background: #E2F6EA; color: #178444; }
+.si-cs-etape-gris { background: #EEF0F3; color: #5B6575; }
+.si-cs-etape-rouge { background: #FDE4E7; color: #C40D22; }
+
+.si-cs-aucune { text-align: center; padding: 3rem 1rem; color: #6B7A90; }
+.si-cs-aucune i { font-size: 2.4rem; color: #CBD3DF; display: block; margin-bottom: .6rem; }
+
+/* ---------- Tableau par étape (GC02) ---------- */
+.si-cs-tableau { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(205px, 1fr); gap: .9rem; overflow-x: auto; padding-bottom: .5rem; align-items: start; }
+.si-cs-colonne { background: #E9EEF6; border-radius: 1rem; padding: .7rem; min-height: 14rem; }
+.si-cs-colonne > header { display: flex; align-items: center; gap: .45rem; padding: .15rem .25rem .6rem; }
+.si-cs-colonne > header b { font-size: .8rem; color: #5B6575; }
+.si-cs-colonne > header a { margin-left: auto; color: #8A97AB; font-size: .9rem; text-decoration: none; }
+.si-cs-cartes-etape { display: flex; flex-direction: column; gap: .6rem; }
+.si-cs-fiche { display: block; background: #fff; border-radius: .8rem; padding: .7rem .8rem; color: inherit; text-decoration: none; box-shadow: 0 2px 6px rgba(15, 69, 144, .06); border-left: 3px solid transparent; }
+.si-cs-fiche:hover { color: inherit; box-shadow: 0 4px 14px rgba(15, 69, 144, .12); }
+.si-cs-fiche.retard { border-left-color: #DE1028; }
+.si-cs-fiche-tete { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.si-cs-fiche-tete b { font-size: .85rem; font-weight: 800; color: #12213A; }
+.si-cs-fiche-tete small { font-size: .72rem; font-weight: 700; color: #5B6575; white-space: nowrap; }
+.si-cs-fiche-tete small.retard { color: #DE1028; }
+.si-cs-fiche .si-cs-client { margin: .45rem 0 .2rem; font-weight: 700; font-size: .85rem; }
+.si-cs-fiche .si-cs-pastille { width: 1.4rem; height: 1.4rem; font-size: .55rem; border-radius: .35rem; }
+.si-cs-fiche-produit { display: block; font-size: .8rem; color: #33415C; }
+.si-cs-fiche-etat { display: block; font-size: .74rem; color: #6B7A90; margin-top: .1rem; }
+.si-cs-fiche-etat.alerte { color: #DE1028; font-weight: 600; }
+.si-cs-fiche-pied { display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #F1F4F9; margin-top: .6rem; padding-top: .5rem; }
+.si-cs-fiche-pied b { font-size: .85rem; font-weight: 800; }
+.si-cs-colonne-vide { font-size: .78rem; color: #8A97AB; text-align: center; padding: 1.5rem .5rem; }
+
+/* ---------- Fiche d'une commande (DT02) ---------- */
+.si-cs-fiche-tete-page { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: 1rem; }
+.si-cs-titre { display: flex; align-items: center; gap: .75rem; min-width: 0; flex: 1 1 30rem; }
+.si-cs-retour { flex: none; display: inline-flex; align-items: center; justify-content: center; width: 2.2rem; height: 2.2rem; border-radius: 50%; background: #fff; border: 1px solid #E3E8F0; color: #12213A; }
+.si-cs-retour:hover { color: var(--primary, #0F4590); }
+.si-cs-titre small { display: block; color: #6B7A90; font-size: .78rem; }
+.si-cs-titre h1 { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; font-size: 1.35rem; font-weight: 800; color: #12213A; margin: 0; }
+.si-cs-titre h1 .si-cs-pour { font-size: .82rem; font-weight: 500; color: #6B7A90; }
+.si-cs-titre h1 .si-cs-pour.retard { color: #DE1028; font-weight: 700; }
+
+.si-cs-frise { list-style: none; display: flex; margin: 0; padding: .9rem .5rem .7rem; overflow-x: auto; }
+.si-cs-frise li { flex: 1 0 5rem; position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; font-size: .75rem; color: #8A97AB; }
+.si-cs-frise li::before { content: ""; position: absolute; top: .55rem; left: -50%; width: 100%; height: 3px; background: #E3E8F0; }
+.si-cs-frise li:first-child::before { display: none; }
+.si-cs-frise li.faite::before, .si-cs-frise li.en_cours::before { background: #1FA855; }
+.si-cs-frise .rond { position: relative; z-index: 1; width: 1.15rem; height: 1.15rem; border-radius: 50%; background: #DDE3EC; margin-bottom: .35rem; }
+.si-cs-frise li.faite .rond { background: #1FA855; }
+.si-cs-frise li.en_cours .rond { background: #fff; border: 3px solid #0F4590; box-shadow: 0 0 0 4px rgba(15, 69, 144, .12); }
+.si-cs-frise li.en_cours span { color: #0F4590; font-weight: 800; }
+.si-cs-frise li.faite span { color: #33415C; }
+.si-cs-frise small { font-size: .68rem; color: #8A97AB; }
+
+.content-body .card.si-cs-bloc, .content-body .card.si-cs-carte-frise { height: auto; margin-bottom: 1rem; }
+.si-cs-bloc { padding: 1rem 1.1rem; }
+.si-cs-bloc > h4, .si-cs-bloc-tete h4 { font-size: .95rem; font-weight: 800; color: #12213A; margin: 0 0 .7rem; }
+.si-cs-bloc-tete { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+.si-cs-bloc-tete h4 { margin: 0; }
+.si-cs-bloc-tete + * { margin-top: .7rem; }
+
+.si-cs-lignes { width: 100%; font-size: .85rem; table-layout: fixed; }
+.si-cs-lignes th.si-cs-qte, .si-cs-lignes td.si-cs-qte { width: 3rem; }
+.si-cs-lignes th:last-child, .si-cs-lignes td.si-cs-total { width: 6.2rem; }
+.si-cs-lignes td:first-child, .si-cs-lignes td:first-child * { white-space: normal; overflow-wrap: anywhere; }
+.si-cs-lignes th { font-size: .74rem; color: #6B7A90; font-weight: 600; padding: .35rem .4rem; background: #F6F8FC; }
+.si-cs-lignes th:first-child { border-radius: .4rem 0 0 .4rem; }
+.si-cs-lignes th:last-child { border-radius: 0 .4rem .4rem 0; }
+.si-cs-lignes td { padding: .6rem .4rem; border-bottom: 1px solid #F1F4F9; vertical-align: top; }
+.si-cs-lignes td small { display: block; color: #6B7A90; font-size: .74rem; }
+.si-cs-lignes .si-cs-qte { text-align: center; white-space: nowrap; }
+.si-cs-lignes .si-cs-total { text-align: right; white-space: nowrap; font-weight: 700; }
+.si-cs-lignes-pied { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .55rem .4rem 0; font-size: .8rem; color: #6B7A90; }
+.si-cs-lignes-pied b { color: #12213A; font-size: .95rem; white-space: nowrap; }
+.si-cs-liens-ligne { display: flex; flex-wrap: wrap; gap: .2rem .7rem; margin-top: .25rem; }
+.si-cs-liens-ligne form { display: inline; }
+.si-cs-liens-ligne .btn-link, .si-cs-liens-ligne a { font-size: .74rem; padding: 0; color: #5B6575; text-decoration: underline; text-underline-offset: 2px; }
+
+.si-cs-fichier { display: flex; align-items: center; gap: .7rem; padding: .55rem 0; border-bottom: 1px solid #F1F4F9; }
+.si-cs-fichier:last-of-type { border-bottom: 0; }
+.si-cs-vignette { flex: none; width: 1.9rem; height: 2.5rem; border-radius: .3rem; background: linear-gradient(160deg, #0F4590, #13787A); }
+.si-cs-vignette.bat { background: linear-gradient(160deg, #0F4590 55%, #E8398A 55%); }
+.si-cs-fichier div { flex: 1; min-width: 0; }
+.si-cs-fichier b { display: block; font-size: .84rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-cs-fichier b a { color: inherit; }
+.si-cs-fichier small { display: block; color: #6B7A90; font-size: .74rem; }
+.si-cs-lien-fort { display: inline-block; margin-top: .6rem; font-size: .8rem; font-weight: 800; color: var(--primary, #0F4590); }
+
+.si-cs-etape-prod { display: flex; align-items: center; gap: .65rem; padding: .55rem 0; border-bottom: 1px solid #F1F4F9; }
+.si-cs-etape-prod:last-child { border-bottom: 0; }
+.si-cs-etape-prod div { flex: 1; min-width: 0; }
+.si-cs-etape-prod b { display: block; font-size: .84rem; }
+.si-cs-etape-prod small { display: block; color: #6B7A90; font-size: .74rem; }
+.si-cs-etape-prod .si-cs-disque { width: 1.9rem; height: 1.9rem; font-size: .65rem; }
+.si-cs-etape-prod .si-cs-disque.personne-vide { background: #E3E8F0; color: #8A97AB; }
+.si-cs-etat-prod { flex: none; width: .95rem; height: .95rem; border-radius: 50%; background: #E3E8F0; }
+.si-cs-etat-prod.en_cours { background: #fff; border: 3px solid #E95B35; }
+.si-cs-etat-prod.faite { background: #1FA855; position: relative; }
+.si-cs-etat-prod.faite::after { content: ""; position: absolute; left: .3rem; top: .15rem; width: .3rem; height: .5rem; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+.si-cs-historique { display: grid; grid-template-columns: auto 1fr; gap: .45rem .8rem; font-size: .8rem; }
+.si-cs-historique small { color: #8A97AB; white-space: nowrap; font-size: .74rem; padding-top: .05rem; }
+
+.si-cs-client-carte { display: flex; align-items: center; gap: .65rem; }
+.si-cs-client-carte .si-cs-pastille { width: 2.3rem; height: 2.3rem; font-size: .75rem; border-radius: .55rem; }
+.si-cs-client-carte b { display: block; font-size: .9rem; }
+.si-cs-client-carte small { display: block; color: #6B7A90; font-size: .74rem; }
+.si-cs-contact { display: flex; align-items: center; gap: .45rem; font-size: .8rem; margin-top: .65rem; }
+.si-cs-contact .si-cs-disque { width: 1.4rem; height: 1.4rem; font-size: .55rem; background: #33415C; }
+.si-cs-alerte-solde { margin-top: .65rem; background: #FDE4E7; color: #C40D22; border-radius: .55rem; padding: .45rem .6rem; font-size: .76rem; }
+.si-cs-alerte-solde b { font-weight: 800; }
+
+.si-cs-paiements { font-size: .82rem; }
+.si-cs-paiements > div { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; padding: .3rem 0; }
+.si-cs-paiements span { color: #6B7A90; }
+.si-cs-paiements b { white-space: nowrap; }
+.si-cs-paiements .si-cs-reste { border-top: 1px solid #EEF1F6; margin-top: .25rem; padding-top: .5rem; }
+.si-cs-paiements .si-cs-reste span { color: #12213A; font-weight: 800; }
+.si-cs-paiements .si-cs-reste b { color: #DE1028; font-size: 1.05rem; font-weight: 800; }
+.si-cs-paiements .si-cs-reste.solde b { color: #1FA855; }
+.si-cs-paiements .si-pastille { font-size: .66rem; padding: .05rem .35rem; margin-left: .3rem; }
+
+.si-cs-conversation .si-cs-message { display: flex; gap: .5rem; align-items: flex-start; background: #F6F8FC; border-radius: .7rem; padding: .55rem .65rem; font-size: .8rem; }
+.si-cs-conversation .si-cs-message .si-cs-disque { width: 1.4rem; height: 1.4rem; font-size: .55rem; background: #33415C; }
+.si-cs-conversation .si-cs-message small { display: block; color: #8A97AB; font-size: .7rem; }
+.si-cs-chrono { display: inline-block; border-radius: .45rem; padding: .1rem .45rem; font-size: .7rem; font-weight: 800; }
+.si-cs-chrono.vert { background: #E2F6EA; color: #178444; }
+.si-cs-chrono.orange { background: #FFF1DC; color: #C46A00; }
+.si-cs-chrono.rouge { background: #FDE4E7; color: #C40D22; }
+
+/* ---------- Téléphone ---------- */
+@media (max-width: 1199.98px) {
+	.si-cs-cartes { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767.98px) {
+	.si-cs-tete h1 { font-size: 1.3rem; }
+	.si-cs-actions { width: 100%; }
+	.si-cs-actions .btn { flex: 1 1 auto; padding: .45rem .6rem; }
+	.si-cs-cartes { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+	.si-cs-carte { padding: .7rem .85rem; }
+	.si-cs-carte strong { font-size: 1.3rem; }
+	.si-cs-carte small { font-size: .7rem; }
+	.si-cs-carte-large { grid-column: 1 / -1; }
+	.si-cs-puces { flex-wrap: nowrap; overflow-x: auto; width: 100%; padding-bottom: .2rem; scrollbar-width: none; }
+	.si-cs-puces::-webkit-scrollbar { display: none; }
+	.si-cs-bascule { width: 100%; }
+	.si-cs-bascule > * { flex: 1; justify-content: center; }
+
+	/* La liste devient une pile de cartes. */
+	.si-cs-liste { padding: .2rem .7rem; }
+	.si-cs-table thead { display: none; }
+	.si-cs-table, .si-cs-table tbody { display: block; }
+	.si-cs-table tbody tr { display: grid; grid-template-columns: 1fr auto; gap: .25rem .6rem; padding: .75rem 0; border-bottom: 1px solid #EEF1F6; }
+	.si-cs-table tbody tr:last-child { border-bottom: 0; }
+	.si-cs-table tbody tr.si-cs-retard { background: #FFF6F7; margin: 0 -.7rem; padding: .75rem .7rem; }
+	.si-cs-liste .si-cs-table tbody td { display: block; padding: 0; border: 0 !important; background: none !important; font-size: .84rem; }
+	.si-cs-liste .si-cs-table td.si-cs-c-num { grid-column: 1; order: 0; }
+	.si-cs-liste .si-cs-table td.si-cs-c-etape { grid-column: 2; order: 1; text-align: right; }
+	.si-cs-liste .si-cs-table td.si-cs-c-client { grid-column: 1 / -1; order: 2; }
+	.si-cs-liste .si-cs-table td.si-cs-c-produit { grid-column: 1 / -1; order: 3; }
+	.si-cs-liste .si-cs-table td.si-cs-c-produit .si-cs-produit { max-width: none; white-space: normal; color: #5B6575; }
+	.si-cs-liste .si-cs-table td.si-cs-c-montant { grid-column: 1; order: 4; text-align: left; }
+	.si-cs-liste .si-cs-table td.si-cs-c-pour { grid-column: 2; order: 5; text-align: right; }
+	.si-cs-liste .si-cs-table td.si-cs-c-paye { grid-column: 1 / -1; order: 6; }
+	.si-cs-liste .si-cs-table td.si-cs-c-pour::before { content: "pour le "; color: #8A97AB; font-weight: 400; }
+	.si-cs-liste .si-cs-table td.si-cs-c-pour.sans-date { display: none; }
+	.si-cs-liste .si-cs-table td.si-cs-c-resp, .si-cs-liste .si-cs-table td.si-cs-c-actions { display: none; }
+	.si-cs-liste .si-cs-table td[colspan] { grid-column: 1 / -1; }
+	.si-cs-client span:last-child { max-width: none; }
+
+	.si-cs-tableau { grid-auto-columns: 84%; scroll-snap-type: x mandatory; margin: 0 -1rem; padding: 0 1rem .5rem; }
+	.si-cs-colonne { scroll-snap-align: start; }
+
+	.si-cs-titre h1 { font-size: 1.1rem; }
+	.si-cs-fiche-tete-page .si-cs-actions { display: grid; grid-template-columns: 1fr 1fr; }
+	.si-cs-frise li { flex: 0 0 4.6rem; font-size: .64rem; }
+}
+
+@media print {
+	.si-cs-actions, .si-cs-retour, .si-cs-conversation { display: none !important; }
+}
+/* Notes vocales de la commande (docs/messagerie-clients.md). */
+.si-cs-conversation .si-cs-vocale { margin-top: .35rem; }
+.si-cs-conversation .si-cs-vocale small { display: block; color: #8A97AB; font-size: .7rem; }

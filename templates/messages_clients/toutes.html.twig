@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{# Clients › Toutes les conversations (Direction) : chaque demande, son responsable, son état. #}
+{% block title %}Toutes les conversations{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% macro nomUser(u) %}{% if u %}{{ u.employe ? u.employe.nomComplet : u.username }}{% endif %}{% endmacro %}
+
+{% block body %}
+	{% import _self as mc %}
+	<form method="get" class="mc-filtres" role="search">
+		<label for="mc-q" class="visually-hidden">Rechercher</label>
+		<input type="search" name="q" id="mc-q" value="{{ q }}" class="form-control form-control-sm" placeholder="Client, n° de commande ou de devis…">
+		<label for="mc-statut" class="visually-hidden">État</label>
+		<select name="statut" id="mc-statut" class="form-select form-select-sm">
+			{% for v, l in {'': 'Toutes', attente: 'Réponse attendue', ouverte: 'Ouvertes', cloturee: 'Clôturées'} %}<option value="{{ v }}"{{ v == statut ? ' selected' }}>{{ l }}</option>{% endfor %}
+		</select>
+		<button class="btn btn-sm btn-primary">Filtrer</button>
+	</form>
+
+	<section class="mc-carte">
+		<h2>{{ liste|length }} conversation{{ liste|length > 1 ? 's' }}</h2>
+		{% if liste is empty %}
+			<p class="mc-vide">Aucune conversation ne correspond.</p>
+		{% else %}
+			<table class="mc-table">
+				<thead><tr><th>Client</th><th>Demande</th><th class="mc-cache-tel">Dernier message</th><th class="mc-cache-tel">Responsable</th><th>État</th></tr></thead>
+				<tbody>
+					{% for l in liste %}
+						{% set c = l.conversation %}
+						{% set m = derniers[c.id] ?? null %}
+						<tr>
+							<td><a href="{{ path('app_messages_clients_voir', {publicId: c.publicId}) }}"><b>{{ c.client.nomComplet }}</b></a></td>
+							<td>{{ c|conversation_titre }}</td>
+							<td class="mc-cache-tel"><small class="text-muted">{{ (c.dernierMessageLe ?? c.creeLe)|date('d/m H:i') }}</small> {% if m %}{{ m.estDeLAtelier ? 'Atelier : ' }}{{ m.texte|length > 60 ? m.texte|slice(0, 60) ~ '…' : m.texte }}{% endif %}</td>
+							<td class="mc-cache-tel">{{ c.assigneA ? mc.nomUser(c.assigneA) : '—' }}</td>
+							<td>
+								{% if c.estCloturee %}<span class="mc-puce gris">Clôturée{{ c.avis ? ' · ' ~ c.avis ~ ' ★' }}</span>
+								{% elseif l.chrono and l.chrono.retard > 0 %}<span class="mc-puce rouge">Retard {{ l.chrono.retard|duree_messagerie }}</span>
+								{% elseif l.chrono %}<span class="mc-puce orange">Attend {{ l.chrono.attente|duree_messagerie }}</span>
+								{% else %}<span class="mc-puce vert">Ouverte</span>{% endif %}
+							</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		{% endif %}
+	</section>
+{% endblock %}

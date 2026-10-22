@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{% set x = carte %}
+{% block title %}{{ x.numero }} · {{ x.titre }}{% if x.client %} · {{ x.client }}{% endif %}{% endblock %}
+
+{% block header_actions %}
+	{% if c.controle.commandeDetail %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_controle_pre_presse_controler', {id: c.controle.commandeDetail.id}) }}" class="btn btn-light btn-sm si-btn-entete">Fichiers</a></li>
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_montage_outil', {ligne: c.controle.commandeDetail.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-th-large me-1"></i>Monter</a></li>
+	{% endif %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_conception_poste', {id: c.id}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-desktop me-1"></i>Poste</a></li>
+	<li class="nav-item"><a href="{{ path('app_conception_tableau') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Mon tableau</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set token = csrf_token(jeton) %}
+	{% set etape = x.etape %}
+	{% include 'conception/_whatsapp.html.twig' %}
+	<div class="si-cp si-cp-voir">
+		<section class="card si-cp-bloc si-cp-frise">
+			<h2>Évolution de la conception</h2>
+			<ol>
+				{% for e in evenements %}
+					<li class="si-cp-ev-{{ e.type }}">
+						<time>{{ e.le|date(e.le|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}</time>
+						<i class="fas {{ e.type in ['retour', 'erreur'] ? 'fa-undo' : 'fa-check' }}"></i>
+						<div><b>{{ e.titre }}</b>{% if e.detail %}<small>{{ e.detail }}</small>{% endif %}{% for r in e.reperes ?? [] %}<small>Repère {{ loop.index }} : {{ r.t }}</small>{% endfor %}</div>
+					</li>
+				{% endfor %}
+				{% if c.enCours %}
+					<li class="si-cp-ev-encours"><time>{{ maintenant|date('H:i') }}</time><i class="fas fa-circle-notch"></i><div><b>En conception</b><small>chronomètre en marche depuis {{ c.demarreLe|date('H:i') }}</small></div></li>
+				{% endif %}
+			</ol>
+
+			{% if fichiers is not empty %}
+				<div class="si-cp-versions">
+					{% for f in fichiers %}
+						<div class="si-cp-version{{ loop.last and c.valideLe ? ' validee' }}">
+							<span class="si-cp-vignette"><i class="far fa-file-alt"></i></span>
+							<div><b>V{{ f.version }}{{ loop.last and c.valideLe ? ' · validée' }}</b><small>{{ f.nomOriginal|length > 28 ? f.nomOriginal|slice(0, 28) ~ '…' : f.nomOriginal }}</small></div>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
+
+			<div class="si-cp-actions" id="reponse">
+				{% if etape in ['a_faire', 'corrections'] or (etape == 'en_conception' and not c.enCours) %}
+					<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir"><button class="btn btn-danger btn-sm"><i class="fas fa-play me-1"></i>{{ etape == 'en_conception' ? 'Reprendre' : 'Démarrer' }}</button></form>
+				{% endif %}
+				{% if c.enCours %}
+					<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'pause'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir"><button class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-pause me-1"></i>Pause</button></form>
+				{% endif %}
+				{% if etape in ['en_conception', 'corrections'] %}
+					<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'bat'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir"><button class="btn btn-success btn-sm">Envoyer le BAT V{{ c.versions + 1 }}</button></form>
+				{% endif %}
+				{% if etape == 'bat_envoye' %}
+					<div class="si-cp-reponse">
+						<b>Réponse du client sur le BAT V{{ c.versions }}</b>
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'valider'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir"><button class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i>BAT validé par le client</button></form>
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'retour'}) }}" class="si-cp-retour">
+							<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir">
+							<input name="texte" maxlength="160" class="form-control form-control-sm" placeholder="Ce qu'il faut changer, ex. « mettre le numéro en plus gros »">
+							<label class="si-pg-case"><input type="radio" name="raison" value="client" checked> Demande du client (0 pt)</label>
+							<label class="si-pg-case"><input type="radio" name="raison" value="erreur"> Erreur à corriger</label>
+							<button class="btn btn-light btn-sm si-btn-entete">Correction demandée</button>
+						</form>
+					</div>
+				{% endif %}
+			</div>
+		</section>
+
+		<div class="si-cp-cote">
+			<section class="card si-cp-bloc">
+				<h2>Heures et délais</h2>
+				{% set reel = x.secondes %}
+				{% set prod = null %}
+				{% for e in evenements %}{% if e.type == 'production' %}{% set prod = e.le %}{% endif %}{% endfor %}
+				{% set fin = prod ?? c.valideLe %}
+				<table class="si-cp-table">
+					<thead><tr><th></th><th>Prévu</th><th>Réel</th></tr></thead>
+					<tbody>
+						<tr><td>Temps de conception</td><td>{{ c.tempsPrevu|duree_pointage }}</td><td class="{{ reel > c.tempsPrevu * 60 ? 'si-p-alerte' }}"><b>{{ reel > 0 ? (reel // 60)|duree_pointage : '—' }}</b></td></tr>
+						<tr><td>Échéance du BAT</td><td>{{ c.echeanceBat ? c.echeanceBat|date(c.echeanceBat|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : '—' }}</td><td>{% if c.premierBatLe %}<b class="{{ c.dansLesDelais is same as(false) ? 'si-p-alerte' : 'si-p-ok' }}">{{ c.premierBatLe|date(c.premierBatLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{{ c.dansLesDelais is same as(false) ? '' : ' ✓' }}</b>{% else %}—{% endif %}</td></tr>
+						<tr><td>Corrections</td><td>—</td><td>{{ c.changementsClient + c.erreurs > 0 ? (c.changementsClient ? c.changementsClient ~ ' client' : '') ~ (c.changementsClient and c.erreurs ? ' · ' : '') ~ (c.erreurs ? c.erreurs ~ ' erreur' ~ (c.erreurs > 1 ? 's') : '') : 'aucune' }}</td></tr>
+						<tr><td>Délai total brief → production</td><td>{{ c.echeanceBat ? ((c.echeanceBat.timestamp - c.creeLe.timestamp) // 60)|duree_pointage : '—' }}</td><td><b>{{ fin ? ((fin.timestamp - c.creeLe.timestamp) // 60)|duree_pointage : '—' }}</b></td></tr>
+					</tbody>
+				</table>
+				<p class="si-pg-note">Le chronomètre s'arrête pendant les pauses et l'attente du client.</p>
+				{% if c.valideLe is null %}
+					<details class="si-pg-modifier">
+						<summary>Difficulté, échéance et temps prévu</summary>
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'regler'}) }}" class="si-cp-regler">
+							<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="voir">
+							<label>Difficulté<select name="difficulte" class="form-select">{% for k, l in difficultes %}<option value="{{ k }}"{{ c.difficulte == k ? ' selected' }}>{{ l }} ({{ tempsPrevus[k]|duree_pointage }})</option>{% endfor %}</select></label>
+							<label>Échéance du BAT<input type="datetime-local" name="echeance" class="form-control" value="{{ c.echeanceBat ? c.echeanceBat|date('Y-m-d\\TH:i') }}"></label>
+							<label>Temps prévu (min)<input type="number" name="temps_prevu" min="5" max="1440" class="form-control" value="{{ c.tempsPrevu }}"></label>
+							<button class="btn btn-primary btn-sm">Enregistrer</button>
+						</form>
+					</details>
+				{% endif %}
+			</section>
+
+			{% if voirPoints %}
+				<section class="card si-cp-bloc">
+					<h2>Points {{ c.valideLe ? 'gagnés' : 'en jeu' }} <small>coefficient {{ c.difficulte }} ×{{ x.coef|number_format(x.coef == x.coef|round ? 0 : 1, ',') }}</small></h2>
+					<ul class="si-cp-points">
+						{% for cle, r in regles %}
+							{% if faits[cle] is defined %}
+								{% set q = faits[cle] %}{% set v = valeursRegles[cle] %}
+								<li><span>{{ r[0] }}{{ q > 1 ? ' × ' ~ q }}</span><b class="{{ v * q > 0 ? 'plus' : (v * q < 0 ? 'moins' : '') }}">{{ v * q > 0 ? '+' }}{{ v * q }} pt{{ (v * q)|abs > 1 ? 's' }}</b></li>
+							{% endif %}
+						{% endfor %}
+						<li class="si-cp-total"><span>Sous-total × {{ x.coef|number_format(x.coef == x.coef|round ? 0 : 1, ',') }}</span><b class="plus">{{ c.points is not null ? c.points : 'au plus ' ~ x.possibles }} pts</b></li>
+					</ul>
+					<p class="si-pg-note">Un changement d'avis du client ne coûte aucun point. Seule une erreur du graphiste (faute, mauvais format) en retire.{{ c.valideLe ? '' : ' Les points sont comptés à la validation du BAT.' }}</p>
+				</section>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}

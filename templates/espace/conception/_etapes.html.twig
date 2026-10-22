@@ -1,0 +1,6 @@
+{# Les 4 étapes de la demande (maquette DC01) : 1. Support, 2. Informations, 3. Graphiste ou IA, 4. Paiement. #}
+<ol class="dc-etapes" aria-label="Étapes de la demande">
+	{% for e in etapes %}
+		<li class="{{ e.etat }}"{{ e.etat == 'en_cours' ? ' aria-current="step"' }}>{{ e.numero }}<span class="long">. {{ e.libelle }}</span></li>
+	{% endfor %}
+</ol>

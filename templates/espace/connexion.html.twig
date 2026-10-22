@@ -1,0 +1,92 @@
+{% extends 'espace/_page.html.twig' %}
+
+{% block title %}Connexion à mon espace · Succès Imprim{% endblock %}
+
+{#
+	Maquette CX01 : le numéro et le mot de passe d'abord. Le code (par
+	e-mail, par SMS sans adresse) sert à la première connexion et au mot
+	de passe oublié ; un code d'accès donné par l'imprimerie sur WhatsApp
+	s'entre sur la page « Première connexion ».
+#}
+{% block contenu %}
+	<h1>Connexion à mon espace</h1>
+	<p class="si-espace-sous-titre">{{ mode == 'code' ? 'Première connexion ou mot de passe oublié : recevez un code par e-mail, ou par SMS.' : 'Avec votre numéro et votre mot de passe.' }}</p>
+
+	{% if code_actif %}
+	<nav class="si-espace-onglets" aria-label="Façon de se connecter">
+		<a href="{{ path('app_espace_connexion', {mode: 'mdp'}) }}" class="{{ mode == 'mdp' ? 'actif' }}" {{ mode == 'mdp' ? 'aria-current="page"' }}>Mot de passe</a>
+		<a href="{{ path('app_espace_connexion', {mode: 'code'}) }}" class="{{ mode == 'code' ? 'actif' }}" {{ mode == 'code' ? 'aria-current="page"' }}>Recevoir un code</a>
+	</nav>
+	{% endif %}
+
+	{% if erreur %}
+		<div class="si-espace-erreur" role="alert">{{ erreur|trans(erreur_donnees, 'security') }}</div>
+	{% endif %}
+
+	{% if mode == 'code' and code.attente and not app.request.query.has('changer') %}
+		{% set donnees = code.envoi %}
+		{% set parEmail = donnees.canal|default('sms') == 'email' %}
+		<p class="si-espace-info">
+			Code envoyé {{ parEmail ? 'par e-mail à' : 'par SMS au' }} <strong>{{ donnees.destination|default('') }}</strong>, valable 5 minutes.
+			<a href="{{ path('app_espace_connexion', {mode: 'code', changer: 1}) }}">Changer de numéro</a>
+		</p>
+		{% if donnees.envoye is defined and not donnees.envoye %}
+			<p class="si-espace-erreur">Le code n'a pas pu partir : {{ donnees.erreur }}</p>
+		{% endif %}
+		{% if donnees.codeDev|default(null) %}
+			<p class="si-espace-dev">Hors production, sans envoi : le code est <strong>{{ donnees.codeDev }}</strong>.</p>
+		{% endif %}
+
+		<form method="post" action="{{ path('app_espace_connexion') }}">
+			<input type="hidden" name="mode" value="code">
+			<input type="hidden" name="_csrf_token" value="{{ csrf_token('espace-connexion') }}">
+			<label>Code reçu {{ parEmail ? 'par e-mail' : 'par SMS' }}</label>
+			<div class="si-code" role="group" aria-label="Code à 6 chiffres">
+				{% for i in 1..6 %}
+					<input type="text" name="code[]" inputmode="numeric" pattern="[0-9]" maxlength="1" required aria-label="Chiffre {{ i }}"{{ i == 1 ? ' autocomplete="one-time-code" autofocus' }}>
+				{% endfor %}
+			</div>
+			<div class="si-code-bas">
+				<span class="js-renvoi" data-secondes="{{ code.renvoi }}"></span>
+				<button type="submit" form="form-renvoyer" class="si-lien-bouton js-bouton-renvoi" hidden>Renvoyer le code</button>
+			</div>
+			<label class="si-espace-case"><input type="checkbox" name="_remember_me" value="1" checked> Rester connecté sur cet appareil</label>
+			<button type="submit" class="si-espace-bouton">Se connecter</button>
+			<p class="si-espace-aide">{{ parEmail ? 'Pas reçu ? Regardez aussi dans les courriers indésirables.' : 'Pas reçu ? Vérifiez le numéro.' }} Ensuite, vous choisirez votre mot de passe.</p>
+		</form>
+		<form method="post" action="{{ path('app_espace_code') }}" id="form-renvoyer">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace-code') }}">
+			<input type="hidden" name="telephone" value="{{ code.telephone }}">
+		</form>
+	{% elseif mode == 'code' %}
+		<form method="post" action="{{ path('app_espace_code') }}">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace-code') }}">
+			{% include 'espace/_telephone.html.twig' with {valeur: dernier_numero} %}
+			<button type="submit" class="si-espace-bouton">Recevoir le code</button>
+			<p class="si-espace-aide">Le code part à l'adresse e-mail de votre compte, ou par SMS si vous n'en avez pas. Nouveau client ? <a href="{{ path('app_espace_creer_compte') }}">Créez votre compte</a>.</p>
+		</form>
+	{% else %}
+		<form method="post" action="{{ path('app_espace_connexion') }}">
+			<input type="hidden" name="mode" value="mdp">
+			<input type="hidden" name="_csrf_token" value="{{ csrf_token('espace-connexion') }}">
+			{% include 'espace/_telephone.html.twig' with {valeur: dernier_numero} %}
+			<label for="mot-de-passe">Mot de passe</label>
+			<div class="si-espace-mdp">
+				<input type="password" id="mot-de-passe" name="password" autocomplete="current-password" required>
+				<button type="button" class="js-afficher" data-cible="mot-de-passe">Afficher</button>
+			</div>
+			<label class="si-espace-case"><input type="checkbox" name="_remember_me" value="1" checked> Rester connecté sur cet appareil</label>
+			<button type="submit" class="si-espace-bouton">Se connecter</button>
+			{% if code_actif %}
+				<p class="si-espace-aide">Première connexion ou mot de passe oublié ? <a href="{{ path('app_espace_connexion', {mode: 'code'}) }}">Recevez un code</a> par e-mail ou par SMS.</p>
+			{% else %}
+				<p class="si-espace-aide">Première connexion ou mot de passe oublié ? Demandez votre accès à Succès Imprim.</p>
+			{% endif %}
+		</form>
+	{% endif %}
+
+	<p class="si-espace-aide">Code d'accès reçu de Succès Imprim sur WhatsApp ? <a href="{{ path('app_espace_premiere_connexion') }}">Première connexion</a>.</p>
+
+	<div class="si-espace-ou"><span>ou</span></div>
+	<a href="{{ path('app_espace_suivre') }}" class="si-espace-bouton-clair">▦ Suivre une commande avec son numéro</a>
+{% endblock %}

@@ -1,0 +1,225 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Réapprovisionnement (maquettes SU06 et SU07, docs/achats.md) : les
+	alertes en cours (stock bas, hausse de prix, fournisseur en retard,
+	commande oubliée), le tableau des articles avec leurs jours restants,
+	le délai du fournisseur plus la marge, l'intervalle habituel entre deux
+	commandes et la date de commande ; la courbe du stock d'un article et
+	les règles d'alerte. Sur téléphone (SU07), les alertes d'abord, en cartes.
+#}
+
+{% block title %}Réapprovisionnement{% endblock %}
+{% block page_title %}Réapprovisionnement{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/achats-reappro.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="#regles" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-cog me-1"></i>Règles d'alerte</a>
+	</li>
+	{% if not en_ligne %}
+		<li class="nav-item si-masque-mobile">
+			<form method="post" action="{{ path('app_reappro_prevenir') }}" class="d-inline">
+				<input type="hidden" name="_token" value="{{ csrf_token('reappro_prevenir') }}">
+				<button class="btn btn-light btn-sm si-btn-entete" title="Envoie les notifications sans attendre le passage de chaque heure"><i class="fas fa-bell me-1"></i>Prévenir maintenant</button>
+			</form>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set icones = {stock_bas: 'fa-box-open', prix: 'fa-chart-line', retard: 'fa-truck', oubli: 'fa-redo-alt'} %}
+	<div class="ac-page rp-page">
+		<h1 class="rp-titre">Fréquence des commandes et alertes</h1>
+
+		{# ---------- Alertes (SU07 sur téléphone) ---------- #}
+		<section class="ac-carte rp-alertes" aria-label="Alertes">
+			<h2>
+				Alertes
+				<small>· {{ alertes|length }} en cours{% if destinataires is not empty %} · {{ destinataires|map(d => d.nom)|join(', ') }} prévenu{{ destinataires|length > 1 ? 's' }}{% endif %}</small>
+			</h2>
+			{% if alertes is empty %}
+				<p class="ac-muet mb-0"><i class="fas fa-check-circle ac-vert me-1"></i>Aucune alerte : tout est commandé à temps.</p>
+			{% else %}
+				<ul class="rp-liste">
+					{% for a in alertes %}
+						<li class="rp-alerte {{ a.gravite }}">
+							<span class="rp-icone" aria-hidden="true"><i class="fas {{ icones[a.regle] }}"></i></span>
+							<div class="rp-texte">
+								<small class="rp-sorte">{{ a.regle == 'stock_bas' ? 'Stock bas' : (a.regle == 'prix' ? 'Hausse de prix' : (a.regle == 'retard' ? 'Fournisseur en retard' : 'Commande oubliée')) }}</small>
+								<b>{{ a.titre }}</b>
+								<span>{{ a.detail }}</span>
+							</div>
+							<div class="rp-actions">
+								{% if a.regle in ['stock_bas', 'oubli'] and a.achat is null %}
+									<a class="btn btn-danger btn-sm" href="{{ path('app_reappro_proposition', {fournisseur: a.fournisseur.id}) }}"><i class="fas fa-cart-plus me-1"></i>Commander</a>
+								{% else %}
+									<a class="btn btn-sm rp-btn" href="{{ path(a.route, a.parametres) }}">{{ a.action }}</a>
+								{% endif %}
+								<details class="rp-whatsapp">
+									<summary class="btn btn-sm rp-btn"><i class="fab fa-whatsapp me-1"></i>WhatsApp</summary>
+									<div>
+										{% for w in a.whatsapp %}
+											<a href="{{ w.url }}" target="_blank" rel="noopener">{{ w.libelle }}</a>
+										{% endfor %}
+									</div>
+								</details>
+							</div>
+						</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
+
+		{# ---------- Tableau des articles (SU06) ---------- #}
+		<section class="ac-carte" aria-label="Articles">
+			<h2>Articles <small>· jours restants, délai du fournisseur et date de commande</small></h2>
+			{% if lignes is empty %}
+				<p class="ac-muet mb-0">Aucun article avec un fournisseur et une consommation récente.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table ac-liste rp-table">
+						<thead>
+							<tr>
+								<th>Article</th>
+								<th>Fournisseur</th>
+								<th class="num">Stock</th>
+								<th class="num">Conso. / semaine</th>
+								<th class="num">Jours restants</th>
+								<th class="num">Délai + sécurité</th>
+								<th class="num">Commande tous les</th>
+								<th>Commander</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set unite = l.article.uniteCourte %}
+								{% set choisi = ligne and ligne.article.id == l.article.id %}
+								{% if l.enCours %}
+									{% set classe = 'commande' %}
+								{% elseif l.urgence in ['sous_minimum', 'maintenant'] %}
+									{% set classe = 'rouge' %}
+								{% elseif l.urgence == 'bientot' %}
+									{% set classe = 'orange' %}
+								{% elseif l.date and l.regroupe|default(false) %}
+									{% set classe = 'jaune' %}
+								{% else %}
+									{% set classe = 'vert' %}
+								{% endif %}
+								<tr class="{{ choisi ? 'rp-choisi' }}">
+									<td class="ac-pleine"><a class="ac-lien" href="{{ path('app_reappro_index', {article: l.article.id}) }}#courbe" title="Voir la courbe du stock">{{ l.nom }}</a></td>
+									<td data-libelle="Fournisseur" class="ac-muet">{{ l.fournisseur.nomCourt }}</td>
+									<td class="num" data-libelle="Stock">{{ m.q(l.disponible) }} {{ unite }}</td>
+									<td class="num" data-libelle="Conso. / semaine">{{ l.consoHebdo > 0 ? m.q(l.consoHebdo) ~ ' ' ~ unite : '—' }}</td>
+									<td class="num" data-libelle="Jours restants"><b class="rp-jours {{ classe }}">{{ l.joursRestants is null ? '—' : l.joursRestants ~ ' j' }}</b></td>
+									<td class="num" data-libelle="Délai + sécurité">{{ l.delai }} + {{ l.marge }} j</td>
+									<td class="num" data-libelle="Commande tous les">{{ l.intervalle is null ? '—' : l.intervalle|round ~ ' j' }}</td>
+									<td class="ac-pleine" data-libelle="Commander">
+										{% if l.enCours %}
+											<a class="rp-quand commande" href="{{ path('app_achat_show', {id: l.enCours.id}) }}"><i></i>{{ l.enCours.statut == 'en_route' ? 'en route' : 'commandé' }}{{ l.arrivee ? ' · arrivée ' ~ l.arrivee|date('d/m') }}</a>
+										{% elseif l.urgence in ['sous_minimum', 'maintenant'] %}
+											<span class="rp-quand rouge"><i></i>maintenant{{ l.urgence == 'sous_minimum' ? ' · sous le minimum' }}</span>
+										{% elseif l.date %}
+											{% set dans = ((l.date|date('U') - aujourdhui|date('U')) / 86400)|round %}
+											<span class="rp-quand {{ classe }}"><i></i>avant le {{ l.date|date('d/m') }}{{ classe == 'orange' ? ' · dans ' ~ dans ~ ' j' }}</span>
+										{% else %}
+											<span class="ac-muet">—</span>
+										{% endif %}
+										{% if l.brouillon and not l.enCours %}
+											<a class="rp-mini" href="{{ path('app_achat_edit', {id: l.brouillon.id}) }}">brouillon {{ l.brouillon.numero }}</a>
+										{% elseif l.aProposer %}
+											<a class="rp-mini" href="{{ path('app_reappro_proposition', {fournisseur: l.fournisseur.id}) }}">{{ l.texteQuantite }} · commander</a>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				{% if sans_conso > 0 %}
+					<p class="ac-note">{{ sans_conso }} autre{{ sans_conso > 1 ? 's' }} article{{ sans_conso > 1 ? 's' }} sans sortie de stock depuis 12 semaines, ni alerte.</p>
+				{% endif %}
+			{% endif %}
+		</section>
+
+		<div class="rp-grille">
+			{# ---------- Courbe du stock (SU06) ---------- #}
+			<section class="ac-carte rp-courbe" id="courbe" aria-label="Courbe du stock">
+				{% if ligne and courbe %}
+					{% set unite = ligne.article.uniteCourte %}
+					<h2>{{ ligne.nom }} : stock, commandes passées et prévision <small class="float-end">{{ unite }} · {{ 2 * 30 }} jours</small></h2>
+					<svg class="rp-svg" viewBox="-6 -4 {{ courbe.largeur + 12 }} {{ courbe.hauteur + 8 }}" role="img" aria-label="Stock de {{ ligne.nom }} sur 30 jours et prévision sur 30 jours">
+						{% if courbe.bande %}
+							<rect class="rp-bande" x="{{ courbe.bande.x }}" y="10" width="{{ max(courbe.bande.largeur, 2) }}" height="{{ courbe.hauteur - 32 }}"></rect>
+							<text class="rp-etiquette rouge" x="{{ courbe.bande.x + courbe.bande.largeur / 2 }}" y="22" text-anchor="start" dx="{{ -courbe.bande.largeur / 2 + 4 }}">{{ ligne.delai }} j de transport</text>
+						{% endif %}
+						{% if courbe.minimum %}
+							<line class="rp-minimum" x1="0" x2="{{ courbe.largeur }}" y1="{{ courbe.minimum }}" y2="{{ courbe.minimum }}"></line>
+							<text class="rp-etiquette rouge" x="{{ courbe.largeur }}" y="{{ courbe.minimum - 5 }}" text-anchor="end">minimum {{ m.q(ligne.article.stockMin) }} {{ unite }}</text>
+						{% endif %}
+						<line class="rp-axe" x1="0" x2="{{ courbe.largeur }}" y1="{{ courbe.hauteur - 22 }}" y2="{{ courbe.hauteur - 22 }}"></line>
+						<line class="rp-aujourdhui" x1="{{ courbe.aujourdhui }}" x2="{{ courbe.aujourdhui }}" y1="6" y2="{{ courbe.hauteur - 22 }}"></line>
+						<text class="rp-etiquette" x="{{ courbe.aujourdhui - 5 }}" y="12" text-anchor="end">aujourd'hui {{ aujourdhui|date('d/m') }}</text>
+						<polyline class="rp-passe" points="{{ courbe.passe }}"></polyline>
+						<polyline class="rp-prevision" points="{{ courbe.prevision }}"></polyline>
+						{% if courbe.commande %}
+							<circle class="rp-point-commande" cx="{{ courbe.commande.x }}" cy="{{ courbe.commande.y }}" r="5"></circle>
+							<text class="rp-etiquette orange" x="{{ courbe.commande.x - 6 }}" y="{{ courbe.commande.y - 9 }}" text-anchor="{{ courbe.commande.x > courbe.largeur * 0.6 ? 'end' : 'middle' }}">{{ courbe.jourCommande == 0 ? 'commander maintenant' : 'commander le ' ~ courbe.dateCommande|date('d/m') }}</text>
+						{% endif %}
+						{% if courbe.arrivee %}
+							<circle class="rp-point-arrivee" cx="{{ courbe.arrivee.x }}" cy="{{ courbe.arrivee.y }}" r="4"></circle>
+							<text class="rp-etiquette vert" x="{{ courbe.arrivee.x + 6 }}" y="{{ courbe.arrivee.y + 4 }}">arrivée</text>
+						{% endif %}
+						{% for g in courbe.dates %}
+							<text class="rp-date" x="{{ g.x }}" y="{{ courbe.hauteur }}" text-anchor="{{ loop.first ? 'start' : (loop.last ? 'end' : 'middle') }}">{{ g.date|date('d/m') }}</text>
+						{% endfor %}
+					</svg>
+					{% set passees = ligne.dates|sort|slice(-4) %}
+					<p class="ac-note">
+						{% if passees is not empty %}Commandes passées : {{ passees|map(d => d|date('d/m'))|join(', ') }}{% else %}Aucune commande sur 12 mois{% endif %}
+						{% if ligne.enCours %}
+							· <a href="{{ path('app_achat_show', {id: ligne.enCours.id}) }}">{{ ligne.enCours.numero }}</a> {{ ligne.enCours.statut == 'en_route' ? 'en route' : 'commandée' }}{{ ligne.arrivee ? ', arrivée prévue le ' ~ ligne.arrivee|date('d/m') }}
+						{% elseif ligne.date %}
+							· prochaine prévue le {{ ligne.date|date('d/m') }}
+						{% endif %}
+						{% if ligne.intervalle %} · intervalle moyen <b>{{ ligne.intervalle|round }} jours</b>{% endif %}
+						{% if ligne.tendance is not null %} · {{ ligne.tendance >= 5 ? 'consommation en hausse de ' ~ ligne.tendance ~ ' % sur 4 semaines' : (ligne.tendance <= -5 ? 'consommation en baisse de ' ~ (-ligne.tendance) ~ ' % sur 4 semaines' : 'consommation stable') }}{% endif %}.
+					</p>
+					<p class="rp-legende"><i class="passe"></i>stock réel <i class="prevision"></i>prévision au rythme actuel <i class="minimum"></i>minimum</p>
+				{% else %}
+					<h2>Courbe du stock</h2>
+					<p class="ac-muet mb-0">Choisissez un article dans le tableau.</p>
+				{% endif %}
+			</section>
+
+			{# ---------- Règles d'alerte (SU06) ---------- #}
+			<section class="ac-carte rp-regles" id="regles" aria-label="Règles d'alerte">
+				<h2>Règles d'alerte</h2>
+				{% set descriptions = {
+					stock_bas: 'quand jours restants ≤ délai fournisseur + ' ~ regles.stock_bas.seuil ~ ' j, ou sous le minimum',
+					prix: 'si un prix monte de ' ~ regles.prix.seuil ~ ' % ou plus',
+					retard: 'dès 1 jour après la date promise',
+					oubli: 'si l\'intervalle habituel est dépassé de ' ~ regles.oubli.seuil ~ ' %',
+				} %}
+				{% for cle, r in regles %}
+					<form method="post" action="{{ path('app_reappro_regle', {regle: cle}) }}" class="rp-regle">
+						<input type="hidden" name="_token" value="{{ csrf_token('reappro_regle' ~ cle) }}">
+						<input type="hidden" name="actif" value="{{ r.actif ? '0' : '1' }}">
+						<span class="rp-icone {{ cle }}" aria-hidden="true"><i class="fas {{ icones[cle] }}"></i></span>
+						<span class="rp-regle-texte"><b>{{ r.libelle }}</b><small>{{ descriptions[cle] }}</small></span>
+						<button type="submit" class="rp-interrupteur{{ r.actif ? ' actif' }}" role="switch" aria-checked="{{ r.actif ? 'true' : 'false' }}" aria-label="{{ r.actif ? 'Éteindre' : 'Allumer' }} l'alerte « {{ r.libelle }} »" title="{{ r.actif ? 'Éteindre' : 'Allumer' }}"><i></i></button>
+					</form>
+				{% endfor %}
+				<p class="rp-prevenir">
+					Prévenir : <b>{{ destinataires is empty ? 'la direction' : destinataires|map(d => d.nom)|join(', ') }}</b> (direction) · notification sur l'application et le téléphone, message WhatsApp prêt à envoyer.
+				</p>
+				<p class="ac-note mb-0">Seuils, marge de sécurité et regroupement : <a href="{{ path('app_reglages_parametres_panneau', {tuile: 'achats'}) }}">Réglages › Achats et fournisseurs</a>. Les alertes sont recalculées chaque heure.</p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

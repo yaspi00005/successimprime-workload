@@ -1,0 +1,64 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Tableau de bord (maquettes EC01 et EC05). Chaque bloc est un gabarit à
+	part (_tableau_*.html.twig) et ne s'affiche que s'il concerne la
+	personne : paiement et compte pour qui paie, devis pour qui valide,
+	rien qui écrive pour un compte « Lecture · suivi ».
+	_tableau_promotions.html.twig, s'il existe, prend place à droite.
+	Sur le site en ligne, la carte « Installez Succès Imprim »
+	(_installer_carte.html.twig) s'ajoute la première fois sur l'appareil.
+#}
+{% block title %}Tableau de bord{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+
+{% block contenu %}
+	<div class="ec-titre-page">
+		<h1 class="ec-bureau">Bonjour {{ prenom }} 👋</h1>
+		{% if droits.ecrit %}
+			<div class="ec-titre-actions ec-bureau">
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_produits') }}">Mes produits</a>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_fichiers') }}#depot">Déposer un fichier</a>
+			</div>
+		{% endif %}
+	</div>
+
+	{% include 'espace/app/_a_valider.html.twig' %}
+	{% include 'espace/app/_tableau_actions.html.twig' %}
+
+	<div class="ec-tableau">
+		<div class="ec-tableau-colonne">
+			{% include 'espace/app/_tableau_commandes.html.twig' %}
+			{% include 'espace/app/_tableau_activite.html.twig' %}
+		</div>
+		<div class="ec-tableau-colonne">
+			{% include 'espace/app/_tableau_compte.html.twig' %}
+			{% include 'espace/app/_tableau_promotions.html.twig' ignore missing %}
+			{% include 'espace/app/_tableau_recommander.html.twig' %}
+			{% include 'espace/app/_tableau_fidelite.html.twig' %}
+			{% include 'espace/app/_tableau_soutien.html.twig' %}
+			{% if not droits.ecrit %}
+				<div class="ec-carte">
+					<h2>Votre accès : lecture · suivi</h2>
+					<p class="ec-petit" style="margin:.2rem 0 .7rem">Vous suivez les commandes, les livraisons et les fichiers de {{ client.nomComplet }}. Pour commander, valider un BAT ou payer, adressez-vous à la personne qui gère le compte de votre entreprise.</p>
+					<a class="ec-lien" href="{{ path('app_espace_livraisons') }}">Voir les livraisons →</a>
+				</div>
+			{% endif %}
+			{% if droits.ecrit %}
+				{% set aDonner = avis_a_donner(client) %}
+				{% if aDonner > 0 %}
+					<a class="ec-carte ec-rangee" href="{{ path('app_espace_avis') }}">
+						<span><b>Votre avis compte</b><span class="ec-petit">{{ aDonner > 1 ? aDonner ~ ' avis à donner' : '1 avis à donner' }} : une minute pour nous aider à mieux vous servir.</span></span>
+						<span class="fl" aria-hidden="true">›</span>
+					</a>
+				{% endif %}
+			{% endif %}
+		</div>
+	</div>
+
+	{% if site_en_ligne() %}{% include 'espace/app/_installer_carte.html.twig' %}{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	{% if site_en_ligne() %}<script src="{{ asset('js/espace-installer.js') }}" defer></script>{% endif %}
+{% endblock %}

@@ -1,1428 +1,276 @@
 <!DOCTYPE html>
-
 <html lang="fr">
-
-	<head>
-
-		<meta charset="UTF-8">
-
-		<title>
-			{{ facture.numero|default('Facture') }}
-		</title>
-
-		<style>
-
-			@page {
-				margin: 18mm 15mm;
-			}
-
-			* {
-				box-sizing: border-box;
-			}
-
-			body {
-				margin: 0;
-
-				font-family: DejaVu Sans, sans-serif;
-
-				font-size: 9px;
-				line-height: 1.35;
-
-				color: #202938;
-			}
-
-
-			/*
-         * =========================================================
-         * HEADER
-         * =========================================================
-         */
-
-			.header-table {
-				width: 100%;
-				border-collapse: collapse;
-
-				margin-bottom: 16px;
-			}
-
-			.header-left {
-				width: 53%;
-
-				vertical-align: top;
-			}
-
-			.header-right {
-				width: 47%;
-
-				vertical-align: top;
-
-				text-align: right;
-			}
-
-
-			.logo-drepa {
-				max-width: 130px;
-				max-height: 65px;
-
-				margin-bottom: 6px;
-			}
-
-			.logo-mdg {
-				max-width: 82px;
-				max-height: 60px;
-			}
-
-			.logo-success {
-				max-width: 82px;
-				max-height: 60px;
-			}
-
-
-			.company-name {
-				margin-top: 3px;
-
-				font-size: 15px;
-				font-weight: bold;
-
-				color: #12346b;
-			}
-
-			.company-subtitle {
-				margin-top: 2px;
-
-				font-size: 8px;
-
-				color: #5f6b7a;
-			}
-
-			.company-info {
-				margin-top: 5px;
-
-				font-size: 8px;
-				line-height: 1.5;
-			}
-
-
-			/*
-         * =========================================================
-         * TITRE
-         * =========================================================
-         */
-
-			.document-title {
-				display: inline-block;
-
-				min-width: 220px;
-
-				padding: 10px 12px;
-
-				border: 1px solid #12346b;
-
-				text-align: left;
-			}
-
-			.document-type {
-				font-size: 14px;
-				font-weight: bold;
-
-				color: #12346b;
-			}
-
-			.document-number {
-				margin-top: 4px;
-
-				font-size: 11px;
-				font-weight: bold;
-			}
-
-
-			/*
-         * =========================================================
-         * INFORMATIONS
-         * =========================================================
-         */
-
-			.info-table {
-				width: 100%;
-				border-collapse: collapse;
-
-				margin-bottom: 14px;
-			}
-
-			.info-table td {
-				width: 50%;
-
-				vertical-align: top;
-
-				border: 1px solid #d5dce6;
-
-				padding: 9px;
-			}
-
-			.section-label {
-				margin-bottom: 5px;
-
-				font-size: 8px;
-				font-weight: bold;
-
-				text-transform: uppercase;
-
-				color: #12346b;
-			}
-
-			.client-name {
-				margin-bottom: 3px;
-
-				font-size: 11px;
-				font-weight: bold;
-			}
-
-
-			/*
-         * =========================================================
-         * TABLEAU
-         * =========================================================
-         */
-
-			.details-table {
-				width: 100%;
-				border-collapse: collapse;
-
-				margin-top: 5px;
-			}
-
-			.details-table th {
-				padding: 7px 5px;
-
-				border: 1px solid #12346b;
-
-				background: #12346b;
-
-				color: #ffffff;
-
-				font-size: 8px;
-
-				text-align: center;
-			}
-
-			.details-table td {
-				padding: 7px 5px;
-
-				border: 1px solid #cfd8e6;
-
-				vertical-align: top;
-			}
-
-			.text-center {
-				text-align: center;
-			}
-
-			.text-right {
-				text-align: right;
-			}
-
-			.font-bold {
-				font-weight: bold;
-			}
-
-			.designation {
-				font-weight: bold;
-			}
-
-			.description {
-				margin-top: 3px;
-
-				font-size: 7px;
-
-				color: #637083;
-			}
-
-
-			/*
-         * =========================================================
-         * BAS / TOTAUX
-         * =========================================================
-         */
-
-			.bottom-table {
-				width: 100%;
-				border-collapse: collapse;
-
-				margin-top: 14px;
-			}
-
-			.bottom-left {
-				width: 55%;
-
-				padding-right: 15px;
-
-				vertical-align: top;
-			}
-
-			.bottom-right {
-				width: 45%;
-
-				vertical-align: top;
-			}
-
-
-			.bank-box {
-				padding: 8px;
-
-				border: 1px solid #d5dce6;
-			}
-
-			.bank-title {
-				margin-bottom: 5px;
-
-				font-weight: bold;
-
-				color: #12346b;
-			}
-
-
-			.totals-table {
-				width: 100%;
-				border-collapse: collapse;
-			}
-
-			.totals-table td {
-				padding: 5px 6px;
-
-				border-bottom: 1px solid #e1e6ee;
-			}
-
-			.totals-table td:last-child {
-				text-align: right;
-
-				font-weight: bold;
-
-				white-space: nowrap;
-			}
-
-			.grand-total td {
-				padding-top: 8px;
-				padding-bottom: 8px;
-
-				border-top: 2px solid #12346b;
-
-				border-bottom: 2px solid #12346b;
-
-				font-size: 11px;
-				font-weight: bold;
-
-				color: #12346b;
-			}
-
-			.paid-row td {
-				color: #138a40;
-			}
-
-			.reste-row td {
-				color: #d23838;
-			}
-
-
-			/*
-         * =========================================================
-         * MAJORATION
-         * =========================================================
-         */
-
-			.majoration-row td {
-				color: #b16b00;
-			}
-
-
-			/*
-         * =========================================================
-         * QR / SIGNATURE
-         * =========================================================
-         */
-
-			.auth-table {
-				width: 100%;
-				border-collapse: collapse;
-
-				margin-top: 18px;
-			}
-
-			.auth-table td {
-				width: 33.33%;
-
-				padding: 5px;
-
-				vertical-align: bottom;
-
-				text-align: center;
-			}
-
-			.qr-image {
-				width: 72px;
-				height: 72px;
-			}
-
-			.signature-image {
-				max-width: 125px;
-				max-height: 68px;
-			}
-
-			.signature-title {
-				margin-bottom: 4px;
-
-				font-size: 8px;
-				font-weight: bold;
-			}
-
-			.auth-token {
-				margin-top: 4px;
-
-				font-size: 6px;
-
-				color: #667085;
-			}
-
-
-			/*
-         * =========================================================
-         * FOOTER
-         * =========================================================
-         */
-
-			.footer {
-				position: fixed;
-
-				bottom: -9mm;
-				left: 0;
-				right: 0;
-
-				border-top: 1px solid #d5dce6;
-
-				padding-top: 4px;
-
-				text-align: center;
-
-				font-size: 6px;
-
-				color: #667085;
-			}
-		</style>
-
-	</head>
-
-
-	<body>
-
-
-		{# ================================================================
-				   VARIABLES
-				   ================================================================ #}
-
-		{% set emetteur =
-    facture.emetteur
-    |default('mdg_success')
-%}
-
-		{% set details =
-    commande.commandesDetails
-    |default([])
-%}
-
-
-		{# ================================================================
-				   HEADER
-				   ================================================================ #}
-
-		<table class="header-table">
-
-			<tr>
-
-				<td class="header-left">
-
-					{% if emetteur == 'drepa' %}
-
-						{% if documents.drepa.logo %}
-
-							<img src="{{ documents.drepa.logo }}" class="logo-drepa" alt="Drepa Technologie">
-
-						{% endif %}
-
-						<div class="company-name">
-							DREPA TECHNOLOGIE
-						</div>
-
-						<div class="company-info">
-
-							Bamako, Sotuba ACI
-							<br>
-
-							Tél. :
-														                    +223 70 38 69 12
-							<br>
-
-							E-mail :
-														                    drepatechno@gmail.com
-							<br>
-
-							RCCM :
-														                    MA.BKO.2021.A.911
-							<br>
-
-							NIF :
-														                    081137682V
-
-						</div>
-
-
-					{% elseif emetteur == 'mdg' %}
-
-						{% if documents.mdg.logo %}
-
-							<img src="{{ documents.mdg.logo }}" class="logo-mdg" alt="Madial Group">
-
-						{% endif %}
-
-						<div class="company-name">
-							MADIAL GROUP SARL
-						</div>
-
-						<div class="company-info">
-
-							Bamako, Sotuba ACI
-							<br>
-
-							Tél. :
-														                    +223 70 38 69 12
-							<br>
-
-							RCCM :
-														                    MA.BKO.2026.B.1404
-							<br>
-
-							NIF :
-														                    081148957D
-
-						</div>
-
-					{% else %}
-
-						<table style="
-																                    width: 100%;
-																                    border-collapse: collapse;
-																                ">
-
-							<tr>
-
-								<td style="
-																				                            width: 90px;
-																				                            vertical-align: middle;
-																				                        ">
-
-									{% if documents.mdg.logo %}
-
-										<img src="{{ documents.mdg.logo }}" class="logo-mdg" alt="Madial Group">
-
-									{% endif %}
-
-								</td>
-
-								<td style="
-																				                            width: 90px;
-																				                            vertical-align: middle;
-																				                        ">
-
-									{% if documents.mdg.success_logo %}
-
-										<img src="{{ documents.mdg.success_logo }}" class="logo-success" alt="Success Imprim">
-
-									{% endif %}
-
-								</td>
-
-								<td></td>
-
-							</tr>
-
-						</table>
-
-
-						<div class="company-name">
-							MADIAL GROUP SARL
-						</div>
-
-						<div style="
-																                        font-size: 12px;
-																                        font-weight: bold;
-																                    ">
-							SUCCESS IMPRIM
-						</div>
-
-						<div class="company-subtitle">
-
-							Impression -
-														                    Communication visuelle -
-														                    Services graphiques
-
-						</div>
-
-						<div class="company-info">
-
-							Bamako, Sotuba ACI
-							<br>
-
-							Tél. :
-														                    +223 70 38 69 12
-							<br>
-
-							RCCM :
-														                    MA.BKO.2026.B.1404
-							<br>
-
-							NIF :
-														                    081148957D
-
-						</div>
-
-					{% endif %}
-
+<head>
+	<meta charset="UTF-8">
+	<title>{{ facture.numero|default('Facture') }}</title>
+	{#
+		Modèle unique de facture (maquettes I01 et I02) : l'en-tête, les
+		couleurs, les mentions et les QR viennent de l'entreprise émettrice
+		(Réglages › Entreprises). Mise en page en tableaux pour Dompdf.
+	#}
+	{% set c = entreprise.couleurs %}
+	<style>
+		@page { margin: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: DejaVu Sans, sans-serif; font-size: 8.6px; line-height: 1.4; color: #1f2937; }
+		.page { padding: 0 15mm 24mm; }
+		table { width: 100%; border-collapse: collapse; }
+		td { vertical-align: top; }
+		.bandes td { height: 5px; padding: 0; }
+		.muted { color: #6b7280; }
+		.fort { font-weight: bold; }
+		.droite { text-align: right; }
+		.centre { text-align: center; }
+
+		.entete { margin-top: 9mm; }
+		.logo { max-height: 48px; max-width: 190px; }
+		.nom { font-size: 11px; font-weight: bold; margin-top: 6px; color: #111827; }
+		.coord { font-size: 7.6px; color: #4b5563; margin-top: 2px; }
+		.titre { font-size: 24px; font-weight: bold; letter-spacing: .5px; color: {{ c[1] }}; }
+		.numero { font-size: 11px; font-weight: bold; color: #111827; }
+		.dates { font-size: 7.8px; color: #4b5563; margin-top: 3px; }
+
+		.bloc-client { background: #f3f5f9; padding: 9px 11px; }
+		.etiquette { font-size: 6.8px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; }
+		.client-nom { font-size: 11px; font-weight: bold; color: #111827; margin-top: 2px; }
+		.cadre-qr { border: 1.4px solid {{ c[0] }}; padding: 6px; }
+		.cadre-qr img { width: 58px; height: 58px; }
+		.cadre-qr b { color: {{ c[0] }}; }
+
+		.lignes { margin-top: 12px; }
+		.lignes th { background: {{ c[0] }}; color: #fff; font-size: 7.6px; text-align: left; padding: 6px 7px; }
+		.lignes th.droite { text-align: right; }
+		.lignes th.centre { text-align: center; }
+		.lignes td { padding: 6px 7px; border-bottom: 1px solid #e5e7eb; }
+		.lignes tr.paire td { background: #f8fafc; }
+		.designation { font-weight: bold; color: #111827; }
+		.designation .nc-technique { font-weight: normal; font-size: 0.85em; color: #6B7280; }
+		.detail { font-size: 7.2px; color: #6b7280; }
+
+		.totaux td { padding: 4px 7px; border-bottom: 1px solid #eef0f4; }
+		.totaux .final td { background: {{ c[0] }}; color: #fff; font-size: 11px; font-weight: bold; padding: 7px; border: 0; }
+		.lettres { background: #f3f5f9; padding: 7px 10px; margin-top: 12px; font-size: 8px; }
+		.objet { margin-top: 10px; font-size: 9px; color: #111827; }
+		.objet b { color: {{ c[0] }}; }
+		.nb { border: 1px solid #d5dce6; border-left: 3px solid {{ c[0] }}; padding: 6px 9px; margin-top: 12px; font-size: 7.8px; color: #374151; }
+		.nb b { color: #111827; }
+
+		.cadre-om { border: 1.4px solid #f97316; padding: 7px; }
+		.cadre-om img { width: 58px; height: 58px; }
+		.signature img { max-height: 70px; max-width: 160px; }
+		.annulee { color: #b91c1c; font-size: 13px; font-weight: bold; border: 2px solid #b91c1c; padding: 4px 10px; display: inline-block; }
+
+		.pied { position: fixed; bottom: 8mm; left: 15mm; right: 15mm; border-top: 1px solid #e5e7eb; padding-top: 5px; font-size: 6.8px; color: #6b7280; }
+		.pied img { height: 18px; }
+	</style>
+</head>
+<body>
+	{% if facture.etat == 'brouillon' %}<div style="position: fixed; top: 38%; left: 8%; font-size: 110px; font-weight: bold; color: rgba(222, 16, 40, 0.12); transform: rotate(-30deg);">BROUILLON</div>{% endif %}
+	{% set estTiers = facture.facturerAUnTiers|default(false) %}
+	{% set details = commande.commandesDetails|default([]) %}
+	{% set avecRemise = details|filter(d => d.montantRemise|default(0) > 0)|length > 0 %}
+
+	<table class="bandes"><tr>
+		{% for couleur in c %}<td style="background: {{ couleur }}"></td>{% endfor %}
+	</tr></table>
+
+	<div class="pied">
+		<table><tr>
+			{% if images.logoPied %}<td style="width: 26px; vertical-align: middle"><img src="{{ images.logoPied }}" alt=""></td>{% endif %}
+			<td style="vertical-align: middle">
+				{% if entreprise.nomCommercial and entreprise.mention %}{{ entreprise.nomCommercial }} · {{ entreprise.mention }}<br>{% endif %}
+				{{ entreprise.mentionsLegales }}
+				{% if facture.codeSuivi %} · Code de vérification : <b>{{ facture.codeSuivi }}</b>{% endif %}
+			</td>
+		</tr></table>
+	</div>
+
+	<div class="page">
+		<table class="entete"><tr>
+			<td style="width: 58%">
+				{% if images.logo %}<img src="{{ images.logo }}" class="logo" alt="{{ entreprise.nomAffiche }}">{% endif %}
+				<div class="nom">{{ entreprise.nomAffiche }}</div>
+				<div class="coord">
+					{% if entreprise.nomCommercial %}{{ entreprise.mention ?: 'Nom commercial de ' ~ entreprise.raisonSociale }}<br>{% elseif entreprise.mention %}{{ entreprise.mention }}<br>{% endif %}
+					{% if entreprise.activite %}{{ entreprise.activite }}<br>{% endif %}
+					{{ [entreprise.adresse, entreprise.rccm ? 'RCCM ' ~ entreprise.rccm, entreprise.nif ? 'NIF ' ~ entreprise.nif]|filter(v => v)|join(' · ') }}<br>
+					{{ [entreprise.telephone, entreprise.email, entreprise.siteWeb]|filter(v => v)|join(' · ') }}
+				</div>
+			</td>
+			<td class="droite">
+				<div class="titre">{{ facture.estProforma ? 'PROFORMA' : (facture.estAcompte ? 'FACTURE D\'ACOMPTE' : 'FACTURE') }}</div>
+				<div class="numero">{{ facture.numero ? 'N° ' ~ facture.numero : 'N° attribué à la validation' }}</div>
+				<div class="dates">
+					Date : {{ facture.dateFacture|date('d/m/Y') }}<br>
+					Commande : {{ commande.numero|default('CMD-' ~ commande.id) }}<br>
+					{% if commande.bonCommande %}Votre bon de commande : {{ commande.bonCommande }}<br>{% endif %}
+					{% if commande.demandeePar %}Commandé par : {{ commande.demandeePar }}<br>{% endif %}
+					Échéance : {{ facture.dateEcheance ? facture.dateEcheance|date('d/m/Y') : 'à réception' }}
+				</div>
+				{% if facture.estAnnulee %}<div style="margin-top: 6px"><span class="annulee">ANNULÉE</span></div>{% endif %}
+			</td>
+		</tr></table>
+
+		<table style="margin-top: 12px"><tr>
+			<td class="bloc-client" style="width: {{ qrSuivi ? '62%' : '100%' }}">
+				<div class="etiquette">{{ estTiers ? 'Facturé à' : 'Client' }}</div>
+				{% if estTiers %}
+					<div class="client-nom">{{ facture.nomFacturation|default('Payeur') }}</div>
+					{{ [facture.adresseFacturation, facture.telephoneFacturation, facture.emailFacturation]|filter(v => v)|join(' · ') }}
+					{% if client %}<div class="muted" style="font-size: 7px; margin-top: 3px">Demandeur : {{ client.raisonSociale|default(client.nomComplet|default(client.nom|default('Client'))) }}</div>{% endif %}
+				{% elseif client %}
+					<div class="client-nom">{{ client.raisonSociale|default(client.nomComplet|default(client.nom|default('Client'))) }}</div>
+					{{ [client.adresse|default(null), client.telephone|default(null), client.email|default(null)]|filter(v => v)|join(' · ') }}
+				{% endif %}
+			</td>
+			{% if qrSuivi %}
+				<td style="width: 3%"></td>
+				<td class="cadre-qr">
+					<table><tr>
+						<td style="width: 64px"><img src="{{ qrSuivi }}" alt="QR de suivi"></td>
+						<td style="vertical-align: middle"><b>Suivre cette facture en ligne</b><br><span class="muted">Statut, paiement, PDF et vérification d'authenticité</span></td>
+					</tr></table>
 				</td>
-
-
-				<td class="header-right">
-
-					<div class="document-title">
-
-						<div class="document-type">
-
-							{% if facture.estProforma %}
-
-								FACTURE PRO-FORMA
-
-							{% else %}
-
-								FACTURE
-
-							{% endif %}
-
-						</div>
-
-
-						<div class="document-number">
-
-							{{
-                        facture.numero
-                        |default(
-                            'FAC-' ~ facture.id
-                        )
-                    }}
-
-						</div>
-
-
-						<div style="margin-top: 7px;">
-
-							Date :
-							<strong>
-
-								{{
-                            facture.dateFacture
-                            |date('d/m/Y')
-                        }}
-
-							</strong>
-
-						</div>
-
-
-						{% if facture.dateEcheance %}
-
-							<div>
-
-								Échéance :
-								<strong>
-
-									{{
-                                facture.dateEcheance
-                                |date('d/m/Y')
-                            }}
-
-								</strong>
-
-							</div>
-
-						{% endif %}
-
-					</div>
-
-				</td>
-
-			</tr>
-
-		</table>
-
-
-		{# ================================================================
-				   CLIENT / COMMANDE
-				   ================================================================ #}
-
-		<table class="info-table">
-
-			<tr>
-
-				<td>
-
-					{% set facturationATiers = facture.facturerAUnTiers|default(false) %}
-
-					<div class="section-label">
-						{{ facturationATiers ? 'Adresse de facturation' : 'Adresse du client' }}
-					</div>
-
-
-					{% if facturationATiers %}
-
-						<div class="client-name">
-
-							{{ facture.nomFacturation|default('Payeur') }}
-
-						</div>
-
-
-						{% if facture.adresseFacturation|default('') %}
-
-							{{ facture.adresseFacturation }}
-							<br>
-
-						{% endif %}
-
-
-						{% if facture.telephoneFacturation|default('') %}
-
-							Tél. :
-							{{ facture.telephoneFacturation }}
-							<br>
-
-						{% endif %}
-
-
-						{% if facture.emailFacturation|default('') %}
-
-							E-mail :
-							{{ facture.emailFacturation }}
-
-						{% endif %}
-
-
-						{% if client %}
-
-							<div style="margin-top: 6px; font-size: 6px; color: #667085;">
-								Demandeur :
-								{{
-                            client.raisonSociale
-                            |default(
-                                client.nomComplet
-                                |default(
-                                    client.nom
-                                    |default('Client')
-                                )
-                            )
-                        }}
-							</div>
-
-						{% endif %}
-
-					{% elseif client %}
-
-						<div class="client-name">
-
-							{{
-                        client.raisonSociale
-                        |default(
-                            client.nomComplet
-                            |default(
-                                client.nom
-                                |default('Client')
-                            )
-                        )
-                    }}
-
-						</div>
-
-
-						{% if client.adresse|default('') %}
-
-							{{ client.adresse }}
-							<br>
-
-						{% endif %}
-
-
-						{% if client.telephone|default('') %}
-
-							Tél. :
-							{{ client.telephone }}
-							<br>
-
-						{% endif %}
-
-
-						{% if client.email|default('') %}
-
-							E-mail :
-							{{ client.email }}
-
-						{% endif %}
-
-					{% endif %}
-
-				</td>
-
-
-				<td>
-
-					<div class="section-label">
-						Commande
-					</div>
-
-					Référence :
-
-					<strong>
-
-						{{
-                    commande.numero
-                    |default(
-                        'CMD-' ~ commande.id
-                    )
-                }}
-
-					</strong>
-
-					<br>
-
-
-					{% if commande.dateCommande|default(null) %}
-
-						Date :
-
-						<strong>
-
-							{{
-                        commande.dateCommande
-                        |date('d/m/Y')
-                    }}
-
-						</strong>
-
-						<br>
-
-					{% endif %}
-
-
-					Type :
-
-					<strong>
-
-						{{
-                    facture.typeDocumentLabel
-                }}
-
-					</strong>
-
-					<br>
-
-
-					Émetteur :
-
-					<strong>
-
-						{{
-                    facture.emetteurLabel
-                }}
-
-					</strong>
-
-				</td>
-
-			</tr>
-
-		</table>
-
-
-		{# ================================================================
-				   DÉTAILS
-				   ================================================================ #}
-
-		<table class="details-table">
-
-			<thead>
-
-				<tr>
-
-					<th style="width: 5%;">
-						N°
-					</th>
-
-					<th style="width: 35%;">
-						Désignation
-					</th>
-
-					<th style="width: 8%;">
-						Qté
-					</th>
-
-					<th style="width: 18%;">
-						Prix unitaire
-					</th>
-
-					<th style="width: 10%;">
-						Remise
-					</th>
-
-					<th style="width: 24%;">
-						Total
-					</th>
-
-				</tr>
-
-			</thead>
-
-
-			<tbody>
-
-				{% for detail in details %}
-
-					{% set totalLigne =
-                detail.totalTtc
-                |default(
-                    detail.totalHt
-                    |default(0)
-                )
-            %}
-
-					<tr>
-
-						<td class="text-center">
-							{{ loop.index }}
-						</td>
-
-
-						<td>
-
-							<div class="designation">
-
-								{{
-                            detail.designation
-                            |default('Prestation')
-                        }}
-
-							</div>
-
-
-							{% if detail.observation|default('') %}
-
-								<div class="description">
-
-									{{
-                                detail.observation
-                            }}
-
-								</div>
-
-							{% endif %}
-
-						</td>
-
-
-						<td class="text-center">
-
-							{{
-                        detail.quantite
-                        |default(1)
-                    }}
-
-							{% if detail.modeCalcul|default('') == 'metre_carre' %}
-
-								<br>
-
-								<span style="font-size: 9px; color: #666;">
-									(
-									{{
-                                detail.surfaceTotale|default(0)
-                                |number_format(2, ',', ' ')
-                            }}
-									m²)
-								</span>
-
-							{% endif %}
-
-						</td>
-
-
-						<td class="text-right">
-
-							{{
-                        detail.prixUnitaire
-                        |default(0)
-                        |number_format(
-                            0,
-                            ',',
-                            ' '
-                        )
-                    }}
-							F CFA
-
-						</td>
-
-
-						<td class="text-center">
-
-							{% if detail.montantRemise|default(0) > 0 %}
-								{{
-                            detail.montantRemise
-                            |number_format(0, ',', ' ')
-                        }}
-								F CFA
-							{% else %}
-								—
-							{% endif %}
-
-						</td>
-
-
-						<td class="
-																                    text-right
-																                    font-bold
-																                ">
-
-							{{
-                        totalLigne
-                        |number_format(
-                            0,
-                            ',',
-                            ' '
-                        )
-                    }}
-							F CFA
-
-						</td>
-
-					</tr>
-
-
-				{% else %}
-
-					<tr>
-
-						<td colspan="6" class="text-center">
-							Aucun détail disponible.
-						</td>
-
-					</tr>
-
-				{% endfor %}
-
-			</tbody>
-
-		</table>
-
-
-		{# ================================================================
-				   BANQUE + TOTAUX
-				   ================================================================ #}
-
-		<table class="bottom-table">
-
-			<tr>
-
-				<td class="bottom-left">
-
-					<div class="bank-box">
-
-						<div class="bank-title">
-							Nos coordonnées bancaires
-						</div>
-
-
-						{% if emetteur == 'drepa' %}
-
-							UBA MALI
-							<br>
-
-							Compte :
-														                    ML206/01004/704040002757/27
-
-						{% else %}
-
-							ECOBANK MALI
-							<br>
-
-							Compte bancaire :
-														                    152248617001
-
-						{% endif %}
-
-					</div>
-
-
-					<div style="
-														margin-top: 10px;
-														padding: 7px;
-														border: 1px solid #d5dce6;
-														font-size: 9px;
-														color: #666;
-													">
-
-						<strong>
-							Paiement Orange Money / Wave (mobile money) :
-						</strong>
-
-						<br>
-
-						Frais de transaction et fonds de soutien à la charge du client en cas de paiement par mobile money.
-
-					</div>
-
-
-					{% if facture.observation|default('') %}
-
-						<div style="
-																                    margin-top: 10px;
-																                    padding: 7px;
-																                    border: 1px solid #d5dce6;
-																                ">
-
-							<strong>
-								Observation :
-							</strong>
-
-							<br>
-
-							{{ facture.observation }}
-
-						</div>
-
-					{% endif %}
-
-				</td>
-
-
-				<td class="bottom-right">
-
-					<table class="totals-table">
-
-						<tr>
-
-							<td>
-								Total HT
-							</td>
-
-							<td>
-
-								{{
-                            facture.totalHt
-                            |number_format(
-                                0,
-                                ',',
-                                ' '
-                            )
-                        }}
-								F CFA
-
-							</td>
-
-						</tr>
-
-
-						{% if facture.remise > 0 %}
-
-							<tr>
-
-								<td>
-									Remise
-								</td>
-
-								<td>
-
-									-
-									{{
-                                facture.remise
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
-						{% endif %}
-
-
-						{% if facture.montantTva > 0 %}
-
-							<tr>
-
-								<td>
-									TVA
-									{% if facture.tva > 0 %}
-										({{ facture.tva }}
-										%)
-									{% endif %}
-								</td>
-
-								<td>
-
-									{{
-                                facture.montantTva
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
-						{% endif %}
-
-
-						{% if
-                    facture.surfacturation
-                    and facture.montantSurfacturation > 0
-                %}
-
-							<tr class="majoration-row">
-
-								<td>
-
-									Majoration
-
-									{% if facture.tauxSurfacturation %}
-
-										({{ facture.tauxSurfacturation }}
-										%)
-
-									{% endif %}
-
-								</td>
-
-								<td>
-
-									+
-									{{
-                                facture.montantSurfacturation
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
-						{% endif %}
-
-
-						<tr class="grand-total">
-
-							<td>
-								TOTAL TTC
-							</td>
-
-							<td>
-
-								{{
-                            facture.totalTtc
-                            |number_format(
-                                0,
-                                ',',
-                                ' '
-                            )
-                        }}
-								F CFA
-
-							</td>
-
-						</tr>
-
-
-						{% if facture.comptabilisee %}
-
-							<tr class="paid-row">
-
-								<td>
-									Déjà payé
-								</td>
-
-								<td>
-
-									{{
-                                facture.montantPaye
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
-
-							<tr class="reste-row">
-
-								<td>
-									Reste à payer
-								</td>
-
-								<td>
-
-									{{
-                                facture.resteAPayer
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
-						{% endif %}
-
-					</table>
-
-				</td>
-
-			</tr>
-
-		</table>
-
-
-		{# ================================================================
-				   AUTHENTICITÉ / SIGNATURE
-				   ================================================================ #}
-
-		<table class="auth-table">
-
-			<tr>
-
-				<td>
-
-					<div class="signature-title">
-						AUTHENTICITÉ
-					</div>
-
-
-					{% if qrCode %}
-
-						<img src="{{ qrCode }}" class="qr-image" alt="QR Code">
-
-					{% endif %}
-
-
-					<div class="auth-token">
-
-						{{
-                    facture.tokenAuthenticite
-                    |default('')
-                }}
-
-					</div>
-
-				</td>
-
-
-				<td>
-
-					<div class="signature-title">
-
-						Cachet et signature du client
-
-					</div>
-
-					<div style="
-												                height: 62px;
-												            "></div>
-
-				</td>
-
-
-				<td>
-
-					<div class="signature-title">
-
-						Signature et cachet électronique
-
-					</div>
-
-
-					{% if emetteur == 'drepa' %}
-
-						{% if documents.drepa.signature %}
-
-							<img src="{{ documents.drepa.signature }}" class="signature-image" alt="Signature Drepa">
-
-						{% endif %}
-
-					{% else %}
-
-						{% if documents.mdg.signature %}
-
-							<img src="{{ documents.mdg.signature }}" class="signature-image" alt="Signature Madial Group">
-
-						{% endif %}
-
-					{% endif %}
-
-				</td>
-
-			</tr>
-
-		</table>
-
-
-		{# ================================================================
-				   FOOTER
-				   ================================================================ #}
-
-		<div class="footer">
-
-			{% if emetteur == 'drepa' %}
-
-				DREPA TECHNOLOGIE -
-								        SOTUBA ACI -
-								        RCCM MA.BKO.2021.A.911 -
-								        NIF 081137682V -
-								        UBA MALI ML206/01004/704040002757/27
-
-			{% else %}
-
-				MADIAL GROUP SARL -
-								        SUCCESS IMPRIM -
-								        SOTUBA ACI -
-								        RCCM MA.BKO.2026.B.1404 -
-								        NIF 081148957D -
-								        ECOBANK 152248617001
-
 			{% endif %}
+		</tr></table>
 
-		</div>
+		{# Objet de la commande (« Impressions »…), copié sur la facture à sa création. #}
+		{% if facture.objet|default(null) %}<div class="objet"><b>Objet :</b> {{ facture.objet }}</div>{% endif %}
 
+		{% set fraisLivraison = facture.fraisLivraison|default(0) %}
+		<table class="lignes">
+			<thead><tr>
+				<th class="centre" style="width: 5%">N°</th>
+				<th>Désignation</th>
+				<th class="centre" style="width: 9%">Qté</th>
+				<th class="droite" style="width: 15%">PU (F)</th>
+				{% if avecRemise %}<th class="droite" style="width: 12%">Remise (F)</th>{% endif %}
+				<th class="droite" style="width: 17%">Total (F)</th>
+			</tr></thead>
+			<tbody>
+				{# Facture d'acompte : une seule ligne, la part de la commande ; le détail reste sur la facture finale. #}
+				{% if facture.estAcompte %}
+					{% set details = [] %}
+					{% set fraisLivraison = 0 %}
+					<tr>
+						<td class="centre muted">1</td>
+						<td><div class="designation">Acompte de {{ facture.pourcentageAcompte }} % sur la commande {{ commande.numero }}</div>
+							<div class="detail">Total de la commande : {{ commande.totalTtc|number_format(0, ',', ' ') }} F TTC. Acompte déduit de la facture finale.</div></td>
+						<td class="centre">1</td>
+						<td class="droite">{{ (facture.totalHt)|number_format(0, ',', ' ') }}</td>
+						{% if avecRemise %}<td class="droite">—</td>{% endif %}
+						<td class="droite fort">{{ (facture.totalHt)|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% endif %}
+				{% for detail in details %}
+					<tr class="{{ loop.index is even ? 'paire' }}">
+						<td class="centre muted">{{ loop.index }}</td>
+						<td>
+							<div class="designation">{{ detail|ligne_client }}</div>
+							{% if detail.observation|default('') %}<div class="detail">{{ detail.observation }}</div>{% endif %}
+						</td>
+						<td class="centre">
+							{{ detail.quantite|default(1) }}
+							{% if detail.modeCalcul|default('') == 'metre_carre' %}<div class="detail">{{ detail.surfaceTotale|default(0)|number_format(2, ',', ' ') }} m²{% if pieces_m2_ligne(detail, true) %} · {{ pieces_m2_ligne(detail, true) }}{% endif %}</div>{% endif %}
+						</td>
+						<td class="droite">{{ detail.prixUnitaire|default(0) > 0 ? detail.prixUnitaire|number_format(0, ',', ' ') : '—' }}</td>
+						{% if avecRemise %}<td class="droite">{{ detail.montantRemise|default(0) > 0 ? '− ' ~ (detail.montantRemise)|number_format(0, ',', ' ') : '—' }}</td>{% endif %}
+						<td class="droite fort">{{ (detail.totalTtc|default(detail.totalHt|default(0)))|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% else %}
+					{% if not facture.estAcompte %}<tr><td colspan="6" class="centre muted">Aucune ligne.</td></tr>{% endif %}
+				{% endfor %}
+				{# Frais de livraison : une ligne visible, déjà comprise dans le total HT. #}
+				{% if fraisLivraison > 0 %}
+					<tr class="{{ (details|length + 1) is even ? 'paire' }}">
+						<td class="centre muted">{{ details|length + 1 }}</td>
+						<td><div class="designation">Livraison</div></td>
+						<td class="centre">1</td>
+						<td class="droite">{{ fraisLivraison|number_format(0, ',', ' ') }}</td>
+						{% if avecRemise %}<td class="droite">—</td>{% endif %}
+						<td class="droite fort">{{ fraisLivraison|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% endif %}
+			</tbody>
+		</table>
 
-	</body>
+		<table style="margin-top: 10px"><tr>
+			<td style="width: 52%; padding-right: 14px">
+				{% if facture.observation|default('') %}
+					<div class="etiquette">Observation</div>
+					<div style="margin-bottom: 8px">{{ facture.observation }}</div>
+				{% endif %}
+				{% if entreprise.banque or entreprise.compteBancaire %}
+					<div class="etiquette">Coordonnées bancaires</div>
+					<div style="margin-bottom: 8px">{{ entreprise.banque }} {{ entreprise.compteBancaire }}</div>
+				{% endif %}
+			</td>
+			<td>
+				<table class="totaux">
+					{# Code promo de la commande (docs/promotions.md) : déjà déduit des lignes, montré à part. #}
+					{% set remiseCode = commande.remiseCodePromo|default(0) %}
+					{% if remiseCode > 0 %}
+						<tr><td>Total HT avant code promo</td><td class="droite">{{ (facture.totalHt + remiseCode)|number_format(0, ',', ' ') }} F</td></tr>
+						<tr><td>Code promo {{ commande.libelleCodePromo }}</td><td class="droite">− {{ remiseCode|number_format(0, ',', ' ') }} F</td></tr>
+					{% endif %}
+					{# Remise globale : une ligne visible, déduite du sous-total HT ; Total HT = après remise, TTC = HT + TVA. #}
+					{% if facture.remise > 0 %}
+						<tr><td>Sous-total HT</td><td class="droite">{{ (facture.totalHt)|number_format(0, ',', ' ') }} F</td></tr>
+						<tr><td>Remise globale</td><td class="droite">− {{ (facture.remise)|number_format(0, ',', ' ') }} F</td></tr>
+					{% endif %}
+					<tr><td>Total HT</td><td class="droite">{{ max(0, facture.totalHt - facture.remise)|number_format(0, ',', ' ') }} F</td></tr>
+					{% if facture.montantTva > 0 %}<tr><td>TVA{{ facture.tva > 0 ? ' ' ~ facture.tva ~ ' %' }}</td><td class="droite">{{ (facture.montantTva)|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+					{% if facture.surfacturation and facture.montantSurfacturation > 0 %}
+						<tr><td>Majoration{{ facture.tauxSurfacturation ? ' (' ~ facture.tauxSurfacturation ~ ' %)' }}</td><td class="droite">+ {{ (facture.montantSurfacturation)|number_format(0, ',', ' ') }} F</td></tr>
+					{% endif %}
+					{# Facture : total, déjà payé (même 0) et reste à payer, comme l'ancien modèle. #}
+					{% if facture.comptabilisee or facture.estAcompte %}
+						<tr><td class="fort">Total TTC</td><td class="droite fort">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
+						{% if not (masquerPaiements ?? false) %}<tr><td>Déjà payé</td><td class="droite">{{ facture.montantPaye > 0 ? '− ' }}{{ (facture.montantPaye)|number_format(0, ',', ' ') }} F</td></tr>
+						<tr class="final"><td>Reste à payer</td><td class="droite">{{ (facture.resteAPayer)|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+					{% else %}
+						<tr class="final"><td>Total TTC{{ facture.estProforma ? '' : ' à payer' }}</td><td class="droite">{{ (facture.totalTtc)|number_format(0, ',', ' ') }} F</td></tr>
+					{% endif %}
+				</table>
+			</td>
+		</tr></table>
 
+		{% if montantLettres %}<div class="lettres">{{ montantLettres }}</div>{% endif %}
+
+		<table style="margin-top: 14px"><tr>
+			<td style="width: 46%">
+				{% if qrPaiement %}
+					<div class="cadre-om">
+						<table><tr>
+							<td style="width: 64px"><img src="{{ qrPaiement }}" alt="QR de paiement"></td>
+							<td style="vertical-align: middle">
+								<b>Payer par Orange Money</b><br>
+								{% if entreprise.marchandOrangeMoney %}Marchand {{ entreprise.nomAffiche }} · {{ entreprise.marchandOrangeMoney }}<br>{% endif %}
+								Référence : {{ facture.numero|default('commande ' ~ commande.numero) }}
+							</td>
+						</tr></table>
+					</div>
+				{% endif %}
+			</td>
+			<td style="width: 4%"></td>
+			<td>
+				{% if facture.estProforma %}
+					<div class="etiquette">Conditions</div>
+					Proforma valable 30 jours, sans valeur comptable.
+				{% endif %}
+			</td>
+			{% if images.signature %}
+				<td class="signature droite" style="width: 26%">
+					<div class="etiquette">Cachet et signature</div>
+					<img src="{{ images.signature }}" alt="">
+				</td>
+			{% endif %}
+		</tr></table>
+
+		{# Conditions de paiement de l'entreprise (Réglages › Entreprises) ; vide : pas de bloc. #}
+		{% if entreprise.conditionsPaiement|default('') %}
+			<div class="nb"><b>NB :</b> {{ entreprise.conditionsPaiement|nl2br }}</div>
+		{% endif %}
+	</div>
+</body>
 </html>

@@ -1,0 +1,24 @@
+{# Fiche du guide « colis-controle » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Quand un travail est terminé, menu « Production », onglet « Étiquettes ». La commande est dans « Travaux terminés · sans étiquette ».</li>
+	<li>Cochez la commande. Réglez « Combien de colis ? » avec − et +. L'aperçu montre chaque étiquette : 1/2, 2/2…</li>
+	<li>Touchez « Imprimer N étiquettes ». Collez une étiquette par colis, comme dit dans « Où coller ».</li>
+	<li>Onglet « Contrôle final », ouvrez la commande. Comparez la pièce au « BAT validé » et touchez « Photographier la pièce ».</li>
+	<li>Cochez chaque case de chaque ligne. Pour la taille, tapez la mesure en cm.</li>
+	<li>Scannez chaque étiquette collée : avec le téléphone (« Scanner les étiquettes ») ou en tapant le code écrit sous le QR.</li>
+	<li>Touchez « Prêt pour la livraison ». Quand tous les colis sont scannés, la commande passe « Prête ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>L'imprimante d'étiquettes doit être réglée sur 100 × 60 mm dans son pilote. À l'impression, choisissez cette imprimante, marges « Aucune ».</li>
+	<li>« Réimprimer les mêmes » redonne les mêmes étiquettes (même QR). Une nouvelle série remplace l'ancienne : les anciennes étiquettes ne se scannent plus.</li>
+	<li>Une taille hors tolérance (1 cm, ou 1 % sur les grandes pièces) demande une confirmation.</li>
+	<li>« Temps réel vs estimé » compare chaque étape (impression, séchage, finition, contrôle) à l'estimation ; ces temps améliorent les prochaines estimations. « Consommé » dit ce qui est sorti du stock : matière et chute, encre, œillets.</li>
+	<li>« Refaire une pièce » renvoie le travail dans Ma file. Le chef d'atelier est prévenu, la réimpression est notée au journal de la machine.</li>
+	<li>À « Prête », le bureau voit la commande à planifier. Le message WhatsApp pour le client est prêt sur la page ; il n'est jamais envoyé pour une fiche de démonstration.</li>
+	<li>Sur iPhone, ouvrez l'appareil photo et visez le QR : le lien ouvre la fiche du colis, puis touchez « Colis collé et scanné ».</li>
+</ul>
+{% endblock %}

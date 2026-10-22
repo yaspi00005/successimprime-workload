@@ -5,6 +5,7 @@ namespace App\Repository;
 use App\Entity\Clients;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\Paiements;
 use App\Entity\User;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
@@ -33,6 +34,8 @@ final class CommandesRepository extends ServiceEntityRepository
             ->leftJoin('c.clients', 'cl')
             ->addSelect('cl')
             ->andWhere('c.deleted = :deleted')
+            // Les soldes d'ouverture n'ont pas de rappel automatique (docs/import-donnees.md).
+            ->andWhere('c.soldeOuverture = false')
             ->andWhere('c.statutPaiement != :statutPaye')
             ->setParameter('deleted', false)
             ->setParameter('statutPaye', Commandes::PAIEMENT_PAYE)
@@ -54,7 +57,7 @@ final class CommandesRepository extends ServiceEntityRepository
             ->addSelect('cl')
             ->leftJoin('c.commandesDetails', 'd')
             ->addSelect('d')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->distinct();
 
         $rechercheActive = $this->rechercheEstActive($filtres);
@@ -92,6 +95,8 @@ final class CommandesRepository extends ServiceEntityRepository
                     [
                         CommandesDetails::PRODUCTION_LIVREE,
                         CommandesDetails::PRODUCTION_ANNULEE,
+                        // Une ligne sans production (conception, frais) ne garde pas une commande payée et livrée dans la liste.
+                        CommandesDetails::PRODUCTION_NON_REQUISE,
                     ]
                 );
         }
@@ -309,11 +314,14 @@ final class CommandesRepository extends ServiceEntityRepository
             'montant_desc' => $qb
                 ->orderBy('c.totalTtc', 'DESC'),
 
+            // Reste à payer réel : total TTC (remise globale déduite) − paiements validés.
             'reste_desc' => $qb
                 ->addSelect(
-                    '(c.totalTtc - COALESCE(c.montantApayer, 0))
+                    '(c.totalTtc - COALESCE((SELECT SUM(pr.montant) FROM '.Paiements::class.' pr
+                     WHERE pr.commande = c AND pr.statut = :resteStatutValide), 0))
                      AS HIDDEN resteAPayer'
                 )
+                ->setParameter('resteStatutValide', Paiements::STATUT_VALIDE)
                 ->orderBy('resteAPayer', 'DESC'),
 
             default => $qb->orderBy('c.id', 'DESC'),
@@ -354,7 +362,7 @@ final class CommandesRepository extends ServiceEntityRepository
             ->addSelect('COALESCE(SUM(c.totalTtc), 0) AS caGenere')
             ->join('c.agents', 'a')
             ->leftJoin('a.employe', 'e')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->groupBy('a.id')
             ->addGroupBy('e.id')
             ->orderBy('caGenere', 'DESC');
@@ -391,7 +399,7 @@ final class CommandesRepository extends ServiceEntityRepository
     ): int {
         $qb = $this->createQueryBuilder('c')
             ->select('COUNT(c.id)')
-            ->andWhere('c.deleted = false');
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false');
 
         if ($debut) {
             $qb
@@ -422,7 +430,7 @@ final class CommandesRepository extends ServiceEntityRepository
         \DateTimeInterface $depuis
     ): ?Commandes {
         return $this->createQueryBuilder('c')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->andWhere('c.agents = :agent')
             ->andWhere('c.clients = :client')
             ->andWhere('c.totalTtc = :totalTtc')

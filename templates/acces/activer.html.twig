@@ -1,0 +1,27 @@
+{% extends 'security/_page_connexion.html.twig' %}
+
+{% block title %}Activer mon accès · Succès Imprim{% endblock %}
+
+{% block carte %}
+	{% if utilisateur is null %}
+		<h1>Lien plus valable</h1>
+		<p class="si-connexion-sous-titre">Ce lien a expiré, a déjà servi ou a été remplacé. Demandez un nouveau lien à votre responsable.</p>
+	{% else %}
+		<h1>Bonjour {{ prenom }} 👋</h1>
+		<p class="si-connexion-sous-titre" data-si-etape>Choisissez votre code PIN</p>
+		{% if erreur %}<div class="si-connexion-erreur" role="alert">{{ erreur }}</div>{% endif %}
+		<form method="post" data-si-pin-form data-si-confirmer>
+			<input type="hidden" name="_token" value="{{ csrf_token('activer-acces') }}">
+			<input type="password" name="pin" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" class="si-pin-saisie" aria-label="Code PIN (4 chiffres)" required>
+			<input type="password" name="pin2" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" autocomplete="off" class="si-pin-saisie" aria-label="Confirmez le code" required>
+			{% include 'acces/_pave.html.twig' %}
+			<p class="si-pin-aide">Ce téléphone sera enregistré pour pointer et vous connecter.</p>
+			<button type="submit" class="si-connexion-bouton si-pin-envoyer">Activer mon accès</button>
+		</form>
+		{% include 'acces/_pave_script.html.twig' %}
+	{% endif %}
+{% endblock %}
+
+{% block note %}
+	<p class="si-connexion-note">Évitez 1234, 0000 ou votre année de naissance. Ne donnez votre code à personne.</p>
+{% endblock %}

@@ -1,0 +1,8 @@
+{# Bandeau du prépresse : clients dont des produits attendent leur fichier traité (MP02). #}
+{% set aLier = produits_clients_a_preparer() %}
+{% if aLier > 0 %}
+	<a href="{{ path('app_produits_clients_prepresse_index') }}" style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 16px;margin:0 0 14px;border-radius:12px;background:#FEF3C7;color:#92400E;font-size:.9rem;text-decoration:none">
+		<span><i class="fas fa-link me-1"></i><b>{{ aLier }} client{{ aLier > 1 ? 's' }}</b> {{ aLier > 1 ? 'ont' : 'a' }} des produits à lier à leur fichier traité.</span>
+		<b style="white-space:nowrap">Voir ›</b>
+	</a>
+{% endif %}

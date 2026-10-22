@@ -1,534 +1,308 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Gestion des commandes
-{% endblock %}
+{#
+	Commandes : liste avec étape, paiement, échéance et responsable (maquette
+	GC01) et tableau par étape (GC02), sur la même adresse. Données :
+	SuiviCommercial. La part payée et le reste à encaisser ne sont montrés
+	qu'avec le droit de voir les paiements.
+#}
+
+{% set voirPaiements = is_granted('ROLE_PAIEMENT_VOIR') %}
+{% set rechercheActive =
+	filtres.q or filtres.client or filtres.statut or filtres.etat or filtres.paiement
+	or filtres.date_debut or filtres.date_fin or filtres.montant_min or filtres.montant_max
+	or filtres.affichage == 'toutes' or filtres.tri != 'recent'
+%}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
+
+{% macro lien(filtres, changements) %}{{ path('app_commandes_index', filtres|merge(changements)) }}{% endmacro %}
+{% import _self as m %}
+
+{% block title %}Commandes{% endblock %}
 
 {% block stylesheets %}
 	{{ parent() }}
-	<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
-	<style>
-		.commande-filter-card {
-			position: sticky;
-			top: 85px;
-		}
-		.commande-stat {
-			border: 0;
-			border-left: 4px solid #1643a3;
-		}
-		.commande-reference {
-			font-weight: 700;
-			color: #1643a3;
-		}
-		.commande-client {
-			max-width: 230px;
-			white-space: normal;
-		}
-		.commande-actions .btn {
-			margin: 2px;
-		}
-		.filter-indicator {
-			display: inline-flex;
-			align-items: center;
-			gap: 6px;
-			padding: 5px 10px;
-			border-radius: 20px;
-			background: #eef3ff;
-			color: #1643a3;
-			font-size: 12px;
-			font-weight: 600;
-		}
-		.empty-state {
-			padding: 55px 20px;
-			text-align: center;
-		}
-		.empty-state i {
-			font-size: 48px;
-			color: #cbd3df;
-		}
-		@media(max-width: 1199px) {
-			.commande-filter-card {
-				position: static;
-			}
-		}
-	</style>
+	<link href="{{ asset('css/commandes-suivi.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block body %}
-	{% set rechercheActive =
-        filtres.q|default('')
-        or filtres.client|default('')
-        or filtres.statut|default('')
-        or filtres.etat|default('')
-        or filtres.paiement|default('')
-        or filtres.date_debut|default('')
-        or filtres.date_fin|default('')
-        or filtres.montant_min|default('')
-        or filtres.montant_max|default('')
-        or filtres.affichage|default('actives') == 'toutes'
-    %}
-
-	<div class="side-app">
-		<div class="page-header">
-			<ol class="breadcrumb">
-				<li class="breadcrumb-item">
-					<a href="{{ path('app_commandes_index') }}">Commandes</a>
-				</li>
-				<li class="breadcrumb-item active" aria-current="page">Liste</li>
-			</ol>
-
-			<a href="{{ path('app_commandes_new') }}" class="btn btn-primary">
-				<i class="fa fa-plus mr-1"></i>
-				Nouvelle commande
-			</a>
+	<div class="si-cs-tete">
+		<div>
+			<small>Devis et commandes</small>
+			<h1>{{ vue == 'tableau' ? 'Tableau des commandes · par étape' : 'Commandes' }}</h1>
 		</div>
-
-		<div class="row">
-			{% if is_granted('ROLE_ADMIN') %}
-
-				<div class="col-sm-6 col-xl-3">
-					<div class="card commande-stat">
-						<div class="card-body">
-							<div class="text-muted">
-								Résultats affichés
-							</div>
-
-							<div class="h2 mb-0">
-								{{ commandes|length }}
-							</div>
-						</div>
-					</div>
-				</div>
-
-
-				<div class="col-sm-6 col-xl-3">
-					<div class="card commande-stat border-warning">
-						<div class="card-body">
-							<div class="text-muted">
-								À encaisser
-							</div>
-
-							<div class="h2 mb-0">
-								{{
-                        totalReste
-                            |default(0)
-                            |number_format(0, ',', ' ')
-                    }}
-								F CFA
-							</div>
-						</div>
-					</div>
-				</div>
-
-
-				<div class="col-sm-6 col-xl-3">
-					<div class="card commande-stat border-success">
-						<div class="card-body">
-							<div class="text-muted">
-								Total encaissé
-							</div>
-
-							<div class="h2 mb-0">
-								{{
-                        totalPaye
-                            |default(0)
-                            |number_format(0, ',', ' ')
-                    }}
-								F CFA
-							</div>
-						</div>
-					</div>
-				</div>
-
+		<div class="si-cs-actions">
+			{% if is_granted('ROLE_DEVIS') %}
+				<a href="{{ path('app_devis_index') }}" class="btn si-cs-btn-blanc">Devis</a>
 			{% endif %}
-			<div class="col-sm-6 col-xl-3">
-				<div class="card commande-stat border-info">
-					<div class="card-body">
-						<div class="text-muted">Mode d’affichage</div>
-						<div class="mt-2">
-							{% if rechercheActive %}
-								<span class="filter-indicator">
-									<i class="fa fa-filter"></i>
-									Recherche personnalisée
-								</span>
-							{% else %}
-								<span class="filter-indicator">
-									<i class="fa fa-bolt"></i>
-									Commandes actives
-								</span>
-							{% endif %}
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-
-		<div class="row row-cards">
-			<div class="col-xl-3">
-				<div class="card commande-filter-card">
-					<div class="card-header">
-						<div class="card-title">
-							<i class="fa fa-filter mr-2"></i>Recherche avancée
-						</div>
-					</div>
-
-					<form method="get" action="{{ path('app_commandes_index') }}">
-						<div class="card-body">
-							<div class="form-group">
-								<label class="form-label">Recherche générale</label>
-								<input type="search" name="q" class="form-control" value="{{ filtres.q|default('') }}" placeholder="N° commande, client, téléphone…">
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">Client</label>
-								<select name="client" class="form-control custom-select">
-									<option value="">Tous les clients</option>
-									{% for client in clients|default([]) %}
-										<option value="{{ client.id }}" {{ filtres.client|default('') == client.id ? 'selected' : '' }}>
-											{{ client.telephone|default('Sans téléphone') }} — {{ (client.prenom|default('') ~ ' ' ~ client.nom|default(''))|trim }}{% if client.raisonSociale %} — {{ client.raisonSociale }}{% endif %}
-										</option>
-									{% endfor %}
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">État des travaux</label>
-								<select name="etat" class="form-control custom-select">
-									<option value="">Tous les états</option>
-									<option value="preparation" {{ filtres.etat|default('') == 'preparation' ? 'selected' : '' }}>
-										En préparation
-									</option>
-									<option value="livraison" {{ filtres.etat|default('') == 'livraison' ? 'selected' : '' }}>
-										En livraison
-									</option>
-									<option value="livree" {{ filtres.etat|default('') == 'livree' ? 'selected' : '' }}>
-										Livrée
-									</option>
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">Situation financière</label>
-								<select name="paiement" class="form-control custom-select">
-									<option value="">Toutes</option>
-									<option value="impayee" {{ filtres.paiement|default('') == 'impayee' ? 'selected' : '' }}>
-										Non payée
-									</option>
-									<option value="partielle" {{ filtres.paiement|default('') == 'partielle' ? 'selected' : '' }}>
-										Paiement partiel
-									</option>
-									<option value="payee" {{ filtres.paiement|default('') == 'payee' ? 'selected' : '' }}>
-										Entièrement payée
-									</option>
-								</select>
-							</div>
-
-							<div class="row">
-								<div class="col-6">
-									<div class="form-group">
-										<label class="form-label">Du</label>
-										<input type="date" name="date_debut" class="form-control" value="{{ filtres.date_debut|default('') }}">
-									</div>
-								</div>
-								<div class="col-6">
-									<div class="form-group">
-										<label class="form-label">Au</label>
-										<input type="date" name="date_fin" class="form-control" value="{{ filtres.date_fin|default('') }}">
-									</div>
-								</div>
-							</div>
-
-							<div class="row">
-								<div class="col-6">
-									<div class="form-group">
-										<label class="form-label">Montant min.</label>
-										<input type="number" min="0" name="montant_min" class="form-control" value="{{ filtres.montant_min|default('') }}" placeholder="0">
-									</div>
-								</div>
-								<div class="col-6">
-									<div class="form-group">
-										<label class="form-label">Montant max.</label>
-										<input type="number" min="0" name="montant_max" class="form-control" value="{{ filtres.montant_max|default('') }}" placeholder="Illimité">
-									</div>
-								</div>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">Afficher</label>
-								<select name="affichage" class="form-control custom-select">
-									<option value="actives" {{ filtres.affichage|default('actives') == 'actives' ? 'selected' : '' }}>
-										Commandes actives
-									</option>
-									<option value="toutes" {{ filtres.affichage|default('') == 'toutes' ? 'selected' : '' }}>
-										Toutes les commandes
-									</option>
-								</select>
-							</div>
-
-							<div class="form-group">
-								<label class="form-label">Trier par</label>
-								<select name="tri" class="form-control custom-select">
-									<option value="recent" {{ filtres.tri|default('recent') == 'recent' ? 'selected' : '' }}>Plus récentes</option>
-									<option value="ancien" {{ filtres.tri|default('') == 'ancien' ? 'selected' : '' }}>Plus anciennes</option>
-									<option value="montant_desc" {{ filtres.tri|default('') == 'montant_desc' ? 'selected' : '' }}>Montant décroissant</option>
-									<option value="reste_desc" {{ filtres.tri|default('') == 'reste_desc' ? 'selected' : '' }}>Reste à payer décroissant</option>
-								</select>
-							</div>
-
-							<button type="submit" class="btn btn-primary btn-block">
-								<i class="fa fa-search mr-1"></i>
-								Rechercher
-							</button>
-
-							<a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-light btn-block">
-								<i class="fa fa-refresh mr-1"></i>
-								Réinitialiser
-							</a>
-						</div>
-					</form>
-				</div>
-			</div>
-
-			<div class="col-xl-9">
-				<div class="card">
-					<div class="card-header d-flex justify-content-between align-items-center">
-						<div>
-							<div class="card-title mb-1">Liste des commandes</div>
-							<small class="text-muted">
-								{% if rechercheActive %}
-									Résultats correspondant à vos critères.
-								{% else %}
-									Affichage automatique : paiements en attente et travaux en cours.
-								{% endif %}
-							</small>
-						</div>
-					</div>
-
-					<div class="table-responsive">
-						<table class="table card-table table-vcenter text-nowrap">
-							<thead>
-								<tr>
-									<th scope="col">Commande</th>
-									<th scope="col">Date</th>
-									<th scope="col">Client</th>
-									<th scope="col">Agent</th>
-									<th scope="col">Travaux</th>
-									<th scope="col">Paiement</th>
-									<th scope="col" class="text-right">Total TTC</th>
-									<th scope="col" class="text-right">Payé</th>
-									<th scope="col" class="text-right">Reste à payer</th>
-									<th scope="col" class="text-center">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{% for commande in commandes %}
-									{% set total = commande.totalTtc|default(0) %}
-									{% set paye = commande.totalPaye|default(0) %}
-									{% set reste = commande.resteAPayer|default(0) %}
-									{% set statutPaiement = commande.statutPaiement %}
-
-									<tr>
-										{# 1. Commande #}
-										<td>
-											<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="commande-reference">
-												CMD-{{ '%05d'|format(commande.id) }}
-											</a>
-
-											<div class="small text-muted">
-												#{{ commande.id }}
-											</div>
-										</td>
-
-										{# Date de la commande #}
-										<td>
-											{% if commande.dateCommande %}
-												{{ commande.dateCommande|date('d/m/Y') }}
-											{% else %}
-												<span class="text-muted">—</span>
-											{% endif %}
-										</td>
-
-										{# 2. Client #}
-										<td class="commande-client">
-											<strong>
-												{{ commande.clients }}
-											</strong>
-										</td>
-
-										{# 2bis. Agent #}
-										<td>
-											{% if commande.agents %}
-												{{ commande.agents.username }}
-											{% else %}
-												<span class="text-muted">—</span>
-											{% endif %}
-										</td>
-
-										{# 3. Travaux #}
-										<td>
-											{% set statutTravaux = commande.statutTravaux %}
-
-											{% if statutTravaux == 'livree' %}
-												<span class="badge badge-success">
-													Livrée
-												</span>
-											{% elseif statutTravaux == 'livraison' %}
-												<span class="badge badge-warning">
-													En livraison
-												</span>
-											{% elseif statutTravaux == 'annulee' %}
-												<span class="badge badge-secondary">
-													Annulée
-												</span>
-											{% elseif statutTravaux == 'vide' %}
-												<span class="badge badge-light">
-													Aucun travail
-												</span>
-											{% else %}
-												<span class="badge badge-info">
-													En préparation
-												</span>
-											{% endif %}
-
-											<div class="small text-muted mt-1">
-												{{ commande.commandesDetails|length }}
-												travail{{ commande.commandesDetails|length > 1 ? 'x' : '' }}
-											</div>
-										</td>
-
-										{# 4. Statut du paiement #}
-										<td>
-											{% if statutPaiement == 'payee' %}
-												<span class="badge badge-success">
-													<i class="fa fa-check-circle mr-1"></i>
-													Payée
-												</span>
-											{% elseif statutPaiement == 'partielle' %}
-												<span class="badge badge-warning">
-													<i class="fa fa-clock-o mr-1"></i>
-													Paiement partiel
-												</span>
-											{% else %}
-												<span class="badge badge-danger">
-													<i class="fa fa-times-circle mr-1"></i>
-													Impayée
-												</span>
-											{% endif %}
-										</td>
-
-										{# 5. Total TTC #}
-										<td class="text-right">
-											<strong>
-												{{ total|number_format(0, ',', ' ') }}
-												FCFA
-											</strong>
-										</td>
-
-										{# 6. Montant payé #}
-										<td class="text-right text-success">
-											<strong>
-												{{ paye|number_format(0, ',', ' ') }}
-												FCFA
-											</strong>
-										</td>
-
-										{# 7. Reste à payer #}
-										<td class="text-right">
-											<strong class="{{ reste > 0 ? 'text-danger' : 'text-success' }}">
-												{{ reste|number_format(0, ',', ' ') }}
-												FCFA
-											</strong>
-										</td>
-
-										{# 8. Actions #}
-										<td class="text-center commande-actions">
-											<a href="{{ path('app_commandes_show', { id: commande.id }) }}" class="btn btn-info-light btn-sm" title="Afficher">
-												<i class="fa fa-eye"></i>
-											</a>
-
-											<a href="{{ path('app_commandes_edit', { id: commande.id }) }}" class="btn btn-primary-light btn-sm" title="Modifier">
-												<i class="fa fa-pencil"></i>
-											</a>
-										</td>
-									</tr>
-								{% else %}
-									<tr>
-										<td colspan="10">
-											<div class="empty-state">
-												<i class="fa fa-inbox"></i>
-
-												<h4 class="mt-3">
-													Aucune commande trouvée
-												</h4>
-
-												<p class="text-muted">
-													Modifiez les filtres ou réinitialisez la recherche.
-												</p>
-
-												<a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-primary-light">
-													Afficher les commandes actives
-												</a>
-											</div>
-										</td>
-									</tr>
-								{% endfor %}
-							</tbody>
-						</table>
-					</div>
-				</div>
-
-				{% if pagination is defined and pagination.pageCount > 1 %}
-					<nav class="d-flex justify-content-end">
-						<ul class="pagination">
-							{% for page in 1..pagination.pageCount %}
-								<li class="page-item {{ page == pagination.currentPage ? 'active' : '' }}">
-									<a class="page-link" href="{{ path('app_commandes_index', app.request.query.all|merge({page: page})) }}">
-										{{ page }}
-									</a>
-								</li>
-							{% endfor %}
-						</ul>
-					</nav>
-				{% endif %}
-			</div>
+			<a href="{{ path('app_commandes_export', filtres) }}" class="btn si-cs-btn-blanc"><i class="fas fa-download me-1"></i>Exporter</a>
+			<a href="{{ path('app_commandes_new') }}" class="btn btn-danger"><i class="fas fa-plus me-1"></i>Commande</a>
 		</div>
 	</div>
+
+	{% if vue == 'liste' %}
+		{# ---------- Cartes : toujours sur les commandes actives ---------- #}
+		<div class="si-cs-cartes">
+			<a class="si-cs-carte{{ not filtres.etape and not filtres.pour ? ' actif' }}" href="{{ m.lien(filtres, {etape: '', pour: ''}) }}">
+				<span>En cours</span>
+				<strong>{{ cartes.enCours }}</strong>
+				<small>commande{{ cartes.enCours > 1 ? 's' }} ouverte{{ cartes.enCours > 1 ? 's' }}</small>
+			</a>
+			<a class="si-cs-carte{{ filtres.pour == 'aujourdhui' ? ' actif' }}" href="{{ m.lien(filtres, {pour: filtres.pour == 'aujourdhui' ? '' : 'aujourdhui', etape: ''}) }}">
+				<span>À livrer aujourd'hui</span>
+				<strong>{{ cartes.aujourdhui }}</strong>
+				<small>{{ cartes.aujourdhuiEnLivraison ? 'dont ' ~ cartes.aujourdhuiEnLivraison ~ ' en livraison' : (cartes.aujourdhui ? 'à préparer' : 'rien de prévu') }}</small>
+			</a>
+			<a class="si-cs-carte{{ filtres.etape == 'retard' ? ' actif' }}" href="{{ m.lien(filtres, {etape: filtres.etape == 'retard' ? '' : 'retard', pour: ''}) }}">
+				<span>En retard</span>
+				<strong class="{{ cartes.retard ? 'si-cs-rouge' }}">{{ cartes.retard }}</strong>
+				<small>{% if cartes.retard %}{{ [cartes.retardBat ? cartes.retardBat ~ ' avant impression' : null, cartes.retardProduction ? cartes.retardProduction ~ ' en production ou livraison' : null]|filter(v => v)|join(' · ') }}{% else %}aucune échéance dépassée{% endif %}</small>
+			</a>
+			<a class="si-cs-carte{{ filtres.etape == 'acompte' ? ' actif' }}" href="{{ m.lien(filtres, {etape: filtres.etape == 'acompte' ? '' : 'acompte', pour: ''}) }}">
+				<span>Acomptes attendus</span>
+				<strong class="{{ cartes.acomptes ? 'si-cs-orange' }}">{{ cartes.acomptes }}</strong>
+				<small>{{ cartes.acomptes ? 'production bloquée' : 'aucun' }}</small>
+			</a>
+			{% if voirPaiements %}
+				<div class="si-cs-carte si-cs-carte-large">
+					<span>Reste à encaisser</span>
+					<strong>{{ cartes.reste|number_format(0, ',', ' ') }} F</strong>
+					<small>commandes en cours et livrées non soldées</small>
+				</div>
+			{% endif %}
+		</div>
+	{% endif %}
+
+	{# ---------- Étapes, bascule Liste / Tableau, recherche ---------- #}
+	<div class="si-cs-barre">
+		{% if vue == 'liste' %}
+			<nav class="si-cs-puces" aria-label="Filtrer par étape">
+				<a href="{{ m.lien(filtres, {etape: ''}) }}" class="si-cs-puce{{ not filtres.etape ? ' actif' }}">Toutes · {{ compteurs.toutes }}</a>
+				{% for cle in ['a_confirmer', 'acompte', 'fichier', 'impression', 'prete', 'livraison', 'livree'] %}
+					{% if compteurs[cle] > 0 or filtres.etape == cle or cle in ['acompte', 'fichier', 'impression', 'prete', 'livraison'] %}
+						<a href="{{ m.lien(filtres, {etape: filtres.etape == cle ? '' : cle}) }}" class="si-cs-puce{{ filtres.etape == cle ? ' actif' }}">{{ etapes[cle].pluriel }} · {{ compteurs[cle] }}</a>
+					{% endif %}
+				{% endfor %}
+				<a href="{{ m.lien(filtres, {etape: filtres.etape == 'retard' ? '' : 'retard'}) }}" class="si-cs-puce si-cs-puce-rouge{{ filtres.etape == 'retard' ? ' actif' }}">En retard · {{ compteurs.retard }}</a>
+			</nav>
+		{% else %}
+			<form method="get" action="{{ path('app_commandes_index') }}" class="d-flex flex-wrap gap-2 align-items-center">
+				{% for cle, valeur in filtres|filter((v, k) => k != 'pour') %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endfor %}
+				<label class="visually-hidden" for="filtre-pour">Échéance</label>
+				<select id="filtre-pour" name="pour" class="form-select form-select-sm" onchange="this.form.submit()">
+					<option value="">Filtre : toutes les échéances</option>
+					{% for cle, libelle in choixPour %}
+						<option value="{{ cle }}" {{ filtres.pour == cle ? 'selected' }}>Filtre : {{ libelle|lower }}</option>
+					{% endfor %}
+				</select>
+				<noscript><button type="submit" class="btn btn-sm si-cs-btn-blanc">OK</button></noscript>
+			</form>
+		{% endif %}
+		<div class="si-cs-bascule">
+			<a href="{{ path('app_commandes_index', {vue: 'liste'}) }}" class="{{ vue == 'liste' ? 'actif' }}"><i class="fas fa-list"></i>Liste</a>
+			<a href="{{ path('app_commandes_index', {vue: 'tableau'}) }}" class="{{ vue == 'tableau' ? 'actif' }}"><i class="fas fa-columns"></i>Tableau</a>
+			<button type="button" data-bs-toggle="collapse" data-bs-target="#recherche-commandes" aria-expanded="{{ rechercheActive ? 'true' : 'false' }}" aria-controls="recherche-commandes">
+				<i class="fas fa-filter"></i>Recherche{% if rechercheActive %} <span class="si-cs-pastille-filtre">active</span>{% endif %}
+			</button>
+		</div>
+	</div>
+
+	{# ---------- Recherche avancée (celle d'avant, repliée) ---------- #}
+	<div class="collapse{{ rechercheActive ? ' show' }}" id="recherche-commandes">
+		<form method="get" action="{{ path('app_commandes_index') }}" class="card si-cs-recherche">
+			<input type="hidden" name="etape" value="{{ filtres.etape }}">
+			<input type="hidden" name="pour" value="{{ filtres.pour }}">
+			<div class="card-body">
+				<div>
+					<label class="form-label" for="r-q">Recherche</label>
+					<input type="search" id="r-q" name="q" class="form-control form-control-sm" value="{{ filtres.q }}" placeholder="N° de commande, client, téléphone…">
+				</div>
+				<div>
+					<label class="form-label" for="r-client">Client</label>
+					<select id="r-client" name="client" class="form-select form-select-sm custom-select">
+						<option value="">Tous les clients</option>
+						{% for client in clients %}
+							<option value="{{ client.id }}" {{ filtres.client == client.id ? 'selected' }}>{{ client.telephone|default('Sans téléphone') }} — {{ (client.prenom|default('') ~ ' ' ~ client.nom|default(''))|trim }}{% if client.raisonSociale %} — {{ client.raisonSociale }}{% endif %}</option>
+						{% endfor %}
+					</select>
+				</div>
+				<div>
+					<label class="form-label" for="r-etat">État des travaux</label>
+					<select id="r-etat" name="etat" class="form-select form-select-sm">
+						<option value="">Tous les états</option>
+						<option value="preparation" {{ filtres.etat == 'preparation' ? 'selected' }}>En préparation</option>
+						<option value="livraison" {{ filtres.etat == 'livraison' ? 'selected' }}>En livraison</option>
+						<option value="livree" {{ filtres.etat == 'livree' ? 'selected' }}>Livrée</option>
+					</select>
+				</div>
+				<div>
+					<label class="form-label" for="r-paiement">Situation financière</label>
+					<select id="r-paiement" name="paiement" class="form-select form-select-sm">
+						<option value="">Toutes</option>
+						<option value="impayee" {{ filtres.paiement == 'impayee' ? 'selected' }}>Non payée</option>
+						<option value="partielle" {{ filtres.paiement == 'partielle' ? 'selected' }}>Paiement partiel</option>
+						<option value="payee" {{ filtres.paiement == 'payee' ? 'selected' }}>Entièrement payée</option>
+					</select>
+				</div>
+				<div>
+					<label class="form-label" for="r-du">Commandées du</label>
+					<input type="date" id="r-du" name="date_debut" class="form-control form-control-sm" value="{{ filtres.date_debut }}">
+				</div>
+				<div>
+					<label class="form-label" for="r-au">au</label>
+					<input type="date" id="r-au" name="date_fin" class="form-control form-control-sm" value="{{ filtres.date_fin }}">
+				</div>
+				<div>
+					<label class="form-label" for="r-min">Montant min.</label>
+					<input type="number" min="0" id="r-min" name="montant_min" class="form-control form-control-sm" value="{{ filtres.montant_min }}" placeholder="0">
+				</div>
+				<div>
+					<label class="form-label" for="r-max">Montant max.</label>
+					<input type="number" min="0" id="r-max" name="montant_max" class="form-control form-control-sm" value="{{ filtres.montant_max }}" placeholder="Illimité">
+				</div>
+				<div>
+					<label class="form-label" for="r-affichage">Afficher</label>
+					<select id="r-affichage" name="affichage" class="form-select form-select-sm">
+						<option value="actives" {{ filtres.affichage == 'actives' ? 'selected' }}>Commandes actives</option>
+						<option value="toutes" {{ filtres.affichage == 'toutes' ? 'selected' }}>Toutes les commandes</option>
+					</select>
+				</div>
+				<div>
+					<label class="form-label" for="r-tri">Trier par</label>
+					<select id="r-tri" name="tri" class="form-select form-select-sm">
+						<option value="recent" {{ filtres.tri == 'recent' ? 'selected' }}>Plus récentes</option>
+						<option value="ancien" {{ filtres.tri == 'ancien' ? 'selected' }}>Plus anciennes</option>
+						<option value="montant_desc" {{ filtres.tri == 'montant_desc' ? 'selected' }}>Montant décroissant</option>
+						{% if voirPaiements %}<option value="reste_desc" {{ filtres.tri == 'reste_desc' ? 'selected' }}>Reste à payer décroissant</option>{% endif %}
+					</select>
+				</div>
+				<div class="si-cs-boutons">
+					<button type="submit" class="btn btn-primary btn-sm flex-grow-1"><i class="fas fa-search me-1"></i>Rechercher</button>
+					<a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-light btn-sm">Réinitialiser</a>
+				</div>
+			</div>
+		</form>
+	</div>
+
+	{% if vue == 'liste' %}
+		{# ---------- Liste (GC01) ---------- #}
+		<div class="si-cs-liste">
+			<div class="table-responsive">
+				<table class="table si-cs-table">
+					<thead>
+						<tr>
+							<th scope="col">N°</th>
+							<th scope="col">Client</th>
+							<th scope="col">Produit</th>
+							<th scope="col" class="text-end">Montant</th>
+							{% if voirPaiements %}<th scope="col" data-filtre-type="nombre">Payé</th>{% endif %}
+							<th scope="col">Étape</th>
+							<th scope="col" data-filtre-type="date">Pour le</th>
+							<th scope="col">Responsable</th>
+							<th scope="col" data-sans-filtre><span class="visually-hidden">Actions</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							{% set commande = l.commande %}
+							<tr class="{{ l.enRetard ? 'si-cs-retard' }}" data-lien="{{ path('app_commandes_show', {id: commande.id}) }}">
+								<td class="si-cs-c-num"><a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="si-cs-num">{{ commande.numero }}</a>{% if commande.horsImprimerie %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}</td>
+								<td class="si-cs-c-client" data-filtre-valeur="{{ l.client.nom }}">
+									<span class="si-cs-client"><span class="si-cs-pastille si-cs-teinte-{{ l.client.teinte }}" aria-hidden="true">{{ l.client.initiales }}</span><span>{{ l.client.nom }}</span></span>
+								</td>
+								<td class="si-cs-c-produit" data-filtre-valeur="{{ l.produit }}"><div class="si-cs-produit" title="{{ l.produit }}">{{ l.produit }}{% if l.autres %} <small>+{{ l.autres }}</small>{% endif %}</div></td>
+								<td class="si-cs-c-montant si-cs-montant">{{ l.total|number_format(0, ',', ' ') }} F</td>
+								{% if voirPaiements %}
+									<td class="si-cs-c-paye" data-filtre-valeur="{{ l.partPayee }}">
+										<span class="si-cs-paye" title="Payé {{ l.paye|number_format(0, ',', ' ') }} F · reste {{ l.reste|number_format(0, ',', ' ') }} F">
+											<span class="si-cs-paye-piste"><span class="{{ l.partPayee >= 100 ? 'complet' }}" style="width: {{ l.partPayee }}%"></span></span>
+											<small>{{ l.partPayee }} %</small>
+										</span>
+									</td>
+								{% endif %}
+								<td class="si-cs-c-etape" data-filtre-valeur="{{ l.libelle }}"><span class="si-cs-etape si-cs-etape-{{ l.couleur }}" {% if l.etat %}title="{{ l.etat }}"{% endif %}>{{ l.libelle }}</span></td>
+								<td class="si-cs-c-pour{{ l.pourLe ? '' : ' sans-date' }}" data-filtre-valeur="{{ l.pourLe ? l.pourLe|date('d/m/Y') : '' }}">
+									{% if l.pourLe %}<span class="si-cs-date{{ l.enRetard ? ' retard' }}" title="{{ jours[l.pourLe|date('w')] }} {{ l.pourLe|date('d/m/Y') }}{{ l.retrait ? ' · retrait' : ' · livraison' }}">{{ l.pourLe|date('d/m') }}</span>{% else %}<span class="si-cs-vide">—</span>{% endif %}
+								</td>
+								<td class="si-cs-c-resp" data-filtre-valeur="{{ l.responsable ? l.responsable.nom : '' }}">
+									{% if l.responsable %}
+										<span class="si-cs-personne" title="{{ l.responsable.complet }}"><span class="si-cs-disque si-initiales-{{ l.responsable.teinte }}" aria-hidden="true">{{ l.responsable.initiales }}</span>{{ l.responsable.nom }}</span>
+									{% else %}<span class="si-cs-vide">—</span>{% endif %}
+								</td>
+								<td class="si-cs-c-actions text-end">
+									{% if l.ouverte and not l.verrouillee %}
+										<a href="{{ path('app_commandes_edit', {id: commande.id}) }}" class="si-cs-modifier" title="Modifier {{ commande.numero }}" aria-label="Modifier {{ commande.numero }}"><i class="fas fa-pen"></i></a>
+									{% endif %}
+								</td>
+							</tr>
+						{% else %}
+							<tr>
+								<td colspan="{{ voirPaiements ? 9 : 8 }}">
+									<div class="si-cs-aucune">
+										<i class="fas fa-inbox" aria-hidden="true"></i>
+										<strong class="d-block text-body">Aucune commande trouvée</strong>
+										Changez d'étape ou de recherche.
+										<div class="mt-2"><a href="{{ path('app_commandes_index', {reset: 1}) }}" class="btn btn-sm si-cs-btn-blanc">Revoir les commandes actives</a></div>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{% else %}
+		{# ---------- Tableau par étape (GC02) ---------- #}
+		<div class="si-cs-tableau">
+			{% for cle, colonne in colonnes %}
+				<section class="si-cs-colonne" aria-labelledby="colonne-{{ cle }}">
+					<header>
+						<span id="colonne-{{ cle }}" class="si-cs-etape si-cs-etape-{{ colonne.couleur }}">{{ colonne.libelle }}</span>
+						<b>{{ colonne.cartes|length }}</b>
+						{% if cle in ['acompte', 'fichier'] %}<a href="{{ path('app_commandes_new') }}" title="Nouvelle commande" aria-label="Nouvelle commande">+</a>{% endif %}
+					</header>
+					<div class="si-cs-cartes-etape">
+						{% for l in colonne.cartes %}
+							{% set commande = l.commande %}
+							<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="si-cs-fiche{{ l.enRetard ? ' retard' }}">
+								<span class="si-cs-fiche-tete">
+									<b>{{ commande.numero }}</b>{% if commande.horsImprimerie %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}
+									{% if l.pourLe %}<small class="{{ l.enRetard ? 'retard' }}"><i class="far fa-calendar me-1" aria-hidden="true"></i>{{ l.pourLe|date('d/m') }}</small>{% endif %}
+								</span>
+								<span class="si-cs-client"><span class="si-cs-pastille si-cs-teinte-{{ l.client.teinte }}" aria-hidden="true">{{ l.client.initiales }}</span><span>{{ l.client.nom }}</span></span>
+								<span class="si-cs-fiche-produit">{{ l.produit }}{% if l.autres %} · +{{ l.autres }}{% endif %}</span>
+								{% if l.etat %}<span class="si-cs-fiche-etat{{ l.alerte or (l.enRetard and cle == 'fichier') ? ' alerte' }}">{{ l.etat }}</span>{% endif %}
+								<span class="si-cs-fiche-pied">
+									<b>{{ l.total|number_format(0, ',', ' ') }} F</b>
+									{% if l.responsable %}<span class="si-cs-disque si-initiales-{{ l.responsable.teinte }}" title="{{ l.responsable.complet }}">{{ l.responsable.initiales }}</span>{% endif %}
+								</span>
+							</a>
+						{% else %}
+							<p class="si-cs-colonne-vide">Aucune commande</p>
+						{% endfor %}
+					</div>
+				</section>
+			{% endfor %}
+		</div>
+	{% endif %}
 {% endblock %}
 
 {% block javascripts %}
 	{{ parent() }}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {
-
-/*
- * Recherche dans les listes déroulantes du formulaire de
- * recherche avancée (client, statut, état...).
- */
-if (window.jQuery && window.jQuery.fn.select2) {
-window.jQuery('.commande-filter-card select.custom-select').select2({
-width: '100%'
-});
-}
-
-document.querySelectorAll('[data-confirm]').forEach(function (button) {
-button.addEventListener('click', function (event) {
-event.preventDefault();
-const url = button.getAttribute('href');
-
-Swal.fire({
-icon: 'warning',
-title: 'Confirmer cette action ?',
-text: button.dataset.confirm,
-showCancelButton: true,
-confirmButtonText: 'Oui, continuer',
-cancelButtonText: 'Annuler'
-}).then(function (result) {
-if (result.isConfirmed) {
-window.location.href = url;
-}
-});
-});
-});
-});
+			// Toute la ligne ouvre la commande (sauf ses liens et boutons).
+			document.querySelectorAll('.si-cs-table tr[data-lien]').forEach(function (ligne) {
+				ligne.addEventListener('click', function (e) {
+					if (e.target.closest('a, button, input, label') || window.getSelection().toString()) {
+						return;
+					}
+					window.location.href = ligne.dataset.lien;
+				});
+			});
+			if (window.jQuery && window.jQuery.fn.select2) {
+				window.jQuery('#r-client').select2({width: '100%'});
+			}
+		});
 	</script>
 {% endblock %}

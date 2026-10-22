@@ -1,0 +1,58 @@
+{# Ce qui attend la personne (maquette EC01) : BAT à valider, paiement à régler (payeur), devis en attente (valideur). #}
+{% if bats is not empty or factureDue or (solde and solde.total > 0) or devisAAccepter is not empty %}
+	<div class="ec-actions">
+		{% if bats is not empty %}
+			{% set ctl = bats|first %}
+			<div class="ec-action bat">
+				<div>
+					<b>{{ bats|length > 1 ? bats|length ~ ' BAT à valider' : 'BAT à valider' }}</b>
+					{% if bats|length == 1 %}
+						{% set quand = ctl.traiteLe ? ctl.traiteLe|espace_quand : null %}
+						<small>{{ ctl.commandeDetail.commande.numero }} · {{ ctl.commandeDetail|espace_titre_ligne }}{% if quand %} · reçu {{ quand == 'hier' ? 'hier' : (quand matches '/^\\d\\d:/' ? 'à ' : 'le ') ~ quand }}{% endif %}</small>
+					{% else %}
+						<small>{{ bats|map(c => c.commandeDetail|espace_titre_ligne)|join(' · ') }}</small>
+					{% endif %}
+				</div>
+				<a class="ec-mini bat" href="{{ bats|length == 1 ? path('app_espace_bat', {id: ctl.id}) : path('app_espace_fichiers') }}"><span class="ec-bureau">Voir et valider</span><span class="ec-telephone">Valider</span></a>
+			</div>
+		{% endif %}
+
+		{% if factureDue %}
+			{% set aujourdhui = factureDue.dateEcheance|date('Y-m-d') == 'now'|date('Y-m-d') %}
+			<div class="ec-action fac">
+				<div>
+					<b>{{ aujourdhui ? 'Paiement prévu aujourd\'hui' : 'Paiement en retard' }}</b>
+					<small>Facture {{ factureDue.numero }} · {{ factureDue.resteAPayer|number_format(0, ',', ' ') }} F{{ aujourdhui ? '' : ' · échue depuis le ' ~ factureDue.dateEcheance|date('d/m') }}</small>
+				</div>
+				<a class="ec-mini fac" href="{{ path('app_espace_payer', {id: factureDue.commande.publicId}) }}"><span class="ec-bureau">Payer par Orange Money</span><span class="ec-telephone">Payer</span></a>
+			</div>
+		{% elseif solde and solde.total > 0 %}
+			{% set premiere = solde.commandes|first %}
+			<div class="ec-action fac">
+				<div>
+					<b>{{ solde.commandes|length > 1 ? solde.commandes|length ~ ' commandes à régler' : 'Commande à régler' }}</b>
+					<small>{{ solde.commandes|length == 1 ? (premiere.estSoldeOuverture ? 'Solde d\'ouverture' : premiere.numero) ~ ' · ' }}reste {{ solde.total|number_format(0, ',', ' ') }} F</small>
+				</div>
+				<a class="ec-mini fac" href="{{ solde.commandes|length > 1 ? path('app_espace_factures') : path('app_espace_payer', {id: premiere.publicId}) }}"><span class="ec-bureau">Payer par Orange Money</span><span class="ec-telephone">Payer</span></a>
+			</div>
+		{% endif %}
+
+		{% if devisAAccepter is not empty %}
+			{% set d = devisAAccepter|first %}
+			{% set ligne = d.devisDetails|first %}
+			<div class="ec-action dev">
+				<div>
+					<b>{{ devisAAccepter|length > 1 ? devisAAccepter|length ~ ' devis en attente' : 'Devis en attente' }}</b>
+					{# Nom de la ligne d'abord : le numéro du devis reste collé à son prix (recette des accès). #}
+					<small>{{ ligne and ligne.designation ? ligne|texte_ligne ~ ' · ' }}{{ d.numero }} · {{ d.totalTtc|number_format(0, ',', ' ') }} F</small>
+				</div>
+				{% if devisAAccepter|length == 1 %}
+					{# Le devis s'ouvre d'abord (lignes, acompte, délai) : on l'accepte sur sa page (maquette DT01). #}
+					<a class="ec-mini dev" href="{{ path('app_espace_devis_detail', {id: d.id}) }}"><span class="ec-bureau">Voir et accepter</span><span class="ec-telephone">Voir</span></a>
+				{% else %}
+					<a class="ec-mini dev" href="{{ path('app_espace_devis', {filtre: 'a_accepter'}) }}">Voir les devis</a>
+				{% endif %}
+			</div>
+		{% endif %}
+	</div>
+{% endif %}

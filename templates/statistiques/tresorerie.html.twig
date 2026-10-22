@@ -1,7 +1,17 @@
 {% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
 
 {% block title %}
 	Statistiques de trésorerie
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if local %}{{ st.exporter('app_statistiques_tresorerie_export', filtres|merge({granularite: granulariteEvolution})) }}{% endif %}
 {% endblock %}
 
 {% block body %}
@@ -205,7 +215,7 @@
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ asset('vendor/chart.js-4.4.4/chart.umd.js') }}"></script>
 
 <script>
 	(function () {

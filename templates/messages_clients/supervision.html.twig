@@ -1,0 +1,97 @@
+{% extends 'base.html.twig' %}
+
+{# Clients › Supervision des messages (maquette MS04, Direction) : délais de réponse de la semaine, par responsable, retards en cours et règles. #}
+{% block title %}Supervision des messages{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_messages_clients_supervision_export', {semaine: semaine}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-file-csv me-1"></i>Exporter</a></li>
+{% endblock %}
+
+{% macro nomUser(u) %}{% if u %}{{ u.employe ? u.employe.nomComplet : u.username }}{% endif %}{% endmacro %}
+{% macro metier(u) %}{% if u %}{{ u.employe and u.employe.fonction ? u.employe.fonction : '' }}{% endif %}{% endmacro %}
+{% macro initiales(nom) %}{{ nom|split(' ')|filter(m => m matches '/^\\p{L}/u')|slice(0, 2)|map(m => m|first|upper)|join('') ?: '?' }}{% endmacro %}
+
+{% block body %}
+	{% import _self as mc %}
+	<form method="get" class="mc-filtres" aria-label="Semaine">
+		<label for="mc-semaine" class="visually-hidden">Semaine</label>
+		<select name="semaine" id="mc-semaine" class="form-select form-select-sm" onchange="this.form.submit()">
+			{% for s in semaines %}<option value="{{ s|date('Y-m-d') }}"{{ s|date('Y-m-d') == semaine ? ' selected' }}>{{ loop.first ? 'Cette semaine' : 'Semaine du ' ~ s|date('d/m') }} · {{ s|date('d/m') }} → {{ s|date_modify('+5 days')|date('d/m') }}</option>{% endfor %}
+		</select>
+		<noscript><button class="mc-btn">Voir</button></noscript>
+	</form>
+
+	<div class="mc-kpis">
+		<div class="mc-kpi"><small>Conversations</small><b>{{ stats.conversations }}</b><small>{{ stats.ouvertes }} encore ouverte{{ stats.ouvertes > 1 ? 's' }}</small></div>
+		<div class="mc-kpi"><small>1re réponse (médiane)</small><b class="{{ stats.mediane is not null ? (stats.mediane <= stats.cible ? 'vert' : 'rouge') }}">{{ stats.mediane is not null ? stats.mediane|duree_messagerie : '—' }}</b><small>cible {{ stats.cible|duree_messagerie }}</small></div>
+		<div class="mc-kpi"><small>Réponses en retard</small><b class="{{ stats.enRetard > 0 ? 'rouge' : 'vert' }}">{{ stats.enRetard }}</b><small>{{ stats.pctRetard is not null ? stats.pctRetard ~ ' % des conversations' : '—' }}</small></div>
+		<div class="mc-kpi"><small>Satisfaction</small><b>{{ stats.satisfaction is not null ? stats.satisfaction|number_format(1, ',', ' ') ~ ' ★' : '—' }}</b><small>{{ stats.avis }} avis</small></div>
+	</div>
+
+	<div class="mc-sup">
+		<div>
+			<section class="mc-carte">
+				<h2>Par personne responsable de répondre</h2>
+				{% if stats.personnes is empty %}
+					<p class="mc-vide">Aucune réponse imputée cette semaine.</p>
+				{% else %}
+					<table class="mc-table">
+						<thead><tr><th>Personne</th><th class="n mc-cache-tel">Conversations</th><th>1re réponse médiane</th><th class="n">En retard</th><th class="n mc-cache-tel">Retard cumulé</th><th class="n">Points</th></tr></thead>
+						<tbody>
+							{% for p in stats.personnes %}
+								{% set nom = mc.nomUser(p.personne)|trim %}
+								<tr>
+									<td><span class="mc-personne"><span class="mc-av petit">{{ mc.initiales(nom) }}</span><span><b>{{ nom }}</b><small class="text-muted">{{ mc.metier(p.personne) }}</small></span></span></td>
+									<td class="n mc-cache-tel">{{ p.conversations }}</td>
+									<td class="text-nowrap">{% if p.mediane is not null %}{% set echelle = stats.cible * 2 %}<span class="mc-barre" aria-hidden="true"><i class="{{ p.mediane > stats.cible ? 'rouge' }}" style="width: {{ min(100, p.mediane * 100 / echelle) }}%"></i><em style="left: 50%"></em></span>{{ p.mediane|duree_messagerie }}{% else %}—{% endif %}</td>
+									<td class="n">{{ p.enRetard }}</td>
+									<td class="n mc-cache-tel">{{ p.retardCumule ? p.retardCumule|duree_messagerie : '—' }}</td>
+									<td class="n"><span class="mc-points {{ p.points == 0 ? 'zero' }}">{{ p.points == 0 ? '0' : p.points }} pts</span></td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+					<p class="mc-aide">Seuls la caisse, le commercial et la trésorière sont imputables. Les points retirés comptent dans la prime (critère « Réponses aux messages des clients »).</p>
+				{% endif %}
+			</section>
+
+			<section class="mc-carte">
+				<h2>En retard en ce moment <span class="mc-puce rouge">{{ retards|length }}</span></h2>
+				{% if retards is empty %}
+					<p class="mc-vide">Aucun client n'attend au-delà du délai.</p>
+				{% else %}
+					<ul class="mc-retards">
+						{% for r in retards %}
+							{% set c = r.conversation %}
+							<li>
+								<span class="mc-av petit client">{{ mc.initiales(c.client.nomComplet) }}</span>
+								<span class="mc-qui"><a href="{{ path('app_messages_clients_voir', {publicId: c.publicId}) }}"><b>{{ c.client.nomComplet }} · {{ c|conversation_titre }}</b></a><small>attend depuis {{ r.chrono.attente|duree_messagerie }} · {{ r.chrono.impute ? 'imputé à ' ~ mc.nomUser(r.chrono.impute)|trim : (c.assigneA ? 'assignée à ' ~ mc.nomUser(c.assigneA)|trim : 'non assignée') }}</small></span>
+								<span class="mc-puce rouge">+{{ r.chrono.retard|duree_messagerie }}</span>
+								{% if not enLigne %}<form method="post" action="{{ path('app_messages_clients_relancer', {publicId: c.publicId}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="mc-btn">Relancer</button></form>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</section>
+		</div>
+
+		<aside class="mc-carte mc-regles">
+			<h2>Règles de réponse</h2>
+			<div class="mc-ligne"><span>1re réponse</span><b>{{ regles.premiere|duree_messagerie }} ouvrées</b></div>
+			<div class="mc-ligne"><span>Réponses suivantes</span><b>{{ regles.suivantes|duree_messagerie }}</b></div>
+			<div class="mc-ligne"><span>Heures comptées</span><b>{{ regles.heuresOuvrees }}</b></div>
+			<div class="mc-ligne"><span>Responsable</span><b>l'agent assigné</b></div>
+			<div class="mc-ligne"><span>Paiement, facture</span><b>{{ regles.tresoriere ? 'la trésorière' : 'la caisse' }}</b></div>
+			<div class="mc-ligne"><span>Autre sujet</span><b>la caisse</b></div>
+			<div class="mc-ligne"><span>Escalade à la Direction</span><b>après {{ regles.escalade|duree_messagerie }}</b></div>
+			<div class="mc-ligne"><span>Réponse en retard</span><b>−{{ regles.penalite }} pts</b></div>
+			<div class="mc-ligne"><span>Clôture automatique</span><b>{{ regles.clotureAutoHeures }} h sans réponse</b></div>
+			<p class="mc-aide">Le chronomètre s'arrête hors des heures d'ouverture et les jours fériés.</p>
+			<a href="{{ path('app_messages_clients_regles') }}" class="mc-btn mt-2">Modifier les règles</a>
+		</aside>
+	</div>
+{% endblock %}

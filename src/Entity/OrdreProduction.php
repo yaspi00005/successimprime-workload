@@ -194,6 +194,99 @@ class OrdreProduction
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $pauseDebuteLe = null;
 
+    /*
+     * Poste machiniste (maquettes OP01 à OP06, docs/poste-machiniste.md) :
+     * le fichier vérifié avant l'impression, l'estimation par étape, les
+     * étiquettes des colis et le passage « Prêt pour livraison ».
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $fichierVerifieLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'fichier_verifie_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $fichierVerifiePar = null;
+
+    /**
+     * Contrôle avant impression coché par le machiniste : clé => vrai/faux.
+     *
+     * @var array<string, bool>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $controleMachiniste = null;
+
+    /**
+     * Temps estimé par le machiniste, étape par étape :
+     * {etapes: [{cle, libelle, propose, estime}], raison, machine}.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $estimation = null;
+
+    /**
+     * « Refaire une pièce » au contrôle final (PD06) : pièces à imprimer de
+     * nouveau ; null quand aucune reprise n'est en cours.
+     */
+    #[ORM\Column(name: 'pieces_a_refaire', nullable: true)]
+    private ?int $piecesARefaire = null;
+
+    /** Nombre de reprises : la sortie de stock d'une reprise porte PROD-xxxxxx-R<n>. */
+    #[ORM\Column(type: Types::SMALLINT, options: ['default' => 0])]
+    private int $reimpressions = 0;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $nombreColis = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $etiquettesImprimeesLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $pretLivraisonLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'pret_livraison_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $pretLivraisonPar = null;
+
+    /*
+     * Production au rouleau (maquettes PD01 à PD03, docs/production-rouleau.md) :
+     * le nom du fichier de production fabriqué par l'ERP (FichierProduction),
+     * la copie dans le dossier de la machine et le tirage qui porte l'ordre.
+     */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $nomFichierProduction = null;
+
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $nomFichierDecoupe = null;
+
+    /** Tirage (rouleau) où sont posées les pièces de l'ordre ; null hors rouleau ou après annulation du tirage. */
+    #[ORM\ManyToOne(targetEntity: TirageRouleau::class)]
+    #[ORM\JoinColumn(name: 'tirage_id', nullable: true, onDelete: 'SET NULL')]
+    private ?TirageRouleau $tirage = null;
+
+    /** Copie du fichier de production dans le dossier de la machine, telle que les postes la voient. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $fichierMachineChemin = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $fichierMachineLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: 'fichier_machine_par_id', nullable: true, onDelete: 'SET NULL')]
+    private ?User $fichierMachinePar = null;
+
+    /**
+     * Temps réel par étape (PD04 et PD06, docs/production-colis.md) :
+     * impression_debut et impression_fin (ATOM), finition_debut (« Commencer
+     * la finition », sinon fin d'impression + séchage), reprise_debut et
+     * reprise_pause (une pièce à refaire), et etapes {impression, sechage,
+     * finitions, controle} => {reel, prevu} en minutes. prevu est le temps
+     * proposé avant correction (FacteursEstimation apprend de reel ÷ prevu).
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $tempsReels = null;
+
     public function __construct()
     {
         $this->fichiers = new ArrayCollection();
@@ -642,10 +735,11 @@ class OrdreProduction
         $this->transmisLe ??= $maintenant;
 
         /*
-     * Lors d’une reprise, calcul de la durée de la pause.
+     * Lors d’une reprise, calcul de la durée de la pause (une pièce à
+     * refaire compte le temps passé depuis la première fin comme une pause).
      */
         if (
-            $this->statut === self::STATUT_EN_PAUSE
+            ($this->statut === self::STATUT_EN_PAUSE || $this->piecesARefaire !== null)
             && $this->pauseDebuteLe !== null
         ) {
             $pauseSecondes = max(
@@ -659,6 +753,14 @@ class OrdreProduction
             );
 
             $this->pauseDebuteLe = null;
+        }
+
+        // Une pièce à refaire : son passage se mesure à part (Ma file montre ce passage, pas le premier).
+        if ($this->statut === self::STATUT_A_PRODUIRE && $this->piecesARefaire !== null) {
+            $temps = $this->tempsReels ?? [];
+            $temps['reprise_debut'] = $maintenant->format(\DATE_ATOM);
+            $temps['reprise_pause'] = $this->dureePauseMinutes;
+            $this->tempsReels = $temps;
         }
 
         $this->operateur = $operateur;
@@ -716,6 +818,11 @@ class OrdreProduction
             );
         }
 
+        // Une pièce refaite s'ajoute à ce qui avait été produit la première fois.
+        if ($this->piecesARefaire !== null) {
+            $quantiteProduite += $this->quantiteProduite;
+            $quantiteRebut += $this->quantiteRebut;
+        }
         $quantiteConforme = $quantiteProduite - $quantiteRebut;
 
         if (
@@ -731,6 +838,7 @@ class OrdreProduction
 
         $this->quantiteProduite = $quantiteProduite;
         $this->quantiteRebut = $quantiteRebut;
+        $this->piecesARefaire = null;
         $this->observationFin = $this->nettoyerTexte(
             $observation
         );
@@ -757,6 +865,304 @@ class OrdreProduction
 
         $this->observationFin = $this->nettoyerTexte($motif);
         $this->statut = self::STATUT_ANNULE;
+
+        return $this;
+    }
+
+    public function getFichierVerifieLe(): ?\DateTimeImmutable
+    {
+        return $this->fichierVerifieLe;
+    }
+
+    public function getFichierVerifiePar(): ?User
+    {
+        return $this->fichierVerifiePar;
+    }
+
+    public function estFichierVerifie(): bool
+    {
+        return $this->fichierVerifieLe !== null;
+    }
+
+    /** @return array<string, bool> */
+    public function getControleMachiniste(): array
+    {
+        return $this->controleMachiniste ?? [];
+    }
+
+    /**
+     * Le machiniste déclare le fichier conforme (OP02).
+     *
+     * @param array<string, bool> $controles
+     */
+    public function verifierFichier(User $par, array $controles, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estADemarrer()) {
+            throw new \LogicException('Le fichier se vérifie avant le démarrage.');
+        }
+        $this->fichierVerifieLe = $le ?? new \DateTimeImmutable();
+        $this->fichierVerifiePar = $par;
+        $this->controleMachiniste = $controles;
+
+        return $this;
+    }
+
+    /** Retour au prépresse (OP04) : le fichier corrigé sera vérifié à nouveau. */
+    public function annulerVerification(): static
+    {
+        $this->fichierVerifieLe = null;
+        $this->fichierVerifiePar = null;
+        $this->controleMachiniste = null;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed> */
+    public function getEstimation(): array
+    {
+        return $this->estimation ?? [];
+    }
+
+    /**
+     * Temps estimé par le machiniste (OP03). La durée totale et le début
+     * prévu alimentent planifier(), lus aussi par l'atelier (files, planning).
+     *
+     * @param list<array{cle: string, libelle: string, propose: ?int, estime: int}> $etapes
+     */
+    public function estimer(array $etapes, ?string $raison, \DateTimeImmutable $debutPrevu, ?Machines $machine): static
+    {
+        if ($this->estTermine() || $this->estAnnule()) {
+            throw new \LogicException('Un travail terminé ou annulé ne s\'estime plus.');
+        }
+        $total = array_sum(array_map(static fn (array $e): int => max(0, (int) $e['estime']), $etapes));
+        if ($total < 1) {
+            throw new \InvalidArgumentException('Indiquez le temps d\'au moins une étape.');
+        }
+        $raison = $this->nettoyerTexte($raison);
+        $this->estimation = ['etapes' => array_values($etapes), 'raison' => $raison, 'propose' => array_sum(array_map(static fn (array $e): int => (int) ($e['propose'] ?? 0), $etapes))];
+        if ($machine !== null) {
+            $this->machine = $machine;
+        }
+
+        return $this->planifier($this->estEnCours() || $this->estEnPause() ? ($this->demarreLe ?? $debutPrevu) : $debutPrevu, $total);
+    }
+
+    /** @return array<string, mixed> */
+    public function getTempsReels(): array
+    {
+        return $this->tempsReels ?? [];
+    }
+
+    private function dateTemps(string $cle): ?\DateTimeImmutable
+    {
+        $v = $this->tempsReels[$cle] ?? null;
+
+        return \is_string($v) && $v !== '' ? new \DateTimeImmutable($v) : null;
+    }
+
+    public function getImpressionDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('impression_debut');
+    }
+
+    public function getImpressionFinieLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('impression_fin');
+    }
+
+    public function getFinitionDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->dateTemps('finition_debut');
+    }
+
+    public function getRepriseDebuteeLe(): ?\DateTimeImmutable
+    {
+        return $this->piecesARefaire !== null && !$this->estADemarrer() ? $this->dateTemps('reprise_debut') : null;
+    }
+
+    /**
+     * Pièces refaites à chaque reprise (« Refaire une pièce », PD06).
+     *
+     * @return array<int, int> numéro de la reprise => pièces
+     */
+    public function getPiecesReprises(): array
+    {
+        $reprises = [];
+        foreach ((array) ($this->tempsReels['reprises'] ?? []) as $n => $pieces) {
+            if ((int) $n > 0 && (int) $pieces > 0) {
+                $reprises[(int) $n] = (int) $pieces;
+            }
+        }
+
+        return $reprises;
+    }
+
+    /** Pauses déjà comptées au début de la reprise (l'attente depuis la première fin comprise). */
+    public function getReprisePauseMinutes(): int
+    {
+        return (int) ($this->tempsReels['reprise_pause'] ?? 0);
+    }
+
+    /**
+     * Temps d'impression mesuré (un passage) : du début à la fin, en
+     * minutes effectives. Une reprise s'ajoute au premier passage et
+     * marque l'étape (elle n'apprend pas aux estimations).
+     */
+    public function noterImpression(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $minutes, ?int $prevu): static
+    {
+        $temps = $this->tempsReels ?? [];
+        $etape = $temps['etapes']['impression'] ?? null;
+        $reprise = \is_array($etape) && isset($etape['reel']);
+        $temps['impression_debut'] = $reprise ? ($temps['impression_debut'] ?? $debut->format(\DATE_ATOM)) : $debut->format(\DATE_ATOM);
+        $temps['impression_fin'] = $fin->format(\DATE_ATOM);
+        $temps['etapes']['impression'] = [
+            'reel' => max(0, $minutes) + ($reprise ? (int) $etape['reel'] : 0),
+            'prevu' => $reprise ? ($etape['prevu'] ?? null) : ($prevu !== null ? max(0, $prevu) : null),
+        ] + ($reprise ? ['reprise' => true] : []);
+        unset($temps['finition_debut'], $temps['finition_par']);
+        $this->tempsReels = $temps;
+
+        return $this;
+    }
+
+    /** « Commencer la finition » (PD04, PD05) : la première fois seulement. */
+    public function commencerFinition(\DateTimeImmutable $le, ?string $par = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('La finition commence une fois l\'impression terminée.');
+        }
+        $temps = $this->tempsReels ?? [];
+        if (!isset($temps['finition_debut'])) {
+            $temps['finition_debut'] = $le->format(\DATE_ATOM);
+            $temps['finition_par'] = $par !== null ? mb_substr($par, 0, 60) : null;
+            $this->tempsReels = $temps;
+        }
+
+        return $this;
+    }
+
+    /**
+     * Étapes mesurées au contrôle final (séchage, finitions, contrôle) :
+     * cle => {reel, prevu}. L'impression garde la sienne.
+     *
+     * @param array<string, array{reel: ?int, prevu: ?int}> $etapes
+     */
+    public function noterEtapes(array $etapes): static
+    {
+        $temps = $this->tempsReels ?? [];
+        foreach ($etapes as $cle => $e) {
+            if ($cle === 'impression') {
+                continue;
+            }
+            $temps['etapes'][$cle] = ['reel' => $e['reel'] !== null ? max(0, (int) $e['reel']) : null, 'prevu' => $e['prevu'] !== null ? max(0, (int) $e['prevu']) : null];
+        }
+        $this->tempsReels = $temps;
+
+        return $this;
+    }
+
+    public function getNombreColis(): ?int
+    {
+        return $this->nombreColis;
+    }
+
+    public function getEtiquettesImprimeesLe(): ?\DateTimeImmutable
+    {
+        return $this->etiquettesImprimeesLe;
+    }
+
+    /** Étiquettes des colis imprimées (OP05). */
+    public function etiqueterColis(int $nombreColis, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Les étiquettes s\'impriment une fois le travail terminé.');
+        }
+        if ($nombreColis < 1 || $nombreColis > 99) {
+            throw new \InvalidArgumentException('Le nombre de colis va de 1 à 99.');
+        }
+        $this->nombreColis = $nombreColis;
+        $this->etiquettesImprimeesLe = $le ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getPiecesARefaire(): ?int
+    {
+        return $this->piecesARefaire;
+    }
+
+    public function getReimpressions(): int
+    {
+        return $this->reimpressions;
+    }
+
+    /**
+     * « Refaire une pièce » (PD06) : le travail terminé repart en production
+     * pour $pieces pièces, comptées en rebut. Il réapparaît « Prêt à
+     * démarrer » dans Ma file (fichier déjà vérifié, temps déjà estimé).
+     */
+    public function refaire(int $pieces, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Seul un travail terminé peut être refait.');
+        }
+        if ($this->estPretLivraison()) {
+            throw new \LogicException('Ce travail est déjà prêt pour la livraison.');
+        }
+        if ($pieces < 1 || $pieces > max(1, $this->getQuantiteConforme())) {
+            throw new \InvalidArgumentException(sprintf('Le nombre de pièces à refaire va de 1 à %d.', max(1, $this->getQuantiteConforme())));
+        }
+        $this->piecesARefaire = $pieces;
+        ++$this->reimpressions;
+        $this->quantiteRebut += $pieces;
+        // Les pièces de chaque reprise : leurs œillets et attaches sortent à part au contrôle final (FIN-…-R1).
+        $temps = $this->tempsReels ?? [];
+        $temps['reprises'][(string) $this->reimpressions] = $pieces;
+        $this->tempsReels = $temps;
+        $this->pauseDebuteLe = $this->termineLe ?? $le ?? new \DateTimeImmutable();
+        $this->termineLe = null;
+        $this->terminePar = null;
+        $this->statut = self::STATUT_A_PRODUIRE;
+
+        return $this;
+    }
+
+    /** Référence de la sortie de stock du travail : PROD-000123, puis PROD-000123-R1 pour une reprise. */
+    public function referenceStock(): string
+    {
+        return self::referenceStockDe((int) $this->id, $this->piecesARefaire !== null ? $this->reimpressions : 0);
+    }
+
+    public static function referenceStockDe(int $id, int $reprise): string
+    {
+        return sprintf('PROD-%06d', $id).($reprise > 0 ? '-R'.$reprise : '');
+    }
+
+    public function getPretLivraisonLe(): ?\DateTimeImmutable
+    {
+        return $this->pretLivraisonLe;
+    }
+
+    public function getPretLivraisonPar(): ?User
+    {
+        return $this->pretLivraisonPar;
+    }
+
+    public function estPretLivraison(): bool
+    {
+        return $this->pretLivraisonLe !== null;
+    }
+
+    public function marquerPretLivraison(User $par, ?\DateTimeImmutable $le = null): static
+    {
+        if (!$this->estTermine()) {
+            throw new \LogicException('Le travail doit être terminé.');
+        }
+        if ($this->etiquettesImprimeesLe === null) {
+            throw new \LogicException('Imprimez d\'abord les étiquettes des colis.');
+        }
+        $this->pretLivraisonLe = $le ?? new \DateTimeImmutable();
+        $this->pretLivraisonPar = $par;
 
         return $this;
     }
@@ -878,5 +1284,60 @@ class OrdreProduction
             ?? new \DateTimeImmutable();
 
         return $dateComparaison > $this->finPrevueLe;
+    }
+
+    public function getNomFichierProduction(): ?string
+    {
+        return $this->nomFichierProduction;
+    }
+
+    public function getNomFichierDecoupe(): ?string
+    {
+        return $this->nomFichierDecoupe;
+    }
+
+    /** Noms fabriqués par l'ERP (NomFichierProduction) : le fichier du client n'est ni déplacé ni renommé. */
+    public function nommerFichiers(?string $production, ?string $decoupe): static
+    {
+        $this->nomFichierProduction = null !== $production ? mb_substr($production, 0, 160) : null;
+        $this->nomFichierDecoupe = null !== $decoupe ? mb_substr($decoupe, 0, 160) : null;
+
+        return $this;
+    }
+
+    public function getTirage(): ?TirageRouleau
+    {
+        return $this->tirage;
+    }
+
+    public function setTirage(?TirageRouleau $tirage): static
+    {
+        $this->tirage = $tirage;
+
+        return $this;
+    }
+
+    public function getFichierMachineChemin(): ?string
+    {
+        return $this->fichierMachineChemin;
+    }
+
+    public function getFichierMachineLe(): ?\DateTimeImmutable
+    {
+        return $this->fichierMachineLe;
+    }
+
+    public function getFichierMachinePar(): ?User
+    {
+        return $this->fichierMachinePar;
+    }
+
+    public function noterCopieMachine(string $chemin, ?User $par, \DateTimeImmutable $le): static
+    {
+        $this->fichierMachineChemin = mb_substr($chemin, 0, 255);
+        $this->fichierMachineLe = $le;
+        $this->fichierMachinePar = $par;
+
+        return $this;
     }
 }

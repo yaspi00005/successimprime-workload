@@ -16,7 +16,7 @@
 
 			<ol class="breadcrumb">
 				<li class="breadcrumb-item">
-					<a href="#">Paramètres</a>
+					<a href="{{ path('app_machines_index') }}">Machines et maintenance</a>
 				</li>
 
 				<li class="breadcrumb-item active" aria-current="page">
@@ -364,7 +364,7 @@
 																																																								                                                        btn-sm
 																																																								                                                        btn-danger-light
 																																																								                                                        btn-delete-machine
-																																																								                                                    " data-id="{{ machine.id }}" data-url="{{ path( 'app_machines_delete_ajax', { id: machine.id } ) }}" data-token="{{ csrf_token( 'delete_machine_' ~ machine.id ) }}" data-nom="{{ machine.nom }}" title="Supprimer">
+																																																								                                                    " {{ confirmer_suppression('la machine « ' ~ machine.nom ~ ' »') }} data-id="{{ machine.id }}" data-url="{{ path( 'app_machines_delete_ajax', { id: machine.id } ) }}" data-token="{{ csrf_token( 'delete_machine_' ~ machine.id ) }}" data-nom="{{ machine.nom }}" title="Supprimer">
 														<i class="fa fa-trash"></i>
 													</button>
 
@@ -1306,7 +1306,7 @@
 
 	{{ parent() }}
 
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 	<script src="{{ asset('assets/js/traitement_machines.js') }}"></script>
 	<script>
@@ -2064,28 +2064,7 @@ afficherErreur('Configuration de suppression introuvable.');
 return;
 }
 
-const confirmation = await Swal.fire({
-icon: 'warning',
-title: 'Supprimer la machine ?',
-html: `
-		                        Vous êtes sur le point de supprimer
-	<strong>
-		${
-echapperHtml(nom)
-}
-	</strong>.
-	<br><br>
-	Cette action est irréversible.
-		                    `,
-showCancelButton: true,
-confirmButtonText: 'Oui, supprimer',
-cancelButtonText: 'Annuler',
-confirmButtonColor: '#d33'
-});
-
-if (! confirmation.isConfirmed) {
-return;
-}
+// Déjà confirmé dans la fenêtre de l'application (data-confirmer, public/js/confirmation.js).
 
 try {
 

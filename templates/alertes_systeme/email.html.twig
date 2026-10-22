@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ sujet }}</title></head>
+<body style="margin:0;padding:0;background:#F4F6FA;font-family:Arial,Helvetica,sans-serif;color:#12213A;">
+	<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F6FA;padding:20px 12px;">
+		<tr><td align="center">
+			<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #E6EAF1;">
+				<tr><td style="background:#0F4590;color:#ffffff;padding:16px 20px;font-size:18px;font-weight:bold;">Succès Imprim · Alerte système</td></tr>
+				<tr><td style="padding:18px 20px 6px;font-size:16px;font-weight:bold;">{{ sujet }}</td></tr>
+				{% for l in lignes %}
+					{% set a = l.alerte %}
+					<tr><td style="padding:8px 20px;">
+						<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border:1px solid #E6EAF1;border-left:4px solid {{ a.estCritique ? '#E0102B' : '#B45309' }};border-radius:8px;">
+							<tr><td style="padding:12px 14px;font-size:14px;line-height:1.45;">
+								<div style="font-size:12px;color:#6B7385;"><b style="color:#12213A;">{{ a.reference }}</b> · {{ a.libelleGravite }} · {{ a.libelleType }}</div>
+								<div style="margin:4px 0;font-weight:bold;">{{ a.titre }}</div>
+								<div style="font-size:13px;color:#6B7385;">{{ a.occurrences > 1 ? a.occurrences ~ ' fois, du ' ~ a.premiereLe|date('d/m/Y H:i') ~ ' au ' ~ a.derniereLe|date('d/m/Y H:i') : 'Le ' ~ a.premiereLe|date('d/m/Y à H:i') }} · {{ a.libelleOrigine }}</div>
+								<div style="margin-top:10px;"><a href="{{ l.lien }}" style="display:inline-block;background:#0F4590;color:#ffffff;text-decoration:none;padding:9px 14px;border-radius:8px;font-weight:bold;font-size:14px;">Prendre en charge</a></div>
+							</td></tr>
+						</table>
+					</td></tr>
+				{% endfor %}
+				<tr><td style="padding:10px 20px 4px;font-size:14px;"><a href="{{ liste }}" style="color:#0F4590;">Toutes les alertes système</a></td></tr>
+				<tr><td style="padding:10px 20px 18px;font-size:12px;color:#6B7385;line-height:1.5;">
+					Envoyé par le {{ serveur }}. Le détail technique se lit sur l'écran (connexion demandée) : ce message ne contient ni mot de passe ni donnée de client.<br>
+					Une même panne ne fait qu'une alerte, dont le compteur monte ; au plus un e-mail par sorte toutes les {{ delai }} minutes.
+				</td></tr>
+			</table>
+		</td></tr>
+	</table>
+</body>
+</html>

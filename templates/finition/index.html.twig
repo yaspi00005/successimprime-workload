@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}User index
+{% block title %}Finitions
 {% endblock %}
 
 {% block body %}
@@ -9,9 +9,9 @@
 	<div class="page-header">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item">
-				<a href="#">Utilisateurs</a>
+				<a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a>
 			</li>
-			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
+			<li class="breadcrumb-item active" aria-current="page">Finitions</li>
 		</ol>
 		<div>
 			<button type="button" class="btn btn-primary btn-create-finition" data-bs-toggle="modal" data-bs-target="#finitionCreateModal">
@@ -29,7 +29,12 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger">
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-finitions" class="btn btn-outline-primary order-last" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
+
+			<button type="button" id="finitionMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les finitions cochées') }}>
 				<i class="fa fa-trash mr-1"></i>
 				Supprimer
 			</button>
@@ -47,7 +52,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="">
+				<input type="search" id="finitionRecherche" class="form-control" placeholder="Rechercher une finition (nom ou nom commercial)…" aria-label="Rechercher une finition" data-recherche-liste="#finitionSortableBody" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -56,11 +61,11 @@
 			</div>
 			<div class="card">
 				<div class="card-header border-bottom-0 p-4">
-					<h2 class="card-title">1 - 30 of 546 users</h2>
+					<h2 class="card-title" style="text-transform: none">{{ finitions|length }} {{ finitions|length > 1 ? 'finitions' : 'finition' }}</h2>
 					<div class="page-options d-flex float-right">
 						<select class="form-control custom-select w-auto">
-							<option value="asc">Latest</option>
-							<option value="desc">Oldest</option>
+							<option value="asc">Plus récentes</option>
+							<option value="desc">Plus anciennes</option>
 						</select>
 					</div>
 				</div>
@@ -95,7 +100,7 @@
 
 								{% for finition in finitions %}
 
-									<tr id="finition-row-{{ finition.id }}" class="finition-sortable-row" data-id="{{ finition.id }}">
+									<tr id="finition-row-{{ finition.id }}" class="finition-sortable-row" data-id="{{ finition.id }}" data-recherche="{{ cle_recherche(finition.nom, finition.nomCommercial) }}">
 
 										<td class="text-center align-middle">
 											<i class="fa fa-arrows-alt finition-drag-handle" style="cursor: move;" title="Déplacer"></i>
@@ -113,6 +118,7 @@
 
 										<td class="align-middle">
 											<strong>{{ finition.nom }}</strong>
+											{% if finition.nomCommercial %}<small class="d-block text-muted">{{ finition.nomCommercial }}</small>{% endif %}
 										</td>
 
 										<td class="align-middle">
@@ -174,7 +180,7 @@
 													{% endif %}
 												</button>
 
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-finition" data-url="{{ path( 'app_finition_delete_ajax', {id: finition.id} ) }}" data-token="{{ csrf_token( 'delete_finition_' ~ finition.id ) }}" data-nom="{{ finition.nom }}" title="Supprimer">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-finition" {{ confirmer_suppression('la finition « ' ~ finition.nom ~ ' »') }} data-url="{{ path( 'app_finition_delete_ajax', {id: finition.id} ) }}" data-token="{{ csrf_token( 'delete_finition_' ~ finition.id ) }}" data-nom="{{ finition.nom }}" title="Supprimer">
 													<i class="fa fa-trash"></i>
 												</button>
 
@@ -226,7 +232,7 @@
 								Nom de la finition
 							</label>
 
-							<input type="text" id="finitionCreateNom" class="form-control" placeholder="Exemple : Pelliculage brillant" autocomplete="off">
+							<input type="text" id="finitionCreateNom" class="form-control" maxlength="255" placeholder="Exemple : Pelliculage brillant" autocomplete="off">
 						</div>
 
 						<div class="form-group">
@@ -317,7 +323,7 @@
 								Nom de la finition
 							</label>
 
-							<input type="text" id="finitionEditNom" class="form-control" placeholder="Nom de la finition">
+							<input type="text" id="finitionEditNom" class="form-control" maxlength="255" placeholder="Nom de la finition">
 						</div>
 
 						<div class="form-group">
@@ -389,8 +395,10 @@
 	<!-- ROW CLOSED -->
 {% endblock %}
 {% block javascripts %}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
+	<script src="{{ asset('js/jeton-json.js') }}" data-jeton="{{ csrf_token('update_finition') }}" data-fin="/update/ajax"></script>
 	<script src="../assets/js/traitement_parametrage.js"></script>
-	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+	<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
+	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 
 {% endblock %}

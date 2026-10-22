@@ -1,0 +1,50 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Mes avis{% endblock %}
+{% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Mes avis</a>{% endblock %}
+
+{% macro etoiles(note) %}<span class="av-note" aria-label="{{ note }} sur 5">{% for i in 1..5 %}<span class="{{ i > note ? 'vide' }}">★</span>{% endfor %}</span>{% endmacro %}
+
+{% block contenu %}
+	{% import _self as m %}
+	{% for s in sondages %}
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_avis_sondage', {id: s.publicId}) }}">
+			<span><b>{{ s.titre }}</b><span class="ec-petit">{{ s.introduction ?? 'Quelques questions pour mieux vous servir' }} · {{ s.questions|length }} question{{ s.questions|length > 1 ? 's' }}</span></span>
+			<span class="ec-bouton-petit">Répondre</span>
+		</a>
+	{% endfor %}
+
+	{% if commandes is not empty %}
+		<div class="ec-carte">
+			<h2>Commandes à noter</h2>
+			<ul class="ec-liste">
+				{% for carte in commandes %}
+					<li class="ec-ligne">
+						<span><b>{{ carte.titre }}</b><span class="ec-petit" style="display:block">Commande n° {{ carte.commande.numero }}</span></span>
+						<a class="ec-bouton-petit" href="{{ path('app_espace_avis_commande', {id: carte.commande.publicId}) }}">Noter</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
+	{% if sondages is empty and commandes is empty %}
+		<div class="ec-carte ec-vide">Rien à noter pour l'instant. Après chaque livraison, vous pourrez noter votre commande ici.</div>
+	{% endif %}
+
+	{% if donnes is not empty %}
+		<div class="ec-carte">
+			<h2>Vos derniers avis</h2>
+			<ul class="ec-liste">
+				{% for r in donnes %}
+					<li class="ec-ligne">
+						<span><b>{{ r.commande ? 'Commande ' ~ r.commande.numero : (r.sondage ? r.sondage.titre : 'Sondage') }}</b><span class="ec-petit" style="display:block">le {{ r.creeLe|date('d/m/Y') }}{{ r.auteur ? ' · par ' ~ r.auteur }}</span></span>
+						{% if r.noteGlobale %}{{ m.etoiles(r.noteGlobale) }}{% else %}<span class="ec-pastille vert">Merci</span>{% endif %}
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+	<p class="ec-petit" style="text-align:center">Un problème sur un travail ? <a href="{{ path('app_espace_reclamation_nouvelle') }}">Faites une réclamation</a> : l'atelier vous répond.</p>
+{% endblock %}

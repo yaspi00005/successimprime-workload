@@ -1,0 +1,121 @@
+/*
+ * Coûts, marges et bénéfices (maquette SU04, docs/achats.md) : tableau
+ * par produit, cascade « où part l'argent », « À retenir », et l'écran
+ * « Régler les coûts ». S'ajoute à achats.css (mêmes couleurs, préfixe cm-).
+ */
+.cm-page .cm-entete { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.cm-page .cm-fil { font-size: 12px; color: var(--ac-gris); margin: 0 0 2px; }
+.cm-page .cm-titre { font-size: 22px; font-weight: 800; margin: 0; color: #111827; }
+.cm-page .cm-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.cm-page .cm-btn { background: #fff; border: 1px solid var(--ac-bord); color: #111827; font-weight: 600; }
+.cm-page .cm-btn:hover { border-color: #C9D3E3; background: var(--ac-fond); }
+.cm-page .cm-mois { position: relative; }
+.cm-page .cm-mois summary { list-style: none; }
+.cm-page .cm-mois summary::-webkit-details-marker { display: none; }
+.cm-page .cm-mois > div { position: absolute; right: 0; top: calc(100% + 4px); z-index: 6; background: #fff; border: 1px solid var(--ac-bord); border-radius: 10px; box-shadow: 0 8px 24px rgba(17, 24, 39, .12); padding: 6px; min-width: 180px; }
+.cm-page .cm-mois > div a { display: block; padding: 7px 10px; border-radius: 7px; font-size: 13px; color: #111827; text-decoration: none; white-space: nowrap; }
+.cm-page .cm-mois > div a:hover, .cm-page .cm-mois > div a.actif { background: var(--ac-fond); }
+.cm-page .cm-mois > div a.actif { font-weight: 700; color: var(--ac-bleu); }
+
+/* Tableau */
+.cm-page .cm-table { font-size: 13px; }
+.cm-page .cm-table th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
+.cm-page .cm-table td { padding: 10px 8px; }
+.cm-page .cm-table td:first-child { min-width: 170px; }
+.cm-page .cm-table tr.cm-choisi td { background: #F3F7FE; }
+.cm-page .cm-sous { display: block; color: var(--ac-gris); font-size: 12px; }
+.cm-page .cm-incomplet { margin-top: 3px; font-size: 11px; padding: 1px 8px; cursor: help; }
+.cm-page .cm-manque { display: none; font-size: 11px; color: #8A6100; }
+.cm-page .cm-total td { border-top: 1px solid var(--ac-bord); border-bottom: 0; background: var(--ac-fond); }
+.cm-page .cm-gros { font-size: 16px; }
+.cm-page .cm-vert { color: var(--ac-vert); }
+.cm-page .cm-jaune { color: #A87400; }
+.cm-page .cm-orange { color: var(--ac-orange); }
+.cm-page .cm-rouge { color: var(--ac-rouge); }
+.cm-page .cm-notes { list-style: none; margin: 12px 0 0; padding: 0; font-size: 12px; color: var(--ac-gris); }
+.cm-page .cm-notes li { padding: 2px 0; }
+
+/* Cascade et « À retenir » */
+.cm-page .cm-grille { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 16px; align-items: start; }
+.cm-page .cm-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.cm-page .cm-svg .cm-axe { stroke: var(--ac-bord); }
+.cm-page .cm-svg .cm-barre { fill: #9CA3AF; }
+.cm-page .cm-svg .cm-barre.prix { fill: var(--ac-bleu); }
+.cm-page .cm-svg .cm-barre.achat { fill: var(--ac-rouge); }
+.cm-page .cm-svg .cm-barre.transport { fill: var(--ac-orange); }
+.cm-page .cm-svg .cm-barre.transit { fill: #F4A07F; }
+.cm-page .cm-svg .cm-barre.encre { fill: #D6336C; }
+.cm-page .cm-svg .cm-barre.gache { fill: #C99A00; }
+.cm-page .cm-svg .cm-barre.machine { fill: #7B3FC4; }
+.cm-page .cm-svg .cm-barre.autres { fill: #6B7280; }
+.cm-page .cm-svg .cm-barre.marge { fill: var(--ac-vert); }
+.cm-page .cm-svg .cm-barre.marge.perte { fill: var(--ac-rouge); }
+.cm-page .cm-svg text { font-size: 12px; font-weight: 700; fill: #374151; }
+.cm-page .cm-svg text.cm-libelle { font-weight: 500; fill: var(--ac-gris); font-size: 11.5px; }
+.cm-page .cm-svg text.prix { fill: var(--ac-bleu); }
+.cm-page .cm-svg text.achat { fill: var(--ac-rouge); }
+.cm-page .cm-svg text.transport, .cm-page .cm-svg text.transit { fill: var(--ac-orange); }
+.cm-page .cm-svg text.encre { fill: #D6336C; }
+.cm-page .cm-svg text.gache { fill: #A87400; }
+.cm-page .cm-svg text.machine { fill: #7B3FC4; }
+.cm-page .cm-svg text.marge { fill: var(--ac-vert); }
+.cm-page .cm-svg text.marge.perte { fill: var(--ac-rouge); }
+
+.cm-page .cm-cascade-liste { display: none; list-style: none; margin: 0; padding: 0; }
+.cm-page .cm-cascade-liste li { display: grid; grid-template-columns: 112px minmax(0, 1fr) 62px; align-items: center; gap: 8px; padding: 4px 0; font-size: 12px; }
+.cm-page .cm-cascade-liste li span { color: var(--ac-gris); line-height: 1.2; }
+.cm-page .cm-cascade-liste li i { display: block; height: 14px; border-radius: 3px; background: #9CA3AF; }
+.cm-page .cm-cascade-liste li b { text-align: right; font-variant-numeric: tabular-nums; }
+.cm-page .cm-cascade-liste li.prix i { background: var(--ac-bleu); }
+.cm-page .cm-cascade-liste li.achat i { background: var(--ac-rouge); }
+.cm-page .cm-cascade-liste li.transport i { background: var(--ac-orange); }
+.cm-page .cm-cascade-liste li.transit i { background: #F4A07F; }
+.cm-page .cm-cascade-liste li.encre i { background: #D6336C; }
+.cm-page .cm-cascade-liste li.gache i { background: #C99A00; }
+.cm-page .cm-cascade-liste li.machine i { background: #7B3FC4; }
+.cm-page .cm-cascade-liste li.marge i { background: var(--ac-vert); }
+.cm-page .cm-cascade-liste li.marge b { color: var(--ac-vert); }
+.cm-page .cm-cascade-liste li.perte i { background: var(--ac-rouge); }
+.cm-page .cm-cascade-liste li.perte b { color: var(--ac-rouge); }
+
+.cm-page .cm-retenir ul { list-style: none; margin: 0; padding: 0; }
+.cm-page .cm-retenir li { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); }
+.cm-page .cm-retenir li > div { display: flex; flex-direction: column; min-width: 0; }
+.cm-page .cm-retenir li b { font-size: 14px; line-height: 1.3; }
+.cm-page .cm-retenir li small { font-size: 12px; color: var(--ac-gris); }
+.cm-page .cm-icone { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; background: #FDEDE7; color: var(--ac-orange); }
+.cm-page .cm-retenir li.alerte .cm-icone { background: #FDE8EA; color: var(--ac-rouge); }
+.cm-page .cm-retenir li.faible .cm-icone { background: #FFF6DB; color: #A87400; }
+.cm-page .cm-retenir li.meilleur .cm-icone { background: #FFF6DB; color: #E0A800; }
+.cm-page .cm-pied { font-size: 12px; color: var(--ac-gris); margin: 12px 0 0; }
+
+/* Régler les coûts */
+.cm-page .cm-reglages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.cm-page .cm-champ { width: 110px; text-align: right; height: 34px; padding: 4px 8px; border-radius: 8px; }
+.cm-page .cm-champ::placeholder { color: #B6BDC9; }
+.cm-page .cm-champ-ligne { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.cm-page .cm-enregistrer { display: flex; justify-content: flex-end; gap: 8px; }
+
+@media (max-width: 1199px) {
+	.cm-page .cm-grille, .cm-page .cm-reglages { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Téléphone : les produits en cartes (ac-liste), libellés au-dessus des chiffres. */
+@media (max-width: 640px) {
+	.cm-page .cm-titre { font-size: 18px; }
+	.cm-page .cm-actions { width: 100%; flex-wrap: nowrap; gap: 6px; }
+	.cm-page .cm-actions > * { flex: 1 1 0; min-width: 0; }
+	.cm-page .cm-actions .cm-btn { width: 100%; font-size: 12px; padding-left: 4px; padding-right: 4px; white-space: nowrap; }
+	/* Une carte par produit : trois chiffres par rangée, le bénéfice en évidence. */
+	.cm-page .cm-table tbody tr { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px 10px; }
+	.cm-page .cm-manque { display: block; }
+	.cm-page .cm-table tbody td[data-libelle="Bénéfice brut"] b { font-size: 15px; }
+	.cm-page .cm-mois > div { left: 0; right: auto; }
+	.cm-page .cm-table td:first-child { min-width: 0; }
+	.cm-page .cm-table tfoot tr { display: grid; grid-template-columns: 1fr 1fr; }
+	.cm-page .cm-table tfoot td { display: block; }
+	.cm-page .cm-svg { display: none; }
+	.cm-page .cm-cascade-liste { display: block; }
+	.cm-page .cm-cascade > h2 small { float: none !important; display: block; }
+	.cm-page .cm-champ { width: 90px; }
+}

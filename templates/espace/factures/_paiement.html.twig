@@ -1,0 +1,121 @@
+{#
+	Récapitulatif avant Orange Money (maquette FP03), dans la fenêtre de la
+	vue d'ensemble ou en page (pleinePage). Tout vient du serveur
+	(ReglementsEnLigne::plan) : éléments choisis, avoir déduit, « Tout
+	payer » ou « Autre montant », frais Orange Money montrés avant de
+	partir. Changer l'avoir ou le montant recalcule (formulaire GET ; le
+	script le fait sans recharger). Le numéro Orange Money se saisit sur la
+	page d'Orange : Web Payment ne le reçoit pas d'ici.
+#}
+{% set pleinePage = pleinePage ?? false %}
+{% set resteApres = plan.total - plan.avoir - plan.om %}
+{% set parOm = plan.om > 0 %}
+{# Montant refusé : l'erreur va sous le champ, et les frais (ceux du total) ne s'affichent pas. #}
+{% set erreurMontant = partiel and erreur %}
+<div class="ef-om" data-ef-recap>
+	<div class="ef-om-tete">
+		<span class="ef-om-logo" aria-hidden="true">OM</span>
+		<div>
+			<b>{{ parOm ? 'Payer par Orange Money' : 'Payer avec mon avoir' }}</b>
+			<small>Succès Imprim · {{ parOm ? 'page sécurisée d\'Orange Money' : 'validé par l\'imprimerie' }}</small>
+		</div>
+		{% if not pleinePage %}<button type="button" class="ef-fermer" data-ef-fermer aria-label="Fermer">×</button>{% endif %}
+	</div>
+	<div class="ef-om-corps">
+		{% if erreur and not erreurMontant %}<div class="ec-flash ec-flash-erreur ef-om-erreur" role="alert">{{ erreur }}</div>{% endif %}
+
+		<ul class="ef-om-lignes">
+			{% for e in elements %}
+				{% set titre = e.commande|espace_titre %}
+				<li>
+					<span>
+						{%- if e.nature == 'facture' %}{{ titre }} · {{ e.estPartiel or e.dejaPaye > 0 ? 'reste ' }}{{ e.facture.numero }}
+						{%- elseif e.nature == 'acompte' %}{{ titre }} · acompte {{ e.pourcentage }}&nbsp;% {{ e.commande.numero }}
+						{%- elseif e.nature == 'solde' %}Solde d'ouverture · réf. {{ e.commande.numero }}
+						{%- else %}{{ titre }} · commande {{ e.commande.numero }}{% endif -%}
+					</span>
+					<b>{{ e.montant|francs }}</b>
+				</li>
+			{% endfor %}
+			{% if plan.avoir > 0 %}<li class="avoir"><span>Votre avoir</span><b>− {{ plan.avoir|francs }}</b></li>{% endif %}
+		</ul>
+
+		<form method="get" action="{{ path('app_espace_payer_selection') }}" data-ef-recalcul>
+			{% for e in elements %}<input type="hidden" name="e[]" value="{{ e.cle }}">{% endfor %}
+			{% if plan.avoirDisponible > 0 %}
+				<input type="hidden" name="avoir" value="0">
+				<label class="ef-om-case">
+					<input type="checkbox" name="avoir" value="1"{{ avecAvoir ? ' checked' }}>
+					<span>Utiliser mon avoir · {{ plan.avoirDisponible|francs }} disponible{{ plan.avoirDisponible > plan.total ? ', ' ~ plan.total|francs ~ ' utilisés ici' }}</span>
+				</label>
+			{% endif %}
+
+			<div class="ef-om-a-payer"><span>{{ parOm or plan.omMax > 0 ? 'À payer' : 'Payé par votre avoir' }}</span><b>{{ (plan.omMax > 0 ? plan.omMax : plan.avoir)|francs }}</b></div>
+
+			{% if plan.omMax > 0 %}
+				<div class="ef-om-modes" role="radiogroup" aria-label="Montant">
+					<label class="ef-om-mode"><input type="radio" name="mode" value="tout"{{ not partiel ? ' checked' }}><b>Tout payer</b><small>{{ plan.omMax|francs }}</small></label>
+					<label class="ef-om-mode"><input type="radio" name="mode" value="partiel"{{ partiel ? ' checked' }}><b>Autre montant</b><small>paiement partiel</small></label>
+				</div>
+				<div class="ef-om-montant{{ not partiel ? ' replie' }}" data-ef-montant>
+					<label class="ec-petit" for="ef-montant-saisi">Montant</label>
+					<input id="ef-montant-saisi" name="montant" inputmode="numeric" autocomplete="off" maxlength="12" value="{{ montantSaisi is not null ? montantSaisi }}" placeholder="de {{ minimum|francs }} à {{ plan.omMax|francs }}" aria-describedby="ef-montant-aide"{{ erreurMontant ? ' aria-invalid="true"' }}>
+				</div>
+				{% if erreurMontant %}<p class="ef-om-aide ef-om-refus" role="alert">{{ erreur }}</p>{% endif %}
+				<p class="ec-petit ef-om-aide{{ not partiel ? ' replie' }}" id="ef-montant-aide" data-ef-montant>Au moins {{ minimum|francs }}. Il va d'abord à la plus ancienne échéance ; le reste reste à payer ici.</p>
+			{% endif %}
+			<button type="submit" class="ec-bouton-blanc ef-sans-js">Recalculer</button>
+		</form>
+
+		{% if parOm and not erreurMontant %}
+			<dl class="ef-om-frais">
+				<div><dt>Montant{{ resteApres > 0 ? ' payé maintenant' }}</dt><dd>{{ plan.frais.montant|francs }}</dd></div>
+				{% if plan.frais.tauxFondsSoutien > 0 %}<div><dt>Fonds de soutien ({{ plan.frais.tauxFondsSoutien|frais_taux }})</dt><dd>{{ plan.frais.fondsSoutien|francs }}</dd></div>{% endif %}
+				{% if plan.frais.tauxFraisRetrait > 0 %}<div><dt>Frais de retrait Orange Money ({{ plan.frais.tauxFraisRetrait|frais_taux }})</dt><dd>{{ plan.frais.fraisRetrait|francs }}</dd></div>{% endif %}
+				<div class="total"><dt>Débité par Orange Money</dt><dd>{{ plan.frais.total|francs }}</dd></div>
+			</dl>
+			{% if plan.frais.frais > 0 %}<p class="ec-petit" style="margin:.3rem 0 0">Le fonds de soutien (de l'État) et le frais de retrait d'Orange Money s'ajoutent au montant : ils ne changent ni vos factures ni ce qui reste à payer.</p>{% endif %}
+		{% endif %}
+		{% if resteApres > 0 and not erreurMontant %}<p class="ec-petit" style="margin:.4rem 0 0">Après ce paiement, il restera <b>{{ resteApres|francs }}</b> à payer sur ces éléments.</p>{% endif %}
+
+		{% if parOm %}
+			<p class="ef-om-numero"><span class="ec-petit">Numéro Orange Money</span><span>vous le saisissez sur la page Orange Money</span></p>
+			<ol class="ef-om-etapes">
+				<li>Vous passez sur la page sécurisée d'Orange Money (lien valable {{ constant('App\\Entity\\TransactionOrangeMoney::VALIDITE_MINUTES') }} minutes).</li>
+				<li class="cle">Vous confirmez sur la page Orange Money avec votre code secret.</li>
+				<li>Vous revenez ici : paiement reçu, puis validé par l'imprimerie ; le reçu arrive dans « Reçus ».</li>
+			</ol>
+			<p class="ef-om-alerte">Ne donnez jamais votre code secret : Succès Imprim ne vous le demandera jamais.</p>
+		{% else %}
+			<ol class="ef-om-etapes">
+				<li class="cle">Votre avoir est mis de côté pour ces paiements.</li>
+				<li>L'imprimerie le valide, puis il disparaît de votre solde ; le reçu arrive dans « Reçus ».</li>
+			</ol>
+		{% endif %}
+
+		{% if parOm and not omActif %}
+			<div class="ec-note" style="margin-bottom:.8rem">
+				Le paiement Orange Money depuis l'espace arrive très bientôt.
+				{% if marchand %}En attendant, envoyez le montant au numéro marchand <b>{{ marchand }}</b> en indiquant {{ elements|length > 1 ? 'les références' : 'la référence' }} <b>{{ elements|map(e => e.facture ? e.facture.numero : e.commande.numero)|join(', ') }}</b>, ou payez à l'imprimerie.{% else %}En attendant, payez à l'imprimerie.{% endif %}
+			</div>
+		{% endif %}
+
+		<form method="post" action="{{ path('app_espace_payer_reglement') }}" data-ef-envoi>
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			{% for e in elements %}<input type="hidden" name="e[]" value="{{ e.cle }}">{% endfor %}
+			<input type="hidden" name="avoir" value="{{ avecAvoir ? 1 : 0 }}">
+			{% if partiel and not erreur and montantSaisi is not null %}<input type="hidden" name="mode" value="partiel"><input type="hidden" name="montant" value="{{ plan.om }}">{% endif %}
+			{# Seulement pour revoir le récapitulatif s'il a changé : le serveur recalcule tout ce qu'il envoie. #}
+			<input type="hidden" name="total" value="{{ plan.frais.total }}">
+			<input type="hidden" name="avoir_montant" value="{{ plan.avoir }}">
+			<div class="ef-boutons ef-om-boutons">
+				{% if pleinePage %}<a class="ec-bouton-blanc" href="{{ path('app_espace_factures') }}">Annuler</a>{% else %}<button type="button" class="ec-bouton-blanc" data-ef-fermer>Annuler</button>{% endif %}
+				{% if parOm %}
+					<button type="submit" class="ef-bouton-om"{{ not omActif or erreur or (partiel and montantSaisi is null) ? ' disabled' }}>Continuer vers Orange Money · {{ plan.frais.total|francs }}</button>
+				{% else %}
+					<button type="submit" class="ef-bouton-om" style="background:var(--vert);box-shadow:none"{{ erreur ? ' disabled' }}>Utiliser mon avoir · {{ plan.avoir|francs }}</button>
+				{% endif %}
+			</div>
+		</form>
+	</div>
+</div>

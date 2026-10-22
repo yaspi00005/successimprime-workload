@@ -1,0 +1,21 @@
+{# Fiche du guide « corbeille » (CatalogueGuide, docs/corbeille.md). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Réglages », entrée « Corbeille ».</li>
+	<li>Retrouvez l'élément : « Type », « Supprimé du … au », « Par », puis « Filtrer ».</li>
+	<li>Touchez l'élément. « Revient avec elle » montre ce qui reviendra en même temps (adresses, lignes, fichiers…).</li>
+	<li>Touchez « Restaurer », puis « Restaurer » dans la fenêtre. La fiche revient avec le même numéro qu'avant.</li>
+	<li>Pour l'effacer tout de suite : « Supprimer définitivement », puis confirmez. Cela ne se rattrape plus.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Chaque suppression demande d'abord une confirmation : « Supprimer le devis DEV-2026-0042 ? Il restera 30 jours dans la corbeille. »</li>
+	<li>Ce qui est supprimé reste 30 jours, puis part pour de bon chaque nuit, avec ses fichiers. La durée se change dans Réglages › Paramètres › Corbeille.</li>
+	<li>Si la fiche à laquelle l'élément était rattaché n'existe plus (le client d'une adresse, par exemple), la corbeille le dit et ne restaure rien : restaurez d'abord ce client.</li>
+	<li>Un client qui a retiré une adresse ou un fichier de son espace par erreur : il appelle l'imprimerie, c'est récupérable 30 jours.</li>
+	<li>Le droit « Corbeille » peut être donné à un rôle (Rôles et menus). La personne n'y voit que les fiches de ses autres droits ; en « Voir », elle ne restaure rien.</li>
+	<li>Restaurations et suppressions définitives sont notées dans le journal d'activité.</li>
+</ul>
+{% endblock %}

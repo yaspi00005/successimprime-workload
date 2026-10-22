@@ -2,14 +2,19 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\TypesImpressionRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: TypesImpressionRepository::class)]
-class TypesImpression
+class TypesImpression implements AUnNomCommercial
 {
+    use PublicIdTrait;
+    use NomCommercialTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -52,10 +57,16 @@ private Collection $supports;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->commandesDetails = new ArrayCollection();
         $this->finitions = new ArrayCollection();
         $this->formats = new ArrayCollection();
         $this->supports = new ArrayCollection();
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 
     public function getId(): ?int

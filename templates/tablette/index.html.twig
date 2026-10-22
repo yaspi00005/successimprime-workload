@@ -1,0 +1,49 @@
+{% extends 'tablette/_page.html.twig' %}
+
+{% block contenu %}
+	<div class="si-tab-heure">
+		<strong data-si-heure>{{ maintenant|date('H:i') }}</strong>
+		<span data-si-date>{{ maintenant|date_fr('EEEE d MMMM') }}</span>
+	</div>
+
+	{% if point is null %}
+		<section class="si-tab-info">
+			<h1>Tablette non branchée</h1>
+			<p>Pour en faire la tablette de l'entrée, un responsable RH ouvre <b>Réglages du pointage</b> sur cet appareil et touche « Brancher cette tablette » sur le point de l'entrée.</p>
+		</section>
+	{% else %}
+		{% for message in app.flashes('succes') %}
+			<p class="si-tab-ok" role="status" data-si-ok>✓ {{ message }}</p>
+		{% endfor %}
+
+		<h1 class="si-tab-titre">Touchez votre nom</h1>
+		<ul class="si-tab-noms">
+			{% for p in personnes %}
+				<li>
+					<a href="{{ path('app_tablette_pointer', {id: p.id}) }}" class="si-tab-nom{{ p.app ? '' : ' si-tab-sans' }}">
+						<span class="si-tab-pastille si-tab-c{{ p.id % 8 }}" aria-hidden="true">{{ p.nom|split(' ')|map(m => m|first)|slice(0, 2)|join|upper }}</span>
+						<b>{{ p.nom }}</b>
+						<small>{{ p.app ? 'a l\'app' : 'sans accès app' }} · {{ p.prochain == 'depart' ? 'départ' : 'arrivée' }}</small>
+					</a>
+				</li>
+			{% else %}
+				<li class="si-tab-vide">Aucun employé actif.</li>
+			{% endfor %}
+		</ul>
+
+		<p class="si-tab-note">Ensuite, la caméra s'ouvre : une photo et c'est enregistré. L'heure vient du serveur de l'atelier.</p>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+		(function () {
+			var heure = document.querySelector('[data-si-heure]');
+			setInterval(function () {
+				heure.textContent = new Date().toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+			}, 10000);
+			// La liste revient propre toute seule (prochaine action à jour).
+			setTimeout(function () { location.replace(location.pathname); }, document.querySelector('[data-si-ok]') ? 8000 : 300000);
+		})();
+	</script>
+{% endblock %}

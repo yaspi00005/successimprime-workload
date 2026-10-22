@@ -1,0 +1,38 @@
+{#
+	Enregistreur d'une note vocale (docs/messagerie-clients.md, public/js/note-vocale.js) :
+	micro touché ou maintenu, 3 minutes au plus, réécoute, envoi ou annulation.
+	Variables : url (envoi), jeton (valeur du jeton CSRF), choix (l'atelier choisit le client ou une note interne),
+	onglet, classe (bouton qui ouvre), libelle, interne (note interne cochée d'abord),
+	evenement (la page reçoit cet événement au lieu de se recharger : messagerie de l'équipe).
+#}
+{% set max = constant('App\\Service\\Messagerie\\NotesVocales::DUREE_MAX') %}
+<div class="nv" data-note-vocale data-url="{{ url }}" data-jeton="{{ jeton }}" data-max="{{ max }}"{% if onglet ?? null %} data-onglet="{{ onglet }}"{% endif %}{% if evenement ?? null %} data-evenement="{{ evenement }}"{% endif %}>
+	<button type="button" class="nv-ouvrir {{ classe ?? '' }}" aria-expanded="false" title="Enregistrer une note vocale ({{ max // 60 }} min au plus)">
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3"/></svg><span class="nv-libelle">{{ libelle ?? 'Note vocale' }}</span>
+	</button>
+	<div class="nv-panneau" hidden>
+		<p class="nv-etat" role="status" aria-live="polite"></p>
+		<div class="nv-enregistreur">
+			<button type="button" class="nv-micro" aria-pressed="false" aria-label="Enregistrer : touchez pour démarrer et arrêter, ou maintenez appuyé">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15a3 3 0 0 0 3-3V6a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3zM19 11a7 7 0 0 1-14 0M12 18v3"/></svg>
+			</button>
+			<span class="nv-chrono" aria-hidden="true">0:00 / {{ max // 60 }}:00</span>
+		</div>
+		<div class="nv-ecoute" hidden>
+			<audio controls preload="metadata"></audio>
+			<span class="nv-duree"></span>
+		</div>
+		{% if choix ?? false %}
+			<fieldset class="nv-mode">
+				<legend class="visually-hidden">Pour qui</legend>
+				<label><input type="radio" name="nv-mode" value="reponse"{{ not (interne ?? false) ? ' checked' }}> Envoyer au client</label>
+				<label><input type="radio" name="nv-mode" value="note"{{ (interne ?? false) ? ' checked' }}> 🔒 Note interne (équipe seulement)</label>
+			</fieldset>
+		{% endif %}
+		<div class="nv-actions">
+			<button type="button" class="nv-envoyer" hidden>Envoyer la note</button>
+			<button type="button" class="nv-recommencer" hidden>Recommencer</button>
+			<button type="button" class="nv-annuler">Annuler</button>
+		</div>
+	</div>
+</div>

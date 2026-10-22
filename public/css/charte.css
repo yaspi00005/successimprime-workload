@@ -1,0 +1,32 @@
+/*
+ * Charte Succes Imprim : remplace les couleurs du theme Workload.
+ * Charge apres theme/css/style.css. Valeurs du cahier des charges,
+ * a confirmer avec les fichiers sources du logo.
+ *   Bleu « Succes »  #0F4590 : menus, titres, boutons
+ *   Rouge « Imprim » #DE1028 : appels a l'action
+ */
+:root,
+[data-primary="color_1"] {
+  --primary: #0F4590;
+  --secondary: #DE1028;
+  --primary-light: #2F6BC0;
+  --primary-hover: #0A3068;
+  --primary-dark: #0A3068;
+  --rgba-primary-1: rgba(15, 69, 144, 0.1);
+  --rgba-primary-2: rgba(15, 69, 144, 0.2);
+  --rgba-primary-3: rgba(15, 69, 144, 0.3);
+  --rgba-primary-4: rgba(15, 69, 144, 0.4);
+  --rgba-primary-5: rgba(15, 69, 144, 0.5);
+  --rgba-primary-6: rgba(15, 69, 144, 0.6);
+  --rgba-primary-7: rgba(15, 69, 144, 0.7);
+  --rgba-primary-8: rgba(15, 69, 144, 0.8);
+  --rgba-primary-9: rgba(15, 69, 144, 0.9);
+
+  /* Couleurs secondaires de la charte (bandes du logo, MDG) */
+  --si-jaune: #FDC82A;
+  --si-orange: #E95B35;
+  --si-magenta: #E8398A;
+  --si-noir: #1D1D1B;
+  --mdg-canard: #13787A;
+  --mdg-gris: #8A8A8A;
+}

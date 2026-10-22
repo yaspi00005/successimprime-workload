@@ -1,0 +1,30 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Réclamations des clients{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_reclamations_clients_index', closes ? {} : {closes: 1}) }}" class="btn btn-light btn-sm si-btn-entete">{{ closes ? 'En cours' : 'Closes' }}</a></li>
+{% endblock %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		<h2>{{ closes ? 'Réclamations closes' : 'À traiter' }} <span class="si-pg-compte">{{ liste|length }}</span></h2>
+		{% if liste is empty %}
+			<p class="si-ac-vide">{{ closes ? 'Aucune réclamation close.' : 'Aucune réclamation en cours.' }}</p>
+		{% else %}
+			<ul class="si-rc-liste">
+				{% for r in liste %}
+					<li>
+						<a href="{{ path('app_reclamations_clients_voir', {id: r.id}) }}" class="si-rc-ligne">
+							<span class="si-rc-num">{{ r.numero }}<small>{{ r.creeLe|date(r.creeLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m') }}</small></span>
+							<span class="si-rc-texte"><b>{{ r.objet }}</b><small>{{ r.client ? r.client.nomComplet }}{{ r.auteur ? ' · ' ~ r.auteur }}{{ r.commande ? ' · commande ' ~ r.commande.numero }} · {{ r.libelleMotif }}</small></span>
+							{% if r.photos|length %}<span class="si-rc-photos"><i class="far fa-image"></i> {{ r.photos|length }}</span>{% endif %}
+							<span class="si-rc-statut si-rc-{{ r.statut }}">{{ r.libelleStatut }}{{ r.dureeTraitement ? ' en ' ~ r.dureeTraitement }}</span>
+						</a>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+		<p class="si-pg-note">Les clients écrivent leurs réclamations dans leur espace, avec des photos. Votre réponse s'affiche dans leur espace et ils en sont prévenus sur leur téléphone (application, sinon SMS).</p>
+	</section>
+{% endblock %}

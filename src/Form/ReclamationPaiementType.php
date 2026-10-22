@@ -27,6 +27,8 @@ class ReclamationPaiementType extends AbstractType
     ): void {
         $estAdmin = (bool) $options['est_admin'];
         $utilisateur = $options['utilisateur'];
+        // Sans « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR) : le nom du compte, sans son solde.
+        $voirSoldes = (bool) $options['voir_soldes'];
 
         $builder
             ->add('compteSource', EntityType::class, [
@@ -69,7 +71,11 @@ class ReclamationPaiementType extends AbstractType
 
                     return $qb;
                 },
-                'choice_label' => static function (CompteTresorerie $compte): string {
+                'choice_label' => static function (CompteTresorerie $compte) use ($voirSoldes): string {
+                    if (!$voirSoldes) {
+                        return sprintf('%s — %s', $compte->getNom(), $compte->getTypeLabel());
+                    }
+
                     return sprintf(
                         '%s — %s — %s FCFA',
                         $compte->getNom(),
@@ -114,9 +120,11 @@ class ReclamationPaiementType extends AbstractType
         $resolver->setDefaults([
             'est_admin' => false,
             'utilisateur' => null,
+            'voir_soldes' => false,
         ]);
 
         $resolver->setAllowedTypes('est_admin', 'bool');
+        $resolver->setAllowedTypes('voir_soldes', 'bool');
         $resolver->setAllowedTypes('utilisateur', [User::class, 'null']);
     }
 }

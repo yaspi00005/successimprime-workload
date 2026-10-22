@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SuiviClientLivraisonTrait;
 use App\Repository\BonLivraisonRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,6 +14,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'bon_livraison')]
 class BonLivraison
 {
+    use PublicIdTrait;
+    use SuiviClientLivraisonTrait;
+
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_VALIDE = 'valide';
     public const STATUT_LIVRE = 'livre';
@@ -98,6 +103,97 @@ class BonLivraison
     /**
      * @var Collection<int, BonLivraisonLigne>
      */
+    /*
+     * ============================================================
+     * TOURNÉE ET REMISE (L01 à L03, docs/documents-livraisons.md)
+     * ============================================================
+     */
+
+    /** Livreur prévu pour la tournée. */
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $livreur = null;
+
+    #[ORM\Column(type: Types::DATE_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $prevuLe = null;
+
+    /** Créneau donné au client, ex. « 14:00-16:00 ». */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $creneau = null;
+
+    /** Rang dans la tournée du livreur. */
+    #[ORM\Column(nullable: true)]
+    private ?int $ordreTournee = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $chargeLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $enRouteLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $arriveLe = null;
+
+    /** Photos de la remise (noms de fichiers rangés hors du dossier public). @var list<string> */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $photos = null;
+
+    /** Signature du client (image PNG rangée hors du dossier public). */
+    #[ORM\Column(length: 100, nullable: true)]
+    private ?string $signature = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $signataire = null;
+
+    /** Encaissement saisi par le livreur : provisoire jusqu'à la validation à la caisse. */
+    #[ORM\Column(nullable: true)]
+    private ?int $encaisseMontant = null;
+
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $encaisseMode = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $encaisseLe = null;
+
+    /** Paiement créé quand la caisse valide l'encaissement. */
+    #[ORM\ManyToOne(targetEntity: Paiements::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?Paiements $paiementLivraison = null;
+
+    /** Position GPS du téléphone au moment de la remise. */
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseLatitude = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseLongitude = null;
+
+    /** Retard justifié par le bureau (panne, client absent) : il ne coûte pas de points. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $retardJustifie = null;
+
+    /** Colis abîmé ou erreur de livraison, noté par le bureau. */
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $erreurLivraison = null;
+
+    /*
+     * Échec de la livraison (docs/documents-livraisons.md) : le livreur
+     * n'a pas pu remettre (client absent, adresse introuvable…). On garde
+     * le dernier échec : quand, qui, pourquoi. « En cours » tant que le
+     * bureau n'a pas replanifié ou que le livreur n'a pas réessayé.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $echecLe = null;
+
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $echecPar = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $echecMotif = null;
+
+    #[ORM\Column(options: ['default' => false])]
+    private bool $echecEnCours = false;
+
     #[ORM\OneToMany(
         targetEntity: BonLivraisonLigne::class,
         mappedBy: 'bonLivraison',
@@ -108,8 +204,10 @@ class BonLivraison
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
         $this->lignes = new ArrayCollection();
+        $this->donnerCode();
     }
 
     public function getId(): ?int
@@ -330,6 +428,9 @@ class BonLivraison
         $this->statut =
             self::STATUT_LIVRE;
 
+        // Remise après un échec : le dernier échec reste en historique.
+        $this->echecEnCours = false;
+
         $this->livreLe =
             new \DateTimeImmutable();
 
@@ -410,5 +511,224 @@ class BonLivraison
         return $this;
     }
 
-    
+    /* ---------- Tournée et remise ---------- */
+
+    public const ETAPES = ['prepare' => 'Préparée', 'charge' => 'Chargée', 'en_route' => 'En route', 'arrive' => 'Arrivée', 'remis' => 'Remise signée'];
+
+    /** Encaissement : modes acceptés à la livraison. */
+    public const MODES_ENCAISSEMENT = ['orange_money' => 'Orange Money', 'especes' => 'Espèces', 'credit' => 'Crédit client'];
+
+    /** Heure de chaque étape franchie. @return array<string, ?\DateTimeImmutable> */
+    public function etapes(): array
+    {
+        return [
+            'prepare' => $this->valideLe,
+            'charge' => $this->chargeLe,
+            'en_route' => $this->enRouteLe,
+            'arrive' => $this->arriveLe,
+            'remis' => $this->livreLe,
+        ];
+    }
+
+    /** Dernière étape franchie. */
+    public function etape(): ?string
+    {
+        $derniere = null;
+        foreach ($this->etapes() as $cle => $le) {
+            if ($le !== null) {
+                $derniere = $cle;
+            }
+        }
+
+        return $derniere;
+    }
+
+    /**
+     * Franchit l'étape suivante (chargée, en route, arrivée) ; les étapes
+     * manquées prennent la même heure. Après un échec, c'est un nouveau
+     * passage : l'échec n'est plus « en cours ».
+     */
+    public function avancer(string $etape, \DateTimeImmutable $le): void
+    {
+        if ($this->statut !== self::STATUT_VALIDE) {
+            throw new \LogicException('La livraison doit être validée (préparée) et pas encore remise.');
+        }
+        if (!\in_array($etape, ['arrive', 'en_route', 'charge'], true)) {
+            throw new \InvalidArgumentException('Étape inconnue.');
+        }
+        $this->echecEnCours = false;
+        switch ($etape) {
+            case 'arrive':
+                $this->arriveLe ??= $le;
+                // no break
+            case 'en_route':
+                $this->enRouteLe ??= $le;
+                // no break
+            case 'charge':
+                $this->chargeLe ??= $le;
+                break;
+            default:
+                throw new \InvalidArgumentException('Étape inconnue.');
+        }
+    }
+
+    /** Partielle : au moins une ligne livrée en dessous de la commande. */
+    public function estPartielle(): bool
+    {
+        foreach ($this->lignes as $l) {
+            if ($this->statut === self::STATUT_LIVRE && $l->getQuantiteLivree() < $l->getQuantiteCommandee()) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public function encaissementProvisoire(): bool
+    {
+        return $this->encaisseMontant !== null && $this->encaisseMontant > 0 && $this->paiementLivraison === null;
+    }
+
+    public function noterEncaissement(?int $montant, ?string $mode, \DateTimeImmutable $le): void
+    {
+        if ($this->paiementLivraison !== null) {
+            throw new \LogicException('L\'encaissement est déjà validé à la caisse.');
+        }
+        if ($mode === null || !isset(self::MODES_ENCAISSEMENT[$mode])) {
+            throw new \InvalidArgumentException('Mode d\'encaissement inconnu.');
+        }
+        $this->encaisseMode = $mode;
+        $this->encaisseMontant = $mode === 'credit' ? null : max(0, (int) $montant);
+        $this->encaisseLe = $le;
+    }
+
+    public function getLivreur(): ?User { return $this->livreur; }
+    public function setLivreur(?User $livreur): static { $this->livreur = $livreur; return $this; }
+    public function getPrevuLe(): ?\DateTimeImmutable { return $this->prevuLe; }
+    public function setPrevuLe(?\DateTimeImmutable $le): static { $this->prevuLe = $le?->setTime(0, 0); return $this; }
+    public function getCreneau(): ?string { return $this->creneau; }
+    public function setCreneau(?string $creneau): static { $this->creneau = $creneau !== null && trim($creneau) !== '' ? mb_substr(trim($creneau), 0, 20) : null; return $this; }
+    public function getOrdreTournee(): ?int { return $this->ordreTournee; }
+    public function setOrdreTournee(?int $ordre): static { $this->ordreTournee = $ordre; return $this; }
+    public function getChargeLe(): ?\DateTimeImmutable { return $this->chargeLe; }
+    public function getEnRouteLe(): ?\DateTimeImmutable { return $this->enRouteLe; }
+    public function getArriveLe(): ?\DateTimeImmutable { return $this->arriveLe; }
+    /** @return list<string> */
+    public function getPhotos(): array { return $this->photos ?? []; }
+    public function ajouterPhoto(string $fichier): static { $this->photos = [...$this->getPhotos(), $fichier]; return $this; }
+    public function getSignature(): ?string { return $this->signature; }
+    public function signer(string $fichier, ?string $signataire): static { $this->signature = '' === $fichier ? null : $fichier; $this->signataire = $signataire !== null && trim($signataire) !== '' ? mb_substr(trim($signataire), 0, 120) : null; return $this; }
+    public function getSignataire(): ?string { return $this->signataire; }
+    public function getEncaisseMontant(): ?int { return $this->encaisseMontant; }
+    public function getEncaisseMode(): ?string { return $this->encaisseMode; }
+    public function getEncaisseLe(): ?\DateTimeImmutable { return $this->encaisseLe; }
+    public function getPaiementLivraison(): ?Paiements { return $this->paiementLivraison; }
+
+    /** @return array{0: float, 1: float}|null */
+    public function getRemisePosition(): ?array { return $this->remiseLatitude !== null && $this->remiseLongitude !== null ? [$this->remiseLatitude, $this->remiseLongitude] : null; }
+    public function noterPosition(?float $latitude, ?float $longitude): static
+    {
+        $valide = $latitude !== null && $longitude !== null && abs($latitude) <= 90 && abs($longitude) <= 180 && ($latitude != 0.0 || $longitude != 0.0);
+        $this->remiseLatitude = $valide ? round($latitude, 6) : null;
+        $this->remiseLongitude = $valide ? round($longitude, 6) : null;
+
+        return $this;
+    }
+    public function getRetardJustifie(): ?string { return $this->retardJustifie; }
+    public function setRetardJustifie(?string $motif): static { $this->retardJustifie = $motif !== null && trim($motif) !== '' ? mb_substr(trim($motif), 0, 255) : null; return $this; }
+    public function getErreurLivraison(): ?string { return $this->erreurLivraison; }
+    public function setErreurLivraison(?string $motif): static { $this->erreurLivraison = $motif !== null && trim($motif) !== '' ? mb_substr(trim($motif), 0, 255) : null; return $this; }
+    public function setPaiementLivraison(?Paiements $p): static { $this->paiementLivraison = $p; return $this; }
+
+    /* ---------- Échec et suivi (statut lisible pour le bureau et le livreur) ---------- */
+
+    public const ETAT_A_LIVRER = 'a_livrer';
+    public const ETAT_EN_TOURNEE = 'en_tournee';
+    public const ETAT_LIVREE = 'livree';
+    public const ETAT_ECHEC = 'echec';
+    public const ETAT_ANNULEE = 'annulee';
+
+    public const ETATS_SUIVI = [
+        self::ETAT_A_LIVRER => 'À livrer',
+        self::ETAT_EN_TOURNEE => 'En tournée',
+        self::ETAT_LIVREE => 'Livrée',
+        self::ETAT_ECHEC => 'Échec',
+        self::ETAT_ANNULEE => 'Annulée',
+    ];
+
+    /** Motifs proposés au livreur ; « Autre » demande une précision. */
+    public const MOTIFS_ECHEC = ['Client absent', 'Client injoignable', 'Adresse introuvable', 'Client refuse la livraison', 'Paiement pas prêt', 'Autre'];
+
+    /**
+     * Le livreur n'a pas pu remettre : on note quand, qui et pourquoi. Les
+     * étapes de ce passage (chargée, en route, arrivée) sont effacées : le
+     * colis revient à l'imprimerie, et un nouveau passage les refera.
+     */
+    public function echouer(User $livreur, string $motif, \DateTimeImmutable $le): void
+    {
+        if ($this->statut !== self::STATUT_VALIDE) {
+            throw new \LogicException('Seule une livraison en cours peut être notée en échec.');
+        }
+        $motif = trim(preg_replace('/\s+/u', ' ', $motif) ?? '');
+        if ($motif === '') {
+            throw new \InvalidArgumentException('Indiquez la raison de l\'échec.');
+        }
+        $this->echecLe = $le;
+        $this->echecPar = $livreur;
+        $this->echecMotif = mb_substr($motif, 0, 255);
+        $this->echecEnCours = true;
+        $this->chargeLe = null;
+        $this->enRouteLe = null;
+        $this->arriveLe = null;
+    }
+
+    /** Nouveau passage (replanifiée par le bureau ou réessayée par le livreur) : le dernier échec reste en historique. */
+    public function reprendre(): void
+    {
+        $this->echecEnCours = false;
+    }
+
+    public function getEchecLe(): ?\DateTimeImmutable { return $this->echecLe; }
+    public function getEchecPar(): ?User { return $this->echecPar; }
+    public function getEchecMotif(): ?string { return $this->echecMotif; }
+    public function isEchecEnCours(): bool { return $this->echecEnCours; }
+
+    /** À livrer, en tournée (chargée, en route ou arrivée), livrée, échec ou annulée. */
+    public function etatSuivi(): string
+    {
+        return match (true) {
+            $this->statut === self::STATUT_ANNULE => self::ETAT_ANNULEE,
+            $this->statut === self::STATUT_LIVRE => self::ETAT_LIVREE,
+            $this->statut === self::STATUT_VALIDE && $this->echecEnCours => self::ETAT_ECHEC,
+            $this->statut === self::STATUT_VALIDE && $this->chargeLe !== null => self::ETAT_EN_TOURNEE,
+            default => self::ETAT_A_LIVRER,
+        };
+    }
+
+    /** Moment de l'état : remise, échec, dernière étape de la tournée ; null quand rien n'a encore eu lieu. */
+    public function momentSuivi(): ?\DateTimeImmutable
+    {
+        return match ($this->etatSuivi()) {
+            self::ETAT_LIVREE => $this->livreLe,
+            self::ETAT_ECHEC => $this->echecLe,
+            self::ETAT_EN_TOURNEE => $this->arriveLe ?? $this->enRouteLe ?? $this->chargeLe,
+            default => null,
+        };
+    }
+
+    /** Qui : le livreur qui a remis, celui qui a noté l'échec, sinon celui qui est prévu. */
+    public function livreurSuivi(): ?User
+    {
+        return match ($this->etatSuivi()) {
+            self::ETAT_LIVREE => $this->livrePar ?? $this->livreur,
+            self::ETAT_ECHEC => $this->echecPar ?? $this->livreur,
+            default => $this->livreur,
+        };
+    }
+
+    /** La personne qui a reçu le colis (nom donné à la signature). */
+    public function receptionnaireSuivi(): ?string
+    {
+        return $this->statut === self::STATUT_LIVRE ? ($this->signataire ?? $this->nomReceptionnaire) : null;
+    }
 }

@@ -2,7 +2,15 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\HorsImprimerieTrait;
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\RemiseGlobaleDocumentTrait;
+use App\Entity\Trait\SocieteTrait;
+use App\Entity\Trait\SuiviDevisTrait;
 use App\Repository\DevisRepository;
+use App\Service\TotauxDocument;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -12,8 +20,17 @@ use Doctrine\DBAL\Types\Types;
 #[ORM\Entity(repositoryClass: DevisRepository::class)]
 #[ORM\Table(name: 'devis')]
 
-class Devis
+class Devis implements AppartientASociete
 {
+    use PublicIdTrait;
+    use SocieteTrait;
+    use CodePromoDocumentTrait;
+    use LivraisonObjetDocumentTrait;
+    use HorsImprimerieTrait;
+    use RemiseGlobaleDocumentTrait;
+    // Conditions, versions, ouvertures, réponse du client et relances (docs/devis.md).
+    use SuiviDevisTrait;
+
     /*
      * ============================================================
      * ÉMETTEURS
@@ -56,7 +73,8 @@ class Devis
             'default' => self::EMETTEUR_MDG_SUCCESS,
         ]
     )]
-    #[Assert\Choice(choices: self::EMETTEURS)]
+    // Code d'une entreprise émettrice (table entreprise, maquette I03).
+    #[Assert\Regex(pattern: '/^[a-z0-9_]{2,30}$/')]
     private string $emetteur = self::EMETTEUR_MDG_SUCCESS;
 
     #[ORM\ManyToOne(inversedBy: 'devis')]
@@ -64,8 +82,9 @@ class Devis
     #[Assert\NotNull(message: 'Veuillez sélectionner un client.')]
     private ?Clients $clients = null;
 
+    /** Vide sur le site en ligne : les comptes du personnel ne sont pas synchronisés. */
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?User $agents = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
@@ -98,6 +117,7 @@ class Devis
         choices: [
             self::STATUT_BROUILLON,
             self::STATUT_ENVOYE,
+            self::STATUT_VU,
             self::STATUT_ACCEPTE,
             self::STATUT_REFUSE,
             self::STATUT_EXPIRE,
@@ -170,10 +190,18 @@ class Devis
     #[Assert\Email(message: 'L’adresse email de facturation n’est pas valide.')]
     private ?string $emailFacturation = null;
 
-
+    /**
+     * Personne du client à qui le devis s'adresse (« À l'attention de ») :
+     * une entreprise a souvent deux ou trois interlocuteurs. Texte libre,
+     * proposé parmi les contacts de la fiche ; repris par la commande
+     * (Commandes::$demandeePar, « Commandé par »).
+     */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $interlocuteur = null;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->dateDevis = new \DateTimeImmutable();
         $this->devisDetails = new ArrayCollection();
     }
@@ -202,7 +230,7 @@ class Devis
 
     public function setEmetteur(string $emetteur): static
     {
-        if (!in_array($emetteur, self::EMETTEURS, true)) {
+        if (!preg_match('/^[a-z0-9_]{2,30}$/', $emetteur)) {
             throw new \InvalidArgumentException(
                 'Émetteur invalide.'
             );
@@ -357,6 +385,7 @@ class Devis
         $statutsAutorises = [
             self::STATUT_BROUILLON,
             self::STATUT_ENVOYE,
+            self::STATUT_VU,
             self::STATUT_ACCEPTE,
             self::STATUT_REFUSE,
             self::STATUT_EXPIRE,
@@ -425,6 +454,33 @@ class Devis
         return $this->numero ?? 'Nouveau devis';
     }
 
+    /**
+     * Totaux du devis depuis ses lignes, comme le formulaire les calcule
+     * (TotauxDocument) : sous-total HT (lignes et frais de livraison, sans
+     * TVA), remise globale deduite du HT, TVA des lignes au prorata, total
+     * TTC = ce que le client paiera. Refaits a chaque enregistrement : les
+     * totaux envoyes par le navigateur ne sont jamais gardes.
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = $this->getFraisLivraison();
+        $tva = 0;
+        $code = 0;
+        foreach ($this->devisDetails as $ligne) {
+            $ht += $ligne->getTotalHt();
+            $tva += $ligne->getTotalTtc() - $ligne->getTotalHt();
+            $code += $ligne->getRemiseCodePromo();
+        }
+        $totaux = TotauxDocument::calculer($ht, $tva, $this->remise);
+        $this->setTotalHt($totaux['sousTotalHt']);
+        $this->setRemise($totaux['remise']);
+        $this->setRemiseCodePromo($code);
+        $this->setTotalTtc($totaux['totalTtc']);
+        $this->setMontantApayer($totaux['totalTtc']);
+
+        return $this;
+    }
+
 
     public function getCommande(): ?Commandes
     {
@@ -440,11 +496,68 @@ class Devis
 
     public const STATUT_BROUILLON = 'brouillon';
     public const STATUT_ENVOYE = 'envoye';
+    /** Envoyé et ouvert par le client (espace client ou lien WhatsApp), sans réponse encore. */
+    public const STATUT_VU = 'vu';
     public const STATUT_ACCEPTE = 'accepte';
     public const STATUT_REFUSE = 'refuse';
     public const STATUT_EXPIRE = 'expire';
     public const STATUT_CONVERTI = 'converti';
     public const STATUT_ANNULE = 'annule';
+
+    /** Validités proposées à la saisie, en jours. */
+    public const VALIDITES = [7, 15, 30, 60];
+
+    /** Acomptes proposés, en pourcentage du total. */
+    public const ACOMPTES = [0, 30, 50, 100];
+
+    public const CANAL_ESPACE = 'espace';
+    public const CANAL_WHATSAPP = 'whatsapp';
+    public const CANAL_EMAIL = 'email';
+
+    public const CANAUX_LIBELLES = [
+        self::CANAL_ESPACE => 'espace client',
+        self::CANAL_WHATSAPP => 'WhatsApp',
+        self::CANAL_EMAIL => 'e-mail',
+    ];
+
+    /** Motifs de refus proposés au client (le texte libre s'y ajoute). */
+    public const MOTIFS_REFUS = [
+        'prix' => 'Le prix',
+        'delai' => 'Le délai',
+        'ailleurs' => 'Fait ailleurs',
+        'abandon' => 'Projet abandonné',
+        'autre' => 'Autre raison',
+    ];
+
+    /** Libellés des statuts (maquette GC03) ; un devis transformé en commande reste « Accepté ». */
+    public const STATUTS_LIBELLES = [
+        self::STATUT_BROUILLON => 'Brouillon',
+        self::STATUT_ENVOYE => 'Envoyé',
+        self::STATUT_VU => 'Vu',
+        self::STATUT_ACCEPTE => 'Accepté',
+        self::STATUT_CONVERTI => 'Accepté',
+        self::STATUT_REFUSE => 'Refusé',
+        self::STATUT_EXPIRE => 'Expiré',
+        self::STATUT_ANNULE => 'Annulé',
+    ];
+
+    /** Envoyé ou vu : en attente de la réponse du client. */
+    public const STATUTS_EN_ATTENTE = [self::STATUT_ENVOYE, self::STATUT_VU];
+
+    public function getStatutLibelle(): string
+    {
+        return self::STATUTS_LIBELLES[$this->statut] ?? $this->statut;
+    }
+
+    public function estEnAttente(): bool
+    {
+        return \in_array($this->statut, self::STATUTS_EN_ATTENTE, true);
+    }
+
+    public function estAccepte(): bool
+    {
+        return \in_array($this->statut, [self::STATUT_ACCEPTE, self::STATUT_CONVERTI], true);
+    }
 
     public function getTokenAuthenticite(): ?string
     {
@@ -527,6 +640,19 @@ class Devis
     public function setEmailFacturation(?string $emailFacturation): static
     {
         $this->emailFacturation = $emailFacturation;
+
+        return $this;
+    }
+
+    public function getInterlocuteur(): ?string
+    {
+        return $this->interlocuteur;
+    }
+
+    public function setInterlocuteur(?string $nom): static
+    {
+        $nom = mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $nom)), 0, 80);
+        $this->interlocuteur = '' === $nom ? null : $nom;
 
         return $this;
     }

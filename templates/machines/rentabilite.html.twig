@@ -65,7 +65,10 @@
 								<td class="text-right">{{ r.revenuCommandes|number_format(0, ',', ' ') }} F CFA</td>
 								<td class="text-right font-weight-bold">{{ r.revenuTotal|number_format(0, ',', ' ') }} F CFA</td>
 								<td class="text-right text-danger">
-									{% if r.machine.chargeAmortissementMensuelle is not null %}
+									{% if r.methodeAmortissement == 'usage' %}
+										- {{ r.chargeAmortissement|number_format(0, ',', ' ') }} F CFA
+										<div class="text-muted small">(à l'usage : {{ r.machine.coutUsageUnitaire|number_format(0, ',', ' ') }} F CFA / {{ r.machine.uniteUsage }})</div>
+									{% elseif r.machine.chargeAmortissementMensuelle is not null %}
 										- {{ r.chargeAmortissement|number_format(0, ',', ' ') }} F CFA
 										<div class="text-muted small">({{ r.machine.chargeAmortissementMensuelle|number_format(0, ',', ' ') }} F CFA / mois)</div>
 									{% else %}

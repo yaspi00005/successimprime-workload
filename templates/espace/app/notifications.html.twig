@@ -1,0 +1,127 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Notifications et préférences (maquettes EC03 et EC05) : le fil de la
+	personne connectée, déjà filtré selon ses droits (FilNotifications),
+	regroupé par jour ; « Comment je suis prévenu » ; « Qui reçoit quoi »
+	pour la personne qui gère un compte d'entreprise.
+#}
+{% block title %}Notifications{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Notifications</a>{% endblock %}
+
+{% block contenu %}
+	{% set nonLues = compteurs.toutes %}
+	<div class="ec-titre-page">
+		<h1 class="ec-bureau">Notifications</h1>
+		<div class="ec-titre-actions">
+			{% if nonLues > 0 %}
+				<form method="post" action="{{ path('app_espace_notifications_tout_lu') }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<button type="submit" class="ec-bouton-blanc">Tout marquer comme lu</button>
+				</form>
+			{% endif %}
+			<a class="ec-bouton-blanc" href="#preferences">⚙ Préférences</a>
+		</div>
+	</div>
+
+	<div class="ec-deux-colonnes">
+		<section>
+			<nav class="ec-filtres" aria-label="Filtrer les notifications">
+				{% for cle, libelle in filtres %}
+					<a href="{{ path('app_espace_notifications', cle == 'toutes' ? {} : {filtre: cle}) }}" class="{{ filtre == cle ? 'actif' }}"{{ filtre == cle ? ' aria-current="true"' }}>{{ libelle }}{{ compteurs[cle] > 0 ? ' · ' ~ compteurs[cle] }}</a>
+				{% endfor %}
+			</nav>
+
+			{% for groupe in groupes %}
+				<h2 class="ec-jour">{{ groupe.libelle }}</h2>
+				<div class="ec-carte ec-notifs">
+					{% for n in groupe.notifications %}
+						<article class="ec-notif{{ n.nouveau ? ' nouveau' }}" data-glisser>
+							<span class="ec-sigle {{ n.couleur }}" aria-hidden="true">{{ n.sigle }}</span>
+							<span class="ec-point {{ n.couleur }}" aria-hidden="true"></span>
+							<div class="ec-notif-corps">
+								<div class="ec-notif-tete">
+									<a class="ec-notif-titre" href="{{ path('app_espace_notification_ouvrir', {cle: n.cle}) }}">{{ n.titre }}</a>
+									<span class="ec-notif-quand"><time datetime="{{ n.date|date('c') }}">{{ n.date|espace_quand }}</time>{% if n.nouveau %}<span class="ec-nouveau"> · <b>nouveau</b></span>{% endif %}</span>
+								</div>
+								<p class="ec-notif-texte">
+									{{ n.texte }}{{ n.montant is not null ? ' · ' ~ n.montant|number_format(0, ',', ' ') ~ ' F' }}
+									{% if n.type == 'bat' and n.cible.avant ?? null %} · à valider avant le {{ n.cible.avant|date('d/m à H:i') }}{% endif %}
+								</p>
+								<div class="ec-bureau">{% include 'espace/app/_notification_actions.html.twig' %}</div>
+								{% if n.nouveau %}
+									<form method="post" action="{{ path('app_espace_notification_lue', {cle: n.cle}) }}" data-lu class="ec-marquer">
+										<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+										<input type="hidden" name="filtre" value="{{ filtre == 'toutes' ? '' : filtre }}">
+										<button type="submit" class="ec-lien-gris">Marquer comme lu</button>
+									</form>
+								{% endif %}
+							</div>
+						</article>
+					{% endfor %}
+				</div>
+			{% else %}
+				<div class="ec-carte ec-vide">{{ filtre == 'toutes' ? 'Rien de nouveau ces dernières semaines.' : 'Rien dans cette catégorie ces dernières semaines.' }}</div>
+			{% endfor %}
+			{% if groupes is not empty %}<p class="ec-petit ec-telephone ec-astuce-glisser">Glisser à gauche pour marquer comme lu</p>{% endif %}
+		</section>
+
+		<aside>
+			<form id="preferences" class="ec-carte ec-prefs" method="post" action="{{ path('app_espace_notifications_preferences') }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<h2>Comment je suis prévenu</h2>
+				<table>
+					<thead><tr><th></th>{% for canal, libelle in constant('App\\Service\\EspaceClient\\PreferencesNotifications::CANAUX') %}<th scope="col">{{ libelle }}</th>{% endfor %}</tr></thead>
+					<tbody>
+						{% for categorie, libelle in constant('App\\Service\\EspaceClient\\PreferencesNotifications::CATEGORIES') %}
+							{% if categorie in permises %}
+								<tr>
+									<th scope="row">{{ libelle }}</th>
+									{% for canal, nomCanal in constant('App\\Service\\EspaceClient\\PreferencesNotifications::CANAUX') %}
+										<td><input type="checkbox" name="prefs[{{ categorie }}][]" value="{{ canal }}" aria-label="{{ libelle }} par {{ nomCanal }}"{{ canal in (preferences[categorie] ?? []) ? ' checked' }}></td>
+									{% endfor %}
+								</tr>
+							{% endif %}
+						{% endfor %}
+					</tbody>
+				</table>
+				<p class="ec-petit">Pas de WhatsApp ni de SMS entre 21:00 et 07:00, sauf livraison du jour. Les offres ne sont envoyées qu'avec votre accord.</p>
+				<p class="ec-petit">WhatsApp : votre choix est gardé, les messages partiront dès que l'atelier aura activé WhatsApp. SMS : sur votre numéro. E-mail : {{ client.email ? 'à ' ~ client.email : 'aucune adresse sur votre fiche' }}.</p>
+				{% if not client.recevoirSms %}<p class="ec-note">Les SMS sont coupés pour {{ coque.entreprise ? 'votre entreprise' : 'votre fiche' }}.{{ gereLaFiche ? '' : ' La personne qui gère le compte peut les rétablir.' }}</p>{% endif %}
+				<button type="submit" class="ec-bouton bleu">Enregistrer</button>
+			</form>
+
+			<div class="ec-carte">
+				<h2>Sur ce téléphone</h2>
+				<div class="ec-push" data-si-push data-cle="{{ push_cle_publique() }}" data-jeton="{{ csrf_token('espace-push') }}" data-abonner="{{ path('app_espace_push_abonner') }}" data-desabonner="{{ path('app_espace_push_desabonner') }}" data-portee="/espace">
+					<span><b>Notifications de l'application</b><span class="ec-petit" data-si-push-etat>…</span></span>
+					<button type="button" class="ec-bouton-petit" hidden>Activer</button>
+				</div>
+				{% if gereLaFiche %}
+					<form method="post" action="{{ path('app_espace_preferences') }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<input type="hidden" name="retour" value="notifications">
+						<label class="ec-interrupteur"><span>SMS de Succès Imprim{{ coque.entreprise ? ' pour l\'entreprise' }}</span><input type="checkbox" name="sms" value="1"{{ client.recevoirSms ? ' checked' }} onchange="this.form.submit()"></label>
+						<noscript><button class="ec-bouton-petit">Enregistrer</button></noscript>
+					</form>
+				{% endif %}
+			</div>
+
+			{% if quiRecoit is not empty %}
+				<div class="ec-carte">
+					<h2>Qui reçoit quoi</h2>
+					<ul class="ec-liste">
+						{% for p in quiRecoit %}
+							<li><b>{{ p.nom }}</b>{% if p.fonction %} <span class="ec-petit">· {{ p.fonction }}</span>{% endif %}{{ p.moi ? ' (vous)' }}<span class="ec-petit" style="display:block">{{ p.resume }}</span></li>
+						{% endfor %}
+					</ul>
+				</div>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/push.js') }}" defer></script>
+{% endblock %}

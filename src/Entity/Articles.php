@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\ArticlesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -14,8 +16,27 @@ use Doctrine\ORM\Mapping as ORM;
     name: 'uniq_article_reference',
     columns: ['reference']
 )]
-class Articles
+class Articles implements AppartientASociete, AUnNomCommercial
 {
+    use SocieteTrait;
+    use NomCommercialTrait;
+
+    /*
+     * Libellés courts des unités de stock, pour les tableaux.
+     */
+    public const UNITES_COURTES = [
+        'unite' => 'pièce',
+        'feuille' => 'feuille',
+        'paquet' => 'paquet',
+        'carton' => 'carton',
+        'rouleau' => 'rouleau',
+        'metre' => 'm',
+        'm' => 'm',
+        'm2' => 'm²',
+        'kg' => 'kg',
+        'litre' => 'L',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -141,6 +162,59 @@ private bool $consommableProduction = false;
 )]
 private Collection $produitsStock;
 
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?FamilleArticle $famille = null;
+
+    /*
+     * Unités et conversion (maquette S02). On achète en unité d'achat
+     * (rouleau de 50 m), on stocke en unité de stock ($unite, ex. m²),
+     * on vend en unité de vente (m² ou pièce via les produits).
+     * $quantiteParUniteAchat = unités de stock dans une unité d'achat.
+     */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $uniteAchat = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 4, nullable: true)]
+    private ?string $quantiteParUniteAchat = null;
+
+    /*
+     * Pour un rouleau : longueur (m) et laize (m). Si les deux sont
+     * renseignées et que le stock est en m², la conversion en découle.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 3, nullable: true)]
+    private ?string $longueurUniteAchat = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 3, nullable: true)]
+    private ?string $laize = null;
+
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $uniteVente = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3, nullable: true)]
+    private ?string $stockMax = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $emplacement = null;
+
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Machines $machine = null;
+
+    /*
+     * Coût moyen pondéré d'une unité de stock, en F CFA, recalculé à
+     * chaque entrée (StockService::appliquerCoutMoyen).
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $coutMoyen = null;
+
+    /**
+     * @var Collection<int, ArticleFournisseur>
+     */
+    #[ORM\OneToMany(mappedBy: 'article', targetEntity: ArticleFournisseur::class, cascade: ['persist', 'remove'], orphanRemoval: true)]
+    #[ORM\OrderBy(['principal' => 'DESC', 'id' => 'ASC'])]
+    private Collection $fournisseurs;
+
   
     
 
@@ -153,9 +227,17 @@ private Collection $produitsStock;
         $this->stockSorties =
             new ArrayCollection();
 
+        $this->produitsStock = new ArrayCollection();
+        $this->fournisseurs = new ArrayCollection();
+
         
     }
 
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->designation;
+    }
 
     public function getId(): ?int
     {
@@ -609,5 +691,228 @@ public function removeProduitsStock(
     return $this;
 }
 
+
+
+    public function getUniteCourte(): string
+    {
+        return self::UNITES_COURTES[$this->unite] ?? $this->unite;
+    }
+
+    public function getFamille(): ?FamilleArticle
+    {
+        return $this->famille;
+    }
+
+    public function setFamille(?FamilleArticle $famille): static
+    {
+        $this->famille = $famille;
+        // L'ancienne catégorie en texte suit la famille, pour les écrans qui la lisent encore.
+        $this->categorie = $famille?->getNom();
+
+        return $this;
+    }
+
+    public function getUniteAchat(): ?string
+    {
+        return $this->uniteAchat;
+    }
+
+    public function setUniteAchat(?string $uniteAchat): static
+    {
+        $uniteAchat = $uniteAchat !== null ? trim($uniteAchat) : null;
+        $this->uniteAchat = $uniteAchat !== '' ? $uniteAchat : null;
+
+        return $this;
+    }
+
+    public function getQuantiteParUniteAchat(): ?float
+    {
+        return $this->quantiteParUniteAchat !== null ? (float) $this->quantiteParUniteAchat : null;
+    }
+
+    public function setQuantiteParUniteAchat(float|int|string|null $quantite): static
+    {
+        $this->quantiteParUniteAchat = self::decimalPositif($quantite, 4);
+
+        return $this;
+    }
+
+    public function getLongueurUniteAchat(): ?float
+    {
+        return $this->longueurUniteAchat !== null ? (float) $this->longueurUniteAchat : null;
+    }
+
+    public function setLongueurUniteAchat(float|int|string|null $longueur): static
+    {
+        $this->longueurUniteAchat = self::decimalPositif($longueur, 3);
+
+        return $this;
+    }
+
+    public function getLaize(): ?float
+    {
+        return $this->laize !== null ? (float) $this->laize : null;
+    }
+
+    public function setLaize(float|int|string|null $laize): static
+    {
+        $this->laize = self::decimalPositif($laize, 3);
+
+        return $this;
+    }
+
+    public function getUniteVente(): ?string
+    {
+        return $this->uniteVente;
+    }
+
+    public function setUniteVente(?string $uniteVente): static
+    {
+        $uniteVente = $uniteVente !== null ? trim($uniteVente) : null;
+        $this->uniteVente = $uniteVente !== '' ? $uniteVente : null;
+
+        return $this;
+    }
+
+    public function getStockMax(): ?float
+    {
+        return $this->stockMax !== null ? (float) $this->stockMax : null;
+    }
+
+    public function setStockMax(float|int|string|null $stockMax): static
+    {
+        $this->stockMax = self::decimalPositif($stockMax, 3);
+
+        return $this;
+    }
+
+    public function getEmplacement(): ?string
+    {
+        return $this->emplacement;
+    }
+
+    public function setEmplacement(?string $emplacement): static
+    {
+        $emplacement = $emplacement !== null ? trim($emplacement) : null;
+        $this->emplacement = $emplacement !== '' ? $emplacement : null;
+
+        return $this;
+    }
+
+    public function getMachine(): ?Machines
+    {
+        return $this->machine;
+    }
+
+    public function setMachine(?Machines $machine): static
+    {
+        $this->machine = $machine;
+
+        return $this;
+    }
+
+    public function getCoutMoyen(): ?int
+    {
+        return $this->coutMoyen;
+    }
+
+    public function setCoutMoyen(?int $coutMoyen): static
+    {
+        $this->coutMoyen = $coutMoyen !== null ? max(0, $coutMoyen) : null;
+
+        return $this;
+    }
+
+    /**
+     * Coût d'une unité de stock : le coût moyen, à défaut le prix d'achat
+     * ramené à l'unité de stock.
+     */
+    public function getCoutUnitaireStock(): ?int
+    {
+        if ($this->coutMoyen !== null) {
+            return $this->coutMoyen;
+        }
+
+        if ($this->prixAchat === null) {
+            return null;
+        }
+
+        return (int) round($this->prixAchat / $this->getFacteurConversion());
+    }
+
+    /**
+     * Unités de stock contenues dans une unité d'achat (1 si pas de conversion).
+     */
+    public function getFacteurConversion(): float
+    {
+        $facteur = $this->getQuantiteParUniteAchat();
+
+        if ($facteur === null && $this->getLongueurUniteAchat() !== null && $this->getLaize() !== null && $this->estEnMetresCarres()) {
+            $facteur = $this->getLongueurUniteAchat() * $this->getLaize();
+        }
+
+        return $facteur !== null && $facteur > 0 ? $facteur : 1.0;
+    }
+
+    public function convertirAchatEnStock(float $quantiteAchat): float
+    {
+        return round($quantiteAchat * $this->getFacteurConversion(), 3);
+    }
+
+    public function estEnMetresCarres(): bool
+    {
+        return \in_array(mb_strtolower($this->unite), ['m2', 'm²', 'metre_carre'], true);
+    }
+
+    /**
+     * @return Collection<int, ArticleFournisseur>
+     */
+    public function getFournisseurs(): Collection
+    {
+        return $this->fournisseurs;
+    }
+
+    public function addFournisseur(ArticleFournisseur $fournisseur): static
+    {
+        if (!$this->fournisseurs->contains($fournisseur)) {
+            $this->fournisseurs->add($fournisseur);
+            $fournisseur->setArticle($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFournisseur(ArticleFournisseur $fournisseur): static
+    {
+        $this->fournisseurs->removeElement($fournisseur);
+
+        return $this;
+    }
+
+    public function getFournisseurPrincipal(): ?ArticleFournisseur
+    {
+        foreach ($this->fournisseurs as $lien) {
+            if ($lien->isPrincipal()) {
+                return $lien;
+            }
+        }
+
+        return $this->fournisseurs->first() ?: null;
+    }
+
+    private static function decimalPositif(float|int|string|null $valeur, int $decimales): ?string
+    {
+        if ($valeur === null) {
+            return null;
+        }
+
+        $valeur = str_replace([' ', ','], ['', '.'], trim((string) $valeur));
+
+        if ($valeur === '' || !is_numeric($valeur) || (float) $valeur <= 0) {
+            return null;
+        }
+
+        return number_format((float) $valeur, $decimales, '.', '');
+    }
 
 }

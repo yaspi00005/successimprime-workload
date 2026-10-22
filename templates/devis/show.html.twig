@@ -1,1865 +1,314 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	Devis
-	{{ devis.numero|default('#' ~ devis.id) }}
-{% endblock %}
-
-
-{% block body %}
-
-	{% set numero = devis.numero|default(
-        'DEV-' ~ '%05d'|format(devis.id)
-    ) %}
-
-	{% set client = devis.clients|default(null) %}
-
-	{% set details = devis.devisDetails|default([]) %}
-
-	{% set statut = devis.statut|default('brouillon') %}
-
-
-	<div
-		class="side-app">
-
-		{# =====================================================
-																										           EN-TÊTE
-																										           ===================================================== #}
-
-		<div class="page-header">
-
-			<ol class="breadcrumb">
-
-				<li class="breadcrumb-item">
-					<a href="{{ path('app_devis_index') }}">
-						Devis
-					</a>
-				</li>
-
-				<li class="breadcrumb-item active" aria-current="page">
-					{{ numero }}
-				</li>
-
-			</ol>
-
-
-			<div class="d-flex flex-wrap align-items-center">
-
-				<a href="{{ path('app_devis_index') }}" class="btn btn-sm btn-light mr-2 mb-1">
-					<i class="fe fe-arrow-left mr-1"></i>
-					Retour
-				</a>
-
-
-				{# =============================================
-																																																				                   CONVERSION DU DEVIS EN COMMANDE
-																																																				                   ============================================= #}
-
-				{% if
-                    devis.statut == 'accepte'
-                    and devis.commande is null
-                %}
-
-					<form method="post" action="{{ path( 'app_devis_convertir_commande', { id: devis.id } ) }}" class="d-inline mr-2 mb-1" onsubmit="
-																																																																																											                            return confirm(
-																																																																																											                                'Valider ce devis et créer définitivement la commande ?'
-																																																																																											                            );
-																																																																																											                        ">
-
-						<input type="hidden" name="_token" value="{{ csrf_token( 'convertir-devis-' ~ devis.id ) }}">
-
-						<button type="submit" class="btn btn-sm btn-success">
-							<i class="fe fe-check-circle mr-1"></i>
-							Valider et créer la commande
-						</button>
-
-					</form>
-
-				{% elseif devis.commande %}
-
-					<a href="{{ path( 'app_commandes_show', { id: devis.commande.id } ) }}" class="btn btn-sm btn-success mr-2 mb-1">
-						<i class="fe fe-eye mr-1"></i>
-						Voir la commande créée
-					</a>
-
-				{% endif %}
-
-
-				{# =============================================
-																																																				                   MODIFIER
-																																																				                   ============================================= #}
-
-				<a href="{{ path( 'app_devis_edit', { id: devis.id } ) }}" class="btn btn-sm btn-primary mr-2 mb-1">
-					<i class="fe fe-edit-2 mr-1"></i>
-					Modifier
-				</a>
-
-
-				{# =============================================
-																																																				                   IMPRIMER
-																																																				                   ============================================= #}
-
-				<button type="button" class="btn btn-sm btn-secondary mb-1" onclick="window.print()">
-					<i class="fe fe-printer mr-1"></i>
-					Imprimer
-				</button>
-				<a href="{{ path( 'app_devis_pdf', { id: devis.id } ) }}" target="_blank" class="btn btn-sm btn-danger mr-2">
-					<i class="fa fa-file-pdf-o mr-1"></i>
-					Télécharger PDF
-				</a>
-
-
-				{# =============================================
-																																																   SUPPRIMER (ADMIN)
-																																																   ============================================= #}
-
-				{% if is_granted('ROLE_ADMIN') %}
-
-					<form method="post" action="{{ path( 'app_devis_delete', { id: devis.id } ) }}" class="js-confirm-form d-inline" data-message="Supprimer définitivement le devis {{ devis.numero }} ? Cette action est irréversible.">
-
-						<input type="hidden" name="_token" value="{{ csrf_token( 'delete' ~ devis.id ) }}">
-
-						<button type="submit" class="btn btn-sm btn-danger mr-2 mb-1">
-							<i class="fe fe-trash-2 mr-1"></i>
-							Supprimer
-						</button>
-
-					</form>
-
-				{% endif %}
-
-				<button type="button" class="btn btn-sm btn-success mb-1 js-envoyer-whatsapp" data-url="{{ path( 'app_devis_whatsapp', { id: devis.id } ) }}" data-token="{{ csrf_token( 'whatsapp_devis_' ~ devis.id ) }}" data-numero="{{ devis.numero|default( '#' ~ devis.id ) }}">
-					<i class="fa fa-whatsapp mr-1"></i>
-					Envoyer par WhatsApp
-				</button>
-			</div>
-
-		</div>
-
-
-		{# =====================================================
-																										           MESSAGES FLASH
-																										           ===================================================== #}
-
-		{% for type, messages in app.flashes %}
-
-			{% for message in messages %}
-
-				<div class="
-																																																																														                        alert
-																																																																														                        alert-{{ type == 'error' ? 'danger' : type }}
-																																																																														                        alert-dismissible
-																																																																														                        fade
-																																																																														                        show
-																																																																														                    ">
-
-					{{ message }}
-
-					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-
-				</div>
-
-			{% endfor %}
-
-		{% endfor %}
-
-
-		<div
-			class="row">
-
-			{# =================================================
-																																							               COLONNE PRINCIPALE
-																																							               ================================================= #}
-
-			<div class="col-xl-8 col-lg-8">
-
-				<div class="card">
-
-					<div class="
-																																																																																											                            card-header
-																																																																																											                            d-flex
-																																																																																											                            justify-content-between
-																																																																																											                            align-items-center
-																																																																																											                        ">
-
-						<div>
-
-							<h3 class="card-title mb-1">
-								Détails du devis
-							</h3>
-
-							<small class="text-muted">
-								{{ numero }}
-							</small>
-
-						</div>
-
-
-						{% set statutClasses = {
-                            'brouillon': 'secondary',
-                            'envoye': 'primary',
-                            'accepte': 'success',
-                            'refuse': 'danger',
-                            'expire': 'warning',
-                            'converti': 'info',
-                            'annule': 'dark'
-                        } %}
-
-
-						{% set statutLibelles = {
-                            'brouillon': 'Brouillon',
-                            'envoye': 'Envoyé',
-                            'accepte': 'Accepté',
-                            'refuse': 'Refusé',
-                            'expire': 'Expiré',
-                            'converti': 'Converti',
-                            'annule': 'Annulé'
-                        } %}
-
-
-						<span class="
-																																																																																																								                                badge
-																																																																																																								                                badge-{{
-																																																																																																								                                    statutClasses[statut]
-																																																																																																								                                    |default('secondary')
-																																																																																																								                                }}
-																																																																																																								                            ">
-							{{
-                                statutLibelles[statut]
-                                |default(
-                                    statut
-                                    |replace({
-                                        '_': ' '
-                                    })
-                                    |capitalize
-                                )
-                            }}
-						</span>
-
-					</div>
-
-
-					<div class="card-body">
-
-						{% if details is empty %}
-
-							<div class="alert alert-info mb-0">
-								Aucun travail n’est associé à ce devis.
-							</div>
-
-						{% else %}
-
-							{% for detail in details %}
-
-								{% set typeLigne =
-                                    detail.typeLigne
-                                    |default('produit')
-                                %}
-
-								{% set configuration =
-                                    detail.produitConfiguration
-                                    |default(null)
-                                %}
-
-								{% set produit =
-                                    detail.produit
-                                    |default(null)
-                                %}
-
-								{% set article =
-                                    detail.article
-                                    |default(null)
-                                %}
-
-
-								<div
-									class="detail-devis-show border rounded mb-4">
-
-									{# =====================================
-																																																																																																																					                                       EN-TÊTE DU TRAVAIL
-																																																																																																																					                                       ===================================== #}
-
-									<div class="
-																																																																																																																																															                                            bg-light
-																																																																																																																																															                                            border-bottom
-																																																																																																																																															                                            p-3
-																																																																																																																																															                                            d-flex
-																																																																																																																																															                                            justify-content-between
-																																																																																																																																															                                            align-items-center
-																																																																																																																																															                                        ">
-
-										<div>
-
-											<div class="text-primary
-																																																																																																																																																																									                                                    d-flex
-																																																																																																																																																																									                                                    flex-wrap
-																																																																																																																																																																									                                                    align-items-center
-																																																																																																																																																																									                                                    mb-1
-																																																																																																																																																																									                                                ">
-
-												<h5 class="mb-0 mr-2">
-
-													{{
-                                                        detail.designation
-                                                        |default(
-                                                            produit.nom
-                                                            |default(
-                                                                article.designation
-                                                                |default(
-                                                                    'Travail non renseigné'
-                                                                )
-                                                            )
-                                                        )
-                                                    }}
-
-												</h5>
-
-
-											</div>
-
-
-											<small class="text-primary">
-
-												Travail n°
-												{{ loop.index }}
-
-												{% if detail.id|default(null) %}
-													— ID
-													{{ detail.id }}
-												{% endif %}
-
-											</small>
-
-										</div>
-
-
-										<strong class="h5 mb-0 text-primary">
-
-											{{
-                                                detail.totalTtc
-                                                |default(0)
-                                                |number_format(
-                                                    0,
-                                                    ',',
-                                                    ' '
-                                                )
-                                            }}
-											FCFA
-
-										</strong>
-
-									</div>
-
-
-									<div
-										class="p-3 ">
-
-										{# =================================
-																																																																																																																																		                                           ARTICLE EN STOCK
-																																																																																																																																		                                           ================================= #}
-
-										{% if typeLigne == 'article' %}
-
-											<div class="row">
-
-												<div class="col-md-4 mb-3">
-
-													<small class="text-muted d-block">
-														Référence article
-													</small>
-
-													<strong>
-														{{
-                                                            article.reference
-                                                            |default('—')
-                                                        }}
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-4 mb-3">
-
-													<small class="text-muted d-block">
-														Article
-													</small>
-
-													<strong>
-														{{
-                                                            article.designation
-                                                            |default(
-                                                                detail.designation
-                                                                |default('—')
-                                                            )
-                                                        }}
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-4 mb-3">
-
-													<small class="text-muted d-block">
-														Unité
-													</small>
-
-													<strong>
-														{{
-                                                            article.unite
-                                                            |default('—')
-                                                        }}
-													</strong>
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           PRODUIT / PRESTATION
-																																																																																																																																		                                           ================================= #}
-
-										{% if typeLigne == 'produit' %}
-
-											<div class="row">
-
-												<div class="col-md-3 mb-3">
-
-													<small class="text-muted d-block">
-														Produit
-													</small>
-
-													<strong>
-														{{
-                                                            produit.nom
-                                                            |default('—')
-                                                        }}
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-3 mb-3">
-
-													<small class="text-muted d-block">
-														Type d’impression
-													</small>
-
-													<strong>
-														{{
-                                                            detail.typeImpression.nom
-                                                            |default(
-                                                                configuration.typeImpression.nom
-                                                                |default('—')
-                                                            )
-                                                        }}
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-3 mb-3">
-
-													<small class="text-muted d-block">
-														Support
-													</small>
-
-													<strong>
-														{{
-                                                            detail.support.nom
-                                                            |default(
-                                                                configuration.support.nom
-                                                                |default('—')
-                                                            )
-                                                        }}
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-3 mb-3">
-
-													<small class="text-muted d-block">
-														Format
-													</small>
-
-													<strong>
-														{{
-                                                            detail.format.nom
-                                                            |default(
-                                                                configuration.format.nom
-                                                                |default('—')
-                                                            )
-                                                        }}
-													</strong>
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           SAISIE LIBRE
-																																																																																																																																		                                           ================================= #}
-
-										{% if typeLigne == 'libre' %}
-
-											<div class="alert alert-info-light border">
-
-												<i class="fa fa-edit mr-1"></i>
-
-												Cette ligne a été saisie librement
-																																																																																																																																																												                                                et ne dépend pas d’un produit
-																																																																																																																																																												                                                ou d’un article du catalogue.
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           QUANTITÉ / PRIX / MODE
-																																																																																																																																		                                           ================================= #}
-
-										<div class="row">
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Quantité
-												</small>
-
-												<strong>
-													{{
-                                                        detail.quantite
-                                                        |default(1)
-                                                    }}
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Mode de calcul
-												</small>
-
-												<strong>
-
-													{% set modeCalculLibelles = {
-                                                        'forfait': 'Forfait',
-                                                        'unite': 'Unité',
-                                                        'heure': 'Heure',
-                                                        'feuille': 'Feuille',
-                                                        'exemplaire': 'Exemplaire',
-                                                        'metre': 'Mètre linéaire',
-                                                        'metre_carre': 'Mètre carré',
-                                                        'point': 'Point',
-                                                        'face': 'Face'
-                                                    } %}
-
-													{{
-                                                        modeCalculLibelles[
-                                                            detail.modeCalcul
-                                                            |default('unite')
-                                                        ]
-                                                        |default(
-                                                            detail.modeCalcul
-                                                            |default('unite')
-                                                            |replace({
-                                                                '_': ' '
-                                                            })
-                                                            |capitalize
-                                                        )
-                                                    }}
-
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Prix unitaire
-												</small>
-
-												<strong>
-													{{
-                                                        detail.prixUnitaire
-                                                        |default(0)
-                                                        |number_format(
-                                                            0,
-                                                            ',',
-                                                            ' '
-                                                        )
-                                                    }}
-													FCFA
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Remise
-												</small>
-
-												<strong>
-													{{
-                                                        detail.montantRemise
-                                                        |default(0)
-                                                        |number_format(
-                                                            0,
-                                                            ',',
-                                                            ' '
-                                                        )
-                                                    }}
-													FCFA
-												</strong>
-
-											</div>
-
-										</div>
-
-
-										{# =================================
-																																																																																																																																		                                           DIMENSIONS
-																																																																																																																																		                                           ================================= #}
-
-										{% if
-                                            detail.largeur|default(null)
-                                            or detail.longueur|default(null)
-                                            or detail.surface|default(null)
-                                        %}
-
-											<div class="border-top pt-3 mt-1">
-
-												<h6 class="mb-3">
-													<i class="fa fa-arrows-alt mr-1 text-primary"></i>
-													Dimensions
-												</h6>
-
-
-												<div class="row">
-
-													{% if detail.largeur|default(null) %}
-
-														<div class="col-md-3 mb-3">
-
-															<small class="text-muted d-block">
-																Largeur
-															</small>
-
-															<strong>
-																{{ detail.largeur }}
-															</strong>
-
-														</div>
-
-													{% endif %}
-
-
-													{% if detail.longueur|default(null) %}
-
-														<div class="col-md-3 mb-3">
-
-															<small class="text-muted d-block">
-																Longueur
-															</small>
-
-															<strong>
-																{{ detail.longueur }}
-															</strong>
-
-														</div>
-
-													{% endif %}
-
-
-													{% if detail.surface|default(null) %}
-
-														<div class="col-md-3 mb-3">
-
-															<small class="text-muted d-block">
-																Surface
-															</small>
-
-															<strong>
-																{{
-                                                                    detail.surface
-                                                                    |number_format(
-                                                                        2,
-                                                                        ',',
-                                                                        ' '
-                                                                    )
-                                                                }}
-																m²
-															</strong>
-
-														</div>
-
-													{% endif %}
-
-
-													{% if
-                                                        detail.nombreFaces
-                                                        |default(1) > 1
-                                                    %}
-
-														<div class="col-md-3 mb-3">
-
-															<small class="text-muted d-block">
-																Nombre de faces
-															</small>
-
-															<strong>
-																{{
-                                                                    detail.nombreFaces
-                                                                }}
-															</strong>
-
-														</div>
-
-													{% endif %}
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           FINITIONS
-																																																																																																																																		                                           ================================= #}
-
-										{% if
-                                            typeLigne == 'produit'
-                                            and detail.finitions|default([]) is not empty
-                                        %}
-
-											<div class="border-top pt-3 mt-1">
-
-												<h6 class="mb-3">
-													<i class="fa fa-magic mr-1 text-primary"></i>
-													Finitions
-												</h6>
-
-
-												<div class="table-responsive">
-
-													<table class="
-																																																																																																																																																																																																			                                                            table
-																																																																																																																																																																																																			                                                            table-sm
-																																																																																																																																																																																																			                                                            table-bordered
-																																																																																																																																																																																																			                                                            mb-0
-																																																																																																																																																																																																			                                                        ">
-
-														<thead class="bg-light">
-
-															<tr>
-
-																<th>
-																	Finition
-																</th>
-
-																<th>
-																	Mode de calcul
-																</th>
-
-																<th class="text-center">
-																	Quantité
-																</th>
-
-																<th class="text-right">
-																	Prix appliqué
-																</th>
-
-																<th class="text-right">
-																	Montant
-																</th>
-
-															</tr>
-
-														</thead>
-
-
-														<tbody>
-
-															{% for finition in detail.finitions %}
-
-																<tr>
-
-																	<td>
-
-																		{{
-                                                                            finition.nomFinition
-                                                                            |default(
-                                                                                finition.finition.nom
-                                                                                |default(
-                                                                                    finition.configurationFinition.finition.nom
-                                                                                    |default('Finition')
-                                                                                )
-                                                                            )
-                                                                        }}
-
-																	</td>
-
-
-																	<td>
-
-																		{{
-                                                                            finition.modeCalcul
-                                                                            |default('forfait')
-                                                                            |replace({
-                                                                                '_': ' '
-                                                                            })
-                                                                            |capitalize
-                                                                        }}
-
-																	</td>
-
-
-																	<td class="text-center">
-
-																		{{
-                                                                            finition.quantite
-                                                                            |default(1)
-                                                                        }}
-
-																	</td>
-
-
-																	<td class="text-right">
-
-																		{{
-                                                                            finition.prixApplique
-                                                                            |default(0)
-                                                                            |number_format(
-                                                                                0,
-                                                                                ',',
-                                                                                ' '
-                                                                            )
-                                                                        }}
-																		FCFA
-
-																	</td>
-
-
-																	<td class="
-																																																																																																																																																																																																																																																							                                                                            text-right
-																																																																																																																																																																																																																																																							                                                                            font-weight-bold
-																																																																																																																																																																																																																																																							                                                                        ">
-
-																		{{
-                                                                            finition.montant
-                                                                            |default(0)
-                                                                            |number_format(
-                                                                                0,
-                                                                                ',',
-                                                                                ' '
-                                                                            )
-                                                                        }}
-																		FCFA
-
-																	</td>
-
-																</tr>
-
-															{% endfor %}
-
-														</tbody>
-
-													</table>
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           CARACTÉRISTIQUES TECHNIQUES
-																																																																																																																																		                                           ================================= #}
-
-										{% if typeLigne == 'produit' %}
-
-											{% set aTechnique =
-                                                detail.profilCouleurs|default('')
-                                                or detail.resolution|default('')
-                                                or detail.grammage|default('')
-                                                or detail.epaisseur|default('')
-                                                or detail.laminage|default('')
-                                                or detail.pliage|default('')
-                                                or detail.rectoVerso|default(false)
-                                                or detail.oeillets|default(false)
-                                                or detail.decoupe|default(false)
-                                                or detail.emballage|default(false)
-                                            %}
-
-
-											{% if aTechnique %}
-
-												<div class="border-top pt-3 mt-3">
-
-													<h6 class="mb-3">
-
-														<i class="fa fa-sliders mr-1 text-primary"></i>
-
-														Caractéristiques techniques
-
-													</h6>
-
-
-													<div class="row">
-
-														{% if detail.profilCouleurs|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Profil couleurs
-																</small>
-
-																<strong>
-																	{{ detail.profilCouleurs }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-
-														{% if detail.resolution|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Résolution
-																</small>
-
-																<strong>
-																	{{ detail.resolution }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-
-														{% if detail.grammage|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Grammage
-																</small>
-
-																<strong>
-																	{{ detail.grammage }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-
-														{% if detail.epaisseur|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Épaisseur
-																</small>
-
-																<strong>
-																	{{ detail.epaisseur }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-
-														{% if detail.laminage|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Laminage
-																</small>
-
-																<strong>
-																	{{ detail.laminage }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-
-														{% if detail.pliage|default('') %}
-
-															<div class="col-md-3 mb-3">
-
-																<small class="text-muted d-block">
-																	Pliage
-																</small>
-
-																<strong>
-																	{{ detail.pliage }}
-																</strong>
-
-															</div>
-
-														{% endif %}
-
-													</div>
-
-
-													<div class="d-flex flex-wrap">
-
-														{% if detail.rectoVerso|default(false) %}
-															<span class="badge badge-primary mr-2 mb-2">
-																Recto verso
-															</span>
-														{% endif %}
-
-														{% if detail.oeillets|default(false) %}
-															<span class="badge badge-primary mr-2 mb-2">
-																Œillets
-															</span>
-														{% endif %}
-
-														{% if detail.decoupe|default(false) %}
-															<span class="badge badge-primary mr-2 mb-2">
-																Découpe
-															</span>
-														{% endif %}
-
-														{% if detail.emballage|default(false) %}
-															<span class="badge badge-primary mr-2 mb-2">
-																Emballage
-															</span>
-														{% endif %}
-
-													</div>
-
-												</div>
-
-											{% endif %}
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           PRIORITÉ / TEMPS / BAT
-																																																																																																																																		                                           ================================= #}
-
-										{% if typeLigne == 'produit' %}
-
-											<div class="border-top pt-3 mt-3">
-
-												<div class="row">
-
-													<div class="col-md-3 mb-3">
-
-														<small class="text-muted d-block">
-															Priorité
-														</small>
-
-														{% set prioriteClasses = {
-                                                            'basse': 'secondary',
-                                                            'normale': 'primary',
-                                                            'haute': 'warning',
-                                                            'urgente': 'danger'
-                                                        } %}
-
-
-														<span class="
-																																																																																																																																																																																																																                                                                badge
-																																																																																																																																																																																																																                                                                badge-{{
-																																																																																																																																																																																																																                                                                    prioriteClasses[
-																																																																																																																																																																																																																                                                                        detail.priorite
-																																																																																																																																																																																																																                                                                        |default('normale')
-																																																																																																																																																																																																																                                                                    ]
-																																																																																																																																																																																																																                                                                    |default('primary')
-																																																																																																																																																																																																																                                                                }}
-																																																																																																																																																																																																																                                                            ">
-
-															{{
-                                                                detail.priorite
-                                                                |default('normale')
-                                                                |capitalize
-                                                            }}
-
-														</span>
-
-													</div>
-
-
-													<div class="col-md-3 mb-3">
-
-														<small class="text-muted d-block">
-															Temps estimé
-														</small>
-
-														<strong>
-															{% if detail.tempsEstime|default(null) is not null %}
-																{{ detail.tempsEstime }}
-															{% else %}
-																—
-															{% endif %}
-														</strong>
-
-													</div>
-
-
-													<div class="col-md-3 mb-3">
-
-														<small class="text-muted d-block">
-															Temps réel
-														</small>
-
-														<strong>
-															{% if detail.tempsReel|default(null) is not null %}
-																{{ detail.tempsReel }}
-															{% else %}
-																—
-															{% endif %}
-														</strong>
-
-													</div>
-
-
-													<div class="col-md-3 mb-3">
-
-														<small class="text-muted d-block">
-															BAT
-														</small>
-
-														{% if detail.batValide|default(false) %}
-
-															<span class="badge badge-success">
-																Validé
-															</span>
-
-														{% else %}
-
-															<span class="badge badge-secondary">
-																Non validé
-															</span>
-
-														{% endif %}
-
-													</div>
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           OBSERVATION
-																																																																																																																																		                                           ================================= #}
-
-										{% if detail.observation|default('') %}
-
-											<div class="border-top pt-3 mt-2">
-
-												<small class="text-muted d-block mb-2">
-													Observation / consignes
-												</small>
-
-												<div class="border rounded bg-light p-3">
-
-													{{
-                                                        detail.observation
-                                                        |nl2br
-                                                    }}
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# =================================
-																																																																																																																																		                                           TOTAUX LIGNE
-																																																																																																																																		                                           ================================= #}
-
-										<div class="border-top pt-3 mt-3">
-
-											<div class="row">
-
-												<div class="col-md-4 mb-2">
-
-													<small class="text-muted d-block">
-														Total HT
-													</small>
-
-													<strong>
-														{{
-                                                            detail.totalHt
-                                                            |default(0)
-                                                            |number_format(
-                                                                0,
-                                                                ',',
-                                                                ' '
-                                                            )
-                                                        }}
-														FCFA
-													</strong>
-
-												</div>
-
-
-												<div class="col-md-4 mb-2">
-
-													<small class="text-muted d-block">
-														TVA
-													</small>
-
-													<strong>
-														{{
-                                                            detail.tva
-                                                            |default(0)
-                                                        }}
-														%
-													</strong>
-
-												</div>
-
-
-												<div class="
-																																																																																																																																																																																						                                                        col-md-4
-																																																																																																																																																																																						                                                        text-md-right
-																																																																																																																																																																																						                                                        mb-2
-																																																																																																																																																																																						                                                    ">
-
-													<small class="text-muted d-block">
-														Total TTC
-													</small>
-
-													<strong class="text-primary h5">
-
-														{{
-                                                            detail.totalTtc
-                                                            |default(0)
-                                                            |number_format(
-                                                                0,
-                                                                ',',
-                                                                ' '
-                                                            )
-                                                        }}
-														FCFA
-
-													</strong>
-
-												</div>
-
-											</div>
-
-										</div>
-
-									</div>
-
-								</div>
-
-							{% endfor %}
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-			</div>
-
-
-			{# =================================================
-																																							               COLONNE DROITE
-																																							               ================================================= #}
-
-			<div
-				class="col-xl-4 col-lg-4">
-
-				{# =============================================
-																																																				                   CLIENT
-																																																				                   ============================================= #}
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<h3 class="card-title">
-							Client
-						</h3>
-
-					</div>
-
-
-					<div class="card-body">
-
-						{% if client %}
-
-							<h5 class="mb-3">
-
-								{{
-                                    client.raisonSociale
-                                    |default(
-                                        client.nomComplet
-                                        |default(
-                                            client.nom
-                                            |default(
-                                                'Client non renseigné'
-                                            )
-                                        )
-                                    )
-                                }}
-
-							</h5>
-
-
-							{% if client.telephone|default('') %}
-
-								<p class="mb-2">
-
-									<i class="fe fe-phone mr-2 text-primary"></i>
-
-									{{ client.telephone }}
-
-								</p>
-
-							{% endif %}
-
-
-							{% if client.email|default('') %}
-
-								<p class="mb-2">
-
-									<i class="fe fe-mail mr-2 text-primary"></i>
-
-									{{ client.email }}
-
-								</p>
-
-							{% endif %}
-
-
-							{% if client.adresse|default('') %}
-
-								<p class="mb-0">
-
-									<i class="fe fe-map-pin mr-2 text-primary"></i>
-
-									{{ client.adresse }}
-
-								</p>
-
-							{% endif %}
-
-						{% else %}
-
-							<div class="text-muted">
-								Aucun client renseigné.
-							</div>
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-
-				{# =============================================
-																																																				                   INFORMATIONS DU DEVIS
-																																																				                   ============================================= #}
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<h3 class="card-title">
-							Informations
-						</h3>
-
-					</div>
-
-
-					<div class="card-body">
-
-						<div class="mb-3">
-
-							<small class="text-muted d-block">
-								Numéro
-							</small>
-
-							<strong>
-								{{ numero }}
-							</strong>
-
-						</div>
-
-
-						{% if devis.dateDevis|default(null) %}
-
-							<div class="mb-3">
-
-								<small class="text-muted d-block">
-									Date du devis
-								</small>
-
-								<strong>
-									{{
-                                        devis.dateDevis
-                                        |date('d/m/Y H:i')
-                                    }}
-								</strong>
-
-							</div>
-
-						{% endif %}
-
-
-						<div class="mb-3">
-
-							<small class="text-muted d-block">
-								Nombre de lignes
-							</small>
-
-							<strong>
-								{{ details|length }}
-							</strong>
-
-						</div>
-
-
-						{% if devis.agents|default(null) %}
-
-							<div class="mb-0">
-
-								<small class="text-muted d-block">
-									Agent
-								</small>
-
-								<strong>
-									{{
-                                        devis.agents.nom
-                                        |default(
-                                            devis.agents.email
-                                            |default(
-                                                'Utilisateur'
-                                            )
-                                        )
-                                    }}
-								</strong>
-
-							</div>
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-
-				{# =============================================
-																																																				                   RÉCAPITULATIF
-																																																				                   ============================================= #}
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<h3 class="card-title">
-							Récapitulatif
-						</h3>
-
-					</div>
-
-
-					<div class="card-body">
-
-						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								Total HT
-							</span>
-
-							<strong>
-								{{
-                                    devis.totalHt
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-							</strong>
-
-						</div>
-
-
-						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								Remise
-							</span>
-
-							<strong>
-								{{
-                                    devis.remise
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-							</strong>
-
-						</div>
-
-
-						<div class="d-flex justify-content-between mb-3">
-
-							<span>
-								TVA
-							</span>
-
-							<strong>
-								{{
-                                    devis.tva
-                                    |default(0)
-                                }}
-								%
-							</strong>
-
-						</div>
-
-
-						<hr>
-
-
-						<div class="d-flex justify-content-between mb-3">
-
-							<span class="h5 mb-0">
-								Total TTC
-							</span>
-
-							<strong class="h5 mb-0 text-primary">
-
-								{{
-                                    devis.totalTtc
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						<div class="d-flex justify-content-between">
-
-							<span>
-								Montant à payer
-							</span>
-
-							<strong class="text-success">
-
-								{{
-                                    devis.montantApayer
-                                    |default(0)
-                                    |number_format(
-                                        0,
-                                        ',',
-                                        ' '
-                                    )
-                                }}
-								FCFA
-
-							</strong>
-
-						</div>
-
-					</div>
-
-				</div>
-
-
-				{# =============================================
-																																																				                   OBSERVATION GÉNÉRALE
-																																																				                   ============================================= #}
-
-				{% if devis.observation|default('') %}
-
-					<div class="card">
-
-						<div class="card-header">
-
-							<h3 class="card-title">
-								Observation générale
-							</h3>
-
-						</div>
-
-
-						<div class="card-body">
-
-							{{
-                                devis.observation
-                                |nl2br
-                            }}
-
-						</div>
-
-					</div>
-
-				{% endif %}
-
-			</div>
-
-		</div>
-
-	</div>
-
-{% endblock %}
-
+{#
+	Fiche d'un devis (maquette DT03, docs/devis.md) : lignes et totaux,
+	versions avec la demande du client, suivi des envois et des
+	ouvertures, carte du client, rentabilité (droit « Marges et coûts »)
+	et responsable. Actions : nouvelle version, relance WhatsApp,
+	transformation en commande.
+#}
+
+{% block title %}Devis {{ devis.numero ?: '#' ~ devis.id }}{% endblock %}
 
 {% block stylesheets %}
-
 	{{ parent() }}
-
-	<style>
-
-		.detail-devis-show {
-			overflow: hidden;
-			background: #fff;
-			border-color: #dce4f0 !important;
-		}
-
-		.detail-devis-show > .bg-light {
-			background: #f4f7fc !important;
-		}
-
-		.detail-devis-show small.text-muted {
-			color: #6c757d !important;
-		}
-
-		.detail-devis-show strong {
-			color: #2d3748;
-		}
-
-
-		@media print {
-
-			.app-sidebar,
-			.header,
-			.page-header .btn,
-			.breadcrumb,
-			.footer,
-			.sidebar,
-			.app-header {
-				display: none !important;
-			}
-
-			.side-app,
-			.app-content,
-			.main-content {
-				margin: 0 !important;
-				padding: 0 !important;
-			}
-
-			.page-header {
-				margin-bottom: 10px !important;
-			}
-
-			.card,
-			.detail-devis-show {
-				border: 1px solid #ddd !important;
-				box-shadow: none !important;
-				break-inside: avoid;
-			}
-
-			.col-xl-8,
-			.col-lg-8,
-			.col-xl-4,
-			.col-lg-4 {
-				max-width: 100% !important;
-				flex: 0 0 100% !important;
-			}
-
-			body {
-				background: #fff !important;
-			}
-		}
-		.detail-devis-show table,
-		.detail-devis-show table th,
-		.detail-devis-show table td,
-		.detail-devis-show table thead,
-		.detail-devis-show table tbody,
-		.detail-devis-show table tr {
-			color: #1f2937 !important;
-			-webkit-text-fill-color: #1f2937 !important;
-		}
-
-		.detail-devis-show table thead th {
-			background-color: #f4f7fc !important;
-			color: #17366f !important;
-			-webkit-text-fill-color: #17366f !important;
-			font-weight: 600;
-		}
-
-		.detail-devis-show table tbody td {
-			background-color: #ffffff !important;
-			color: #1f2937 !important;
-			-webkit-text-fill-color: #1f2937 !important;
-		}
-
-		.detail-devis-show table tbody tr:hover td {
-			background-color: #f8fafc !important;
-			color: #1f2937 !important;
-		}
-		/* ============================================================
-   EN-TÊTE DES LIGNES DU DEVIS
-   ============================================================ */
-
-		.detail-devis-show > .bg-light,
-		.detail-devis-show > .bg-light h5,
-		.detail-devis-show > .bg-light h4,
-		.detail-devis-show > .bg-light strong,
-		.detail-devis-show > .bg-light small {
-			color: #1f2937 !important;
-			-webkit-text-fill-color: #1f2937 !important;
-		}
-
-		/* Désignation : KAKEMONO */
-		.detail-devis-show > .bg-light h5 {
-			color: #17366f !important;
-			-webkit-text-fill-color: #17366f !important;
-			font-weight: 700 !important;
-		}
-
-		/* Travail n° 1 — ID 1 */
-		.detail-devis-show > .bg-light small,
-		.detail-devis-show > .bg-light .text-muted {
-			color: #64748b !important;
-			-webkit-text-fill-color: #64748b !important;
-			opacity: 1 !important;
-		}
-
-		/* Montant à droite */
-		.detail-devis-show > .bg-light .text-primary {
-			color: #6259ca !important;
-			-webkit-text-fill-color: #6259ca !important;
-		}
-
-		/*
- * Les badges doivent conserver leur texte blanc,
- * sinon la règle précédente peut les écraser.
- */
-		.detail-devis-show .badge-primary,
-		.detail-devis-show .badge-success,
-		.detail-devis-show .badge-info,
-		.detail-devis-show .badge-warning,
-		.detail-devis-show .badge-danger,
-		.detail-devis-show .badge-secondary {
-			-webkit-text-fill-color: currentColor !important;
-		}
-
-		.detail-devis-show .badge-primary,
-		.detail-devis-show .badge-success,
-		.detail-devis-show .badge-info,
-		.detail-devis-show .badge-danger {
-			color: #ffffff !important;
-		}
-
-		.detail-devis-show .badge-warning {
-			color: #212529 !important;
-		}
-	</style>
-
+	<link href="{{ asset('css/devis.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
 {% endblock %}
 
-{% block javascripts %}
+{% set jeton = csrf_token('devis-' ~ devis.id) %}
+{% set enAttente = devis.estEnAttente %}
+{% set peutNouvelleVersion = devis.statut in ['envoye', 'vu', 'refuse', 'expire'] %}
 
-	{{ parent() }}
+{% block header_actions %}
+	{% if devis.statut == 'brouillon' %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_devis_pdf', {id: devis.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete">Aperçu PDF</a></li>
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_devis_edit', {id: devis.id}) }}" class="btn btn-light btn-sm si-btn-entete">Modifier</a></li>
+		<li class="nav-item si-masque-mobile">
+			<form method="post" action="{{ path('app_devis_envoyer', {id: devis.id}) }}" class="d-inline">
+				<input type="hidden" name="_token" value="{{ jeton }}">
+				<button type="submit" class="btn btn-danger btn-sm">Envoyer au client</button>
+			</form>
+		</li>
+	{% else %}
+		{% if peutNouvelleVersion %}
+			<li class="nav-item si-masque-mobile">
+				<form method="post" action="{{ path('app_devis_nouvelle_version', {id: devis.id}) }}" class="d-inline">
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<button type="submit" class="btn btn-light btn-sm si-btn-entete">Nouvelle version</button>
+				</form>
+			</li>
+		{% endif %}
+		{% if enAttente %}
+			<li class="nav-item si-masque-mobile">
+				<form method="post" action="{{ path('app_devis_relancer', {id: devis.id}) }}" class="d-inline" {{ whatsAppAuto ? '' : 'target="_blank"' }}>
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<button type="submit" class="btn btn-light btn-sm si-btn-entete"><i class="fab fa-whatsapp me-1"></i>Relancer sur WhatsApp</button>
+				</form>
+			</li>
+		{% endif %}
+		{% if (enAttente or devis.statut == 'accepte') and devis.commande is null %}
+			<li class="nav-item si-masque-mobile">
+				<form method="post" action="{{ path('app_devis_convertir_commande', {id: devis.id}) }}" class="d-inline" data-confirmer="{{ enAttente ? 'Le client a accepté ? Le devis devient la commande, sans ressaisie.' : 'Créer la commande à partir de ce devis ?' }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('convertir-devis-' ~ devis.id) }}">
+					<button type="submit" class="btn btn-danger btn-sm">Convertir en commande</button>
+				</form>
+			</li>
+		{% elseif devis.commande %}
+			<li class="nav-item si-masque-mobile"><a href="{{ path('app_commandes_show', {id: devis.commande.id}) }}" class="btn btn-danger btn-sm">Voir la commande</a></li>
+		{% endif %}
+	{% endif %}
+{% endblock %}
 
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% macro initiales(nom) %}{% set mots = nom|trim|split(' ')|filter(m => m is not empty) %}{{ (mots|first|default('?')|first ~ (mots|length > 1 ? mots[1]|first : ''))|upper }}{% endmacro %}
 
-	<script>
+{% block body %}
+	{% set client = devis.clients %}
+	{% set nomClient = client ? (client.raisonSociale ?: client.nomComplet) : 'Client inconnu' %}
+	{% set cleStatut = devis.statut == 'converti' ? 'accepte' : devis.statut %}
 
-		document.addEventListener('DOMContentLoaded', function () {
+	<div class="si-dv si-dv-fiche">
+		<div class="si-dv-fiche-tete">
+			<a href="{{ path('app_devis_index') }}" class="si-dv-retour" aria-label="Retour à la liste"><i class="fas fa-chevron-left"></i></a>
+			<h1>{{ devis.numero ?: '#' ~ devis.id }}{% if devis.objet %} · {{ devis.objet }}{% endif %}</h1>
+			<span class="si-dv-statut si-dv-st-{{ cleStatut }}">{{ devis.statutLibelle }}</span>
+			{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part, suit le devis à la commande. #}
+			{% if devis.horsImprimerie %}<span class="si-badge-hors" title="Vente de matériel, informatique… : comptée à part de l'imprimerie dans les statistiques">Hors imprimerie</span>{% endif %}
+			<span class="si-dv-fiche-sous">
+				{%- if devis.version > 1 %}version {{ devis.version }}{% endif -%}
+				{%- if devis.version > 1 and devis.dateValidite and (enAttente or devis.statut == 'expire') %} · {% endif -%}
+				{%- if devis.dateValidite and enAttente %}expire le {{ devis.dateValidite|date('d/m') }}{% elseif devis.statut == 'expire' and devis.dateValidite %}expiré le {{ devis.dateValidite|date_modify('+1 day')|date('d/m') }}{% endif -%}
+			</span>
+		</div>
 
-document.querySelectorAll('.js-envoyer-whatsapp').forEach(function (bouton) {
+		{# Actions sur téléphone (l'en-tête les cache). #}
+		<div class="si-dv-actions-mobile d-md-none">
+			{% if devis.statut == 'brouillon' %}
+				<a href="{{ path('app_devis_edit', {id: devis.id}) }}" class="btn btn-light">Modifier</a>
+				<form method="post" action="{{ path('app_devis_envoyer', {id: devis.id}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-danger w-100">Envoyer au client</button></form>
+			{% else %}
+				{% if enAttente %}
+					<form method="post" action="{{ path('app_devis_relancer', {id: devis.id}) }}" {{ whatsAppAuto ? '' : 'target="_blank"' }}><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-light w-100"><i class="fab fa-whatsapp me-1"></i>Relancer</button></form>
+				{% endif %}
+				{% if peutNouvelleVersion %}
+					<form method="post" action="{{ path('app_devis_nouvelle_version', {id: devis.id}) }}"><input type="hidden" name="_token" value="{{ jeton }}"><button type="submit" class="btn btn-light w-100">Nouvelle version</button></form>
+				{% endif %}
+				{% if (enAttente or devis.statut == 'accepte') and devis.commande is null %}
+					<form method="post" action="{{ path('app_devis_convertir_commande', {id: devis.id}) }}" data-confirmer="Le devis devient la commande, sans ressaisie."><input type="hidden" name="_token" value="{{ csrf_token('convertir-devis-' ~ devis.id) }}"><button type="submit" class="btn btn-danger w-100">Convertir en commande</button></form>
+				{% elseif devis.commande %}
+					<a href="{{ path('app_commandes_show', {id: devis.commande.id}) }}" class="btn btn-danger">Voir la commande</a>
+				{% endif %}
+			{% endif %}
+		</div>
 
-bouton.addEventListener('click', function () {
+		{% if lienWhatsApp %}
+			<div class="alert alert-success si-dv-bandeau d-flex flex-wrap align-items-center gap-2">
+				<span>Message WhatsApp prêt pour {{ nomClient }} (lien du devis, sans montant).</span>
+				<a href="{{ lienWhatsApp }}" target="_blank" rel="noopener" class="btn btn-success btn-sm ms-auto"><i class="fab fa-whatsapp me-1"></i>Ouvrir WhatsApp</a>
+			</div>
+		{% endif %}
+		{% if devis.attendUneModification and enAttente %}
+			<div class="alert alert-warning si-dv-bandeau">
+				<strong>{{ devis.reponduPar ?: 'Le client' }} demande une modification</strong> le {{ devis.demandeModificationLe|date('d/m à H:i') }} : « {{ devis.demandeModification }} »
+				{% if peutNouvelleVersion %}Préparez la version {{ devis.version + 1 }} avec « Nouvelle version ».{% endif %}
+			</div>
+		{% endif %}
+		{% if relanceDue and not whatsAppAuto %}
+			<div class="alert alert-info si-dv-bandeau">Envoyé il y a {{ maintenant.diff(devis.envoyeLe).days }} jours sans réponse : c'est le moment de relancer (« Relancer sur WhatsApp », message déjà écrit).</div>
+		{% endif %}
 
-const numero = bouton.dataset.numero || 'ce document';
+		<div class="si-dv-fiche-grille">
+			<div class="si-dv-fiche-gauche">
+				<section class="card si-dv-carte si-dv-lignes">
+					<table class="table si-dv-table-lignes" data-sans-filtres>
+						<thead><tr><th>Désignation</th><th class="text-end">Qté</th><th class="text-end">Prix unitaire</th><th class="text-end">Total</th></tr></thead>
+						<tbody>
+							{% for detail in devis.devisDetails %}
+								{% set quantite = detail.quantite|default(1) %}
+								<tr>
+									<td data-label="Désignation">
+										<strong>{{ detail|ligne_interne('Ligne sans désignation') }}</strong>
+										{% if pieces_m2_ligne(detail) %}<small class="d-block text-muted">{{ pieces_m2_ligne(detail) }}</small>{% endif %}
+										{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'devis', peutDemander: is_granted('ROLE_DEVIS')}) }}
+										{# Quantités au choix du client (maquette DB02) : il choisit dans son espace, le total change. #}
+										{% set optionsLigne = devis_options_ligne(detail) %}
+										{% if optionsLigne is not empty %}
+											<small class="d-block si-dv-options">Au choix du client : {% for o in optionsLigne %}<b>{{ o.quantite|number_format(0, ',', ' ') }}</b> = {{ o.ttc|number_format(0, ',', ' ') }} F{{ o.actuelle ? ' (devis)' }}{{ not loop.last ? ' · ' }}{% endfor %}</small>
+										{% endif %}
+										{% if is_granted('ROLE_DEVIS') and (devis.statut == 'brouillon' or devis.estEnAttente) %}
+											<details class="si-dv-options-form">
+												<summary class="small">{{ optionsLigne is empty ? '+ Proposer d\'autres quantités' : 'Changer les quantités proposées' }}</summary>
+												<form method="post" action="{{ path('app_devis_options', {id: devis.id, ligne: detail.id}) }}" class="d-grid gap-1 mt-1">
+													<input type="hidden" name="_token" value="{{ csrf_token('devis-' ~ devis.id) }}">
+													{% set existantes = detail.optionsQuantite %}
+													{% for i in 0..3 %}
+														<div class="d-flex gap-1">
+															<input class="form-control form-control-sm" name="options[{{ i }}][quantite]" inputmode="numeric" placeholder="Quantité" value="{{ existantes[i].quantite ?? '' }}" aria-label="Quantité {{ i + 1 }}">
+															<input class="form-control form-control-sm" name="options[{{ i }}][prixUnitaire]" inputmode="decimal" placeholder="Prix unitaire HT" value="{{ existantes[i].prixUnitaire ?? '' }}" aria-label="Prix unitaire {{ i + 1 }}">
+														</div>
+													{% endfor %}
+													<small class="text-muted">Quantité du devis : {{ detail.quantite }}. Le client choisit dans son espace, les finitions et remises de la ligne suivent.</small>
+													<button type="submit" class="btn btn-sm btn-outline-primary">Enregistrer les quantités</button>
+												</form>
+											</details>
+										{% endif %}
+									</td>
+									<td class="text-end" data-label="Qté">{{ quantite|number_format(quantite == quantite|round ? 0 : 2, ',', ' ') }}</td>
+									<td class="text-end" data-label="Prix unitaire">{{ (quantite > 0 ? detail.totalTtc / quantite : 0)|number_format(0, ',', ' ') }} F</td>
+									<td class="text-end si-dv-montant" data-label="Total">{{ detail.totalTtc|default(0)|number_format(0, ',', ' ') }} F</td>
+								</tr>
+							{% else %}
+								<tr><td colspan="4" class="text-muted">Aucune ligne. <a href="{{ path('app_devis_edit', {id: devis.id}) }}">Ajouter des lignes</a></td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+					<div class="si-dv-totaux">
+						<dl>
+							{% if devis.fraisLivraison > 0 %}<dt>Livraison</dt><dd>{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F</dd>{% endif %}
+							{% if devis.remise > 0 %}<dt>Remise</dt><dd>− {{ devis.remise|number_format(0, ',', ' ') }} F</dd>{% endif %}
+							{% if devis.tva > 0 %}<dt>TVA</dt><dd>{{ devis.tva|number_format(0, ',', ' ') }} F</dd>{% endif %}
+							<dt class="si-dv-total-ligne">Total</dt><dd class="si-dv-total-ligne">{{ devis.totalTtc|number_format(0, ',', ' ') }} F</dd>
+							{% if devis.acomptePourcentage > 0 %}<dt>Acompte demandé</dt><dd>{{ devis.acomptePourcentage }} % · {{ devis.montantAcompte|number_format(0, ',', ' ') }} F</dd>{% endif %}
+							{% if devis.delaiRealisation %}<dt>Délai</dt><dd>{{ devis.delaiRealisation }}</dd>{% endif %}
+						</dl>
+					</div>
+					{% if devis.conditionSolde or devis.conditionFichier or devis.conditionGarantie %}
+						<p class="si-dv-conditions-texte">
+							{% if devis.conditionSolde %}<span>Solde : <b>{{ devis.conditionSolde }}</b></span>{% endif %}
+							{% if devis.conditionFichier %}<span>Fichier : <b>{{ devis.conditionFichier }}</b></span>{% endif %}
+							{% if devis.conditionGarantie %}<span>Garantie : <b>{{ devis.conditionGarantie }}</b></span>{% endif %}
+						</p>
+					{% endif %}
+				</section>
 
-Swal.fire({
-icon: 'question',
-title: 'Envoyer ' + numero + ' par WhatsApp ?',
-text: 'Le PDF sera envoyé au numéro WhatsApp enregistré pour ce client.',
-showCancelButton: true,
-confirmButtonText: 'Envoyer',
-cancelButtonText: 'Annuler'
-}).then(function (resultat) {
+				<div class="si-dv-fiche-bas">
+					<section class="card si-dv-carte si-dv-versions" id="nouvelle-version">
+						<h2>Versions</h2>
+						{% if versions is empty %}
+							<p class="si-dv-petit">{{ devis.statut == 'brouillon' ? 'Pas encore envoyé : la version ' ~ devis.version ~ ' est notée à l\'envoi.' : 'Envoyé avant le suivi des versions.' }}</p>
+						{% else %}
+							<ul>
+								{% if devis.statut == 'brouillon' %}
+									<li><span class="si-dv-v">v{{ devis.version }}</span><div><b>en préparation</b><small>{{ devis.totalTtc|number_format(0, ',', ' ') }} F pour l'instant</small></div><span class="si-dv-statut si-dv-st-brouillon">Brouillon</span></li>
+								{% endif %}
+								{% for v in versions %}
+									<li>
+										<span class="si-dv-v">v{{ v.numero }} · {{ v.le|date('d/m') }}</span>
+										<div>
+											<b>{{ v.total|number_format(0, ',', ' ') }} F</b>
+											{% if v.changements %}<small>{{ v.changements }}</small>{% endif %}
+											{% if v.demandeClient %}<small>client : « {{ v.demandeClient }} »</small>{% endif %}
+											{% if not v.changements and not v.demandeClient %}<small>{{ v.resume }}</small>{% endif %}
+										</div>
+										{% if v.actuelle %}<span class="si-dv-actuelle">Actuelle</span>{% endif %}
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+						{% if peutNouvelleVersion %}
+							<form method="post" action="{{ path('app_devis_nouvelle_version', {id: devis.id}) }}" class="mt-2">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<button type="submit" class="btn btn-link btn-sm p-0">+ Préparer la version {{ devis.version + 1 }}</button>
+							</form>
+						{% endif %}
+					</section>
 
-if (! resultat.isConfirmed) {
-return;
-}
+					<section class="card si-dv-carte si-dv-suivi-fiche">
+						<h2>Suivi</h2>
+						{% if evenements is empty %}
+							<p class="si-dv-petit">Rien encore : le suivi commence à l'envoi.</p>
+						{% else %}
+							<ul>
+								{% for e in evenements %}
+									<li class="{{ e.futur ? 'est-futur' }}">
+										<time>{{ e.le ? (e.le|date('H:i') == '00:00' ? e.le|date('d/m') : e.le|date('d/m H:i')) : '' }}</time>
+										<span>{{ e.texte }}</span>
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+						{% if enAttente or devis.statut == 'expire' %}
+							<details class="si-plus-options mt-2">
+								<summary>Le client a refusé (téléphone, comptoir)</summary>
+								<form method="post" action="{{ path('app_devis_refuser', {id: devis.id}) }}" class="mt-2">
+									<input type="hidden" name="_token" value="{{ jeton }}">
+									<select name="motif" class="form-select form-select-sm mb-2" aria-label="Motif du refus">
+										{% for cle, libelle in motifs %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}
+									</select>
+									<input type="text" name="precision" maxlength="200" class="form-control form-control-sm mb-2" placeholder="Précision (facultatif)">
+									<button type="submit" class="btn btn-sm btn-outline-danger">Noter le refus</button>
+								</form>
+							</details>
+						{% endif %}
+					</section>
+				</div>
+			</div>
 
-bouton.disabled = true;
+			<aside class="si-dv-fiche-droite">
+				<section class="card si-dv-carte si-dv-client-carte">
+					<div class="si-dv-client-tete">
+						<span class="si-dv-avatar si-dv-avatar-grand si-dv-a{{ (client ? client.id : 0) % 6 }}">{{ _self.initiales(nomClient) }}</span>
+						<div>
+							{% if client %}<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}"><b>{{ nomClient }}</b></a>{% else %}<b>{{ nomClient }}</b>{% endif %}
+							<small>{{ nombreDevisClient }} devis · {{ nombreAcceptesClient }} accepté{{ nombreAcceptesClient > 1 ? 's' }}</small>
+						</div>
+					</div>
+					{% if devis.interlocuteur %}<p class="si-dv-contact"><i class="fas fa-user me-2"></i>{{ devis.interlocuteur }}</p>{% endif %}
+					{% if client and client.telephone %}<p class="si-dv-contact"><i class="fas fa-phone me-2"></i>{{ client.telephone }}</p>{% endif %}
+					{% if nombreImpayees > 0 %}
+						<p class="si-dv-alerte">
+							{% if is_granted('ROLE_PAIEMENT_VOIR') %}<b>Solde impayé {{ impaye|number_format(0, ',', ' ') }} F.</b>{% else %}<b>{{ nombreImpayees }} commande{{ nombreImpayees > 1 ? 's' }} pas encore payée{{ nombreImpayees > 1 ? 's' }}.</b>{% endif %}
+							Demander l'acompte avant de lancer.
+						</p>
+					{% endif %}
+				</section>
 
-fetch(bouton.dataset.url, {
-method: 'POST',
-headers: {
-'Content-Type': 'application/json',
-Accept: 'application/json',
-'X-Requested-With': 'XMLHttpRequest'
-},
-body: JSON.stringify(
-{_token: bouton.dataset.token}
-)
-}).then(function (reponse) {
-return reponse.json();
-}).then(function (donnees) {
-Swal.fire({
-icon: donnees.success ? 'success' : 'error',
-title: donnees.success ? 'Envoyé' : 'Erreur',
-text: donnees.message
-});
-}).catch(function () {
-Swal.fire({icon: 'error', title: 'Erreur', text: "La requête n'a pas pu aboutir."});
-}). finally(function () {
-bouton.disabled = false;
-});
-});
-});
-});
-});
-	</script>
+				{% if rentabilite %}
+					<section class="card si-dv-carte si-dv-rentabilite">
+						<h4>Rentabilité <span class="si-dv-interne">Interne</span></h4>
+						<dl>
+							<dt>Coût estimé</dt><dd>{{ rentabilite.cout > 0 ? rentabilite.cout|number_format(0, ',', ' ') ~ ' F' : '—' }}</dd>
+							<dt>Marge</dt><dd>{{ rentabilite.marge|number_format(0, ',', ' ') }} F</dd>
+							<dt>Taux de marge</dt><dd class="{{ rentabilite.alerte ? 'si-p-alerte' : 'si-p-ok' }}">{{ rentabilite.taux is null ? '—' : rentabilite.taux|number_format(0, ',', ' ') ~ ' %' }}</dd>
+						</dl>
+						{% if rentabilite.alerte %}<p class="si-dv-alerte">Marge sous {{ seuilMarge|number_format(0) }} %.</p>{% endif %}
+						{% if rentabilite.incomplet %}<p class="si-dv-petit">Coût incomplet : {{ rentabilite.manquants|join(', ') }}.</p>{% endif %}
+						<p class="si-dv-petit">Jamais visible par le client.</p>
+					</section>
+				{% endif %}
 
+				<section class="card si-dv-carte si-dv-responsable">
+					<h4>Responsable</h4>
+					{% set agent = devis.agents %}
+					{% if agent %}
+						{% set nomAgent = agent.employe ? agent.employe.nomComplet : agent.username %}
+						<div class="si-dv-client-tete">
+							<span class="si-dv-avatar si-dv-avatar-grand si-dv-a{{ agent.id % 6 }}">{{ _self.initiales(nomAgent) }}</span>
+							<div><b>{{ nomAgent }}</b>{% if agent.employe and agent.employe.fonction %}<small class="si-dv-fonction">{{ agent.employe.fonction }}</small>{% endif %}</div>
+						</div>
+					{% else %}
+						<p class="si-dv-petit">Non renseigné.</p>
+					{% endif %}
+				</section>
+
+				{{ include('demandes_site/_encart_devis.html.twig') }}
+
+				<section class="card si-dv-carte si-dv-liens">
+					<a href="{{ path('app_devis_pdf', {id: devis.id}) }}" target="_blank"><i class="far fa-file-pdf me-2"></i>PDF du devis</a>
+					{% if devis.statut not in ['brouillon', 'annule'] and devis.tokenAuthenticite %}
+						<a href="{{ path('app_devis_lien', {token: devis.tokenAuthenticite}) }}" target="_blank" rel="noopener"><i class="fas fa-link me-2"></i>Lien envoyé au client</a>
+					{% endif %}
+					{% if devis.statut == 'brouillon' or peutNouvelleVersion %}
+						<a href="{{ path('app_devis_edit', {id: devis.id}) }}"><i class="fas fa-pen me-2"></i>{{ devis.statut == 'brouillon' ? 'Modifier le brouillon' : 'Modifier (version ' ~ (devis.version + 1) ~ ')' }}</a>
+					{% endif %}
+					{% if is_granted('ROLE_ADMIN') %}
+						<form method="post" action="{{ path('app_devis_delete', {id: devis.id}) }}" data-confirmer="Supprimer le devis {{ devis.numero }} ?" data-confirmer-danger>
+							<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ devis.id) }}">
+							<button type="submit"><i class="fas fa-trash-alt me-2"></i>Supprimer</button>
+						</form>
+					{% endif %}
+				</section>
+			</aside>
+		</div>
+	</div>
 {% endblock %}

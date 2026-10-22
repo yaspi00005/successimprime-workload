@@ -1,0 +1,82 @@
+{% set statuts = constant('App\\Service\\Pointage\\CalculPointage::STATUTS') %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<style>
+		@page { margin: 14mm 12mm; }
+		body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #1d2a44; }
+		h1 { font-size: 15pt; margin: 0 0 2mm; color: #0d3a8a; }
+		.entete { width: 100%; margin-bottom: 5mm; }
+		.entete td { vertical-align: top; }
+		.droite { text-align: right; color: #5b6780; }
+		table.jours { width: 100%; border-collapse: collapse; }
+		table.jours th { background: #0d3a8a; color: #fff; font-weight: bold; padding: 4px; text-align: left; font-size: 8pt; }
+		table.jours td { border-bottom: 1px solid #dde3ee; padding: 3px 4px; }
+		tr.repos td { color: #9aa4b6; }
+		tr.absent td.statut { color: #c62828; }
+		.totaux { width: 100%; margin-top: 5mm; border-collapse: collapse; }
+		.totaux td { border: 1px solid #dde3ee; padding: 5px; text-align: center; }
+		.totaux b { display: block; font-size: 12pt; color: #0d3a8a; }
+		.signatures { width: 100%; margin-top: 12mm; }
+		.signatures td { width: 50%; height: 22mm; vertical-align: top; border-top: 1px solid #1d2a44; padding-top: 2mm; }
+		.pied { margin-top: 6mm; font-size: 7pt; color: #7a879f; }
+	</style>
+</head>
+<body>
+	<table class="entete">
+		<tr>
+			<td>
+				<h1>Feuille de présence</h1>
+				<b>{{ nom }}</b>{% if fonction %} · {{ fonction }}{% endif %}
+			</td>
+			<td class="droite">
+				Succès Imprim · Madial Groupe<br>
+				Mois de {{ mois|date_fr('MMMM yyyy') }}<br>
+				Édité le {{ edite|date('d/m/Y à H:i') }}
+			</td>
+		</tr>
+	</table>
+
+	<table class="jours">
+		<thead><tr><th>Jour</th><th>Arrivée</th><th>Départ</th><th>Présence</th><th>Retard</th><th>Heures sup.</th><th>Statut</th></tr></thead>
+		<tbody>
+			{% for j in fiche.jours %}
+				{% if j.presences is empty %}
+					<tr class="{{ j.ouvre ? 'absent' : 'repos' }}">
+						<td>{{ j.jour|date_fr('EEE d') }}</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td>
+						<td class="statut">{{ j.ouvre ? 'Absent' : 'Repos' }}</td>
+					</tr>
+				{% else %}
+					{% for c in j.presences %}
+						{% set p = c.pointage %}
+						<tr>
+							<td>{{ loop.first ? j.jour|date_fr('EEE d') : '' }}</td>
+							<td>{{ p.arriveeLe|date('H:i') }}</td>
+							<td>{{ p.departLe ? p.departLe|date('H:i') : '—' }}</td>
+							<td>{{ p.departLe ? c.calcul.presence|duree_pointage : '—' }}</td>
+							<td>{{ c.calcul.retard > 0 ? c.calcul.retard|duree_pointage : '—' }}</td>
+							<td>{{ c.calcul.sup > 0 ? c.calcul.sup|duree_pointage : '—' }}</td>
+							<td class="statut">{{ statuts[c.calcul.statut] }}{{ p.corrige ? ' (corrigé)' }}</td>
+						</tr>
+					{% endfor %}
+				{% endif %}
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<table class="totaux">
+		<tr>
+			<td><b>{{ fiche.presents }} / {{ fiche.ouvres }}</b>jours présents</td>
+			<td><b>{{ fiche.minutes|duree_pointage }}</b>temps de présence</td>
+			<td><b>{{ fiche.retards }}</b>retards</td>
+			<td><b>{{ fiche.sup > 0 ? fiche.sup|duree_pointage : '0' }}</b>heures sup.</td>
+		</tr>
+	</table>
+
+	<table class="signatures">
+		<tr><td>Signature de l'employé</td><td>Signature RH</td></tr>
+	</table>
+	<p class="pied">Heures enregistrées par le serveur au pointage QR. Les corrections sont tracées avec leur motif dans le journal.</p>
+</body>
+</html>

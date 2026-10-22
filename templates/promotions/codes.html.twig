@@ -1,0 +1,178 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Codes promo générés d'une promotion (docs/promotions.md, « Codes promo ») :
+	un code partagé limité, ou un lot de codes uniques à usage unique ; leurs
+	utilisations (document et client), l'export et la feuille du comptoir.
+	Les montants retirés ne se montrent qu'avec le droit de voir les ventes.
+#}
+
+{% import 'promotions/_macros.html.twig' as pr %}
+
+{% block title %}Codes promo · {{ promotion.nom }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_promotions_voir', {id: promotion.id}) }}" class="btn btn-light btn-sm si-btn-entete">Retour à la promotion</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set jeton = csrf_token('codes-promo-' ~ promotion.id) %}
+	{% set lotOuvert = app.request.query.get('lot') %}
+	{% set etats = {actif: ['si-pastille-vert', 'Valable'], a_venir: ['si-pastille-bleu', 'À venir'], epuise: ['si-pastille-orange', 'Épuisé'], expire: ['si-pastille-gris', 'Expiré'], desactive: ['si-pastille-gris', 'Désactivé']} %}
+	{% set ouverte = promotion.etat(jour) not in ['terminee'] %}
+
+	<section class="card si-bloc">
+		<div class="si-bloc-tete">
+			<h4>{{ promotion.nom }}</h4>
+			{{ pr.etat(promotion, jour) }}
+		</div>
+		<dl class="si-pr-fiche mb-0">
+			{% if promotion.aUnAvantageLignes %}<dt>Sur les articles</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantage }}</span> <small class="text-muted">{{ promotion.libelleArticles }}</small></dd>{% endif %}
+			{% if promotion.aUnAvantageCommande %}<dt>Sur la commande</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantageCommande }}</span>{% if promotion.minimumCommande %} <small class="text-muted">dès {{ pr.montant(promotion.minimumCommande) }} HT</small>{% endif %}</dd>{% endif %}
+			<dt>Période</dt><dd>du {{ promotion.debut|date('d/m/Y') }} au {{ promotion.fin|date('d/m/Y') }} inclus <small class="text-muted">· un code expire au plus tard le dernier jour</small></dd>
+			<dt>Clients</dt><dd>{{ promotion.segmentLabel }} <small class="text-muted">· jamais les revendeurs au prix B2B</small></dd>
+		</dl>
+	</section>
+
+	{% if en_ligne %}
+		<div class="alert alert-info py-2"><i class="fas fa-info-circle me-1"></i>Les codes se créent et s'impriment sur l'ERP de l'imprimerie. Le site ne garde que leur empreinte, pour reconnaître ce que le client tape.</div>
+	{% elseif not promotion.active %}
+		<div class="alert alert-warning py-2">Promotion suspendue : ses codes ne servent plus jusqu'à ce qu'elle reprenne.</div>
+	{% elseif not ouverte %}
+		<div class="alert alert-secondary py-2">Promotion terminée : plus de nouveau code.</div>
+	{% else %}
+		<div class="row g-3 mb-3 si-cp-creer">
+			<div class="col-lg-6">
+				<form method="post" action="{{ path('app_promotions_code_partage', {id: promotion.id}) }}" class="card si-bloc h-100">
+					<div class="si-bloc-tete"><h4>Un code partagé</h4><span class="si-bloc-note">le même pour tous (affiche, SMS, réseaux)</span></div>
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<div class="row g-2">
+						<div class="col-sm-6">
+							<label class="form-label" for="cp-code">Code</label>
+							<input type="text" id="cp-code" name="code" maxlength="20" class="form-control text-uppercase si-cp-saisie" placeholder="Ex. : RENTREE25" autocomplete="off">
+							<small class="text-muted">4 à 20 lettres ou chiffres. Vide : tiré au hasard.</small>
+						</div>
+						<div class="col-6 col-sm-3">
+							<label class="form-label" for="cp-max">En tout</label>
+							<input type="number" id="cp-max" name="utilisations_max" min="1" max="100000" class="form-control" required placeholder="100">
+						</div>
+						<div class="col-6 col-sm-3">
+							<label class="form-label" for="cp-client">Par client</label>
+							<input type="number" id="cp-client" name="par_client" min="1" value="1" class="form-control" required>
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="cp-debut">À partir du <small class="text-muted">(facultatif)</small></label>
+							<input type="date" id="cp-debut" name="debut" min="{{ promotion.debut|date('Y-m-d') }}" max="{{ promotion.fin|date('Y-m-d') }}" class="form-control">
+						</div>
+						<div class="col-6">
+							<label class="form-label" for="cp-expiration">Expire le soir du</label>
+							<input type="date" id="cp-expiration" name="expiration" value="{{ promotion.fin|date('Y-m-d') }}" min="{{ jour|date('Y-m-d') }}" max="{{ promotion.fin|date('Y-m-d') }}" class="form-control" required>
+						</div>
+					</div>
+					<div class="mt-3"><button class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Créer le code</button></div>
+				</form>
+			</div>
+			<div class="col-lg-6">
+				<form method="post" action="{{ path('app_promotions_codes_lot', {id: promotion.id}) }}" class="card si-bloc h-100">
+					<div class="si-bloc-tete"><h4>Un lot de codes uniques</h4><span class="si-bloc-note">un code par client, une seule utilisation</span></div>
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<div class="row g-2">
+						<div class="col-sm-4">
+							<label class="form-label" for="lot-nombre">Combien</label>
+							<input type="number" id="lot-nombre" name="nombre" min="1" max="{{ lot_max }}" class="form-control" required placeholder="20">
+							<small class="text-muted">{{ lot_max }} au plus</small>
+						</div>
+						<div class="col-6 col-sm-4">
+							<label class="form-label" for="lot-debut">À partir du <small class="text-muted">(facultatif)</small></label>
+							<input type="date" id="lot-debut" name="debut" min="{{ promotion.debut|date('Y-m-d') }}" max="{{ promotion.fin|date('Y-m-d') }}" class="form-control">
+						</div>
+						<div class="col-6 col-sm-4">
+							<label class="form-label" for="lot-expiration">Expire le soir du</label>
+							<input type="date" id="lot-expiration" name="expiration" value="{{ promotion.fin|date('Y-m-d') }}" min="{{ jour|date('Y-m-d') }}" max="{{ promotion.fin|date('Y-m-d') }}" class="form-control" required>
+						</div>
+					</div>
+					<p class="si-pg-note mt-2 mb-0">Codes de la forme <b class="si-cp-code">SI-7K4P-2Q</b>, tirés au hasard, sans 0, O, 1, I ni L. À exporter ou imprimer ensuite.</p>
+					<div class="mt-3"><button class="btn btn-danger btn-sm"><i class="fas fa-magic me-1"></i>Générer le lot</button></div>
+				</form>
+			</div>
+		</div>
+	{% endif %}
+
+	{# Codes partagés, puis chaque lot. #}
+	{% set groupes = [{lot: null, titre: 'Codes partagés', codes: codes|filter(c => not c.estDUnLot)}] %}
+	{% for l in lots %}
+		{% set groupes = groupes|merge([{lot: l, titre: 'Lot ' ~ l, codes: codes|filter(c => c.lot == l)}]) %}
+	{% endfor %}
+
+	{% if codes is empty %}
+		<section class="card si-bloc"><p class="text-muted mb-0">Aucun code pour cette promotion : elle ne sert à personne tant qu'aucun n'est créé.</p></section>
+	{% endif %}
+
+	{% for g in groupes|filter(g => g.codes is not empty) %}
+		{% set liste = g.codes %}
+		{% set pris = liste|reduce((n, c) => n + c.utilisations, 0) %}
+		{% set ouvert = g.lot is null or lotOuvert == g.lot or (lotOuvert is empty and loop.last) %}
+		<details class="card si-bloc si-cp-groupe" id="{{ g.lot ? 'lot-' ~ g.lot : 'partages' }}"{{ ouvert ? ' open' }}>
+			<summary class="si-bloc-tete">
+				<h4>{{ g.titre }}</h4>
+				<span class="si-bloc-note">{{ liste|length }} code{{ liste|length > 1 ? 's' }}{% if g.lot %} · {{ pris }} utilisé{{ pris > 1 ? 's' }} · créé le {{ (liste|first).creeLe|date('d/m/Y') }}{% if (liste|first).creePar %} par {{ (liste|first).creePar.userIdentifier }}{% endif %}{% endif %}</span>
+			</summary>
+			{% if g.lot and not en_ligne %}
+				<div class="si-cp-actions">
+					<a class="btn btn-sm btn-outline-secondary" href="{{ path('app_promotions_codes_export', {id: promotion.id, lot: g.lot}) }}"><i class="fas fa-file-csv me-1"></i>Exporter (CSV)</a>
+					<a class="btn btn-sm btn-outline-secondary" href="{{ path('app_promotions_codes_feuille', {id: promotion.id, lot: g.lot}) }}" target="_blank" rel="noopener"><i class="fas fa-print me-1"></i>Feuille à imprimer</a>
+				</div>
+			{% endif %}
+			<div class="table-responsive">
+				<table class="table table-sm si-cp-table">
+					<thead>
+						<tr><th>Code</th><th>Validité</th><th class="text-end">Utilisations</th><th>État</th><th>Utilisé sur</th>{% if not en_ligne %}<th></th>{% endif %}</tr>
+					</thead>
+					<tbody>
+						{% for c in liste %}
+							{% set e = c.etat(jour) %}
+							<tr class="{{ e in ['expire', 'desactive'] ? 'si-pr-passe' }}">
+								<td><b class="si-cp-code">{{ en_ligne ? '••••' : c.codeAffiche }}</b></td>
+								<td class="text-nowrap"><small>{{ c.debut ? 'du ' ~ c.debut|date('d/m') ~ ' ' }}au {{ c.finEffective|date('d/m/Y') }}</small></td>
+								<td class="text-end text-nowrap">{{ c.utilisations }} / {{ c.utilisationsMax }}{% if not c.estDUnLot %}<small class="d-block text-muted">{{ c.utilisationsParClient }} par client</small>{% endif %}</td>
+								<td><span class="si-pastille {{ etats[e][0] }}">{{ etats[e][1] }}</span>{% if c.desactiveLe %}<small class="d-block text-muted">le {{ c.desactiveLe|date('d/m/Y') }}{{ c.desactivePar ? ' · ' ~ c.desactivePar.userIdentifier }}</small>{% endif %}</td>
+								<td class="si-cp-docs">
+									{% for d in documents[c.id] ?? [] %}
+										<span class="d-block"><a href="{{ path(d.type == 'commande' ? 'app_commandes_show' : 'app_devis_show', {id: d.id}) }}">{{ d.type == 'commande' ? 'Commande' : 'Devis' }} {{ d.numero ?? ('#' ~ d.id) }}</a> <small class="text-muted">· {{ d.client ?? '—' }}{% if voir_montants and d.remise > 0 %} · −{{ pr.montant(d.remise) }} HT{% endif %}</small></span>
+									{% else %}
+										<small class="text-muted">—</small>
+									{% endfor %}
+								</td>
+								{% if not en_ligne %}
+									<td class="text-end">
+										{% if e != 'expire' %}
+											<form method="post" action="{{ path('app_promotions_code_basculer', {id: c.id}) }}"{% if c.active %} data-confirmer="Désactiver ce code ? Il ne servira plus ; les devis et commandes qui le portent le gardent."{% endif %}>
+												<input type="hidden" name="_token" value="{{ jeton }}">
+												<button class="btn btn-link btn-sm p-0 {{ c.active ? 'text-danger' }}">{{ c.active ? 'Désactiver' : 'Réactiver' }}</button>
+											</form>
+										{% endif %}
+									</td>
+								{% endif %}
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</details>
+	{% endfor %}
+
+	<section class="card si-bloc">
+		<div class="si-bloc-tete"><h4>Comment un code est compté</h4></div>
+		<ul class="si-pr-regles">
+			<li>Un code se tape sur le devis ou la commande (champ « Code promo »), ou dans l'espace client en passant commande. Un seul code par commande.</li>
+			<li>Une utilisation, c'est un devis en cours ou une commande qui le porte. Une commande supprimée ou annulée, un devis refusé ou expiré, rendent la leur.</li>
+			<li>Vérifié à l'enregistrement : actif, pas expiré à la date du document, limites en tout et par client, client hors prix B2B, minimum de commande atteint.</li>
+			<li>Une commande passée en ligne garde le code tapé ; l'imprimerie le revérifie en la confirmant. Si la limite a été atteinte entre-temps, la commande reste sans l'avantage et la fiche dit pourquoi.</li>
+		</ul>
+	</section>
+{% endblock %}

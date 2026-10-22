@@ -1,0 +1,60 @@
+{% extends 'sondages/_base.html.twig' %}
+
+{% block title %}Propositions des clients{% endblock %}
+{% block page_title %}Sondages · propositions des clients{% endblock %}
+{% block sous_ecran %}propositions{% endblock %}
+
+{% block contenu %}
+	{% set THEMES = constant('App\\Service\\Sondages\\Themes::THEMES') %}
+	{% set STATUTS = constant('App\\Service\\Sondages\\Themes::STATUTS') %}
+	<section class="card">
+		{% set total = (theme and statut) ? liste|length : (theme ? (themes[theme] ?? 0) : (statut ? (statuts[statut] ?? 0) : themes|reduce((somme, n) => somme + n, 0))) %}
+		<div class="si-so-tete">
+			<h2>Propositions <span class="si-so-gris" style="font-size:14px">{{ total }}</span></h2>
+			{% if liste|length >= montrees %}<span class="si-so-gris" style="font-size:13px">les {{ montrees }} plus récentes : filtrez par thème ou statut pour les autres</span>{% endif %}
+		</div>
+		<div class="si-so-filtres" aria-label="Thème">
+			<a href="{{ path('app_sondages_propositions', {statut: statut}) }}" class="{{ theme is null ? 'actif' }}">Tous les thèmes</a>
+			{% for cle, libelle in THEMES %}
+				<a href="{{ path('app_sondages_propositions', {theme: cle, statut: statut}) }}" class="{{ theme == cle ? 'actif' }}">{{ libelle }}<span>{{ themes[cle] ?? 0 }}</span></a>
+			{% endfor %}
+		</div>
+		<div class="si-so-filtres" aria-label="Statut">
+			<a href="{{ path('app_sondages_propositions', {theme: theme}) }}" class="{{ statut is null ? 'actif' }}">Tous les statuts</a>
+			{% for cle, libelle in STATUTS %}
+				<a href="{{ path('app_sondages_propositions', {theme: theme, statut: cle}) }}" class="{{ statut == cle ? 'actif' }}">{{ libelle }}<span>{{ statuts[cle] ?? 0 }}</span></a>
+			{% endfor %}
+		</div>
+
+		{% if liste is empty %}
+			<p class="si-so-vide">Aucune proposition {{ theme or statut ? 'avec ces filtres' : 'pour l’instant' }}.</p>
+		{% else %}
+			<ul class="si-so-liste">
+				{% for r in liste %}
+					<li class="si-so-ligne" style="align-items:flex-start">
+						<span class="si-so-corps">
+							<small>{{ r.creeLe|date('d/m/Y') }} · <a href="{{ path('app_sondages_reponse', {id: r.id}) }}">{{ r.qui }}</a> · {{ r.commande ? 'commande ' ~ r.commande.numero : (r.sondage ? r.sondage.titre : r.libelleType) }}{% if r.noteGlobale %} · note {{ r.noteGlobale }}/5{% endif %}</small>
+							<p class="si-so-citation">{{ r.proposition }}</p>
+							<form class="si-so-classer" method="post" action="{{ path('app_sondages_classer', {id: r.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+								<input type="hidden" name="retour" value="{{ app.request.requestUri }}">
+								<label class="visually-hidden" for="theme-{{ r.id }}">Thème</label>
+								<select id="theme-{{ r.id }}" name="theme" class="form-select form-select-sm">
+									{% for cle, libelle in THEMES %}<option value="{{ cle }}" {{ r.theme == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+								</select>
+								<label class="visually-hidden" for="statut-{{ r.id }}">Statut</label>
+								<select id="statut-{{ r.id }}" name="statut" class="form-select form-select-sm">
+									{% for cle, libelle in STATUTS %}<option value="{{ cle }}" {{ (r.statutProposition ?? 'a_etudier') == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+								</select>
+								<button class="btn btn-sm btn-outline-primary" type="submit">Classer</button>
+								{% if not r.themeManuel %}<small class="si-so-gris">thème trouvé par mots-clés</small>{% endif %}
+							</form>
+						</span>
+						<span class="si-so-pastille {{ r.statutProposition == 'retenue' ? 'si-so-p-vert' : (r.statutProposition == 'ecartee' ? 'si-so-p-gris' : 'si-so-p-orange') }}">{{ r.libelleStatutProposition }}</span>
+					</li>
+				{% endfor %}
+			</ul>
+		{% endif %}
+		<p class="si-so-note-bas">Le thème est d’abord trouvé par les mots de la proposition (délai, prix, qualité d’impression, accueil, livraison). Reclassez-la si besoin et marquez-la retenue, à étudier ou écartée.</p>
+	</section>
+{% endblock %}

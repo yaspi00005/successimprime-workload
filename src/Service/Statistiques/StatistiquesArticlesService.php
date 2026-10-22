@@ -51,7 +51,7 @@ final class StatistiquesArticlesService
             $cle = $this->evolutionTemporelleService->clePourDate($entree->getDate(), $granularite);
 
             if (isset($entrees[$cle])) {
-                $entrees[$cle] += (int) $entree->getQuantites();
+                $entrees[$cle] += (float) $entree->getQuantites();
             }
         }
 
@@ -71,7 +71,7 @@ final class StatistiquesArticlesService
             $cle = $this->evolutionTemporelleService->clePourDate($sortie->getDate(), $granularite);
 
             if (isset($sorties[$cle])) {
-                $sorties[$cle] += (int) $sortie->getQuantite();
+                $sorties[$cle] += (float) $sortie->getQuantite();
             }
         }
 
@@ -85,22 +85,27 @@ final class StatistiquesArticlesService
     /**
      * Articles vendus directement au client (livrés sur une
      * commande, hors consommation en production), classés par
-     * quantité écoulée sur la période.
+     * quantité écoulée sur la période. $activite (Activite) : par défaut
+     * les articles des commandes de l'imprimerie (une sortie sans commande
+     * en fait partie).
      *
      * @return list<array{nom: string, nombre: int, quantite: int, montant: int}>
      */
-    public function ventesArticles(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $limite = 15): array
+    public function ventesArticles(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $limite = 15, string $activite = Activite::IMPRIMERIE): array
     {
-        $sorties = $this->entityManager
+        $qb = $this->entityManager
             ->getRepository(StockSorties::class)
             ->createQueryBuilder('s')
             ->leftJoin('s.article', 'article')
             ->addSelect('article')
+            ->leftJoin('s.commandeDetail', 'ligneVendue')
+            ->leftJoin('ligneVendue.commande', 'commandeVendue')
             ->andWhere('s.date BETWEEN :debut AND :fin')
             ->andWhere('s.origine = :origine')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
-            ->setParameter('origine', StockSorties::ORIGINE_LIVRAISON)
+            ->setParameter('origine', StockSorties::ORIGINE_LIVRAISON);
+        $sorties = Activite::filtrer($qb, 'commandeVendue', $activite, true)
             ->getQuery()
             ->getResult();
 
@@ -126,7 +131,7 @@ final class StatistiquesArticlesService
                 'montant' => 0,
             ];
 
-            $quantite = (int) $sortie->getQuantite();
+            $quantite = (float) $sortie->getQuantite();
 
             ++$parArticle[$cle]['nombre'];
             $parArticle[$cle]['quantite'] += $quantite;

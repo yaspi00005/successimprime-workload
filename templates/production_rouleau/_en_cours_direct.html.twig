@@ -1,0 +1,45 @@
+{#
+	PD04 / PD07 : la machine en direct (état, pièce en cours, avancement,
+	heure de fin). Relu toutes les 20 s (ImpressionEnCoursController::etat).
+	Variables : ImpressionEnCours::etat().
+#}
+{% set p = progression %}
+{% set pause = tirage.statut == 'en_pause' %}
+{% set piece = courante %}
+{% set couleur = piece.couleur ?? '#13787A' %}
+{% set carriage = 150 + (p.pourcent ?? 0) * 1.7 %}
+<section class="si-fe-direct {{ pause ? 'pause' }}" aria-labelledby="si-fe-piece">
+	<svg class="si-fe-machine" viewBox="0 0 460 190" aria-hidden="true" focusable="false">
+		<rect x="18" y="148" width="424" height="10" rx="5" fill="#64748B"/>
+		<rect x="60" y="156" width="8" height="30" rx="2" fill="#94A3B8"/>
+		<rect x="392" y="156" width="8" height="30" rx="2" fill="#94A3B8"/>
+		<polygon points="40,78 420,78 438,150 22,150" fill="{{ couleur }}"/>
+		<polygon points="250,78 420,78 438,150 300,150" fill="#000" opacity=".12"/>
+		<text x="230" y="124" text-anchor="middle" fill="#fff" font-size="22" font-weight="800" letter-spacing="1.5" font-family="system-ui, -apple-system, Segoe UI, Roboto, sans-serif">{{ (piece.client ?? tirage.libelleSupport)|upper|slice(0, 22) }}</text>
+		<rect x="22" y="22" width="416" height="58" rx="12" fill="#EEF2F7"/>
+		<rect x="22" y="70" width="416" height="10" rx="3" fill="#CBD5E1"/>
+		<rect x="38" y="34" width="96" height="32" rx="6" fill="#0B1220"/>
+		<text x="86" y="55" text-anchor="middle" fill="#4ADE80" font-size="11" font-weight="700" font-family="ui-monospace, Menlo, Consolas, monospace">{{ p.pourcent ?? 0 }} %{% if reperes.mode %} · {{ reperes.mode|split(' ')|slice(0, 2)|join(' ')|upper|slice(0, 8) }}{% endif %}</text>
+		<rect x="150" y="47" width="200" height="6" rx="3" fill="#94A3B8"/>
+		<rect x="{{ carriage|round }}" y="40" width="28" height="20" rx="4" fill="#1E4FA3"/>
+		<rect x="368" y="34" width="12" height="30" rx="2" fill="#00AEEF"/>
+		<rect x="384" y="34" width="12" height="30" rx="2" fill="#EC008C"/>
+		<rect x="400" y="34" width="12" height="30" rx="2" fill="#FFD400"/>
+		<rect x="416" y="34" width="12" height="30" rx="2" fill="#1F2937"/>
+	</svg>
+	<div class="si-fe-direct-texte">
+		<p class="si-fe-etat"><span class="point" aria-hidden="true"></span>{{ machine.nom|upper }} · {{ pause ? 'EN PAUSE' : 'EN IMPRESSION' }}</p>
+		{% if piece %}
+			<p class="si-fe-piece" id="si-fe-piece">Pièce {{ piece.rang }} sur {{ p.total }}</p>
+			<p class="si-fe-titre">{{ piece.titre }}</p>
+		{% else %}
+			<p class="si-fe-piece" id="si-fe-piece">{{ p.total }} pièce{{ p.total > 1 ? 's' }} sur {{ p.total }}</p>
+			<p class="si-fe-titre">Toutes les pièces sont sorties : appuyez sur « Impression terminée ».</p>
+		{% endif %}
+		<div class="si-fe-barre" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ p.pourcent }}" aria-label="Avancement du rouleau"><span style="width: {{ p.pourcent }}%"></span></div>
+		<p class="si-fe-chiffres">
+			<span>{{ p.m2Fait|nombre_atelier(1) }} m² sur {{ p.m2Total|nombre_atelier(1) }}{% if p.estime %} <small title="Entre deux « Pièce imprimée », la surface est estimée d'après la vitesse">(estimé)</small>{% endif %}</span>
+			<span>{% if pause %}en pause{% elseif p.fin %}fin vers {{ p.fin|date('H:i') }}{% endif %}</span>
+		</p>
+	</div>
+</section>

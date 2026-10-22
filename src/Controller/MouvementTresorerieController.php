@@ -9,20 +9,32 @@ use App\Form\MouvementTresorerieType;
 use App\Repository\CompteTresorerieRepository;
 use App\Repository\MouvementTresorerieRepository;
 use App\Repository\UserRepository;
+use App\Service\Http\Entree;
 use App\Service\MouvementTresorerieService;
+use App\Service\Paiement\ComptesOrangeMoney;
 use Doctrine\DBAL\Exception\UniqueConstraintViolationException;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\ExpressionLanguage\Expression;
+use Symfony\Component\Form\FormError;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
+/*
+ * Comptes et mouvements de trésorerie : la liste, le détail et la gestion
+ * demandent le droit « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR).
+ *
+ * Seul le formulaire de saisie (new) s'ouvre aussi sans ce droit, avec
+ * celui de saisir (entrée, sortie) ou de faire un virement : la caisse y
+ * verse par exemple sa caisse à la banque. Il ne montre alors aucun
+ * solde, et l'enregistrement ramène à la caisse (ou aux dépenses).
+ */
 #[Route(
     '/gestion/tresorerie/mouvements',
     name: 'app_mouvement_tresorerie_'
 )]
-#[IsGranted('ROLE_TRESORERIE_VOIR')]
 class MouvementTresorerieController extends AbstractController
 {
     /*
@@ -36,6 +48,7 @@ class MouvementTresorerieController extends AbstractController
         name: 'index',
         methods: ['GET']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     public function index(
         Request $request,
         MouvementTresorerieRepository $repository,
@@ -768,11 +781,12 @@ foreach ($comptes as $compte) {
         name: 'new',
         methods: ['GET', 'POST']
     )]
-    #[IsGranted('ROLE_TRESORERIE_SAISIR')]
+    #[IsGranted(new Expression('is_granted("ROLE_TRESORERIE_SAISIR") or is_granted("ROLE_TRESORERIE_TRANSFERER")'))]
     public function new(
         Request $request,
         EntityManagerInterface $entityManager,
-        MouvementTresorerieRepository $repository
+        MouvementTresorerieRepository $repository,
+        ComptesOrangeMoney $comptesOrangeMoney
     ): Response {
         $user =
             $this->getUser();
@@ -792,6 +806,38 @@ foreach ($comptes as $compte) {
             );
 
 
+        /*
+         * Sans le droit « Trésorerie et soldes », le formulaire ne
+         * montre aucun solde et l'enregistrement ramène à la caisse.
+         */
+        $voirSoldes =
+            $this->isGranted(
+                'ROLE_TRESORERIE_VOIR'
+            );
+
+
+        $peutSaisir =
+            $this->isGranted(
+                'ROLE_TRESORERIE_SAISIR'
+            );
+
+
+        $peutTransferer =
+            $this->isGranted(
+                'ROLE_TRESORERIE_TRANSFERER'
+            );
+
+
+        $retour =
+            self::routeApresSaisie(
+                $voirSoldes,
+                $this->isGranted(
+                    'ROLE_PAIEMENT_ENCAISSER'
+                ),
+                $peutSaisir
+            );
+
+
         $mouvement =
             new MouvementTresorerie();
 
@@ -806,6 +852,76 @@ foreach ($comptes as $compte) {
         $mouvement->setDateOperation(
             new \DateTimeImmutable()
         );
+
+
+        /*
+         * Type choisi d'avance (bouton « Virement » de la caisse),
+         * seulement parmi ceux que la personne peut saisir.
+         */
+        $typeDemande =
+            (string) $request->query->get(
+                'type',
+                ''
+            );
+
+        if (
+            \in_array(
+                $typeDemande,
+                MouvementTresorerieType::typesPermis(
+                    $estAdmin,
+                    $peutSaisir,
+                    $peutTransferer
+                ),
+                true
+            )
+        ) {
+            $mouvement->setType(
+                $typeDemande
+            );
+        }
+
+
+        /*
+         * Compte source choisi d'avance (bouton « Virer » d'un compte
+         * Orange Money), seulement s'il est permis pour ce type.
+         */
+        $sourceDemandee =
+            Entree::entier($request->query, 
+                'source'
+            );
+
+        if (
+            $sourceDemandee > 0
+        ) {
+            $compteDemande =
+                $entityManager->find(
+                    CompteTresorerie::class,
+                    $sourceDemandee
+                );
+
+            if (
+                $compteDemande instanceof CompteTresorerie
+                &&
+                $compteDemande->isActif()
+                &&
+                \in_array(
+                    $mouvement->getType(),
+                    MouvementTresorerieType::typesPourCompte(
+                        $compteDemande,
+                        true,
+                        $estAdmin,
+                        $peutSaisir,
+                        $peutTransferer,
+                        $user
+                    ),
+                    true
+                )
+            ) {
+                $mouvement->setCompteSource(
+                    $compteDemande
+                );
+            }
+        }
 
 
         /*
@@ -835,12 +951,33 @@ foreach ($comptes as $compte) {
                     'est_admin' =>
                         $estAdmin,
 
-                    /*
-                     * On ajoutera cette option dans
-                     * MouvementTresorerieType juste après.
-                     */
                     'utilisateur' =>
                         $user,
+
+                    'voir_soldes' =>
+                        $voirSoldes,
+
+                    'peut_saisir' =>
+                        $peutSaisir,
+
+                    'peut_transferer' =>
+                        $peutTransferer,
+
+                    /*
+                     * Solde, frais à prélever par Orange et part
+                     * transférable des comptes Orange Money : avec le
+                     * droit de voir les soldes seulement.
+                     */
+                    'etats_orange' =>
+                        $voirSoldes
+                            ? $this->etatsOrangeMoney(
+                                $entityManager,
+                                $comptesOrangeMoney
+                            )
+                            : [],
+
+                    'taux_orange' =>
+                        $comptesOrangeMoney->taux(),
                 ]
             );
 
@@ -951,16 +1088,60 @@ foreach ($comptes as $compte) {
             }
 
 
+            /*
+             * ====================================================
+             * FRAIS PRÉLEVÉS PAR ORANGE
+             * ====================================================
+             *
+             * Sortie d'un compte Orange Money (transfert ou
+             * décaissement) : Orange débite le fonds de soutien et le
+             * frais de retrait. Ils deviennent un mouvement à part sur
+             * le compte Orange Money (ComptesOrangeMoney).
+             * ====================================================
+             */
+
+            $fraisOrange =
+                self::fraisOrangeSaisis(
+                    $mouvement,
+                    $form->has('fraisOrange')
+                        ? $form->get('fraisOrange')->getData()
+                        : null
+                );
+
+            if (
+                $fraisOrange > 0
+                &&
+                $fraisOrange > (int) $mouvement->getMontant()
+            ) {
+                $form
+                    ->get('fraisOrange')
+                    ->addError(
+                        new FormError(
+                            'Les frais prélevés par Orange ne peuvent pas dépasser le montant transféré.'
+                        )
+                    );
+            }
+
+
             if (
                 $form->isValid()
             ) {
+                $prelevements =
+                    ComptesOrangeMoney::mouvementsPrelevement(
+                        $mouvement,
+                        $fraisOrange,
+                        $comptesOrangeMoney->fraisAPrelever()[(int) $mouvement->getCompteSource()?->getId()] ?? 0,
+                        $user
+                    );
+
                 try {
                     $entityManager
                         ->wrapInTransaction(
                             function (
                                 EntityManagerInterface $entityManager
                             ) use (
-                                $mouvement
+                                $mouvement,
+                                $prelevements
                             ): void {
                                 /*
                                  * Les mouvements saisis ici
@@ -994,21 +1175,62 @@ foreach ($comptes as $compte) {
                                     );
 
 
+                                /*
+                                 * Frais débités par Orange avec
+                                 * cette sortie : sur le même compte,
+                                 * après la sortie elle-même.
+                                 */
+                                foreach ($prelevements as $prelevement) {
+                                    $prelevement
+                                        ->setStatut(
+                                            MouvementTresorerie
+                                                ::STATUT_VALIDE
+                                        );
+
+                                    $prelevement
+                                        ->setDateValidation(
+                                            new \DateTimeImmutable()
+                                        );
+
+                                    $this
+                                        ->appliquerMouvementAuxComptes(
+                                            $prelevement
+                                        );
+
+                                    $entityManager
+                                        ->persist(
+                                            $prelevement
+                                        );
+                                }
+
+
                                 $entityManager
                                     ->flush();
                             }
                         );
 
 
+                    /*
+                     * Sans le droit de voir la trésorerie : retour à
+                     * la caisse (ou aux dépenses), avec un message
+                     * qui ne donne aucun solde.
+                     */
                     $this->addFlash(
                         'success',
-                        'Le mouvement a été enregistré avec succès.'
+                        ($voirSoldes
+                            ? 'Le mouvement a été enregistré avec succès.'
+                            : self::confirmationSansSolde(
+                                $mouvement
+                            ))
+                        . self::confirmationFraisOrange(
+                            $prelevements
+                        )
                     );
 
 
                     return $this
                         ->redirectToRoute(
-                            'app_mouvement_tresorerie_index'
+                            $retour
                         );
 
                 } catch (
@@ -1066,6 +1288,18 @@ foreach ($comptes as $compte) {
 
                 'estAdmin' =>
                     $estAdmin,
+
+                'voirSoldes' =>
+                    $voirSoldes,
+
+                'peutSaisir' =>
+                    $estAdmin || $peutSaisir,
+
+                'peutTransferer' =>
+                    $estAdmin || $peutTransferer,
+
+                'retour' =>
+                    $retour,
             ]
         );
     }
@@ -1085,6 +1319,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['GET']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     public function show(
         MouvementTresorerie $mouvement
     ): Response {
@@ -1139,6 +1374,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_ADMIN')]
     public function validateMovement(
         Request $request,
@@ -1227,6 +1463,7 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_ADMIN')]
     public function toggleVerification(
         Request $request,
@@ -1301,11 +1538,13 @@ foreach ($comptes as $compte) {
         ],
         methods: ['POST']
     )]
+    #[IsGranted('ROLE_TRESORERIE_VOIR')]
     #[IsGranted('ROLE_TRESORERIE_SAISIR')]
     public function cancel(
         Request $request,
         MouvementTresorerie $mouvement,
-        MouvementTresorerieService $service
+        MouvementTresorerieService $service,
+        MouvementTresorerieRepository $mouvements
     ): Response {
         $user =
             $this->getUser();
@@ -1428,6 +1667,35 @@ foreach ($comptes as $compte) {
                         $mouvement,
                         $motif
                     );
+
+                /*
+                 * Les frais débités par Orange avec cette sortie
+                 * d'un compte Orange Money repartent avec elle.
+                 */
+                foreach (
+                    [
+                        ComptesOrangeMoney::SUFFIXE_PASSAGE,
+                        ComptesOrangeMoney::SUFFIXE_CHARGE,
+                    ]
+                    as $suffixe
+                ) {
+                    $frais =
+                        $mouvements->findOneBy([
+                            'reference' => $mouvement->getReference() . $suffixe,
+                        ]);
+
+                    if (
+                        $frais instanceof MouvementTresorerie
+                        &&
+                        $frais->isValide()
+                    ) {
+                        $service
+                            ->annulerValide(
+                                $frais,
+                                $motif
+                            );
+                    }
+                }
 
                 $this->addFlash(
                     'success',
@@ -2051,6 +2319,40 @@ foreach ($comptes as $compte) {
 
         /*
          * ========================================================
+         * ENTRÉE OU SORTIE : DROIT DE SAISIE
+         * ========================================================
+         *
+         * Le formulaire s'ouvre aussi avec le seul droit de
+         * virement : il ne permet alors que le transfert.
+         * ========================================================
+         */
+
+        if (
+            \in_array(
+                $type,
+                [
+                    MouvementTresorerie::TYPE_ENCAISSEMENT,
+                    MouvementTresorerie::TYPE_DECAISSEMENT,
+                ],
+                true
+            )
+            &&
+            !$this->isGranted(
+                'ROLE_TRESORERIE_SAISIR'
+            )
+            &&
+            !$this->isGranted(
+                'ROLE_ADMIN'
+            )
+        ) {
+            throw new \LogicException(
+                'Vous n’êtes pas autorisé à enregistrer une entrée ou une sortie d’argent.'
+            );
+        }
+
+
+        /*
+         * ========================================================
          * ENCAISSEMENT
          * ========================================================
          */
@@ -2520,6 +2822,180 @@ foreach ($comptes as $compte) {
         throw new \LogicException(
             'Le type de mouvement est invalide.'
         );
+    }
+
+
+    /*
+     * ============================================================
+     * FRAIS PRÉLEVÉS PAR ORANGE
+     * ============================================================
+     */
+
+    /**
+     * Frais saisis sur la ligne « Fonds de soutien et frais de retrait
+     * prélevés par Orange » : comptés seulement quand l'argent sort d'un
+     * compte Orange Money (transfert ou décaissement), jamais négatifs.
+     */
+    public static function fraisOrangeSaisis(
+        MouvementTresorerie $mouvement,
+        mixed $saisie
+    ): int {
+        $source =
+            $mouvement->getCompteSource();
+
+        if (
+            $source === null
+            ||
+            !$source->estOrangeMoney()
+            ||
+            !\in_array(
+                $mouvement->getType(),
+                [
+                    MouvementTresorerie::TYPE_TRANSFERT,
+                    MouvementTresorerie::TYPE_DECAISSEMENT,
+                ],
+                true
+            )
+        ) {
+            return 0;
+        }
+
+        $chiffres =
+            preg_replace(
+                '/\D/',
+                '',
+                (string) $saisie
+            ) ?? '';
+
+        return $chiffres === ''
+            ? 0
+            : (int) $chiffres;
+    }
+
+
+    /**
+     * Fin du message de confirmation : les frais débités par Orange
+     * (le montant saisi, jamais un solde).
+     *
+     * @param list<MouvementTresorerie> $prelevements
+     */
+    public static function confirmationFraisOrange(
+        array $prelevements
+    ): string {
+        $total =
+            array_sum(
+                array_map(
+                    static fn (MouvementTresorerie $m): int => (int) $m->getMontant(),
+                    $prelevements
+                )
+            );
+
+        return $total > 0
+            ? sprintf(
+                ' Frais prélevés par Orange : %s F.',
+                number_format(
+                    $total,
+                    0,
+                    ',',
+                    ' '
+                )
+            )
+            : '';
+    }
+
+
+    /**
+     * @return array<int, array{solde: int, a_prelever: int, transferable: int}>
+     */
+    private function etatsOrangeMoney(
+        EntityManagerInterface $entityManager,
+        ComptesOrangeMoney $comptesOrangeMoney
+    ): array {
+        $etats = [];
+
+        foreach (
+            $entityManager
+                ->getRepository(CompteTresorerie::class)
+                ->findBy([
+                    'type' => CompteTresorerie::TYPE_ORANGE_MONEY,
+                    'actif' => true,
+                ])
+            as $compte
+        ) {
+            $etats[(int) $compte->getId()] =
+                $comptesOrangeMoney->etat(
+                    $compte
+                );
+        }
+
+        return array_filter($etats);
+    }
+
+
+    /*
+     * ============================================================
+     * APRÈS LA SAISIE
+     * ============================================================
+     *
+     * Avec le droit de voir la trésorerie : la liste des
+     * mouvements. Sans : une page que la personne ouvre, la caisse
+     * d'abord, puis les dépenses, sinon l'accueil.
+     * ============================================================
+     */
+
+    public static function routeApresSaisie(
+        bool $voirTresorerie,
+        bool $encaisser,
+        bool $saisir
+    ): string {
+        return match (true) {
+            $voirTresorerie => 'app_mouvement_tresorerie_index',
+            $encaisser => 'app_caisse_index',
+            $saisir => 'app_finances_depenses',
+            default => 'app_home',
+        };
+    }
+
+
+    /**
+     * Message de confirmation pour qui ne voit pas la trésorerie :
+     * le montant saisi et les comptes choisis, jamais un solde.
+     */
+    public static function confirmationSansSolde(
+        MouvementTresorerie $mouvement
+    ): string {
+        $montant =
+            number_format(
+                $mouvement->getMontant(),
+                0,
+                ',',
+                ' '
+            );
+
+        $nom =
+            static fn (?CompteTresorerie $compte): string => $compte?->getNom() ?? '?';
+
+        return match ($mouvement->getType()) {
+            MouvementTresorerie::TYPE_TRANSFERT => sprintf(
+                'Virement de %s F de « %s » vers « %s » enregistré (%s).',
+                $montant,
+                $nom($mouvement->getCompteSource()),
+                $nom($mouvement->getCompteDestination()),
+                $mouvement->getReference()
+            ),
+            MouvementTresorerie::TYPE_ENCAISSEMENT => sprintf(
+                'Entrée de %s F sur « %s » enregistrée (%s).',
+                $montant,
+                $nom($mouvement->getCompteDestination()),
+                $mouvement->getReference()
+            ),
+            default => sprintf(
+                'Sortie de %s F de « %s » enregistrée (%s).',
+                $montant,
+                $nom($mouvement->getCompteSource()),
+                $mouvement->getReference()
+            ),
+        };
     }
 
 

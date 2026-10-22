@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="robots" content="noindex, nofollow">
+	<title>Facture {{ facture.numero }} · {{ entreprise.nomAffiche }}</title>
+	{% set c = entreprise.couleurs %}
+	<style>
+		:root { --principale: {{ c[0] }}; --accent: {{ c[1] }}; --fond: #f3f5f9; --texte: #111827; --doux: #6b7280; --vert: #15803d; --orange: #f97316; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: var(--fond); color: var(--texte); font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; font-size: 15px; }
+		.page { max-width: 460px; margin: 0 auto; padding: 16px; }
+		.bandes { display: flex; height: 5px; }
+		.bandes i { flex: 1; }
+		.carte { background: #fff; border-radius: 16px; padding: 18px; margin-bottom: 12px; box-shadow: 0 4px 18px rgba(15, 23, 42, .06); }
+		.logo { max-height: 44px; max-width: 180px; display: block; margin-bottom: 12px; }
+		.nom { font-weight: 700; font-size: 17px; margin-bottom: 12px; }
+		.badge { display: block; border-radius: 10px; padding: 9px 12px; font-weight: 600; font-size: 14px; }
+		.badge.ok { background: #dcfce7; color: var(--vert); }
+		.badge.annulee { background: #fee2e2; color: #b91c1c; }
+		.badge.proforma { background: #e0e7ff; color: #3730a3; }
+		.etiquette { color: var(--doux); font-size: 13px; margin-top: 14px; }
+		.numero { font-size: 22px; font-weight: 800; letter-spacing: -.01em; }
+		.sous { color: var(--doux); font-size: 13px; margin-top: 2px; }
+		.ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 4px 0; }
+		.ligne b { font-variant-numeric: tabular-nums; }
+		.paye { color: var(--vert); }
+		.barre { height: 8px; border-radius: 99px; background: #e5e7eb; overflow: hidden; margin: 8px 0 10px; }
+		.barre i { display: block; height: 100%; background: #22c55e; }
+		.statut { display: inline-block; border-radius: 99px; padding: 3px 10px; font-size: 12px; font-weight: 700; }
+		.statut.payee { background: #dcfce7; color: var(--vert); }
+		.statut.partielle { background: #ffedd5; color: #c2410c; }
+		.statut.impayee { background: #fee2e2; color: #b91c1c; }
+		.reste { font-size: 18px; font-weight: 800; }
+		.payer { background: var(--orange); color: #fff; border-radius: 14px; padding: 16px 18px; margin-bottom: 12px; }
+		.payer h2 { margin: 0 0 6px; font-size: 17px; }
+		.payer p { margin: 4px 0; }
+		.payer code { background: rgba(255, 255, 255, .2); border-radius: 6px; padding: 2px 6px; font-size: 15px; font-family: inherit; font-weight: 700; }
+		.boutons { display: flex; gap: 10px; }
+		.bouton { flex: 1; text-align: center; border: 1px solid #d1d5db; background: #fff; color: var(--texte); border-radius: 12px; padding: 12px; font-weight: 600; text-decoration: none; font-size: 14px; }
+		.note { color: var(--doux); font-size: 12px; text-align: center; margin: 14px 8px; }
+	</style>
+</head>
+<body>
+	<div class="bandes" aria-hidden="true">{% for couleur in c %}<i style="background: {{ couleur }}"></i>{% endfor %}</div>
+	<main class="page">
+		<div class="carte">
+			{% if logo %}<img src="{{ logo }}" alt="{{ entreprise.nomAffiche }}" class="logo">{% else %}<div class="nom">{{ entreprise.nomAffiche }}</div>{% endif %}
+
+			{% if facture.estAnnulee %}
+				<span class="badge annulee">✕ Facture annulée par {{ entreprise.nomAffiche }}</span>
+			{% elseif facture.estProforma %}
+				<span class="badge proforma">Proforma authentique émise par {{ entreprise.nomAffiche }}</span>
+			{% else %}
+				<span class="badge ok">✓ Facture authentique émise par {{ entreprise.nomAffiche }}</span>
+			{% endif %}
+
+			<div class="etiquette">{{ facture.estProforma ? 'Proforma' : 'Facture' }}</div>
+			<div class="numero">{{ facture.numero }}</div>
+			<div class="sous">
+				{{ facture.dateFacture|date('d/m/Y') }}
+				· {{ facture.facturerAUnTiers ? facture.nomFacturation : (client.raisonSociale|default(client.nomComplet|default(''))) }}
+				· commande {{ commande.numero|default('CMD-' ~ commande.id) }}
+			</div>
+		</div>
+
+		<div class="carte">
+			<div class="ligne"><span>Total TTC</span><b>{{ facture.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+			{% if facture.comptabilisee and not facture.estAnnulee %}
+				{% set part = facture.totalTtc > 0 ? (facture.montantPaye / facture.totalTtc * 100)|round : 0 %}
+				<div class="ligne"><span>Payé</span><b class="paye">{{ facture.montantPaye|number_format(0, ',', ' ') }} F</b></div>
+				<div class="barre" role="progressbar" aria-valuenow="{{ part }}" aria-valuemin="0" aria-valuemax="100"><i style="width: {{ min(100, part) }}%"></i></div>
+				<div class="ligne">
+					<span class="statut {{ facture.statutPaiement }}">{{ facture.statutPaiementLabel }}</span>
+					{% if facture.resteAPayer > 0 %}<span class="reste">Reste {{ facture.resteAPayer|number_format(0, ',', ' ') }} F</span>{% endif %}
+				</div>
+			{% endif %}
+		</div>
+
+		{% if facture.comptabilisee and not facture.estAnnulee and facture.resteAPayer > 0 and entreprise.qrPaiement %}
+			<div class="payer" id="payer">
+				<h2>Payer {{ facture.resteAPayer|number_format(0, ',', ' ') }} F par Orange Money</h2>
+				{% if entreprise.marchandOrangeMoney %}
+					<p>Marchand {{ entreprise.nomAffiche }} : <code>{{ entreprise.marchandOrangeMoney }}</code></p>
+				{% endif %}
+				<p>Référence à indiquer : <code>{{ facture.numero }}</code></p>
+				<p style="font-size: 13px; opacity: .9">Le paiement apparaît sur cette page dès qu'il est enregistré par nos équipes.</p>
+			</div>
+		{% endif %}
+
+		<div class="boutons">
+			{% if facture.tokenAuthenticite %}
+				<a class="bouton" href="{{ path('app_factures_pdf_public', {id: facture.id, token: facture.tokenAuthenticite}) }}">⬇ Télécharger le PDF</a>
+			{% endif %}
+			{% if entreprise.telephone %}
+				<a class="bouton" href="tel:{{ entreprise.telephone|replace({' ': ''}) }}">Nous appeler</a>
+			{% endif %}
+		</div>
+
+		<p class="note">Le détail des lignes figure dans le PDF. Code de vérification : <b>{{ facture.codeSuivi }}</b>.</p>
+	</main>
+</body>
+</html>

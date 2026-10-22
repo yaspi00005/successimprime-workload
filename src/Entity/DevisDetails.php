@@ -2,6 +2,10 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PromotionLigneTrait;
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\PiecesAuM2Trait;
+use App\Entity\Trait\TotalFigeTrait;
 use App\Repository\DevisDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -13,8 +17,14 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: DevisDetailsRepository::class)]
 #[ORM\Table(name: 'devis_details')]
+#[ORM\HasLifecycleCallbacks]
 class DevisDetails
 {
+    use PublicIdTrait;
+    use PromotionLigneTrait;
+    use TotalFigeTrait;
+    use PiecesAuM2Trait;
+
 
 public const TYPE_PRODUIT = 'produit';
 public const TYPE_ARTICLE = 'article';
@@ -101,7 +111,7 @@ public const TYPE_LIBRE = 'libre';
     )]
     private int $quantite = 1;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => 0])]
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => '0.0000'])]
     #[Assert\PositiveOrZero(
         message: 'Le prix unitaire ne peut pas être négatif.'
     )]
@@ -252,8 +262,33 @@ private string $modeSaisie = 'automatique';
         message: 'Le mode de calcul est invalide.'
     )]
     private string $modeCalcul = 'unite';
+
+    /**
+     * Autres quantités proposées au client, chacune avec son prix unitaire
+     * (maquette DB02 : 500, 1 000 ou 2 000 flyers) ; le client choisit dans
+     * son espace et le total change (OptionsDevis).
+     *
+     * @var list<array{quantite: int, prixUnitaire: string}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $optionsQuantite = null;
+
+    /** @return list<array{quantite: int, prixUnitaire: string}> */
+    public function getOptionsQuantite(): array
+    {
+        return $this->optionsQuantite ?? [];
+    }
+
+    /** @param list<array{quantite: int, prixUnitaire: string}> $options */
+    public function setOptionsQuantite(array $options): static
+    {
+        $this->optionsQuantite = [] === $options ? null : array_values($options);
+
+        return $this;
+    }
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->finitions = new ArrayCollection();
     }
 
@@ -510,8 +545,9 @@ private string $modeSaisie = 'automatique';
             'metre' => (float) ($this->longueur ?? 0)
                 * $this->quantite,
 
-            'metre_carre' => (float) ($this->surface ?? 0)
-                * $this->quantite,
+            // Petites pièces (PiecesAuM2Trait) : la surface facturée vient du nombre de pièces au m².
+            'metre_carre' => $this->surfacePiecesAuM2()
+                ?? (float) ($this->surface ?? 0) * $this->quantite,
 
             'face' => max(1, $this->nombreFaces)
                 * $this->quantite,
@@ -531,7 +567,8 @@ private string $modeSaisie = 'automatique';
      */
     public function getSurfaceTotale(): float
     {
-        return (float) ($this->surface ?? 0) * $this->quantite;
+        // En pièces au m² : la surface facturée (espacement et chutes compris).
+        return $this->surfacePiecesAuM2() ?? (float) ($this->surface ?? 0) * $this->quantite;
     }
 
     public function getProduitConfiguration(): ?ProduitConfiguration
@@ -767,39 +804,44 @@ private string $modeSaisie = 'automatique';
         return $this;
     }
 
+    /**
+     * @param bool $clientB2B sans effet ici (le tarif B2B est choisi à la
+     *                        création de la ligne) ; gardé pour les appelants
+     */
     public function calculerTotaux(
         bool $clientB2B = false
     ): static {
-        /*
-     * Reprend les données fiables de ProduitConfiguration,
-     * puis calcule ou verrouille les dimensions.
-     */
-        if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && $this->isConfigurationAutomatique()
-) {
-    $this->appliquerConfiguration(
-        $clientB2B
-    );
-}
+        // Total d'origine conservé (bascule, TotalFigeTrait) : rien de ce
+        // qui fait le total n'a changé depuis sa lecture.
+        if ($this->garderTotalFige()) {
+            return $this;
+        }
 
-       if (
-    $this->typeLigne === self::TYPE_PRODUIT
-    && !$this->isConfigurationAutomatique()
-    && $this->modeCalcul === 'metre_carre'
-) {
-    $this->calculerSurface();
-}
+        /*
+         * La configuration du catalogue s'applique quand la ligne est
+         * créée, jamais en recalculant ses totaux : une ancienne ligne
+         * « automatique » garde ses dimensions, son prix et ses
+         * finitions (voir CommandesDetails::calculerTotaux()).
+         */
+        if (
+            $this->typeLigne === self::TYPE_PRODUIT
+            && $this->modeCalcul === 'metre_carre'
+        ) {
+            $this->calculerSurface();
+        }
 
         $this->appliquerDimensionsALaDesignation();
 
         $totalBrut = $this->calculerTotalBrut();
         $montantRemise = $this->calculerMontantRemise($totalBrut);
+        $this->montantPromotion = $this->calculerMontantPromotion($totalBrut, $this->calculerFacteur());
 
         $this->totalHt = max(
             0,
             $totalBrut - $montantRemise
         );
+        // Part du code promo de la commande (docs/promotions.md), après les remises de la ligne.
+        $this->totalHt -= $this->plafonnerRemiseCodePromo($this->totalHt);
 
         $montantTva = (int) round(
             $this->totalHt * $this->tva / 100
@@ -878,13 +920,14 @@ private string $modeSaisie = 'automatique';
      * La remise est un montant par unité facturable (ex. 500 FCFA par
      * m²), pas un montant fixe sur toute la ligne : elle se multiplie
      * donc par le même facteur que le prix unitaire
-     * (calculerFacteur()), plafonné au total brut de la ligne.
+     * (calculerFacteur()), plafonné au total brut de la ligne. La remise
+     * de la promotion (docs/promotions.md) s'y ajoute.
      */
     private function calculerMontantRemise(int $totalBrut): int
     {
         return min(
             $totalBrut,
-            max(0, (int) round($this->remise * $this->calculerFacteur()))
+            max(0, (int) round(($this->remise + $this->remisePromotion) * $this->calculerFacteur()))
         );
     }
 
@@ -896,7 +939,17 @@ private string $modeSaisie = 'automatique';
      */
     public function getMontantRemise(): int
     {
-        return $this->calculerMontantRemise($this->calculerTotalBrut());
+        $brut = $this->calculerTotalBrut();
+
+        // Total d'origine conservé : ce qui a vraiment été retiré du brut.
+        if ($this->totalFige) {
+            return max(0, $brut - $this->totalHt);
+        }
+
+        $remise = $this->calculerMontantRemise($brut);
+
+        // Avec la part du code promo de la commande : la ligne montre tout ce qui lui est retiré.
+        return $remise + min($this->getRemiseCodePromo(), max(0, $brut - $remise));
     }
 
     public function getProfilCouleurs(): ?string
@@ -1353,9 +1406,10 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La largeur et la longueur sont obligatoires '
+                '{{ ligne }} : la largeur et la longueur sont obligatoires '
                 . 'pour un calcul au mètre carré.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('largeur')
             ->addViolation();
     }
@@ -1371,12 +1425,29 @@ public function validerModeDevis(
     ) {
         $context
             ->buildViolation(
-                'La longueur est obligatoire pour un calcul au mètre.'
+                '{{ ligne }} : la longueur est obligatoire pour un calcul au mètre.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('longueur')
             ->addViolation();
     }
 }
+    /**
+     * La ligne nommée dans un message d'erreur : sa place et sa désignation
+     * (« Ligne 2 « Bâche imprimée » »). L'erreur s'affiche aussi en haut du
+     * formulaire, loin du volet de la ligne, et deux lignes peuvent porter
+     * la même désignation.
+     */
+    private function libelleLigneErreur(): string
+    {
+        $lignes = $this->devis?->getDevisDetails()->getValues() ?? [];
+        $rang = array_search($this, $lignes, true);
+        $place = false === $rang ? 'Ligne' : sprintf('Ligne %d', $rang + 1);
+        $designation = trim((string) $this->designation);
+
+        return '' === $designation ? $place : sprintf('%s « %s »', $place, $designation);
+    }
+
     public function __toString(): string
     {
         return sprintf(

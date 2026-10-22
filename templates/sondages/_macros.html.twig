@@ -1,0 +1,109 @@
+{# Étoiles d'une note sur 5. #}
+{% macro etoiles(note) %}
+	<span class="si-so-etoiles" aria-label="{{ note }} sur 5">{% for i in 1..5 %}<span class="{{ i > note ? 'off' }}">★</span>{% endfor %}</span>
+{% endmacro %}
+
+{# Note carrée : rouge à 1 ou 2, verte à 4 ou 5. #}
+{% macro note(note) %}
+	<span class="si-so-note {{ note is null ? '' : (note <= 2 ? 'basse' : (note >= 4 ? 'haute' : '')) }}">{{ note ?? '—' }}</span>
+{% endmacro %}
+
+{# Écart avec une autre période : « +0,3 vs mois précédent ». #}
+{% macro ecart(actuel, avant, libelle, unite) %}
+	{% if actuel is not null and avant is not null %}
+		{% set e = (actuel - avant)|round(1) %}
+		<span class="{{ e > 0 ? 'si-so-vert' : (e < 0 ? 'si-so-rouge' : 'si-so-gris') }}">
+			{%- if e != 0 %}<i class="fas fa-caret-{{ e > 0 ? 'up' : 'down' }}"></i> {% endif -%}
+			{{ e > 0 ? '+' : (e < 0 ? '−' : '') }}{{ e|abs|number_format(unite == '' ? 1 : 0, ',', ' ') }}{{ unite }} {{ libelle }}
+		</span>
+	{% endif %}
+{% endmacro %}
+
+{# Les quatre chiffres d'une période, comparés à la période d'avant et à N−1. #}
+{% macro kpis(tableau) %}
+	{% import _self as m %}
+	{% set a = tableau.actuel %}
+	{% set av = tableau.avant %}
+	{% set n1 = tableau.anPasse %}
+	<section class="si-so-kpis" aria-label="Chiffres de la période">
+		<article class="card si-so-kpi">
+			<h2>Satisfaction moyenne</h2>
+			<strong class="{{ a.alerte ? 'si-so-orange' }}">{{ a.moyenne|note_sur_5 }}{% if a.moyenne is not null %} <small>/ 5</small>{% endif %}</strong>
+			{% if a.alerte %}<span class="si-so-orange">sous le seuil de 4,2</span>{% endif %}
+			{{ m.ecart(a.moyenne, av.moyenne, tableau.bornes.libelleAvant, '') }}
+			{% if n1 %}{{ m.ecart(a.moyenne, n1.moyenne, 'vs N−1', '') }}{% endif %}
+			{% if a.moyenne is null %}<span class="si-so-gris">aucune note sur la période</span>{% endif %}
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Clients satisfaits</h2>
+			<strong>{{ a.satisfaits is null ? '—' : a.satisfaits ~ ' %' }}</strong>
+			<span class="si-so-gris">notes de 4 et 5</span>
+			{{ m.ecart(a.satisfaits, av.satisfaits, tableau.bornes.libelleAvant, ' pt') }}
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Recommandation (NPS)</h2>
+			<strong class="{{ a.alerteNps ? 'si-so-rouge' }}">{{ a.nps is null ? '—' : (a.nps > 0 ? '+' : '') ~ a.nps }}</strong>
+			<span class="si-so-gris">de −100 à +100</span>
+			{{ m.ecart(a.nps, av.nps, tableau.bornes.libelleAvant, ' pt') }}
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Taux de réponse</h2>
+			<strong>{{ a.taux is null ? '—' : a.taux ~ ' %' }}</strong>
+			{% if a.envoyes is not null %}
+				{# Le taux ne vaut que pour l'avis après livraison : avis reçus ÷ commandes livrées. #}
+				<span class="si-so-gris">{{ a.repondus }} avis pour {{ a.envoyes }} commande{{ a.envoyes > 1 ? 's' }} livrée{{ a.envoyes > 1 ? 's' }}</span>
+			{% endif %}
+			{% if a.repondus != a.reponses %}<span class="si-so-gris">{{ a.reponses }} réponses en tout</span>{% endif %}
+		</article>
+	</section>
+{% endmacro %}
+
+{# Note moyenne par mois, en barres. #}
+{% macro par_mois(parMois) %}
+	<div class="si-so-mois" role="img" aria-label="Note moyenne par mois sur 12 mois">
+		{% for m in parMois %}
+			<div class="{{ m.enCours ? 'en-cours' }}" title="{{ m.mois|date('m/Y') }} : {{ m.nombre }} note{{ m.nombre > 1 ? 's' }}">
+				{% if m.moyenne is not null %}
+					<b>{{ m.moyenne|note_sur_5 }}</b>
+					<i class="{{ m.moyenne < 4.2 ? 'alerte' }}" style="height: {{ (m.moyenne * 100 / 5)|round }}%"></i>
+				{% else %}
+					<i class="vide"></i>
+				{% endif %}
+				<small>{{ ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'][m.mois|date('n') - 1] }}</small>
+			</div>
+		{% endfor %}
+	</div>
+	<p class="si-so-legende"><span>4,2 et plus</span><span class="alerte">sous 4,2</span></p>
+{% endmacro %}
+
+{# Une réponse dans une liste : note (la plus basse pour une alerte), qui, quand, proposition. #}
+{% macro ligne_reponse(r, basse) %}
+	{% import _self as m %}
+	<a class="si-so-ligne" href="{{ path('app_sondages_reponse', {id: r.id}) }}">
+		{{ m.note(basse|default(false) ? r.noteLaPlusBasse : r.noteGlobale) }}
+		<span class="si-so-corps">
+			<b>{{ r.qui }}</b>
+			<small>{{ r.creeLe|date('d/m/Y H:i') }} · {{ r.commande ? 'commande ' ~ r.commande.numero : (r.sondage ? r.sondage.titre : r.libelleType) }} · {{ r.libelleCanal }}</small>
+			{% if r.proposition %}<p class="si-so-citation">{{ r.proposition|length > 160 ? r.proposition|slice(0, 159) ~ '…' : r.proposition }}</p>{% endif %}
+		</span>
+		{% if r.alerte %}<span class="si-so-pastille {{ r.alerteOuverte ? 'si-so-p-rouge' : 'si-so-p-gris' }}">{{ r.libelleAlerte }}</span>{% endif %}
+	</a>
+{% endmacro %}
+
+{% macro statut_sondage(s) %}
+	<span class="si-so-pastille {{ s.estOuvert ? 'si-so-p-vert' : (s.estBrouillon ? 'si-so-p-orange' : 'si-so-p-gris') }}">{{ s.libelleStatut }}</span>
+{% endmacro %}
+
+{% macro periode(periodes, periode, route, extra) %}
+	<li class="nav-item">
+		<form method="get" action="{{ path(route) }}" class="si-so-periode">
+			{% for cle, valeur in extra|default({}) %}{% if valeur is not null %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endif %}{% endfor %}
+			<label class="visually-hidden" for="si-so-periode">Période</label>
+			<select id="si-so-periode" name="periode" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for cle, libelle in periodes %}
+					<option value="{{ cle }}" {{ cle == periode ? 'selected' }}>Période : {{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+{% endmacro %}

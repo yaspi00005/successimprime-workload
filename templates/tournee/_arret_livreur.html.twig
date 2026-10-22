@@ -1,0 +1,78 @@
+{#
+	Un arrêt de « Ma tournée » (téléphone d'abord) : client, téléphone à
+	toucher pour appeler, adresse et lien de carte, articles à remettre,
+	montant à encaisser (sa livraison seulement), puis les actions :
+	étape suivante, « Livrée » (remise signée) ou « Échec » avec la raison.
+	Variables : b, rang, token, motifs, pts (facultatif).
+#}
+{% set cli = b.commande.clients %}
+{% set etat = b.etatSuivi %}
+{% set aMoi = b.livreur == app.user %}
+{% set adresse = (b.adresseLivraison ?? b.commande.adresseLivraison ?? (cli ? cli.repere : null))|default('')|replace({"\n": ' · '})|trim %}
+{% set tel = b.telephoneReceptionnaire ?? (cli ? cli.telephone : null) %}
+{% set carte = cli and cli.estLocalise
+	? 'https://www.google.com/maps/dir/?api=1&destination=' ~ cli.latitude ~ ',' ~ cli.longitude
+	: (adresse ? 'https://www.google.com/maps/search/?api=1&query=' ~ (adresse ~ ', Bamako')|url_encode : null) %}
+<li class="card si-lv-arret si-lv-{{ etat }}" id="arret-{{ b.id }}">
+	<div class="si-lv-tete">
+		<span class="si-lv-rang" aria-label="Arrêt {{ rang }}">{{ rang }}</span>
+		<div class="si-lv-qui">
+			<b>{{ cli ? cli.nomComplet : (b.nomReceptionnaire ?? b.numero) }}</b>
+			<small>{{ b.numero }}{{ b.creneau ? ' · créneau ' ~ b.creneau }}</small>
+		</div>
+		<span class="si-lv-badge si-lv-badge-{{ etat }}">
+			{%- if etat == 'livree' -%}Livrée {{ b.livreLe|date('H:i') }}
+			{%- elseif etat == 'echec' -%}Échec {{ b.echecLe|date('H:i') }}
+			{%- elseif etat == 'en_tournee' -%}{{ attribute(constant('App\\Entity\\BonLivraison::ETAPES'), b.etape) }}
+			{%- else -%}À livrer{%- endif -%}
+		</span>
+	</div>
+
+	<ul class="si-lv-details">
+		{% if b.nomReceptionnaire and (not cli or b.nomReceptionnaire != cli.nomComplet) %}<li><i class="far fa-user" aria-hidden="true"></i><span>Pour {{ b.nomReceptionnaire }}</span></li>{% endif %}
+		{% if tel %}<li><i class="fas fa-phone" aria-hidden="true"></i><a href="tel:{{ tel|replace({' ': ''}) }}">{{ tel }}</a></li>{% endif %}
+		{% if adresse or carte %}<li><i class="fas fa-location-dot" aria-hidden="true"></i><span>{{ adresse ?: 'Position de la fiche client' }}{% if carte %} · <a href="{{ carte }}" target="_blank" rel="noopener">Voir sur la carte</a>{% endif %}</span></li>{% endif %}
+		<li><i class="fas fa-box" aria-hidden="true"></i><span>{{ b.lignes|map(l => l|texte_ligne_interne('') ~ ' × ' ~ l.quantiteCommandee)|join(' · ') }}</span></li>
+		{% if b.observation %}<li><i class="far fa-comment" aria-hidden="true"></i><span>{{ b.observation }}</span></li>{% endif %}
+		{# Montant à encaisser : sa propre livraison, encore à remettre (ou le bureau qui a le droit Paiements) ; rien après un échec, le colis revient. #}
+		{% if etat not in ['livree', 'echec'] and b.commande.resteAPayer > 0 and (aMoi or is_granted('ROLE_PAIEMENT_VOIR')) %}
+			<li class="si-lv-encaisser"><i class="fas fa-money-bill-wave" aria-hidden="true"></i><span>À encaisser : <b>{{ b.commande.resteAPayer|number_format(0, ',', ' ') }} F</b></span></li>
+		{% endif %}
+		{% if etat == 'livree' %}
+			<li><i class="fas fa-check" aria-hidden="true"></i><span>Remis à {{ b.livreLe|date('H:i') }}{{ b.receptionnaireSuivi ? ' à ' ~ b.receptionnaireSuivi }}{% if pts is defined and pts is not null %} · <span class="si-tr-pts{{ pts < 0 ? ' si-tr-pts-moins' }}">{{ pts >= 0 ? '+' }}{{ pts }} pts</span>{% endif %}</span></li>
+		{% elseif etat == 'echec' %}
+			<li class="si-lv-motif"><i class="fas fa-triangle-exclamation" aria-hidden="true"></i><span>{{ b.echecMotif }}{{ b.echecPar ? ' · noté par ' ~ (b.echecPar|nom_pointage) }}</span></li>
+		{% endif %}
+	</ul>
+
+	{% if etat == 'livree' %}
+		<a class="btn btn-light btn-sm si-btn-entete si-lv-voir" href="{{ path('app_livraisons_tournee_terminee', {id: b.id}) }}">Voir la remise</a>
+	{% elseif aMoi and b.statut == 'valide' %}
+		<div class="si-lv-actions">
+			{% if etat == 'echec' %}
+				<form method="post" action="{{ path('app_livraisons_tournee_reessayer', {id: b.id}) }}"><input type="hidden" name="_token" value="{{ token }}"><button class="btn btn-light si-btn-entete"><i class="fas fa-rotate-right me-1"></i>Réessayer</button></form>
+				<small class="si-lv-aide">Le bureau la replanifie, ou réessayez si le client vous rappelle.</small>
+			{% else %}
+				{% set suivante = not b.chargeLe ? ['charge', 'Chargée'] : (not b.enRouteLe ? ['en_route', 'Je pars'] : (not b.arriveLe ? ['arrive', 'Je suis arrivé'] : null)) %}
+				{% if suivante %}
+					<form method="post" action="{{ path('app_livraisons_tournee_etape', {id: b.id}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="etape" value="{{ suivante[0] }}"><button class="btn btn-light si-btn-entete">{{ suivante[1] }}</button></form>
+				{% endif %}
+				<a class="btn btn-success si-lv-btn-livree" href="{{ path('app_livraisons_remise', {id: b.id}) }}"><i class="fas fa-check me-1"></i>Livrée</a>
+				<details class="si-lv-echouer">
+					<summary class="btn btn-outline-danger">Échec</summary>
+					<form method="post" action="{{ path('app_livraisons_tournee_echec', {id: b.id}) }}" class="si-lv-echec-form">
+						<input type="hidden" name="_token" value="{{ token }}">
+						<fieldset>
+							<legend>Pourquoi la livraison n'a pas pu se faire ?</legend>
+							{% for m in motifs %}
+								<label class="si-lv-motif-choix"><input type="radio" name="motif" value="{{ m }}" required> {{ m }}</label>
+							{% endfor %}
+						</fieldset>
+						<input name="precision" maxlength="200" class="form-control" placeholder="Précision (obligatoire pour « Autre »)" aria-label="Précision sur l'échec">
+						<button class="btn btn-danger w-100">Noter l'échec</button>
+					</form>
+				</details>
+			{% endif %}
+		</div>
+	{% endif %}
+</li>

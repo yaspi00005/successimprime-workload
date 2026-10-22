@@ -35,6 +35,20 @@ final class UserChecker implements UserCheckerInterface
                 'Votre compte est désactivé. Veuillez contacter l’administrateur.'
             );
         }
+
+
+        /*
+         * Employé sans accès, invitation pas encore activée, accès
+         * suspendu ou contrat terminé (maquettes E02 et E04).
+         */
+        if (!$user->peutSeConnecter(new \DateTimeImmutable())) {
+
+            throw new CustomUserMessageAccountStatusException(
+                $user->getAcces() === User::ACCES_INVITE
+                    ? 'Activez d’abord votre accès avec le lien reçu sur WhatsApp.'
+                    : 'Votre accès à l’application est fermé. Veuillez contacter le responsable.'
+            );
+        }
     }
 
 

@@ -2,6 +2,9 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\FacturesRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -28,8 +31,13 @@ use Symfony\Component\Validator\Constraints as Assert;
     columns: ['comptabilisee']
 )]
 #[ORM\HasLifecycleCallbacks]
-class Factures
+class Factures implements AppartientASociete
 {
+    use PublicIdTrait;
+    use SocieteTrait;
+    // Copiés de la commande avec les montants (déjà compris dans totalHt).
+    use LivraisonObjetDocumentTrait;
+
     /*
      * ============================================================
      * TYPES DE DOCUMENT
@@ -38,10 +46,13 @@ class Factures
 
     public const TYPE_FACTURE = 'facture';
     public const TYPE_PROFORMA = 'proforma';
+    /** Facture d'acompte (maquette FD01) : l'acompte qui lance la production, déduit de la facture finale. */
+    public const TYPE_ACOMPTE = 'acompte';
 
     public const TYPES_DOCUMENT = [
         self::TYPE_FACTURE,
         self::TYPE_PROFORMA,
+        self::TYPE_ACOMPTE,
     ];
 
     public const TYPES_DOCUMENT_LABELS = [
@@ -50,6 +61,9 @@ class Factures
 
         self::TYPE_PROFORMA =>
             'Pro forma / Simulation',
+
+        self::TYPE_ACOMPTE =>
+            'Facture d\'acompte',
     ];
 
 
@@ -233,8 +247,9 @@ class Factures
                 self::EMETTEUR_MDG_SUCCESS,
         ]
     )]
-    #[Assert\Choice(
-        choices: self::EMETTEURS
+    // Code d'une entreprise émettrice (table entreprise, maquette I03).
+    #[Assert\Regex(
+        pattern: '/^[a-z0-9_]{2,30}$/'
     )]
     private string $emetteur =
         self::EMETTEUR_MDG_SUCCESS;
@@ -446,6 +461,35 @@ private ?string $pdfHash = null;
     )]
     private ?string $tokenAuthenticite = null;
 
+    /*
+     * Code court du QR « Suivre cette facture en ligne » (/f/{code}),
+     * aussi imprimé en pied de page : 7K4P-2Q.
+     */
+    #[ORM\Column(
+        length: 9,
+        unique: true,
+        nullable: true
+    )]
+    private ?string $codeSuivi = null;
+
+    /* Validation et envois (maquette FD03) : qui a validé, quand ; envoi WhatsApp, ouverture du lien. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?User $valideePar = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $valideeLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $envoyeeWhatsappLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $lienOuvertLe = null;
+
+    /** Facture d'acompte : part de la commande demandée, en %. */
+    #[ORM\Column(type: Types::SMALLINT, nullable: true)]
+    private ?int $pourcentageAcompte = null;
+
 
     /*
      * ============================================================
@@ -517,6 +561,7 @@ private ?string $pdfHash = null;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->dateFacture =
             new \DateTimeImmutable();
 
@@ -639,6 +684,77 @@ private ?string $pdfHash = null;
             === self::TYPE_FACTURE;
     }
 
+    public function estAcompte(): bool
+    {
+        return self::TYPE_ACOMPTE === $this->typeDocument;
+    }
+
+    public function getValideePar(): ?User
+    {
+        return $this->valideePar;
+    }
+
+    public function getValideeLe(): ?\DateTimeImmutable
+    {
+        return $this->valideeLe;
+    }
+
+    public function marquerValidee(?User $par, \DateTimeImmutable $le): static
+    {
+        $this->valideePar = $par;
+        $this->valideeLe = $le;
+
+        return $this;
+    }
+
+    public function getEnvoyeeWhatsappLe(): ?\DateTimeImmutable
+    {
+        return $this->envoyeeWhatsappLe;
+    }
+
+    public function setEnvoyeeWhatsappLe(?\DateTimeImmutable $le): static
+    {
+        $this->envoyeeWhatsappLe = $le;
+
+        return $this;
+    }
+
+    public function getLienOuvertLe(): ?\DateTimeImmutable
+    {
+        return $this->lienOuvertLe;
+    }
+
+    public function setLienOuvertLe(?\DateTimeImmutable $le): static
+    {
+        $this->lienOuvertLe = $le;
+
+        return $this;
+    }
+
+    public function getPourcentageAcompte(): ?int
+    {
+        return $this->pourcentageAcompte;
+    }
+
+    /**
+     * Facture d'acompte : une part de la commande, en une ligne. Le
+     * montant est arrondi au franc ; la TVA suit la même part.
+     */
+    public function chargerAcompte(Commandes $commande, int $pourcentage): static
+    {
+        $pourcentage = max(1, min(100, $pourcentage));
+        $this->chargerDepuisCommande($commande);
+        $this->pourcentageAcompte = $pourcentage;
+        $base = $this->totalHt - $this->remise;
+        $this->totalHt = (int) round($base * $pourcentage / 100);
+        $this->remise = 0;
+        $this->montantTva = (int) round($this->montantTva * $pourcentage / 100);
+        $this->fraisLivraison = 0;
+        $this->recalculerTotal();
+
+        return $this;
+    }
+
     public function estProforma(): bool
     {
         return $this->typeDocument
@@ -692,10 +808,9 @@ private ?string $pdfHash = null;
         string $emetteur
     ): static {
         if (
-            !in_array(
-                $emetteur,
-                self::EMETTEURS,
-                true
+            !preg_match(
+                '/^[a-z0-9_]{2,30}$/',
+                $emetteur
             )
         ) {
             throw new \InvalidArgumentException(
@@ -1005,6 +1120,12 @@ private ?string $pdfHash = null;
     }
 
 
+    /** Total HT après la remise globale (avant TVA et majoration). */
+    public function getTotalHtNet(): int
+    {
+        return max(0, $this->totalHt - $this->remise);
+    }
+
     public function recalculerTotal(): static
     {
         $base =
@@ -1215,6 +1336,31 @@ private ?string $pdfHash = null;
         return $this->tokenAuthenticite;
     }
 
+    public function getCodeSuivi(): ?string
+    {
+        return $this->codeSuivi;
+    }
+
+    /**
+     * Code de 6 caractères sans 0/O ni 1/I/L, présenté XXXX-XX. Le
+     * contrôleur vérifie qu'il n'est pas déjà pris.
+     */
+    public function genererCodeSuivi(bool $nouveau = false): static
+    {
+        if ($this->codeSuivi === null || $nouveau) {
+            $alphabet = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
+            $code = '';
+
+            for ($i = 0; $i < 6; ++$i) {
+                $code .= $alphabet[random_int(0, \strlen($alphabet) - 1)];
+            }
+
+            $this->codeSuivi = substr($code, 0, 4).'-'.substr($code, 4);
+        }
+
+        return $this;
+    }
+
     public function genererTokenAuthenticite():
         static
     {
@@ -1400,11 +1546,9 @@ private ?string $pdfHash = null;
                 ?? 0
             );
 
+        // Remise globale de la commande (au plus son sous-total HT).
         $this->remise =
-            (int) (
-                $commande->getRemise()
-                ?? 0
-            );
+            $commande->getRemiseGlobale();
 
         $this->tva =
             (int) (
@@ -1412,22 +1556,17 @@ private ?string $pdfHash = null;
                 ?? 0
             );
 
-        $commandeTtc =
-            (int) (
-                $commande->getTotalTtc()
-                ?? 0
-            );
+        // Frais de livraison (déjà dans le total HT) et objet de la commande.
+        $this->setFraisLivraison($commande->getFraisLivraison());
+        $this->setObjet($commande->getObjet());
 
+        /*
+         * TVA de la commande, remise globale déduite (0 sans TVA sur
+         * les lignes). Le total TTC de la facture retombe ainsi sur
+         * celui de la commande : total HT − remise + TVA.
+         */
         $this->montantTva =
-            max(
-                0,
-                $commandeTtc
-                - max(
-                    0,
-                    $this->totalHt
-                    - $this->remise
-                )
-            );
+            $commande->getMontantTva();
 
         $this->recalculerTotal();
 
@@ -1457,7 +1596,7 @@ private ?string $pdfHash = null;
     static
 {
     if (
-        !$this->comptabilisee
+        (!$this->comptabilisee && !$this->estAcompte())
         || $this->commande === null
     ) {
         return $this;
@@ -1487,8 +1626,9 @@ private ?string $pdfHash = null;
     }
 
 
+    // Facture d'acompte : payée dès que les paiements couvrent l'acompte.
     $this->montantPaye =
-        $totalPaye;
+        $this->estAcompte() ? min($totalPaye, $this->totalTtc) : $totalPaye;
 
 
     $this->resteAPayer =
@@ -1581,8 +1721,9 @@ private ?string $pdfHash = null;
     public static function getTypesDocumentPourFormulaire():
         array
     {
+        // La facture d'acompte se crée depuis « Nouveau document » (FD01).
         return array_flip(
-            self::TYPES_DOCUMENT_LABELS
+            array_diff_key(self::TYPES_DOCUMENT_LABELS, [self::TYPE_ACOMPTE => true])
         );
     }
 

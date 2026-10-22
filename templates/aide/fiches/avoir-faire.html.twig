@@ -1,0 +1,20 @@
+{# Fiche du guide « avoir-faire » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Ouvrez la facture validée, puis touchez « Créer un avoir » dans « Actions ».</li>
+	<li>« Pourquoi » : Défaut de fabrication, Erreur de prix, Retour, Geste commercial ou Annulation totale. Liez la réclamation du client s'il y en a une.</li>
+	<li>« Lignes à créditer » : pour chaque ligne, la quantité « À créditer ». Le « Total de l'avoir » se calcule, avec la part de la remise.</li>
+	<li>« Que faire de l'avoir ? » : « Déduire de cette facture », « Garder pour une prochaine commande » ou « Rembourser ».</li>
+	<li>Lisez « Effet sur le compte client » : le solde dû avant et après.</li>
+	<li>Touchez « Valider l'avoir », puis confirmez. L'avoir AV-… reçoit son numéro.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Une facture validée n'est jamais modifiée ni supprimée : toute correction passe par un avoir.</li>
+	<li>Sans le droit de valider, vous préparez l'avoir ; la trésorière ou la Direction le valide.</li>
+	<li>Un avoir validé ne se modifie plus. Pour corriger, faites un nouvel avoir sur la facture.</li>
+	<li>L'avoir apparaît dans le relevé du client, relié à la facture. « PDF » l'imprime.</li>
+</ul>
+{% endblock %}

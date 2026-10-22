@@ -1,0 +1,30 @@
+{% extends 'espace/_page.html.twig' %}
+
+{% block title %}Première connexion · Succès Imprim{% endblock %}
+{% block lien_haut %}Déjà un mot de passe ? <a href="{{ path('app_espace_connexion') }}">Se connecter</a>{% endblock %}
+
+{#
+	Première connexion avec le code d'accès que l'imprimerie a envoyé sur
+	WhatsApp (8 caractères, valable 48 h, une seule fois). Ensuite :
+	mot de passe obligatoire, e-mail facultatif (Sécuriser mon compte).
+#}
+{% block contenu %}
+	<h1>Première connexion</h1>
+	<p class="si-espace-sous-titre">Entrez votre numéro et le code d'accès reçu de Succès Imprim sur WhatsApp. Vous choisirez ensuite votre mot de passe et, si vous en avez une, votre adresse e-mail.</p>
+
+	{% if erreur %}
+		<div class="si-espace-erreur" role="alert">{{ erreur|trans(erreur_donnees, 'security') }}</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_espace_connexion') }}">
+		<input type="hidden" name="mode" value="acces">
+		<input type="hidden" name="_csrf_token" value="{{ csrf_token('espace-connexion') }}">
+		{% include 'espace/_telephone.html.twig' with {valeur: numero} %}
+		<label for="code-acces">Code d'accès</label>
+		<input type="text" id="code-acces" name="code" class="si-code-acces" required
+			minlength="8" maxlength="11" autocomplete="one-time-code" autocapitalize="characters" spellcheck="false"
+			placeholder="ABCD-EFGH"{{ numero ? ' autofocus' }}>
+		<button type="submit" class="si-espace-bouton">Continuer</button>
+		<p class="si-espace-aide">Le code est valable 48 heures et ne sert qu'une fois. Expiré ou perdu ? Demandez un nouvel accès à Succès Imprim{% if code_actif %}, ou <a href="{{ path('app_espace_connexion', {mode: 'code'}) }}">recevez un code</a> par e-mail ou par SMS{% endif %}.</p>
+	</form>
+{% endblock %}

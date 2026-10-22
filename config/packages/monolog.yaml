@@ -2,9 +2,16 @@ monolog:
     channels:
         - deprecation # Deprecations are logged in the dedicated "deprecation" channel when it exists
 
+# Alertes système (docs/alertes-systeme.md) : les erreurs du journal (Orange Money, SMS, tâches
+# planifiées, file de messages, autres) deviennent des alertes, regroupées et envoyées à la
+# direction et au technicien. Le handler décide lui-même de ce qu'il garde et ne bloque jamais
+# les autres (il rend toujours la main).
 when@dev:
     monolog:
         handlers:
+            alertes_systeme:
+                type: service
+                id: App\Service\Alertes\AlertesMonologHandler
             main:
                 type: stream
                 path: "%kernel.logs_dir%/%kernel.environment%.log"
@@ -32,6 +39,9 @@ when@test:
 when@prod:
     monolog:
         handlers:
+            alertes_systeme:
+                type: service
+                id: App\Service\Alertes\AlertesMonologHandler
             main:
                 type: fingers_crossed
                 action_level: error
@@ -47,9 +57,13 @@ when@prod:
             console:
                 type: console
                 process_psr_3_messages: false
-                channels: ["!event", "!doctrine"]
+                channels: ["!event", "!doctrine", "!deprecation"]
+            # Les avis « User Deprecated » ne s'affichent plus après chaque commande du serveur
+            # (docs/deploiement.md) : ils vont dans var/log/deprecations-AAAA-MM-JJ.log, 3 jours gardés.
+            # Ils servent à préparer une mise à jour de Symfony, Twig ou Doctrine ; la plupart ne
+            # paraissent qu'à la préparation du cache, les fichiers restent donc petits.
             deprecation:
-                type: stream
+                type: rotating_file
                 channels: [deprecation]
-                path: php://stderr
-                formatter: monolog.formatter.json
+                path: "%kernel.logs_dir%/deprecations.log"
+                max_files: 3

@@ -1,0 +1,13 @@
+{#
+	Téléphone malien à 8 chiffres (+223 affiché devant), avec son erreur.
+	Variables : valeur, obligatoire (astérisque), id_champ (champ-telephone).
+#}
+{% set erreur = erreurs.telephone ?? null %}
+<div class="si-champ{{ erreur ? ' si-champ-erreur' }}">
+	<label for="{{ id_champ ?? 'champ-telephone' }}">Téléphone{% if obligatoire ?? false %}<span class="si-requis" aria-hidden="true"> *</span>{% endif %}</label>
+	<div class="si-tel">
+		<span aria-hidden="true">+223</span>
+		<input type="tel" id="{{ id_champ ?? 'champ-telephone' }}" name="telephone" value="{{ valeur }}" placeholder="7X XX XX XX" inputmode="tel" autocomplete="tel-national" maxlength="20" required{% if erreur %} aria-invalid="true" aria-describedby="{{ id_champ ?? 'champ-telephone' }}-erreur"{% endif %}>
+	</div>
+	{% if erreur %}<p class="si-erreur" id="{{ id_champ ?? 'champ-telephone' }}-erreur">{{ erreur }}</p>{% endif %}
+</div>

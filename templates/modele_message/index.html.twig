@@ -104,7 +104,7 @@
 													<i class="fa fa-pencil"></i>
 												</a>
 
-												<form method="post" action="{{ path('app_modele_message_delete', {id: modele.id}) }}" class="d-inline js-confirm-form" data-message="Supprimer définitivement ce modèle de message ?">
+												<form method="post" action="{{ path('app_modele_message_delete', {id: modele.id}) }}" class="d-inline" {{ confirmer_suppression('le modèle de message « ' ~ modele.nom ~ ' »') }}>
 													<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ modele.id) }}">
 													<button type="submit" class="btn btn-sm btn-danger-light" title="Supprimer">
 														<i class="fa fa-trash"></i>

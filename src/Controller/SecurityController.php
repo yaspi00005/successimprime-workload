@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Entity\User;
 use App\Repository\UserRepository;
+use App\Security\AccesEnLigne;
 use App\Security\LastUserCookieService;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -38,7 +39,8 @@ final class SecurityController extends AbstractController
         Request $request,
         AuthenticationUtils $authenticationUtils,
         UserRepository $userRepository,
-        LastUserCookieService $lastUserCookieService
+        LastUserCookieService $lastUserCookieService,
+        AccesEnLigne $accesEnLigne
     ): Response {
 
         /*
@@ -137,7 +139,7 @@ final class SecurityController extends AbstractController
 
                     'error' =>
                         $error,
-                ]
+                ] + $this->contexteEnLigne($request, $accesEnLigne)
             );
 
 
@@ -190,7 +192,8 @@ final class SecurityController extends AbstractController
         Request $request,
         UserRepository $userRepository,
         LastUserCookieService $lastUserCookieService,
-        AuthenticationUtils $authenticationUtils
+        AuthenticationUtils $authenticationUtils,
+        AccesEnLigne $accesEnLigne
     ): Response {
 
         /*
@@ -325,7 +328,7 @@ final class SecurityController extends AbstractController
                         ? $authenticationError
                             ->getMessageKey()
                         : null,
-            ]
+            ] + $this->contexteEnLigne($request, $accesEnLigne)
         );
     }
 
@@ -386,6 +389,22 @@ final class SecurityController extends AbstractController
         throw new \LogicException(
             'Cette méthode est interceptée par le firewall Symfony.'
         );
+    }
+
+    /**
+     * Administration en ligne (maquette CX03) : version sombre de la
+     * page et bandeau « Appareil autorisé » si le navigateur est enrôlé.
+     *
+     * @return array{en_ligne: bool, appareil: ?\App\Entity\AppareilAutorise}
+     */
+    private function contexteEnLigne(Request $request, AccesEnLigne $accesEnLigne): array
+    {
+        $enLigne = $accesEnLigne->estEnLigne();
+
+        return [
+            'en_ligne' => $enLigne,
+            'appareil' => $enLigne ? $accesEnLigne->appareilDe($request) : null,
+        ];
     }
 
     /*

@@ -1,0 +1,85 @@
+/*
+ * Écrans de production PD01 à PD07 (maquettes du 20/10/2026) : parcours d'un
+ * fichier, imposition au rouleau, fiche de production, impression en cours,
+ * étiquettes, contrôle final, mobile du machiniste. Cartes blanches arrondies
+ * sur fond clair, titres bleu nuit, bouton principal rouge, pastilles d'état.
+ * Tout est rangé sous .si-fab (feuille chargée avant le thème).
+ */
+.si-fab { --fab-bleu: #0F4590; --fab-nuit: #14213D; --fab-rouge: #DE1028; --fab-vert: #1F9D55; --fab-orange: #E0A800; --fab-gris: #6B7280; --fab-bord: #E5E9F0; --fab-fond: #F5F7FB; --fab-rayon: 14px; color: #111827; }
+
+/* Sous-navigation */
+.si-fab .si-fab-nav { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 16px; }
+.si-fab .si-fab-nav a { padding: 6px 12px; border-radius: 999px; background: #fff; border: 1px solid var(--fab-bord); color: var(--fab-nuit); font-size: 13px; font-weight: 600; text-decoration: none; }
+.si-fab .si-fab-nav a:hover { border-color: #C9D3E3; }
+.si-fab .si-fab-nav a.actif { background: var(--fab-nuit); border-color: var(--fab-nuit); color: #fff; }
+
+/* En-tête de page : fil d'Ariane, titre, actions */
+.si-fab .si-fab-entete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.si-fab .si-fab-ariane { font-size: 12px; color: var(--fab-gris); margin: 0 0 2px; }
+.si-fab .si-fab-titre { font-size: 22px; font-weight: 800; color: var(--fab-nuit); margin: 0; }
+.si-fab .si-fab-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* Cartes et grilles */
+.si-fab .si-fab-carte { background: #fff; border: 1px solid var(--fab-bord); border-radius: var(--fab-rayon); padding: 16px 18px; margin-bottom: 16px; }
+.si-fab .si-fab-carte > h2 { font-size: 15px; font-weight: 700; margin: 0 0 12px; color: var(--fab-nuit); }
+.si-fab .si-fab-carte > h2 small { font-weight: 500; color: var(--fab-gris); font-size: 12px; }
+.si-fab .si-fab-grille { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+.si-fab .si-fab-grille-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.si-fab .si-fab-muet { color: var(--fab-gris); font-size: 12px; }
+.si-fab .si-fab-note { color: var(--fab-gris); font-size: 12px; margin: 10px 0 0; }
+.si-fab .num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* Boutons */
+.si-fab .si-fab-bouton { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 8px 16px; border-radius: 10px; border: 1px solid var(--fab-bord); background: #fff; color: var(--fab-nuit); font-size: 14px; font-weight: 700; text-decoration: none; cursor: pointer; }
+.si-fab .si-fab-bouton:hover { border-color: #C9D3E3; }
+.si-fab .si-fab-bouton.principal { background: var(--fab-rouge); border-color: var(--fab-rouge); color: #fff; }
+.si-fab .si-fab-bouton.principal:hover { filter: brightness(.95); }
+.si-fab .si-fab-bouton.sombre { background: var(--fab-nuit); border-color: var(--fab-nuit); color: #fff; }
+.si-fab .si-fab-bouton[disabled], .si-fab .si-fab-bouton.inactif { opacity: .45; cursor: not-allowed; filter: none; }
+
+/* Pastilles d'état */
+.si-fab .si-fab-pastille { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--fab-fond); color: var(--fab-gris); white-space: nowrap; }
+.si-fab .si-fab-pastille.vert { background: #E3F5EA; color: #13703C; }
+.si-fab .si-fab-pastille.orange { background: #FFF4D6; color: #8A6100; }
+.si-fab .si-fab-pastille.rouge { background: #FDE3E6; color: #B00D20; }
+.si-fab .si-fab-pastille.bleu { background: #E3ECF8; color: var(--fab-bleu); }
+
+/* Liste de contrôles (vert = bon, rouge = bloquant, orange = à surveiller) */
+.si-fab .si-fab-controles { list-style: none; margin: 0; padding: 0; }
+.si-fab .si-fab-controles > li { display: flex; gap: 12px; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid var(--fab-bord); }
+.si-fab .si-fab-controles > li:last-child { border-bottom: 0; }
+.si-fab .si-fab-etat { flex: 0 0 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 800; background: var(--fab-fond); color: var(--fab-gris); }
+.si-fab .si-fab-etat.ok { background: #E3F5EA; color: var(--fab-vert); }
+.si-fab .si-fab-etat.bloquant { background: #FDE3E6; color: var(--fab-rouge); }
+.si-fab .si-fab-etat.surveiller { background: #FFF4D6; color: #8A6100; }
+.si-fab .si-fab-controles b { display: block; font-size: 14px; }
+.si-fab .si-fab-controles .detail { font-size: 12px; color: var(--fab-gris); }
+.si-fab .si-fab-controles .bloquant-texte { color: var(--fab-rouge); font-weight: 700; }
+
+/* Frise (parcours d'un fichier) */
+.si-fab .si-fab-frise { display: flex; gap: 0; overflow-x: auto; padding-bottom: 4px; }
+.si-fab .si-fab-frise > li { list-style: none; flex: 1 0 130px; position: relative; padding: 34px 8px 0; text-align: center; font-size: 12px; }
+.si-fab .si-fab-frise > li::before { content: ''; position: absolute; top: 13px; left: 0; right: 0; height: 3px; background: var(--fab-bord); }
+.si-fab .si-fab-frise > li:first-child::before { left: 50%; }
+.si-fab .si-fab-frise > li:last-child::before { right: 50%; }
+.si-fab .si-fab-frise > li .point { position: absolute; top: 4px; left: calc(50% - 11px); width: 22px; height: 22px; border-radius: 50%; background: #fff; border: 3px solid var(--fab-bord); }
+.si-fab .si-fab-frise > li.fait::before, .si-fab .si-fab-frise > li.fait .point { border-color: var(--fab-vert); background: var(--fab-vert); }
+.si-fab .si-fab-frise > li.encours .point { border-color: var(--fab-bleu); }
+.si-fab .si-fab-frise > li b { display: block; font-size: 13px; color: var(--fab-nuit); }
+
+/* Barre d'avancement */
+.si-fab .si-fab-barre { height: 10px; border-radius: 999px; background: var(--fab-fond); overflow: hidden; }
+.si-fab .si-fab-barre > span { display: block; height: 100%; background: var(--fab-vert); border-radius: 999px; }
+
+@media (max-width: 991.98px) {
+	.si-fab .si-fab-grille, .si-fab .si-fab-grille-3 { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 767.98px) {
+	.si-fab .si-fab-titre { font-size: 19px; }
+	.si-fab .si-fab-carte { padding: 14px; }
+	.si-fab .si-fab-actions { width: 100%; }
+	.si-fab .si-fab-actions .si-fab-bouton { flex: 1 1 auto; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+	.si-fab * { transition: none !important; animation: none !important; }
+}

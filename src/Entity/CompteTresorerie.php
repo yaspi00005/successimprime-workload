@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\CompteTresorerieRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -27,8 +28,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
     columns: ['proprietaire_id']
 )]
 #[ORM\HasLifecycleCallbacks]
-class CompteTresorerie
+class CompteTresorerie implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * ============================================================
      * TYPES DE COMPTE
@@ -394,6 +397,29 @@ class CompteTresorerie
 
     /*
      * ============================================================
+     * ORANGE MONEY EN LIGNE
+     * ============================================================
+     *
+     * Le compte Orange Money de l'API (paiements de l'espace client :
+     * commandes, acomptes de conception, crédit IA). Un seul compte
+     * le porte ; il est créé au premier paiement en ligne validé s'il
+     * n'existe pas (ComptesOrangeMoney). Les numéros Orange Money de
+     * l'imprimerie restent des comptes Orange Money ordinaires,
+     * choisis à la caisse.
+     * ============================================================
+     */
+
+    #[ORM\Column(
+        options: [
+            'default' => false,
+        ]
+    )]
+    private bool $orangeMoneyEnLigne =
+        false;
+
+
+    /*
+     * ============================================================
      * DESCRIPTION
      * ============================================================
      */
@@ -516,6 +542,29 @@ class CompteTresorerie
                 )
                 ->atPath(
                     'portee'
+                )
+                ->addViolation();
+        }
+
+
+        /*
+         * ========================================================
+         * ORANGE MONEY EN LIGNE
+         * ========================================================
+         */
+
+        if (
+            $this->orangeMoneyEnLigne
+            &&
+            $this->type
+            !== self::TYPE_ORANGE_MONEY
+        ) {
+            $context
+                ->buildViolation(
+                    'Seul un compte Orange Money peut recevoir les paiements Orange Money en ligne.'
+                )
+                ->atPath(
+                    'orangeMoneyEnLigne'
                 )
                 ->addViolation();
         }
@@ -1424,6 +1473,35 @@ class CompteTresorerie
             $this->type
             ===
             self::TYPE_CAISSE;
+    }
+
+
+    public function estOrangeMoney(): bool
+    {
+        return
+            $this->type
+            ===
+            self::TYPE_ORANGE_MONEY;
+    }
+
+
+    /**
+     * Compte des paiements Orange Money en ligne (API) : il reçoit
+     * les paiements de l'espace client, jamais ceux de la caisse.
+     */
+    public function isOrangeMoneyEnLigne(): bool
+    {
+        return $this->orangeMoneyEnLigne;
+    }
+
+
+    public function setOrangeMoneyEnLigne(
+        bool $orangeMoneyEnLigne
+    ): static {
+        $this->orangeMoneyEnLigne =
+            $orangeMoneyEnLigne;
+
+        return $this;
     }
 
 

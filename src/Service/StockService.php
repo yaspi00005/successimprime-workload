@@ -58,6 +58,34 @@ final class StockService
         );
     }
 
+    /**
+     * Coût moyen pondéré : à appeler avant d'enregistrer une entrée, avec
+     * la quantité et le prix exprimés en unité de stock.
+     * (stock avant × coût avant + quantité × prix) ÷ (stock avant + quantité)
+     */
+    public function appliquerCoutMoyen(Articles $article, float $quantite, int $prixUnitaire): void
+    {
+        if ($quantite <= 0 || $prixUnitaire <= 0) {
+            return;
+        }
+
+        $article->setCoutMoyen(self::coutMoyenPondere(
+            $article->getId() !== null ? $this->getStockPhysique($article) : 0.0,
+            $article->getCoutMoyen() ?? $article->getCoutUnitaireStock(),
+            $quantite,
+            $prixUnitaire
+        ));
+    }
+
+    public static function coutMoyenPondere(float $stockAvant, ?int $coutAvant, float $quantite, int $prixUnitaire): int
+    {
+        if ($coutAvant === null || $stockAvant <= 0) {
+            return $prixUnitaire;
+        }
+
+        return (int) round(($stockAvant * $coutAvant + $quantite * $prixUnitaire) / ($stockAvant + $quantite));
+    }
+
     /*
      * ============================================================
      * STOCK PHYSIQUE
@@ -336,12 +364,13 @@ final class StockService
     }
 
     /*
-     * Le produit ne consomme du stock que si
-     * la gestion de stock est activée dans son catalogue.
+     * La nomenclature fait foi : un produit qui a des matières
+     * liées consomme du stock. L'ancien drapeau « gestion de
+     * stock » n'est plus une condition : la fiche produit le
+     * déduit déjà de la nomenclature, et des produits importés
+     * l'avaient à 0 avec une nomenclature remplie, si bien que
+     * leur stock n'était jamais débité (18/10/2026).
      */
-    if (!$produit->isGestionStock()) {
-        return [];
-    }
 
 
     /*
@@ -714,278 +743,12 @@ final class StockService
      * ============================================================
      * RÉSERVER UNE COMMANDE
      * ============================================================
+     *
+     * Voir App\Service\Stock\ReservationsCommande : la réservation
+     * est posée (ou libérée) automatiquement à chaque enregistrement
+     * d'une commande, quel que soit l'écran, sans jamais bloquer la
+     * commande faute de stock.
      */
-
-    public function reserverPourCommande(
-        Commandes $commande
-    ): void {
-        $besoinsParDetail = [];
-        $besoinsGlobaux = [];
-
-        /*
-         * --------------------------------------------------------
-         * Calcul
-         * --------------------------------------------------------
-         */
-        foreach (
-            $commande->getCommandesDetails()
-            as $detail
-        ) {
-            if (
-                !$detail
-                    instanceof CommandesDetails
-            ) {
-                continue;
-            }
-
-            $besoins =
-                $this->calculerBesoinsDetail(
-                    $detail
-                );
-
-            if ($besoins === []) {
-                continue;
-            }
-
-            $besoinsParDetail[] = [
-                'detail' =>
-                $detail,
-
-                'besoins' =>
-                $besoins,
-            ];
-
-            foreach (
-                $besoins
-                as $besoin
-            ) {
-                $article =
-                    $besoin['article']
-                    ?? null;
-
-                if (
-                    !$article
-                        instanceof Articles
-                ) {
-                    continue;
-                }
-
-                $quantite =
-                    max(
-                        0,
-                        (float) (
-                            $besoin['quantite']
-                            ?? 0
-                        )
-                    );
-
-                if ($quantite <= 0) {
-                    continue;
-                }
-
-                $articleId =
-                    (int)
-                    $article->getId();
-
-                if (
-                    !isset(
-                        $besoinsGlobaux[$articleId]
-                    )
-                ) {
-                    $besoinsGlobaux[$articleId] = [
-                        'article' =>
-                        $article,
-
-                        'quantite' =>
-                        0.0,
-
-                        'obligatoire' =>
-                        false,
-                    ];
-                }
-
-                $besoinsGlobaux[$articleId]['quantite'] +=
-                    $quantite;
-
-                if (
-                    (bool) (
-                        $besoin['obligatoire']
-                        ?? true
-                    )
-                ) {
-                    $besoinsGlobaux[$articleId]['obligatoire'] =
-                        true;
-                }
-            }
-        }
-
-        /*
-         * Si la commande n'a plus de besoins,
-         * libération des anciennes réservations.
-         */
-        if ($besoinsGlobaux === []) {
-            $this
-                ->libererReservationsCommande(
-                    $commande
-                );
-
-            return;
-        }
-
-        /*
-         * --------------------------------------------------------
-         * Vérification AVANT modification
-         * --------------------------------------------------------
-         */
-        $manquants = [];
-
-        foreach (
-            $besoinsGlobaux
-            as $besoin
-        ) {
-            /** @var Articles $article */
-            $article =
-                $besoin['article'];
-
-            if (
-                !(bool)
-                $besoin['obligatoire']
-            ) {
-                continue;
-            }
-
-            $requis =
-                (float)
-                $besoin['quantite'];
-
-            $disponible =
-                $this
-                ->getStockDisponiblePourCommande(
-                    $article,
-                    $commande
-                );
-
-            if (
-                $disponible
-                >= $requis
-            ) {
-                continue;
-            }
-
-            $manquants[] =
-                sprintf(
-                    '%s : besoin %s, disponible %s, manque %s',
-                    $this->getDesignationArticle(
-                        $article
-                    ),
-                    $this->formaterQuantite(
-                        $requis
-                    ),
-                    $this->formaterQuantite(
-                        $disponible
-                    ),
-                    $this->formaterQuantite(
-                        max(
-                            0,
-                            $requis
-                                - $disponible
-                        )
-                    )
-                );
-        }
-
-        if ($manquants !== []) {
-            throw new \DomainException(
-                "Stock insuffisant pour valider cette commande :\n"
-                    . implode(
-                        "\n",
-                        $manquants
-                    )
-            );
-        }
-
-        /*
-         * --------------------------------------------------------
-         * Tout est OK :
-         * libération anciennes réservations.
-         * --------------------------------------------------------
-         */
-        $this->libererReservationsCommande(
-            $commande
-        );
-
-        /*
-         * --------------------------------------------------------
-         * Nouvelles réservations
-         * --------------------------------------------------------
-         */
-        foreach (
-            $besoinsParDetail
-            as $ligne
-        ) {
-            /** @var CommandesDetails $detail */
-            $detail =
-                $ligne['detail'];
-
-            foreach (
-                $ligne['besoins']
-                as $besoin
-            ) {
-                $article =
-                    $besoin['article']
-                    ?? null;
-
-                if (
-                    !$article
-                        instanceof Articles
-                ) {
-                    continue;
-                }
-
-                $quantite =
-                    max(
-                        0,
-                        (float) (
-                            $besoin['quantite']
-                            ?? 0
-                        )
-                    );
-
-                if ($quantite <= 0) {
-                    continue;
-                }
-
-                $reservation =
-                    new StockReservation();
-
-                $reservation
-                    ->setArticle(
-                        $article
-                    )
-                    ->setCommandeDetail(
-                        $detail
-                    )
-                    ->setQuantite(
-                        $quantite
-                    )
-                    ->setStatut(
-                        StockReservation::STATUT_ACTIVE
-                    )
-                    ->setObservation(
-                        'Réservation automatique lors de la validation de la commande.'
-                    );
-
-                $this->entityManager
-                    ->persist(
-                        $reservation
-                    );
-            }
-        }
-
-        /*
-         * Pas de flush ici.
-         */
-    }
 
 
     /*
@@ -1044,6 +807,26 @@ final class StockService
                 'referenceOrigine' =>
                 $referenceOrigine,
             ]);
+    }
+
+
+    /**
+     * Vrai si la ligne a déjà une sortie de stock de cette origine.
+     */
+    public function aDejaSorti(
+        CommandesDetails $detail,
+        string $origine
+    ): bool {
+        if ($detail->getId() === null) {
+            return false;
+        }
+
+        return (int) $this->entityManager
+            ->getRepository(StockSorties::class)
+            ->count([
+                'commandeDetail' => $detail,
+                'origine' => $origine,
+            ]) > 0;
     }
 
 
@@ -1111,6 +894,18 @@ final class StockService
             throw new \DomainException(
                 'Origine de sortie de stock invalide.'
             );
+        }
+
+        /*
+         * Pas de double sortie : une ligne fabriquée a déjà sorti sa
+         * matière à la fin de la production (ActionsOrdre::terminer) ;
+         * sa livraison, directe ou par bon, ne sort plus rien.
+         */
+        if (
+            $origine === StockSorties::ORIGINE_LIVRAISON
+            && $this->aDejaSorti($detail, StockSorties::ORIGINE_PRODUCTION)
+        ) {
+            return;
         }
 
         $besoins =
@@ -1236,13 +1031,21 @@ final class StockService
                     $article
                 );
 
+            /*
+             * Le travail est fait, la pièce est livrée : la matière
+             * a donc bien été utilisée. Si le stock enregistré ne
+             * suffit pas (entrée oubliée, inventaire faux), on sort
+             * quand même et on prévient les responsables, au lieu de
+             * bloquer l'atelier ou le livreur.
+             */
             if (
-                $stockPhysique
+                $stockPhysique + 0.000001
                 < $quantite
             ) {
-                throw new \DomainException(
+                $this->notificationService->notifierRoles(
+                    self::ROLES_ALERTE_STOCK_BAS,
                     sprintf(
-                        'Stock physique insuffisant pour %s : besoin %s, disponible %s.',
+                        'Sortie de stock au-delà du stock enregistré : %s — sorti %s, stock enregistré %s (%s). Vérifiez l’inventaire ou les entrées.',
                         $this->getDesignationArticle(
                             $article
                         ),
@@ -1251,8 +1054,10 @@ final class StockService
                         ),
                         $this->formaterQuantite(
                             $stockPhysique
-                        )
-                    )
+                        ),
+                        $referenceOrigine
+                    ),
+                    'app_stock_etat_index'
                 );
             }
 
@@ -1341,6 +1146,62 @@ final class StockService
          */
     }
 
+
+    /**
+     * Sortie d'un article précis pour une ligne, en plus de sa recette :
+     * chute du rouleau, encre, œillets (PD04 et PD06,
+     * docs/production-rouleau.md). Idempotente par ligne, article, origine
+     * et référence (ROUL-R-1021-02, ROUL-R-1021-02-ENCRE, FIN-000123).
+     * Consomme la réservation de l'article sur la ligne et prévient sous le
+     * seuil, comme consommerPourDetail. Ne flushe pas.
+     */
+    public function sortirArticlePourDetail(
+        CommandesDetails $detail,
+        Articles $article,
+        float $quantite,
+        string $origine,
+        string $referenceOrigine
+    ): ?StockSorties {
+        $quantite = round($quantite, 3);
+        $referenceOrigine = trim($referenceOrigine);
+        if ($quantite <= 0 || $referenceOrigine === '') {
+            return null;
+        }
+        if (!in_array($origine, [StockSorties::ORIGINE_PRODUCTION, StockSorties::ORIGINE_LIVRAISON, StockSorties::ORIGINE_MANUELLE], true)) {
+            throw new \DomainException('Origine de sortie de stock invalide.');
+        }
+        if ($this->trouverSortieExistante($detail, $article, $origine, $referenceOrigine) !== null) {
+            return null;
+        }
+
+        $stockAvant = $this->getStockPhysique($article);
+        if ($stockAvant + 0.000001 < $quantite) {
+            $this->notificationService->notifierRoles(
+                self::ROLES_ALERTE_STOCK_BAS,
+                sprintf('Sortie de stock au-delà du stock enregistré : %s — sorti %s, stock enregistré %s (%s). Vérifiez l’inventaire ou les entrées.', $this->getDesignationArticle($article), $this->formaterQuantite($quantite), $this->formaterQuantite($stockAvant), $referenceOrigine),
+                'app_stock_etat_index'
+            );
+        }
+
+        $sortie = (new StockSorties())
+            ->setArticle($article)
+            ->setCommandeDetail($detail)
+            ->setQuantite($quantite)
+            ->setDate(new \DateTimeImmutable())
+            ->setOrigine($origine)
+            ->setReferenceOrigine($referenceOrigine);
+        $this->entityManager->persist($sortie);
+
+        $reservations = $this->entityManager->getRepository(StockReservation::class)->findBy([
+            'commandeDetail' => $detail,
+            'article' => $article,
+            'statut' => StockReservation::STATUT_ACTIVE,
+        ]);
+        $this->consommerReservationArticle($detail, $article, $quantite, $reservations);
+        $this->verifierSeuilAlerte($article, $stockAvant, $quantite);
+
+        return $sortie;
+    }
 
     /*
      * ============================================================
@@ -1517,7 +1378,7 @@ final class StockService
     public function enregistrerConsommableManuel(
         ?CommandesDetails $detail,
         Articles $article,
-        int $quantite,
+        float $quantite,
         ?string $referenceOrigine = null
     ): StockSorties {
         if ($quantite <= 0) {

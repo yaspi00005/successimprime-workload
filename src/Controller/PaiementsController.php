@@ -6,7 +6,10 @@ use App\Entity\Paiements;
 use App\Entity\User;
 use App\Form\PaiementsType;
 use App\Repository\PaiementsRepository;
+use App\Repository\ParametresPaiementRepository;
+use App\Service\Paiement\FiltresListePaiements;
 use App\Service\PaiementService;
+use App\Service\Paiement\FraisOrangeMoney;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,40 +23,40 @@ final class PaiementsController extends AbstractController
     private const LIMITE_PAR_DEFAUT = 100;
     private const LIMITE_RECHERCHE = 500;
 
+    /**
+     * Liste : les 100 derniers paiements. La recherche et les filtres des
+     * en-têtes (petites flèches, docs/filtres-tableaux.md) cherchent dans
+     * tous les paiements, 500 au plus.
+     */
     #[Route(name: 'app_paiements_index', methods: ['GET'])]
     public function index(Request $request, PaiementsRepository $paiementsRepository): Response
     {
         $q = trim((string) $request->query->get('q', ''));
+        $filtres = FiltresListePaiements::depuis($request->query->all());
+        $colonnesFiltrees = FiltresListePaiements::actifs($filtres);
+        $filtre = $q !== '' || $colonnesFiltrees;
 
-        $limite = $q !== ''
+        $limite = $filtre
             ? self::LIMITE_RECHERCHE
             : self::LIMITE_PAR_DEFAUT;
 
         return $this->render('paiements/index.html.twig', [
-            'paiements' => $paiementsRepository->rechercher($q, $limite),
+            'paiements' => $paiementsRepository->rechercher($q, $limite, $filtres),
             'q' => $q,
+            'filtre' => $filtre,
+            'colonnesFiltrees' => $colonnesFiltrees,
+            'parametresFiltres' => FiltresListePaiements::enParametres($filtres),
+            'trie' => $filtres['tri'] !== FiltresListePaiements::TRI_PAR_DEFAUT,
             'limite' => $limite,
+            'comptes' => $paiementsRepository->comptesUtilises(),
         ]);
     }
 
+    /** Un paiement se saisit toujours à la caisse, rattaché à une commande. */
     #[Route('/new', name: 'app_paiements_new', methods: ['GET', 'POST'])]
-    public function new(Request $request, EntityManagerInterface $entityManager): Response
+    public function new(): Response
     {
-        $paiement = new Paiements();
-        $form = $this->createForm(PaiementsType::class, $paiement);
-        $form->handleRequest($request);
-
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($paiement);
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_paiements_index', [], Response::HTTP_SEE_OTHER);
-        }
-
-        return $this->render('paiements/new.html.twig', [
-            'paiement' => $paiement,
-            'form' => $form,
-        ]);
+        return $this->redirectToRoute('app_caisse_index', [], Response::HTTP_SEE_OTHER);
     }
 
     #[Route('/{id}', name: 'app_paiements_show', methods: ['GET'])]
@@ -64,16 +67,43 @@ final class PaiementsController extends AbstractController
         ]);
     }
 
+    /**
+     * Seul un paiement en attente se modifie ou se supprime : un paiement validé
+     * a déjà crédité la trésorerie, il se corrige en l'annulant.
+     */
     #[Route('/{id}/edit', name: 'app_paiements_edit', methods: ['GET', 'POST'])]
-    public function edit(Request $request, Paiements $paiement, EntityManagerInterface $entityManager): Response
+    public function edit(Request $request, Paiements $paiement, EntityManagerInterface $entityManager, ParametresPaiementRepository $parametresPaiementRepository): Response
     {
-        $form = $this->createForm(PaiementsType::class, $paiement);
+        if (!$paiement->estEnAttente()) {
+            $this->addFlash('error', 'Seul un paiement en attente peut être modifié. Un paiement validé se corrige en l\'annulant.');
+
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
+        }
+
+        // Le paiement tel qu'enregistré : ses frais restent s'il ne change pas.
+        $avant = [
+            'montant' => $paiement->getMontant(),
+            'mode' => $paiement->getMode(),
+            'fondsSoutienInclus' => $paiement->isFondsSoutienInclus(),
+            'fraisRetraitInclus' => $paiement->isFraisRetraitInclus(),
+        ];
+
+        $form = $this->createForm(PaiementsType::class, $paiement, [
+            'est_admin' => $this->isGranted('ROLE_ADMIN'),
+            'utilisateur' => $this->utilisateurConnecte(),
+            'voir_soldes' => $this->isGranted('ROLE_TRESORERIE_VOIR'),
+        ]);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            // Frais Orange Money / Wave refaits ici, comme à la caisse :
+            // décochés hors de ces deux modes, recalculés quand une case est
+            // cochée ou que le montant change.
+            FraisOrangeMoney::appliquer($paiement, $parametresPaiementRepository->recuperer(), $avant);
+
             $entityManager->flush();
 
-            return $this->redirectToRoute('app_paiements_index', [], Response::HTTP_SEE_OTHER);
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
         }
 
         return $this->render('paiements/edit.html.twig', [
@@ -85,6 +115,12 @@ final class PaiementsController extends AbstractController
     #[Route('/{id}', name: 'app_paiements_delete', methods: ['POST'])]
     public function delete(Request $request, Paiements $paiement, EntityManagerInterface $entityManager): Response
     {
+        if (!$paiement->estEnAttente()) {
+            $this->addFlash('error', 'Seul un paiement en attente peut être supprimé. Un paiement validé se corrige en l\'annulant.');
+
+            return $this->redirectToRoute('app_paiements_show', ['id' => $paiement->getId()], Response::HTTP_SEE_OTHER);
+        }
+
         if ($this->isCsrfTokenValid('delete'.$paiement->getId(), $request->getPayload()->getString('_token'))) {
             $entityManager->remove($paiement);
             $entityManager->flush();
@@ -99,9 +135,14 @@ final class PaiementsController extends AbstractController
     {
         if ($this->isCsrfTokenValid('paiement_valider' . $paiement->getId(), $request->getPayload()->getString('_token'))) {
             try {
-                $paiementService->valider($paiement, $this->utilisateurConnecte());
-
-                $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                if (Paiements::MODE_SOLDE_CLIENT === $paiement->getMode()) {
+                    // Avoir utilisé en ligne par le client : le solde de sa fiche baisse, aucun compte n'est crédité.
+                    $paiementService->validerAvoir($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le solde du client diminué.');
+                } else {
+                    $paiementService->valider($paiement, $this->utilisateurConnecte());
+                    $this->addFlash('success', 'Le paiement a été validé et le compte crédité.');
+                }
             } catch (\Throwable $exception) {
                 $this->addFlash('error', $exception->getMessage());
             }

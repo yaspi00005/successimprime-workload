@@ -1,0 +1,260 @@
+/*
+ * Site vitrine (maquettes 01 à 12). Feuille unique, sans police externe
+ * ni bibliothèque, pour s'afficher vite en 3G. Couleurs de la charte
+ * (public/css/charte.css).
+ */
+:root {
+  --bleu: #0F4590;
+  --bleu-fonce: #0A3068;
+  --bleu-clair: #2F6BC0;
+  --bleu-pale: #EEF3FB;
+  --rouge: #DE1028;
+  --rouge-fonce: #B50C20;
+  --jaune: #FDC82A;
+  --orange: #E95B35;
+  --magenta: #E8398A;
+  --noir: #1D1D1B;
+  --vert-wa: #25D366;
+  --texte: #1F2937;
+  --texte-doux: #5B6474;
+  --bordure: #E3E7EF;
+  --fond: #FFFFFF;
+  --fond-doux: #F5F7FB;
+  --rayon: 12px;
+  --ombre: 0 6px 22px rgba(15, 35, 75, .08);
+  --cadre: 1180px;
+  --police: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body.si-site { margin: 0; font-family: var(--police); font-size: 16px; line-height: 1.55; color: var(--texte); background: var(--fond); }
+.si-site img, .si-site svg { max-width: 100%; }
+.si-site a { color: var(--bleu); }
+.si-site h1, .si-site h2, .si-site h3 { line-height: 1.2; color: var(--noir); margin: 0 0 .5em; }
+
+.si-cadre { width: 100%; max-width: var(--cadre); margin: 0 auto; padding: 0 16px; }
+.si-evitement { position: absolute; left: -9999px; top: 0; z-index: 100; background: #fff; padding: 8px 12px; }
+.si-evitement:focus { left: 8px; }
+
+/* Boutons */
+.si-bouton { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 8px 18px; border-radius: 999px; border: 2px solid transparent; font-weight: 700; font-size: 15px; text-decoration: none; cursor: pointer; transition: background .15s, color .15s, border-color .15s; white-space: nowrap; }
+.si-site a.si-bouton-rouge, .si-bouton-rouge { background: var(--rouge); color: #fff; }
+.si-bouton-rouge:hover { background: var(--rouge-fonce); }
+.si-site a.si-bouton-contour, .si-bouton-contour { border-color: var(--bleu); color: var(--bleu); background: #fff; }
+.si-bouton-contour:hover { background: var(--bleu-pale); }
+.si-site a.si-bouton-clair, .si-bouton-clair { border-color: rgba(255, 255, 255, .85); color: #fff; background: transparent; }
+.si-bouton-clair:hover { background: rgba(255, 255, 255, .12); }
+.si-site a.si-bouton-bleu, .si-bouton-bleu { background: var(--bleu); color: #fff; }
+.si-bouton-bleu:hover { background: var(--bleu-fonce); }
+.si-bouton-grand { min-height: 50px; padding: 12px 26px; font-size: 16px; }
+.si-bouton:focus-visible, .si-site a:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; }
+
+/* Bandeau du haut (maquette SW01) */
+.si-haut { background: var(--bleu-fonce); color: rgba(255, 255, 255, .88); font-size: 13px; }
+.si-haut-cadre { display: flex; align-items: center; gap: 6px 22px; min-height: 36px; flex-wrap: wrap; }
+.si-haut p { display: flex; align-items: center; gap: 6px; margin: 0; }
+.si-haut .si-icone { flex: none; opacity: .85; }
+.si-haut-repere { color: rgba(255, 255, 255, .72); }
+.si-haut p.si-haut-droite { margin-left: auto; gap: 16px; }
+.si-site .si-haut a { color: #fff; text-decoration: none; font-weight: 600; }
+.si-site .si-haut a:hover { text-decoration: underline; }
+.si-haut-tel { display: inline-flex; align-items: center; gap: 6px; }
+.si-pastille-etat { display: inline-flex; align-items: center; gap: 6px; padding: 1px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; background: rgba(222, 16, 40, .18); color: #FFD7DC; }
+.si-pastille-etat .si-point { width: 8px; height: 8px; border-radius: 50%; background: #FF5468; flex: none; }
+.si-pastille-etat.si-ouvert-maintenant { background: rgba(253, 200, 42, .16); color: var(--jaune); }
+.si-pastille-etat.si-ouvert-maintenant .si-point { background: var(--jaune); animation: si-pouls 2.4s infinite; }
+.si-invisible { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; }
+@keyframes si-pouls { 0% { box-shadow: 0 0 0 0 rgba(253, 200, 42, .55); } 70% { box-shadow: 0 0 0 7px rgba(253, 200, 42, 0); } 100% { box-shadow: 0 0 0 0 rgba(253, 200, 42, 0); } }
+@media (max-width: 860px) {
+  .si-haut-horaires, .si-haut-tel, .si-haut-suivi { display: none !important; }
+  .si-haut-repere { display: none; }
+  .si-haut-cadre { min-height: 32px; flex-wrap: nowrap; }
+}
+
+/* En-tête */
+.si-entete { position: sticky; top: 0; z-index: 40; background: rgba(255, 255, 255, .97); border-bottom: 1px solid var(--bordure); }
+.si-entete-cadre { display: flex; align-items: center; gap: 24px; min-height: 72px; }
+.si-logo { display: block; flex: 0 0 auto; line-height: 0; }
+.si-logo img { width: 112px; height: auto; }
+.si-entete-appel { display: none; }
+.si-menu { display: flex; align-items: center; gap: 20px; flex: 1; justify-content: flex-end; }
+.si-menu > ul { display: flex; align-items: center; gap: 2px; list-style: none; margin: 0 auto 0 0; padding: 0; }
+.si-menu ul a, .si-menu summary { display: block; padding: 8px 10px; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; border-radius: 8px; white-space: nowrap; cursor: pointer; }
+.si-menu ul a:hover, .si-menu summary:hover { color: var(--bleu); background: var(--bleu-pale); }
+.si-menu ul a.actif, .si-menu summary.actif { color: var(--bleu); box-shadow: inset 0 -2px 0 var(--bleu); border-radius: 0; }
+.si-menu summary { list-style: none; }
+.si-menu summary::-webkit-details-marker { display: none; }
+.si-menu summary::after { content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 0 3px 8px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); transition: transform .2s; }
+.si-menu details[open] summary::after { transform: translateY(3px) rotate(-135deg); }
+.si-menu summary:focus-visible { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-menu-deroulant { position: relative; }
+.si-menu-deroulant ul { list-style: none; margin: 0; padding: 8px; }
+.si-menu-actions { display: flex; align-items: center; gap: 10px; }
+.si-site a.si-bouton-lien { color: var(--bleu); padding-left: 8px; padding-right: 8px; }
+.si-bouton-lien:hover { background: var(--bleu-pale); }
+.si-menu-case, .si-burger { display: none; }
+@media (min-width: 1141px) {
+  .si-menu-deroulant ul { position: absolute; top: calc(100% + 8px); left: 0; min-width: 240px; background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); box-shadow: 0 16px 36px rgba(15, 35, 75, .14); animation: si-ouvre .18s ease-out; }
+}
+@keyframes si-ouvre { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@media (max-width: 1280px) {
+  .si-entete-cadre { gap: 16px; }
+  .si-menu { gap: 10px; }
+  .si-menu ul a, .si-menu summary { padding: 8px 7px; font-size: 14.5px; }
+}
+
+@media (max-width: 1140px) {
+  .si-entete-cadre { justify-content: space-between; min-height: 64px; gap: 10px; }
+  .si-entete-appel { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 8px 14px; border-radius: 999px; background: var(--rouge); font-weight: 700; font-size: 15px; text-decoration: none; }
+  .si-site a.si-entete-appel { color: #fff; }
+  .si-burger { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: 10px; cursor: pointer; }
+  .si-burger span, .si-burger span::before, .si-burger span::after { content: ""; display: block; width: 22px; height: 2px; background: var(--noir); position: relative; transition: transform .2s; }
+  .si-burger span::before { position: absolute; top: -7px; }
+  .si-burger span::after { position: absolute; top: 7px; }
+  .si-menu { display: none; position: absolute; left: 0; right: 0; top: 100%; flex-direction: column; align-items: stretch; gap: 12px; padding: 12px 16px 20px; background: #fff; border-bottom: 1px solid var(--bordure); box-shadow: var(--ombre); max-height: calc(100vh - 64px); overflow-y: auto; }
+  .si-menu > ul { flex-direction: column; align-items: stretch; margin: 0; }
+  .si-menu ul a, .si-menu summary { padding: 12px; font-size: 16px; }
+  .si-menu-deroulant ul { padding: 0 0 0 14px; }
+  .si-menu ul a.actif { box-shadow: inset 3px 0 0 var(--bleu); background: var(--bleu-pale); }
+  .si-menu-actions { flex-direction: column; align-items: stretch; }
+  .si-menu-actions .si-bouton { min-height: 46px; }
+  .si-menu-case:checked ~ .si-menu { display: flex; }
+  .si-menu-case:checked + .si-burger span { background: transparent; }
+  .si-menu-case:checked + .si-burger span::before { transform: translateY(7px) rotate(45deg); }
+  .si-menu-case:checked + .si-burger span::after { transform: translateY(-7px) rotate(-45deg); }
+}
+
+/* Titres de bloc (sur-titre rouge, lien à droite) et boutons de couleur */
+.si-sur-titre { margin: 0 0 4px; font-size: 12.5px; font-weight: 800; letter-spacing: 1.4px; text-transform: uppercase; color: var(--rouge); }
+.si-titre-bloc { display: flex; align-items: flex-end; justify-content: space-between; gap: 8px 24px; flex-wrap: wrap; margin-bottom: 18px; }
+.si-titre-bloc h2 { margin: 0; font-size: clamp(24px, 3vw, 32px); letter-spacing: -.3px; }
+.si-site a.si-lien-fleche { font-weight: 700; text-decoration: none; }
+.si-lien-fleche::after { content: " →"; display: inline-block; transition: transform .2s; }
+.si-lien-fleche:hover::after { transform: translateX(3px); }
+.si-bouton svg { flex: none; width: 20px; height: 20px; }
+.si-site a.si-bouton-wa, .si-bouton-wa { background: #15843F; color: #fff; }
+.si-bouton-wa:hover { background: #106A32; }
+.si-bouton-wa svg { fill: currentColor; }
+.si-site a.si-bouton-blanc, .si-bouton-blanc { background: #fff; color: var(--bleu); }
+.si-bouton-blanc:hover { background: var(--bleu-pale); }
+.si-site a.si-bouton-jaune, .si-bouton-jaune { background: var(--jaune); color: var(--noir); }
+.si-bouton-jaune:hover { background: #F2B800; }
+.si-accroche-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+/* Bandeau des pages intérieures */
+.si-bandeau { background: linear-gradient(115deg, var(--bleu-fonce), var(--bleu)); color: #fff; padding: 26px 0 30px; }
+.si-bandeau h1 { color: #fff; font-size: clamp(26px, 3.6vw, 38px); margin: 6px 0 6px; }
+.si-bandeau p { margin: 0; max-width: 46em; color: rgba(255, 255, 255, .88); }
+.si-ariane { font-size: 13px; color: rgba(255, 255, 255, .75); }
+.si-ariane a { color: rgba(255, 255, 255, .9); text-decoration: none; }
+.si-ariane a:hover { text-decoration: underline; }
+
+/* Blocs communs aux pages intérieures */
+.si-section { padding: 40px 0; }
+.si-section-douce { background: var(--fond-doux); }
+.si-section h2 { font-size: clamp(22px, 2.6vw, 28px); }
+.si-grille { display: grid; gap: 18px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+.si-carte { background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); padding: 18px; box-shadow: var(--ombre); }
+.si-note { font-size: 13px; color: var(--texte-doux); }
+.si-champ { display: flex; flex-direction: column; gap: 4px; margin-bottom: 14px; }
+.si-champ label { font-weight: 600; font-size: 14px; }
+.si-champ input, .si-champ select, .si-champ textarea { font: inherit; padding: 10px 12px; border: 1px solid #C9D1DE; border-radius: 10px; background: #fff; min-height: 44px; width: 100%; }
+.si-champ input:focus, .si-champ select:focus, .si-champ textarea:focus { outline: 2px solid var(--bleu-clair); border-color: var(--bleu-clair); }
+
+/* Pied de page bleu (maquette SW03) */
+.si-pied { background: var(--bleu-fonce); color: rgba(255, 255, 255, .82); font-size: 14px; padding: 40px 0 28px; }
+.si-pied-colonnes { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 28px 32px; }
+.si-pied-marque img { display: block; width: 96px; height: auto; padding: 6px; border-radius: 10px; background: #fff; }
+.si-pied-marque p { margin: 12px 0 0; max-width: 30em; }
+.si-pied p.si-pied-slogan { margin-top: 6px; font-weight: 700; color: var(--jaune); }
+.si-pied-marque .si-reseaux { margin-top: 14px; }
+.si-pied h2 { margin: 0 0 10px; font-size: 15px; color: var(--jaune); }
+.si-pied-colonne ul { list-style: none; margin: 0; padding: 0; }
+.si-pied-colonne li { margin: 0 0 7px; }
+.si-pied a { color: #fff; text-decoration: none; }
+.si-pied a:hover { text-decoration: underline; }
+.si-pied-bas { display: flex; justify-content: space-between; gap: 6px 24px; flex-wrap: wrap; margin-top: 26px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .14); font-size: 12.5px; color: rgba(255, 255, 255, .72); }
+.si-pied-bas p { margin: 0; }
+@media (max-width: 960px) { .si-pied-colonnes { grid-template-columns: 1fr 1fr 1fr; } .si-pied-marque { grid-column: 1 / -1; } }
+@media (max-width: 560px) {
+  .si-pied { padding: 28px 0 92px; }
+  .si-pied-colonnes { grid-template-columns: 1fr 1fr; gap: 20px 16px; }
+  .si-pied-colonne li { margin-bottom: 2px; }
+  .si-pied-colonne a { display: inline-block; padding: 5px 0; }
+}
+
+/* Réseaux sociaux de l'imprimerie (site/_reseaux.html.twig, docs/referencement.md) */
+.si-reseaux { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.si-reseaux-titre { margin: 0; font-weight: 600; }
+.si-reseaux ul { display: flex; flex-wrap: wrap; gap: 10px; list-style: none; margin: 0; padding: 0; }
+.si-reseau { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-width: 44px; height: 44px; border-radius: 50%; transition: background-color .15s, color .15s, transform .15s; }
+.si-reseau svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+.si-pied .si-reseau { background: rgba(255, 255, 255, .1); color: #fff; }
+.si-pied .si-reseau:hover { background: #fff; color: var(--noir); text-decoration: none; transform: translateY(-1px); }
+.si-reseaux-contact { margin-top: 14px; }
+.si-reseaux-contact .si-reseaux-titre { width: 100%; }
+.si-reseaux-contact .si-reseau { border-radius: 999px; padding: 0 14px 0 12px; background: #fff; color: var(--texte, #1C2433); border: 1px solid #DCE2EC; font-size: 14px; font-weight: 600; text-decoration: none; }
+.si-reseaux-contact .si-reseau:hover { border-color: currentColor; }
+.si-reseaux-contact .si-reseau-facebook svg { color: #1877F2; }
+.si-reseaux-contact .si-reseau-instagram svg { color: #C13584; }
+.si-reseaux-contact .si-reseau-tiktok svg { color: #111; }
+.si-reseaux-contact .si-reseau-whatsapp svg { color: #1FA855; }
+.si-reseaux-contact .si-reseau-linkedin svg { color: #0A66C2; }
+.si-reseaux-contact .si-reseau-youtube svg { color: #E62117; }
+.si-reseaux-contact .si-reseau-x svg { color: #111; }
+
+/* Bouton WhatsApp flottant (ordinateur) et barre fixe Appeler · WhatsApp (téléphone) */
+.si-whatsapp { position: fixed; right: 18px; bottom: 18px; z-index: 50; display: flex; align-items: center; justify-content: center; width: 58px; height: 58px; border-radius: 50%; background: var(--vert-wa); box-shadow: 0 8px 24px rgba(0, 0, 0, .22); transition: transform .15s; }
+.si-whatsapp:hover { transform: scale(1.06); }
+.si-whatsapp svg { width: 32px; height: 32px; fill: #fff; }
+.si-barre-mobile { display: none; }
+@media (max-width: 720px) {
+  .si-whatsapp { display: none; }
+  .si-barre-mobile { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; gap: 8px; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); background: rgba(255, 255, 255, .97); border-top: 1px solid var(--bordure); box-shadow: 0 -6px 20px rgba(15, 35, 75, .08); }
+  .si-barre-mobile a { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border-radius: 999px; font-weight: 700; text-decoration: none; }
+  .si-barre-mobile svg { width: 20px; height: 20px; }
+  .si-site a.si-barre-appel { background: var(--bleu); color: #fff; }
+  .si-site a.si-barre-wa { background: #15843F; color: #fff; }
+  .si-barre-wa svg { fill: currentColor; }
+}
+
+/* Photos recadrées : garder le haut (visage, enseigne) ou le bas. */
+.si-cadrage-haut { object-position: 50% 12%; }
+.si-cadrage-bas { object-position: 50% 88%; }
+
+/* Animations légères (docs/atelier-3d.md) : transformations seulement, jamais de clic bloqué. */
+.si-anime [data-revele], .si-anime .si-revele { transition: transform .6s cubic-bezier(.2, .8, .2, 1) var(--si-delai, 0ms), opacity .6s ease var(--si-delai, 0ms); }
+.si-anime [data-revele]:not(.si-vu), .si-anime .si-revele:not(.si-vu) { transform: translateY(22px); opacity: 0; }
+@media (hover: hover) and (pointer: fine) {
+  [data-incline] { transition: transform .2s ease-out, box-shadow .2s; will-change: transform; }
+  [data-incline]:hover { box-shadow: 0 14px 30px rgba(15, 35, 75, .14); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .si-site *, .si-site *::before, .si-site *::after { transition: none !important; animation: none !important; }
+}
+
+/* Avant / après (réalisations et accueil) : sans script, les deux photos l'une sous l'autre. */
+.si-aa { margin: 0; }
+.si-aa-cadre { position: relative; display: grid; gap: 4px; border-radius: 12px; overflow: hidden; background: var(--noir); }
+.si-aa-cadre img { display: block; width: 100%; height: auto; }
+.si-aa-etiquette, .si-aa-poignee { display: none; }
+.si-aa-pret .si-aa-cadre { display: block; gap: 0; }
+.si-aa-pret .si-aa-cadre img { position: absolute; inset: 0; width: 100%; height: 100%; max-height: none; object-fit: cover; }
+.si-aa-pret .si-aa-avant { clip-path: inset(0 calc(100% - var(--coupe, 50%)) 0 0); }
+.si-aa-pret .si-aa-etiquette { display: block; position: absolute; bottom: 10px; padding: 3px 10px; border-radius: 999px; background: rgba(10, 20, 40, .7); color: #fff; font-size: 12px; font-weight: 700; pointer-events: none; }
+.si-aa-gauche { left: 10px; }
+.si-aa-droite { right: 10px; }
+.si-aa-pret .si-aa-poignee { display: block; position: absolute; top: 0; bottom: 0; left: var(--coupe, 50%); width: 3px; margin-left: -1.5px; background: #fff; box-shadow: 0 0 0 1px rgba(0, 0, 0, .15); pointer-events: none; }
+.si-aa-poignee::after { content: "‹ ›"; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 38px; height: 38px; border-radius: 50%; background: #fff; color: var(--bleu); font-weight: 800; font-size: 15px; line-height: 38px; text-align: center; box-shadow: var(--ombre); }
+/* Le curseur couvre toute la photo : on la glisse au doigt ou à la souris ; invisible, mais au clavier son focus se voit sur la poignée. */
+.si-aa-curseur { position: absolute; inset: 0; z-index: 2; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; touch-action: pan-y; }
+.si-aa-curseur:focus-visible + .si-aa-poignee::after { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-aa figcaption { margin-top: 6px; color: var(--gris, #5b6577); font-size: 14px; }
+.si-aa-bande { padding: 26px 0 8px; }
+.si-aa-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 20px 32px; align-items: center; }
+.si-aa-grille h2 { margin: 6px 0 8px; font-size: clamp(20px, 2.4vw, 26px); }
+.si-aa-grille p { margin: 0 0 14px; color: var(--texte); }
+@media (max-width: 860px) { .si-aa-grille { grid-template-columns: 1fr; } }

@@ -72,6 +72,24 @@ class Clients
     #[ORM\Column(length: 100, nullable: true)]
     private ?string $ville = null;
 
+    /*
+     * Position du client (livraison, pose, visite). A Bamako l'adresse
+     * seule ne suffit pas : on garde aussi un repere en clair.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    #[Assert\Range(min: -90, max: 90)]
+    private ?string $latitude = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 10, scale: 7, nullable: true)]
+    #[Assert\Range(min: -180, max: 180)]
+    private ?string $longitude = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $repere = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $localiseLe = null;
+
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $nif = null;
 
@@ -89,6 +107,17 @@ class Clients
     private string $typeClient = 'B2C';
 
     /*
+     * Grille à remise d'un client au prix standard (docs/produits.md) :
+     * « partenaire » ou « association », remise en % réglée dans
+     * Paramètres › Grille tarifaire. Sans effet pour un revendeur (B2B).
+     */
+    public const GRILLE_PARTENAIRE = 'partenaire';
+    public const GRILLE_ASSOCIATION = 'association';
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $grilleTarifaire = null;
+
+    /*
      * ============================================================
      * TYPE DE COMPTE (ENTREPRISE / PARTICULIER)
      * ============================================================
@@ -104,14 +133,40 @@ class Clients
 
     public const TYPE_COMPTE_ENTREPRISE = 'entreprise';
 
+    public const TYPE_COMPTE_ONG = 'ong';
+
+    public const TYPE_COMPTE_ADMINISTRATION = 'administration';
+
     public const TYPES_COMPTE = [
         self::TYPE_COMPTE_PARTICULIER,
         self::TYPE_COMPTE_ENTREPRISE,
+        self::TYPE_COMPTE_ONG,
+        self::TYPE_COMPTE_ADMINISTRATION,
     ];
 
     public const TYPES_COMPTE_LABELS = [
-        self::TYPE_COMPTE_PARTICULIER => 'Particulier',
         self::TYPE_COMPTE_ENTREPRISE => 'Entreprise',
+        self::TYPE_COMPTE_ONG => 'ONG',
+        self::TYPE_COMPTE_ADMINISTRATION => 'Administration',
+        self::TYPE_COMPTE_PARTICULIER => 'Particulier',
+    ];
+
+    /** Délais de paiement proposés (maquette K02). */
+    public const DELAIS_PAIEMENT = [
+        'comptant' => 'Comptant',
+        '15_jours' => '15 jours',
+        '30_jours' => '30 jours',
+        '30_jours_fdm' => '30 jours fin de mois',
+        '45_jours' => '45 jours',
+        '60_jours' => '60 jours',
+    ];
+
+    public const MOYENS_PAIEMENT = [
+        'orange_money' => 'Orange Money',
+        'especes' => 'Espèces',
+        'virement' => 'Virement',
+        'cheque' => 'Chèque',
+        'wave' => 'Wave',
     ];
 
     #[ORM\Column(
@@ -120,7 +175,7 @@ class Clients
     )]
     #[Assert\Choice(
         choices: self::TYPES_COMPTE,
-        message: 'Le type de compte doit être Particulier ou Entreprise.'
+        message: 'Le type de compte doit être Entreprise, ONG, Administration ou Particulier.'
     )]
     private string $typeCompte = self::TYPE_COMPTE_PARTICULIER;
 
@@ -158,6 +213,13 @@ class Clients
     #[ORM\Column(options: ['default' => true])]
     private bool $recevoirSms = true;
 
+    /*
+     * Date à laquelle le client a accepté de recevoir des offres
+     * (campagnes marketing). Null : pas d'accord enregistré.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $consentementMarketingLe = null;
+
     /**
      * @var Collection<int, Devis>
      */
@@ -172,6 +234,204 @@ class Clients
         unique: true
     )]
     private Uuid $publicId;
+
+    /* ---------- Fiche commerciale (maquettes K01 à K06) ---------- */
+
+    /** Commercial qui suit le client. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?User $suiviPar = null;
+
+    /**
+     * Prénom et nom de la personne qui suit le client, tenus avec suiviPar.
+     * C'est tout ce qui part au site en ligne (carte « Votre conseiller »
+     * de l'espace client) : rien d'autre de l'employé.
+     */
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $conseiller = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $secteur = null;
+
+    /** Comment le client nous a connus (mêmes valeurs que les prospects). */
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $origine = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $delaiPaiement = null;
+
+    /** Remise habituelle en %. */
+    #[ORM\Column(nullable: true)]
+    private ?float $remiseHabituelle = null;
+
+    /** Acompte demandé à la commande en %. */
+    #[ORM\Column(nullable: true)]
+    private ?int $acompte = null;
+
+    /**
+     * Client dispensé d'acompte (case de la fiche, réservée à la direction) :
+     * il valide ses commandes sans rien payer d'avance, partout où un
+     * acompte est demandé (panier, commande en ligne, devis, comptoir).
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $sansAcompte = false;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $moyenPrefere = null;
+
+    /** Code de l'entité qui facture (Entreprise::code). */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $entiteFacturation = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $commune = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $quartier = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $etiquettes = [];
+
+    /** Besoin noté à la création (ajout terrain, maquette K05). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $besoin = null;
+
+    /** Canaux d'envoi des factures (fiche client FC01, « Factures envoyées à »). */
+    public const CANAUX_FACTURES = ['whatsapp' => 'WhatsApp', 'email' => 'e-mail', 'papier' => 'papier'];
+
+    /**
+     * Comment le client reçoit ses factures (clés de CANAUX_FACTURES). La
+     * personne est le contact « Factures » de la fiche (sinon le principal).
+     * Reste au local, comme les autres réglages internes de la fiche.
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $facturesCanaux = [];
+
+    /**
+     * Charte du client (fiche client FC03) : couleurs (#RRGGBB) et une ligne
+     * libre (logo, police, Pantone). Pour le prépresse ; reste au local.
+     *
+     * @var list<string>
+     */
+    #[ORM\Column(type: Types::JSON, options: ['default' => '[]'])]
+    private array $charteCouleurs = [];
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $charteTexte = null;
+
+    /** @return list<string> */
+    public function getFacturesCanaux(): array { return $this->facturesCanaux; }
+    /** @param iterable<string> $canaux */
+    public function setFacturesCanaux(iterable $canaux): static
+    {
+        // Toujours dans l'ordre de CANAUX_FACTURES (« WhatsApp + e-mail »).
+        $choisis = \is_array($canaux) ? $canaux : iterator_to_array($canaux, false);
+        $this->facturesCanaux = array_values(array_filter(array_keys(self::CANAUX_FACTURES), static fn (string $c): bool => \in_array($c, $choisis, true)));
+
+        return $this;
+    }
+    /** « WhatsApp + e-mail » */
+    public function getFacturesCanauxLabel(): ?string
+    {
+        return [] === $this->facturesCanaux ? null : implode(' + ', array_map(static fn (string $c): string => self::CANAUX_FACTURES[$c], $this->facturesCanaux));
+    }
+
+    /** @return list<string> */
+    public function getCharteCouleurs(): array { return $this->charteCouleurs; }
+    /**
+     * Garde les couleurs #RGB ou #RRGGBB (6 au plus), en majuscules.
+     *
+     * @param iterable<string> $couleurs
+     */
+    public function setCharteCouleurs(iterable $couleurs): static
+    {
+        $liste = [];
+        foreach ($couleurs as $c) {
+            $c = strtoupper(trim((string) $c));
+            if ('' !== $c && '#' !== $c[0]) {
+                $c = '#'.$c;
+            }
+            if (preg_match('/^#[0-9A-F]{3}$/', $c)) {
+                $c = '#'.$c[1].$c[1].$c[2].$c[2].$c[3].$c[3];
+            }
+            if (preg_match('/^#[0-9A-F]{6}$/', $c) && !\in_array($c, $liste, true)) {
+                $liste[] = $c;
+            }
+        }
+        $this->charteCouleurs = \array_slice($liste, 0, 6);
+
+        return $this;
+    }
+    public function getCharteTexte(): ?string { return $this->charteTexte; }
+    public function setCharteTexte(?string $v): static { $this->charteTexte = self::texteCourt($v, 255); return $this; }
+
+    public function getSuiviPar(): ?User { return $this->suiviPar; }
+    public function setSuiviPar(?User $u): static
+    {
+        $this->suiviPar = $u;
+        $nom = null === $u ? '' : trim(($u->getEmploye()?->getPrenom() ?? '').' '.($u->getEmploye()?->getNom() ?? ''));
+        $this->conseiller = '' === $nom ? null : mb_substr($nom, 0, 80);
+
+        return $this;
+    }
+    public function getConseiller(): ?string { return $this->conseiller; }
+    public function getSecteur(): ?string { return $this->secteur; }
+    public function setSecteur(?string $v): static { $this->secteur = self::texteCourt($v, 80); return $this; }
+    public function getOrigine(): ?string { return $this->origine; }
+    public function setOrigine(?string $v): static { $this->origine = $v !== null && isset(Prospect::SOURCES_LIBELLES[$v]) ? $v : null; return $this; }
+    public function getOrigineLabel(): ?string { return $this->origine !== null ? Prospect::SOURCES_LIBELLES[$this->origine] ?? $this->origine : null; }
+    public function getDelaiPaiement(): ?string { return $this->delaiPaiement; }
+    public function setDelaiPaiement(?string $v): static { $this->delaiPaiement = $v !== null && isset(self::DELAIS_PAIEMENT[$v]) ? $v : null; return $this; }
+    public function getDelaiPaiementLabel(): ?string { return $this->delaiPaiement !== null ? self::DELAIS_PAIEMENT[$this->delaiPaiement] : null; }
+    public function getRemiseHabituelle(): ?float { return $this->remiseHabituelle; }
+    public function setRemiseHabituelle(?float $v): static { $this->remiseHabituelle = $v !== null && $v > 0 ? min(100.0, round($v, 2)) : null; return $this; }
+    public function getAcompte(): ?int { return $this->acompte; }
+    public function setAcompte(?int $v): static { $this->acompte = $v !== null && $v >= 0 ? min(100, $v) : null; return $this; }
+    public function isSansAcompte(): bool { return $this->sansAcompte; }
+    public function setSansAcompte(bool $v): static { $this->sansAcompte = $v; return $this; }
+    public function getMoyenPrefere(): ?string { return $this->moyenPrefere; }
+    public function setMoyenPrefere(?string $v): static { $this->moyenPrefere = $v !== null && isset(self::MOYENS_PAIEMENT[$v]) ? $v : null; return $this; }
+    public function getMoyenPrefereLabel(): ?string { return $this->moyenPrefere !== null ? self::MOYENS_PAIEMENT[$this->moyenPrefere] : null; }
+    public function getEntiteFacturation(): ?string { return $this->entiteFacturation; }
+    public function setEntiteFacturation(?string $v): static { $this->entiteFacturation = self::texteCourt($v, 20); return $this; }
+    public function getCommune(): ?string { return $this->commune; }
+    public function setCommune(?string $v): static { $this->commune = self::texteCourt($v, 80); return $this; }
+    public function getQuartier(): ?string { return $this->quartier; }
+    public function setQuartier(?string $v): static { $this->quartier = self::texteCourt($v, 80); return $this; }
+    /** @return list<string> */
+    public function getEtiquettes(): array { return $this->etiquettes; }
+    /** @param iterable<string> $e */
+    public function setEtiquettes(iterable $e): static
+    {
+        $liste = [];
+        foreach ($e as $t) {
+            $t = self::texteCourt((string) $t, 30);
+            if ($t !== null && !\in_array(mb_strtolower($t), array_map('mb_strtolower', $liste), true)) {
+                $liste[] = $t;
+            }
+        }
+        $this->etiquettes = \array_slice($liste, 0, 12);
+
+        return $this;
+    }
+    public function getBesoin(): ?string { return $this->besoin; }
+    public function setBesoin(?string $v): static { $this->besoin = $v !== null && trim($v) !== '' ? trim($v) : null; return $this; }
+
+    /** Entreprise, ONG ou administration : raison sociale, NIF, RCCM. */
+    public function isOrganisation(): bool
+    {
+        return $this->typeCompte !== self::TYPE_COMPTE_PARTICULIER;
+    }
+
+    private static function texteCourt(?string $v, int $max): ?string
+    {
+        $v = $v !== null ? trim($v) : '';
+
+        return $v !== '' ? mb_substr($v, 0, $max) : null;
+    }
 
 
     public function __construct()
@@ -317,6 +577,57 @@ class Clients
         return $this;
     }
 
+    public function getLatitude(): ?float
+    {
+        return null === $this->latitude ? null : (float) $this->latitude;
+    }
+
+    public function getLongitude(): ?float
+    {
+        return null === $this->longitude ? null : (float) $this->longitude;
+    }
+
+    public function estLocalise(): bool
+    {
+        return null !== $this->latitude && null !== $this->longitude;
+    }
+
+    /**
+     * Enregistre la position, ou l'efface si l'une des deux valeurs manque.
+     */
+    public function localiser(?float $latitude, ?float $longitude, ?\DateTimeImmutable $le = null): static
+    {
+        if (null === $latitude || null === $longitude) {
+            $this->latitude = $this->longitude = null;
+            $this->localiseLe = null;
+
+            return $this;
+        }
+
+        $this->latitude = number_format($latitude, 7, '.', '');
+        $this->longitude = number_format($longitude, 7, '.', '');
+        $this->localiseLe = $le ?? new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    public function getRepere(): ?string
+    {
+        return $this->repere;
+    }
+
+    public function setRepere(?string $repere): static
+    {
+        $this->repere = $this->normaliserValeur($repere);
+
+        return $this;
+    }
+
+    public function getLocaliseLe(): ?\DateTimeImmutable
+    {
+        return $this->localiseLe;
+    }
+
     public function getNif(): ?string
     {
         return $this->nif;
@@ -367,6 +678,32 @@ class Clients
     public function isB2C(): bool
     {
         return $this->typeClient === 'B2C';
+    }
+
+    public function getGrilleTarifaire(): ?string
+    {
+        return $this->grilleTarifaire;
+    }
+
+    public function setGrilleTarifaire(?string $grille): static
+    {
+        $grille = null !== $grille ? strtolower(trim($grille)) : null;
+        $this->grilleTarifaire = \in_array($grille, [self::GRILLE_PARTENAIRE, self::GRILLE_ASSOCIATION], true) ? $grille : null;
+
+        return $this;
+    }
+
+    /**
+     * Grille de prix du client : B2B (Revendeur), PARTENAIRE, ASSOCIATION
+     * ou B2C (Standard). Le revendeur l'emporte sur une grille à remise.
+     */
+    public function getGrille(): string
+    {
+        if ($this->isB2B()) {
+            return 'B2B';
+        }
+
+        return null !== $this->grilleTarifaire ? strtoupper($this->grilleTarifaire) : 'B2C';
     }
 
     public function getTypeCompte(): string
@@ -494,7 +831,7 @@ class Clients
     public function getNomComplet(): string
     {
         if (
-            $this->isEntreprise()
+            $this->isOrganisation()
             && $this->raisonSociale !== null
         ) {
             return $this->raisonSociale;
@@ -536,6 +873,30 @@ class Clients
     public function setStatut(bool $statut): static
     {
         $this->statut = $statut;
+
+        return $this;
+    }
+
+    public function getConsentementMarketingLe(): ?\DateTimeImmutable
+    {
+        return $this->consentementMarketingLe;
+    }
+
+    public function isAccepteMarketing(): bool
+    {
+        return null !== $this->consentementMarketingLe;
+    }
+
+    /**
+     * Cocher garde la date du premier accord ; décocher l'efface.
+     */
+    public function setAccepteMarketing(bool $accepte): static
+    {
+        if (!$accepte) {
+            $this->consentementMarketingLe = null;
+        } elseif (null === $this->consentementMarketingLe) {
+            $this->consentementMarketingLe = new \DateTimeImmutable();
+        }
 
         return $this;
     }

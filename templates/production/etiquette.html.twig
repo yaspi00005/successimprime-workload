@@ -278,7 +278,7 @@
 						<span class="field-label">Produit / désignation</span>
 						<span class="field-value">
 							{% if detail and detail.designation is defined and detail.designation %}
-								{{ detail.designation }}
+								{{ detail|ligne_interne }}
 							{% elseif configuration and configuration.produit %}
 								{{ configuration.produit.nom }}{% else %}Non renseigné
 							{% endif %}
@@ -296,7 +296,7 @@
 								×
 								{{ detail.longueur }}
 							{% elseif configuration and configuration.format %}
-								{{ configuration.format.nom }}{% else %}—
+								{{ configuration.format|texte_interne }}{% else %}—
 							{% endif %}
 						</span>
 					</div>
@@ -360,7 +360,7 @@
 						<span class="field-label">Finitions</span>
 						<ul class="finitions-list">
 							{% for finitionDetail in detail.finitions %}
-								<li>{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition.nom : 'Finition' }}
+								<li>{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition|texte_interne : 'Finition' }}
 									{% if finitionDetail.quantite is defined and finitionDetail.quantite %}
 										—
 										{{ finitionDetail.quantite }}

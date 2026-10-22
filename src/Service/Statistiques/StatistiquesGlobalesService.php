@@ -11,6 +11,9 @@ use Doctrine\ORM\EntityManagerInterface;
  * Ventes par agent, encaissements par caissiere, production et
  * rendement machine, top produits -- utilise a la fois par la page
  * "Statistiques globales" et par l'onglet Accueil.
+ *
+ * Les ventes et le top produits comptent l'imprimerie seule par défaut ;
+ * $activite (Activite) choisit les ventes hors imprimerie, ou tout.
  */
 final class StatistiquesGlobalesService
 {
@@ -22,18 +25,20 @@ final class StatistiquesGlobalesService
     /**
      * @return list<array{nom: string, nombre: int, montant: int}>
      */
-    public function ventesParAgent(\DateTimeImmutable $debut, \DateTimeImmutable $fin): array
+    public function ventesParAgent(\DateTimeImmutable $debut, \DateTimeImmutable $fin, string $activite = Activite::IMPRIMERIE): array
     {
-        $commandes = $this->entityManager
+        $qb = $this->entityManager
             ->getRepository(Commandes::class)
             ->createQueryBuilder('c')
             ->leftJoin('c.agents', 'agent')
             ->addSelect('agent')
             ->leftJoin('c.commandesDetails', 'detail')
             ->addSelect('detail')
+            ->andWhere('c.soldeOuverture = false')
             ->andWhere('c.dateCommande BETWEEN :debut AND :fin')
             ->setParameter('debut', $debut)
-            ->setParameter('fin', $fin)
+            ->setParameter('fin', $fin);
+        $commandes = Activite::filtrer($qb, 'c', $activite)
             ->getQuery()
             ->getResult();
 
@@ -87,7 +92,8 @@ final class StatistiquesGlobalesService
         $parCaissiere = [];
 
         foreach ($mouvements as $mouvement) {
-            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide()) {
+            // Frais Orange Money à prélever : de passage sur le compte, pas un encaissement de la caissière.
+            if (!$mouvement instanceof MouvementTresorerie || !$mouvement->isValide() || $mouvement->estHorsActivite()) {
                 continue;
             }
 
@@ -202,9 +208,9 @@ final class StatistiquesGlobalesService
     /**
      * @return list<array{nom: string, nombre: int, quantite: int}>
      */
-    public function topProduits(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $limite = 15): array
+    public function topProduits(\DateTimeImmutable $debut, \DateTimeImmutable $fin, int $limite = 15, string $activite = Activite::IMPRIMERIE): array
     {
-        $details = $this->entityManager
+        $qb = $this->entityManager
             ->getRepository(CommandesDetails::class)
             ->createQueryBuilder('d')
             ->leftJoin('d.produit', 'produit')
@@ -216,7 +222,8 @@ final class StatistiquesGlobalesService
             ->andWhere('d.statutProduction != :annulee')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
-            ->setParameter('annulee', CommandesDetails::PRODUCTION_ANNULEE)
+            ->setParameter('annulee', CommandesDetails::PRODUCTION_ANNULEE);
+        $details = Activite::filtrer($qb, 'commande', $activite)
             ->getQuery()
             ->getResult();
 

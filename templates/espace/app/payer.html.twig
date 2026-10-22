@@ -1,0 +1,94 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Récapitulatif avant Orange Money (maquette 17) : montant, fonds de
+	soutien, frais de retrait et total, calculés par le serveur avec les
+	taux de Réglages › Paiements. Seul un payeur ou un particulier arrive
+	ici (contrôleur). Le total est ce qu'Orange débite.
+#}
+
+{% block title %}Paiement{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Paiement</a>{% endblock %}
+
+{% block contenu %}
+	{% set retour = commande.estSoldeOuverture ? path('app_espace_factures') : path('app_espace_commande', {id: commande.publicId}) %}
+	{% if aPayer <= 0 %}
+		<div class="ec-carte" style="text-align:center">
+			<span class="ec-petit">{{ commande.estSoldeOuverture ? 'Réf. ' ~ commande.numero : 'Commande ' ~ commande.numero }} · {{ titre }}</span>
+			{% if enValidation > 0 %}
+				<div class="ec-gros" style="color:var(--vert)">{{ enValidation|number_format(0, ',', ' ') }} FCFA</div>
+				<span class="ec-petit">Payés par Orange Money · en validation à la caisse</span>
+			{% else %}
+				<div class="ec-gros">0 FCFA</div>
+				<span class="ec-petit">Succès Imprim · MDG SARL</span>
+			{% endif %}
+		</div>
+		{% if enValidation > 0 %}
+			<div class="ec-note">Votre paiement Orange Money est bien reçu. Il attend la validation de la caisse, puis votre reçu arrive dans l'espace.</div>
+		{% else %}
+			<div class="ec-flash ec-flash-ok">Cette commande est réglée, merci.</div>
+		{% endif %}
+	{% else %}
+		<section class="ec-carte ec-recap" aria-labelledby="recap-titre">
+			<h2 id="recap-titre">Récapitulatif</h2>
+			<span class="ec-petit">{{ commande.estSoldeOuverture ? 'Réf. ' ~ commande.numero : 'Commande ' ~ commande.numero }} · {{ titre }}</span>
+			<dl class="ec-recap-lignes">
+				<div>
+					<dt>{{ commande.estSoldeOuverture ? 'Montant dû' : (aPayer < commande.totalTtc ? 'Reste à payer sur la commande' : 'Montant de la commande') }}</dt>
+					<dd>{{ frais.montant|number_format(0, ',', ' ') }} F</dd>
+				</div>
+				{% if frais.tauxFondsSoutien > 0 %}
+					<div><dt>Fonds de soutien ({{ frais.tauxFondsSoutien|frais_taux }})</dt><dd>{{ frais.fondsSoutien|number_format(0, ',', ' ') }} F</dd></div>
+				{% endif %}
+				{% if frais.tauxFraisRetrait > 0 %}
+					<div><dt>Frais de retrait Orange Money ({{ frais.tauxFraisRetrait|frais_taux }})</dt><dd>{{ frais.fraisRetrait|number_format(0, ',', ' ') }} F</dd></div>
+				{% endif %}
+				<div class="ec-recap-total"><dt>Total payé avec Orange Money</dt><dd>{{ frais.total|number_format(0, ',', ' ') }} F</dd></div>
+			</dl>
+			{% if frais.frais > 0 %}
+				<p class="ec-petit ec-recap-explication">Le fonds de soutien (prélevé par l'État sur les retraits mobile money) et le frais de retrait d'Orange Money s'ajoutent au montant. Ils ne changent ni le prix de votre commande ni votre facture.</p>
+			{% endif %}
+		</section>
+
+		{% if enValidation > 0 %}
+			<div class="ec-note">{{ enValidation|number_format(0, ',', ' ') }} FCFA déjà payés par Orange Money attendent la validation de la caisse, puis votre reçu arrive dans l'espace.</div>
+		{% endif %}
+
+		<div class="ec-moyen choisi">
+			<span class="om">OM</span>
+			<div><b>Orange Money Mali</b><div class="ec-petit">+223 {{ compte.telephone|slice(3)|split('', 2)|join(' ') }} · modifiable sur la page Orange Money</div></div>
+		</div>
+		{% if omActif %}
+			<div class="ec-note">Vous passez sur la page sécurisée d'Orange Money pour confirmer avec votre code secret, puis vous revenez ici. Le lien de paiement vaut 10 minutes. Ne communiquez jamais votre code secret : Succès Imprim ne vous le demandera pas.</div>
+			<form method="post" action="{{ path('app_espace_payer_orange_money', {id: commande.publicId}) }}" id="om-payer">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				{# Seulement pour revoir le récapitulatif si le total a changé : le serveur recalcule ce qu'il envoie à Orange. #}
+				<input type="hidden" name="total" value="{{ frais.total }}">
+				<div class="ec-recap-boutons">
+					<a class="ec-bouton clair" href="{{ retour }}">Annuler</a>
+					<button class="ec-bouton orange" type="submit" id="om-continuer">Continuer vers Orange Money</button>
+				</div>
+			</form>
+			{% if marchand %}<div class="ec-note" style="margin-top:.85rem">Vous pouvez aussi envoyer {{ frais.total|number_format(0, ',', ' ') }} F au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b>.</div>{% endif %}
+		{% else %}
+			<div class="ec-note">
+				Le paiement Orange Money depuis l'espace arrive très bientôt.
+				{% if marchand %}En attendant, envoyez {{ frais.total|number_format(0, ',', ' ') }} F au numéro marchand <b>{{ marchand }}</b> en indiquant la commande <b>{{ commande.numero }}</b> : le paiement est validé par la caisse et votre reçu arrive sur WhatsApp.{% else %}En attendant, payez à l'imprimerie ou demandez le numéro marchand sur WhatsApp.{% endif %}
+			</div>
+			<div class="ec-recap-boutons">
+				<a class="ec-bouton clair" href="{{ retour }}">Annuler</a>
+				<button class="ec-bouton orange" type="button" disabled>Continuer vers Orange Money</button>
+			</div>
+		{% endif %}
+		{% if whatsapp %}<div class="ec-boutons"><a class="ec-bouton clair" href="{{ whatsapp }}" target="_blank" rel="noopener">Écrire à la caisse sur WhatsApp</a></div>{% endif %}
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		const form = document.getElementById('om-payer');
+		if (form) form.addEventListener('submit', function () { document.getElementById('om-continuer').disabled = true; });
+	})();
+	</script>
+{% endblock %}

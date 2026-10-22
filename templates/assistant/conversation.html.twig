@@ -1,0 +1,58 @@
+{#
+	Une conversation de l'assistant : les questions et les réponses dans
+	l'ordre, avec les outils appelés, l'avis du client et la dépense.
+#}
+{% extends 'assistant/_admin.html.twig' %}
+
+{% block title %}Conversation {{ c.numero }}{% endblock %}
+{% block sous_ecran %}conversations{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_assistant_conversations') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes</a></li>
+{% endblock %}
+
+{% block contenu %}
+	{% set depense = messages|reduce((total, m) => total + m.depenseFcfa, 0) %}
+	<div class="as-ad-deux">
+		<section class="card">
+			<h2>{{ c.numero }} · {{ c.libelleContexte }}</h2>
+			{% if messages is empty %}
+				<p class="as-ad-vide">Pas encore de message arrivé du site.</p>
+			{% else %}
+				<div class="as-ad-fil">
+					{% for msg in messages %}
+						<article class="as-ad-msg{{ msg.estDuClient ? ' as-ad-client' }}">
+							<p>{{ msg.texte|replace({'**': ''}) }}</p>
+							<footer>
+								<span>{{ msg.estDuClient ? (c.estEspace ? 'Client' : 'Visiteur') : 'Assistant' }} · {{ msg.creeLe|date('d/m H:i') }}</span>
+								{% if not msg.estDuClient %}
+									<span class="si-pastille si-pastille-{{ msg.estRepondue ? (msg.issue == 'agent' ? 'orange' : 'vert') : 'rouge' }}">{{ msg.libelleIssue }}</span>
+									{% if msg.note == 1 %}<span class="as-ad-vert"><i class="fas fa-thumbs-up"></i> utile</span>{% elseif msg.note == -1 %}<span class="as-ad-rouge"><i class="fas fa-thumbs-down"></i> pas utile</span>{% endif %}
+									{% if msg.listeOutils is not empty %}<span>Outils : {{ msg.listeOutils|map(o => (constant('App\\Service\\Assistant\\OutilsAssistant::LIBELLES')[o] ?? o))|join(', ') }}</span>{% endif %}
+									{% if msg.depenseFcfa > 0 %}<span>{{ msg.depenseFcfa|number_format(1, ',', ' ') }} F</span>{% endif %}
+								{% endif %}
+							</footer>
+						</article>
+					{% endfor %}
+				</div>
+			{% endif %}
+		</section>
+		<aside class="card">
+			<h2>Conversation</h2>
+			<ul class="as-ad-liste">
+				<li><span>Commencée</span><b>{{ c.debutLe|date('d/m/Y à H:i') }}</b></li>
+				<li><span>Dernière question</span><b>{{ c.derniereLe|date('d/m/Y à H:i') }}</b></li>
+				<li><span>Questions</span><b>{{ c.nombreQuestions }}</b></li>
+				{% if c.client %}
+					<li><span>Client</span><b>{% if is_granted('ROLE_CLIENT') %}<a href="{{ path('app_clients_show', {publicId: c.client.publicId}) }}">{{ c.client.nomComplet }}</a>{% else %}{{ c.client.nomComplet }}{% endif %}</b></li>
+				{% endif %}
+				{% if c.interlocuteur %}<li><span>Compte</span><b>{{ c.interlocuteur }}</b></li>{% endif %}
+				{% if c.page %}<li><span>Page</span><b>{{ c.page }}</b></li>{% endif %}
+				<li><span>Conseiller proposé</span><b>{{ c.passageAgentLe ? c.passageAgentLe|date('d/m à H:i') : 'non' }}</b></li>
+				<li><span>Modèle</span><b>{{ c.modele }}</b></li>
+				<li><span>Dépense</span><b>{{ depense|number_format(0, ',', ' ') }} F</b></li>
+			</ul>
+			<p class="as-ad-note">Le visiteur du site n'est pas identifié : rien ici ne dit qui il est. Dans l'espace client, l'assistant ne lit que la fiche du compte connecté, et les montants seulement si ce compte paie.</p>
+		</aside>
+	</div>
+{% endblock %}

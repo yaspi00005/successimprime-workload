@@ -1,0 +1,90 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Aperçu d'un rapport par e-mail (docs/rapports-mail.md) : exactement
+	le corps de l'e-mail que la personne reçoit (même modèle, mêmes
+	droits), sa partie texte, le PDF joint et « M'envoyer un test ». La
+	direction peut voir la version d'un autre destinataire.
+#}
+
+{% block title %}Aperçu · {{ p.titre }}{% endblock %}
+{% block page_title %}Rapports par e-mail{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/rapports-mail.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_rapports_mail_pdf', {type: type, periode: p.code}|merge(soi ? {} : {pour: pour.id})) }}" class="btn btn-outline-primary btn-sm si-btn-entete"><i class="far fa-file-pdf me-1"></i>PDF<span class="si-masque-mobile"> joint</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-rm si-rm-apercu">
+		<nav class="si-rm-types" aria-label="Rapport">
+			{% for t, titre in constant('App\\Service\\Rapports\\PeriodeRapport::TYPES') %}
+				<a href="{{ path('app_rapports_mail_apercu', {type: t}|merge(soi ? {} : {pour: pour.id})) }}" class="{{ t == type ? 'actif' }}" {{ t == type ? 'aria-current="page"' }}>{{ titre|replace({'Rapport ': ''})|capitalize }}</a>
+			{% endfor %}
+			<a href="{{ path('app_rapports_mail') }}" class="si-rm-retour"><i class="fas fa-cog me-1"></i>Envois et destinataires</a>
+		</nav>
+
+		<div class="si-rm-barre">
+			<div class="si-rm-periode">
+				{% if precedente %}<a class="btn btn-sm btn-light" href="{{ path('app_rapports_mail_apercu', {type: type, periode: precedente.code}|merge(soi ? {} : {pour: pour.id})) }}" aria-label="Période précédente"><i class="fas fa-chevron-left"></i></a>{% endif %}
+				<strong>{{ p.libelle|capitalize }}</strong>
+				{% if suivante %}<a class="btn btn-sm btn-light" href="{{ path('app_rapports_mail_apercu', {type: type, periode: suivante.code}|merge(soi ? {} : {pour: pour.id})) }}" aria-label="Période suivante"><i class="fas fa-chevron-right"></i></a>{% endif %}
+			</div>
+			{% if personnes is not empty %}
+				<form method="get" class="si-rm-pour">
+					<input type="hidden" name="periode" value="{{ p.code }}">
+					<label for="rm-pour" class="visually-hidden">Version de</label>
+					<select id="rm-pour" name="pour" class="form-select form-select-sm">
+						{% for c in personnes %}<option value="{{ c.utilisateur.id }}" {{ c.utilisateur.id == pour.id ? 'selected' }}>Version de {{ c.nom }}</option>{% endfor %}
+					</select>
+					<button class="btn btn-sm btn-outline-secondary">Voir</button>
+				</form>
+			{% endif %}
+		</div>
+
+		<p class="si-rm-etat">
+			{% if r.en_cours %}
+				<span class="si-pastille si-pastille-bleu">période en cours</span> Chiffres arrêtés maintenant ; l’e-mail partira avec ceux de l’heure prévue.
+			{% elseif envoi %}
+				<span class="si-pastille {{ envoi.statut == 'envoye' ? 'si-pastille-vert' : (envoi.statut == 'en_cours' ? 'si-pastille-bleu' : 'si-pastille-orange') }}">{{ envoi.libelleStatut|lower }}</span> Rapport envoyé le {{ envoi.demarreLe|date('d/m/Y à H:i') }} ; chiffres recalculés maintenant.
+			{% else %}
+				<span class="si-pastille si-pastille-gris">pas envoyé</span> Ce rapport n’est pas parti par e-mail.
+			{% endif %}
+		</p>
+
+		<div class="si-rm-courriel">
+			<div class="si-rm-entete-mail">
+				<div><span>Objet</span> {{ sujet }}</div>
+				<div><span>À</span> {{ soi ? (mon_adresse ?? 'pas d’adresse e-mail sur votre fiche') : 'version de ' ~ prenom }}</div>
+			</div>
+			<div class="si-rm-fond">
+				{% include 'rapports_mail/_corps.html.twig' %}
+			</div>
+		</div>
+
+		<div class="si-rm-sous">
+			{% if soi %}
+				<form method="post" action="{{ path('app_rapports_mail_essai', {type: type}) }}">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<input type="hidden" name="periode" value="{{ p.code }}">
+					<button class="btn btn-primary" {{ mon_adresse and configure ? '' : 'disabled' }}><i class="fas fa-paper-plane me-1"></i>M’envoyer un test</button>
+				</form>
+				<p class="si-rm-aide">
+					{% if not configure %}L’envoi d’e-mails n’est pas réglé sur cette machine.
+					{% elseif not mon_adresse %}Ajoutez une adresse e-mail à votre fiche employé pour recevoir un essai.
+					{% else %}Cette version, à {{ mon_adresse }}{{ reglage('rapports_mail', 'pdf') ? ', avec le PDF' }}. L’essai ne compte pas comme l’envoi du rapport.{% endif %}
+				</p>
+			{% endif %}
+			<details class="si-rm-texte">
+				<summary>Partie texte de l’e-mail</summary>
+				<pre>{{ texte }}</pre>
+			</details>
+		</div>
+	</div>
+{% endblock %}

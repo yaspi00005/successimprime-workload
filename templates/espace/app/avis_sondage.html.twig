@@ -1,0 +1,11 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}{{ sondage.titre }}{% endblock %}
+{% block styles %}<link href="{{ asset('css/avis.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_avis') }}"><span class="fl">‹</span>Sondage</a>{% endblock %}
+
+{% block contenu %}
+	<h1 style="font-size:1.35rem">{{ sondage.titre }}</h1>
+	<p class="av-intro">{{ sondage.introduction ?? 'Quelques questions pour mieux vous servir.' }}</p>
+	{% include 'avis/_form_sondage.html.twig' with {jeton: 'espace', identite: false} %}
+{% endblock %}

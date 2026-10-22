@@ -17,6 +17,12 @@ use Symfony\Component\Routing\RouterInterface;
 
 class GenerateurEtiquetteService
 {
+    /**
+     * Chemin relatif enregistré en base (LotEtiquette, Etiquette), sous
+     * var/ : les QR codes et le ZIP ne sont plus dans public/, ils
+     * sortent par LotEtiquetteController après contrôle des droits
+     * (docs/securite.md, FichiersPrives).
+     */
     private const DOSSIER_RELATIF = 'uploads/etiquettes';
     private const QUANTITE_MAXIMALE = 1000;
 
@@ -25,8 +31,8 @@ class GenerateurEtiquetteService
         private readonly EtiquetteRepository $etiquetteRepository,
         private readonly RouterInterface $router,
 
-        #[Autowire('%kernel.project_dir%/public')]
-        private readonly string $publicDirectory,
+        #[Autowire('%kernel.project_dir%/var')]
+        private readonly string $racineFichiers,
     ) {
     }
 
@@ -91,7 +97,7 @@ class GenerateurEtiquetteService
 
             $dossierAbsolu = sprintf(
                 '%s/%s',
-                rtrim($this->publicDirectory, '/'),
+                rtrim($this->racineFichiers, '/'),
                 $dossierRelatif
             );
 
@@ -144,7 +150,7 @@ class GenerateurEtiquetteService
 
                 $fichierAbsolu = sprintf(
                     '%s/%s',
-                    rtrim($this->publicDirectory, '/'),
+                    rtrim($this->racineFichiers, '/'),
                     $fichierRelatif
                 );
 
@@ -199,7 +205,7 @@ class GenerateurEtiquetteService
 
             $fichierZipAbsolu = sprintf(
                 '%s/%s',
-                rtrim($this->publicDirectory, '/'),
+                rtrim($this->racineFichiers, '/'),
                 $fichierZipRelatif
             );
 

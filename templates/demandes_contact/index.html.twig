@@ -1,0 +1,100 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Clients › Demandes de contact (maquette EC08) : chaque message ou rappel
+	de la page Contact du site, la conversation attribuée qu'il a ouverte
+	dans la messagerie (délai imputé à la personne attribuée) et la liste
+	« À rappeler » triée par heure (caisse et droit de la messagerie).
+#}
+{% block title %}Demandes de contact du site{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/demandes-contact.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% macro nomUser(u) %}{% if u %}{{ u.employe ? u.employe.nomComplet : u.username }}{% endif %}{% endmacro %}
+
+{% block body %}
+	{% import _self as mc %}
+	{% if enLigne %}
+		<p class="alert alert-info">Les conversations ouvertes par ces demandes vivent sur l'ERP de l'imprimerie : ouvrez cette page là-bas pour répondre.</p>
+	{% endif %}
+
+	<div class="mc-kpis dc-kpis">
+		<div class="mc-kpi"><b>{{ kpis.aujourdhui }}</b><small>demande{{ kpis.aujourdhui > 1 ? 's' }} aujourd'hui</small></div>
+		<div class="mc-kpi"><b class="{{ kpis.moyenne is not null ? (kpis.moyenne <= kpis.cible ? 'vert' : 'rouge') }}">{{ kpis.moyenne is not null ? kpis.moyenne|duree_messagerie : '—' }}</b><small>délai moyen de 1re réponse (30 jours, cible {{ kpis.cible|duree_messagerie }})</small></div>
+		<div class="mc-kpi"><b class="{{ kpis.enRetard > 0 ? 'rouge' : 'vert' }}">{{ kpis.enRetard }}</b><small>en retard maintenant</small></div>
+		<div class="mc-kpi"><b>{{ kpis.rappels }}</b><small>rappel{{ kpis.rappels > 1 ? 's' }} à passer</small></div>
+	</div>
+
+	<nav class="mc-onglets dc-onglets" aria-label="Onglets">
+		<a href="{{ path('app_messages_clients_site') }}" class="{{ onglet == 'demandes' ? 'actif' }}"{% if onglet == 'demandes' %} aria-current="page"{% endif %}>Demandes ({{ lignes|length }})</a>
+		<a href="{{ path('app_messages_clients_site', {onglet: 'rappels'}) }}" class="{{ onglet == 'rappels' ? 'actif' }}{{ aRappeler|filter(d => d.rappelLe < maintenant)|length > 0 ? ' rouge' }}"{% if onglet == 'rappels' %} aria-current="page"{% endif %}>À rappeler ({{ aRappeler|length }})</a>
+	</nav>
+
+	{% if onglet == 'rappels' %}
+		<section class="mc-carte">
+			<h2>À rappeler, par heure</h2>
+			{% if not rappelActif %}<p class="dc-note">L'écran « atelier fermé avec rappel » est éteint (Réglages › Site : engagements) : le site ne prend pas de nouveau rappel.</p>{% endif %}
+			{% if aRappeler is empty %}
+				<p class="mc-vide">Aucun rappel à passer.</p>
+			{% else %}
+				<ol class="dc-rappels">
+					{% for d in aRappeler %}
+						{% set passe = d.rappelLe < maintenant %}
+						<li class="{{ passe ? 'dc-en-retard' }}">
+							<span class="dc-heure">{{ d.rappelLe|date('d/m') }}<b>{{ d.rappelLe|date('G') }} h</b></span>
+							<div class="dc-qui">
+								<b>{{ d.nom }}</b> · <a href="tel:+223{{ d.telephoneLocal|replace({' ': ''}) }}">{{ d.telephoneLocal }}</a>
+								<small>{{ d.numero }}{% if d.message %} · « {{ d.message|length > 90 ? d.message|slice(0, 90) ~ '…' : d.message }} »{% endif %}</small>
+								{% if passe %}<span class="mc-puce rouge">Heure promise passée</span>{% endif %}
+								{% if d.conversation %}<a href="{{ path('app_messages_clients_voir', {publicId: d.conversation.publicId}) }}" class="dc-lien">Conversation</a>{% endif %}
+							</div>
+							<form method="post" action="{{ path('app_messages_clients_site_rappel_fait', {id: d.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+								<button class="btn btn-sm btn-success"><i class="fas fa-check me-1"></i>Fait</button>
+							</form>
+						</li>
+					{% endfor %}
+				</ol>
+			{% endif %}
+			<p class="dc-note">Un rappel non fait {{ constant('App\\Service\\Site\\RappelsSite::RETARD_MINUTES') }} minutes après l'heure promise prévient la direction.</p>
+		</section>
+	{% else %}
+		<section class="mc-carte">
+			{% if lignes is empty %}
+				<p class="mc-vide">Aucune demande de contact ces 30 derniers jours.</p>
+			{% else %}
+				<table class="mc-table dc-table">
+					<thead><tr><th>N°</th><th>Contact</th><th>Objet</th><th class="mc-cache-tel">Commande</th><th>Reçu</th><th class="mc-cache-tel">Attribué à</th><th>Statut</th><th>Délai</th></tr></thead>
+					<tbody>
+						{% for l in lignes %}
+							{% set d = l.demande %}
+							{% set c = l.conversation %}
+							<tr>
+								<td><b>{{ d.numero }}</b></td>
+								<td>{% if c %}<a href="{{ path('app_messages_clients_voir', {publicId: c.publicId}) }}">{{ d.nom }}</a>{% else %}{{ d.nom }}{% endif %}<br><small class="text-muted">{{ d.telephoneLocal }}</small></td>
+								<td>{{ d.estRappel ? 'Rappel demandé · ' ~ d.rappelLe|date('d/m') ~ ' ' ~ d.rappelLe|date('G') ~ ' h' : (constant('App\\Entity\\DemandeDevis::OBJETS_COURTS')[d.objet] ?? 'Message') }}</td>
+								<td class="mc-cache-tel">{% if c and c.commande %}<b>{{ c.commande.numero }}</b>{% elseif d.numeroCommande %}<span class="text-muted" title="Numéro tapé, non reconnu pour ce client">{{ d.numeroCommande }} ?</span>{% else %}—{% endif %}</td>
+								<td><small>{{ d.creeLe|date('d/m H:i') }}</small></td>
+								<td class="mc-cache-tel">{{ c and c.assigneA ? mc.nomUser(c.assigneA) : '—' }}</td>
+								<td>
+									{% if d.estRappel and d.rappelFaitLe %}<span class="mc-puce vert">Rappelé</span>
+									{% elseif d.estRappel %}<span class="mc-puce bleu">À rappeler {{ d.rappelLe|date('G') }} h</span>
+									{% elseif not c %}<span class="mc-puce gris">{{ d.prepareeLe ? 'Sans conversation' : 'À recevoir' }}</span>
+									{% elseif c.estCloturee %}<span class="mc-puce gris">Clôturée</span>
+									{% elseif l.attente and l.retard %}<span class="mc-puce rouge">En retard</span>
+									{% elseif l.attente %}<span class="mc-puce orange">En attente</span>
+									{% else %}<span class="mc-puce vert">Répondu</span>{% endif %}
+								</td>
+								<td class="{{ l.retard ? 'dc-rouge' : 'dc-vert' }}">{{ l.delai is not null ? l.delai|duree_messagerie : '—' }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+			<p class="dc-note">Chaque message ou rappel du site ouvre une conversation dans « Messages » ; un inconnu reçoit une fiche client « Site » et un prospect. Le délai de réponse (Règles de réponse) est imputé à la personne attribuée.</p>
+		</section>
+	{% endif %}
+{% endblock %}

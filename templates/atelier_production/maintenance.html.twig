@@ -1,0 +1,203 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Atelier › Maintenance (maquette AT04, docs/atelier-production.md) :
+	incidents ouverts, arrêts du mois, entretien préventif et compteurs des
+	machines visibles. Une panne arrête la machine dans toutes les vues de
+	l'atelier. Le devis d'une réparation n'est montré et saisi qu'avec le
+	droit « Marges et coûts ». À ne pas confondre avec Réglages › Alertes
+	système (pannes du logiciel).
+#}
+
+{% block title %}Maintenance et incidents{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_PRODUCTION_GERER') and machines is not empty %}
+		<li class="nav-item"><a href="#signaler" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1" aria-hidden="true"></i>Signaler un incident</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+{% set voit_montants = is_granted('ROLE_COUT_MARGE') %}
+<div class="si-ap">
+	{% if machines is empty %}
+		<div class="si-ap-carte si-ap-vide"><i class="fas fa-tools" aria-hidden="true"></i>Aucune machine ne vous est affectée.</div>
+	{% else %}
+	<div class="si-ap-maint">
+		<div>
+			<section class="si-ap-carte" aria-labelledby="t-incidents">
+				<h2 id="t-incidents">Incidents ouverts</h2>
+				{% for i in incidents %}
+					<div class="si-ap-incident">
+						<div class="si-ap-incident-tete">
+							<div><strong>{{ i.machine.nom }}</strong><span class="si-ap-pastille si-ap-e-{{ i.etat }}">{{ i.etatLibelle }}</span>{% if i.estArret %} <span class="si-ap-pastille si-ap-e-panne">machine arrêtée</span>{% endif %}</div>
+							<span class="si-ap-gris si-ap-petit">{{ i.signaleLe|date('d/m · H:i') }}{{ i.signalePar ? ' · signalé par ' ~ (i.signalePar.employe ? i.signalePar.employe.prenom : i.signalePar.userIdentifier) }}</span>
+						</div>
+						<p>{{ i.titre }}</p>
+						{% if i.detail %}<p class="si-ap-gris">{{ i.detail }}</p>{% endif %}
+						<p class="si-ap-gris si-ap-petit">{{ i.suite|default('suite à préciser') }}{% if voit_montants and i.devis %} · devis {{ i.devis|number_format(0, ',', ' ') }} F{% endif %}{% if i.ordre %} · pendant {{ i.ordre.commandeDetail.commande.numero|default(i.ordre.numero) }}{% endif %}</p>
+						{% if chef %}
+							<details>
+								<summary>Mettre à jour</summary>
+								<form method="post" action="{{ path('app_atelier_incident_maj', {id: i.id}) }}" class="si-ap-formulaire">
+									<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+									<div class="si-ap-ligne-form">
+										<label class="si-ap-petit m-0">État
+											<select name="etat" class="form-select form-select-sm">
+												{% for cle, libelle in etats|filter((v, k) => k != 'resolu') %}<option value="{{ cle }}" {{ cle == i.etat ? 'selected' }}>{{ libelle }}{{ cle == 'surveille' ? ' (la machine tourne)' }}</option>{% endfor %}
+											</select>
+										</label>
+										{% if voit_montants %}<label class="si-ap-petit m-0">Devis (F)<input type="text" inputmode="numeric" name="devis" class="form-control form-control-sm" value="{{ i.devis }}"></label>{% endif %}
+									</div>
+									<label class="si-ap-petit m-0">Suite prévue<input type="text" name="suite" maxlength="255" class="form-control form-control-sm" value="{{ i.suite }}" placeholder="technicien mardi 20/10"></label>
+									<button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+								</form>
+								<form method="post" action="{{ path('app_atelier_incident_maj', {id: i.id}) }}" class="si-ap-formulaire">
+									<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+									<input type="hidden" name="resoudre" value="1">
+									<label class="si-ap-petit m-0">Ce qui a été fait<input type="text" name="note" maxlength="255" class="form-control form-control-sm" placeholder="résistance changée"></label>
+									<button type="submit" class="btn btn-success btn-sm">Résolu : la machine reprend</button>
+								</form>
+							</details>
+						{% endif %}
+					</div>
+				{% else %}
+					<p class="si-ap-gris mb-0">Aucun incident ouvert.</p>
+				{% endfor %}
+			</section>
+
+			<section class="si-ap-carte" aria-labelledby="t-arrets">
+				<h2 id="t-arrets">Arrêts ce mois</h2>
+				{% if arrets is empty %}
+					<p class="si-ap-gris mb-0">Aucun arrêt ce mois-ci.</p>
+				{% else %}
+					<table class="si-ap-tableau">
+						<tbody>
+							{% for a in arrets %}
+								<tr><td><b>{{ a.machine.nom }}</b></td><td>{{ a.minutes|atelier_duree }}</td><td class="si-ap-gris">{{ a.notes }}</td></tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+			</section>
+
+			{% if is_granted('ROLE_PRODUCTION_GERER') %}
+			<section class="si-ap-carte" id="signaler" aria-labelledby="t-signaler">
+				<h2 id="t-signaler">Signaler un incident</h2>
+				<form method="post" action="{{ path('app_atelier_incident_signaler') }}" class="si-ap-formulaire">
+					<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+					<input type="hidden" name="retour" value="{{ path('app_atelier_maintenance') }}">
+					<div class="si-ap-ligne-form">
+						<label class="si-ap-petit m-0">Machine<select name="machine" class="form-select form-select-sm" required>{% for m in machines %}<option value="{{ m.id }}">{{ m.nom }}</option>{% endfor %}</select></label>
+						<label class="si-ap-petit m-0">Ce qui se passe<input type="text" name="titre" maxlength="160" required class="form-control form-control-sm" placeholder="Tête 2 : 3 buses manquantes"></label>
+					</div>
+					<label class="si-ap-petit m-0">Détail (facultatif)<textarea name="detail" rows="2" class="form-control form-control-sm"></textarea></label>
+					<label class="si-ap-petit m-0">Suite prévue (facultatif)<input type="text" name="suite" maxlength="255" class="form-control form-control-sm" placeholder="purge faite, test des buses à 12:00"></label>
+					<label class="form-check m-0"><input type="checkbox" name="arret" value="1" class="form-check-input" checked> <span class="form-check-label">La machine est arrêtée (panne)</span></label>
+					{% if chef %}
+						{% if masquage %}
+							<label class="form-check m-0"><input type="checkbox" name="masquer" value="1" class="form-check-input" checked> <span class="form-check-label">Masquer en ligne les produits qui n'ont que cette machine (sans machine de secours en état)</span></label>
+						{% else %}
+							<p class="si-ap-gris si-ap-petit mb-0">Masquer en ligne les produits de la machine : possible quand chaque produit du catalogue a sa machine (à venir).</p>
+						{% endif %}
+					{% endif %}
+					<button type="submit" class="btn btn-danger btn-sm">Signaler</button>
+				</form>
+			</section>
+			{% endif %}
+		</div>
+
+		<div>
+			<section class="si-ap-carte" aria-labelledby="t-entretien">
+				<h2 id="t-entretien"><span>Entretien préventif</span><a href="{{ path('app_planning_index') }}">Calendrier</a></h2>
+				{% if entretien is empty %}
+					<p class="si-ap-gris">Aucune tâche d'entretien.{{ chef ? ' Ajoutez-les ci-dessous.' }}</p>
+				{% else %}
+					<div class="si-ap-tableau-defile">
+					<table class="si-ap-tableau">
+						<thead><tr><th scope="col">Machine</th><th scope="col">Tâche</th><th scope="col">Dernière fois</th><th scope="col"><span class="visually-hidden">État</span></th></tr></thead>
+						<tbody>
+							{% for e in entretien %}
+								<tr>
+									<td><b>{{ e.tache.machine.nom }}</b></td>
+									<td>{{ e.tache.tache }}<br><small class="si-ap-gris">{{ e.tache.frequenceLibelle }}</small></td>
+									<td>{{ e.derniere }}{% if e.tache.derniereLe and e.tache.frequence in ['jour', 'semaine', 'mois'] and e.derniere starts with 'ce matin' %} <i class="fas fa-check" aria-hidden="true" style="color: var(--ap-vert)"></i>{% endif %}</td>
+									<td class="text-nowrap">
+										<span class="si-ap-pastille si-ap-e-{{ e.etat }}">{{ {ok: 'OK', bientot: 'Bientôt', a_faire: 'À faire'}[e.etat] }}</span>
+										{% if is_granted('ROLE_PRODUCTION_GERER') and e.etat != 'ok' %}
+											<form method="post" action="{{ path('app_atelier_entretien_fait', {id: e.tache.id}) }}">
+												<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+												<button type="submit" class="si-ap-btn-mini" title="Noter « {{ e.tache.tache }} » comme fait maintenant">Fait</button>
+											</form>
+										{% endif %}
+										{% if chef %}
+											<form method="post" action="{{ path('app_atelier_entretien_retirer', {id: e.tache.id}) }}" data-confirmer="Retirer la tâche « {{ e.tache.tache }} » ?" data-confirmer-detail="Elle ne sera plus suivie ; l'historique des entretiens reste." data-confirmer-bouton="Retirer" data-confirmer-danger>
+												<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+												<button type="submit" class="si-ap-btn-mini" aria-label="Retirer « {{ e.tache.tache }} »" title="Retirer"><i class="fas fa-times" aria-hidden="true"></i></button>
+											</form>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+					</div>
+				{% endif %}
+				{% if chef %}
+					<details class="mt-2">
+						<summary class="si-ap-petit" style="color: var(--ap-bleu); font-weight: 600; cursor: pointer;">Ajouter une tâche d'entretien</summary>
+						<form method="post" action="{{ path('app_atelier_entretien_ajouter') }}" class="si-ap-formulaire">
+							<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+							<div class="si-ap-ligne-form">
+								<label class="si-ap-petit m-0">Machine<select name="machine" class="form-select form-select-sm">{% for m in machines %}<option value="{{ m.id }}">{{ m.nom }}</option>{% endfor %}</select></label>
+								<label class="si-ap-petit m-0">Tâche<input type="text" name="tache" maxlength="120" required class="form-control form-control-sm" placeholder="Nettoyage des têtes"></label>
+							</div>
+							<div class="si-ap-ligne-form">
+								<label class="si-ap-petit m-0">Tous les<input type="number" name="intervalle" min="1" value="1" class="form-control form-control-sm"></label>
+								<label class="si-ap-petit m-0">Unité<select name="frequence" class="form-select form-select-sm">{% for cle, libelle in frequences %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}</select></label>
+							</div>
+							<button type="submit" class="btn btn-primary btn-sm">Ajouter</button>
+						</form>
+					</details>
+				{% endif %}
+			</section>
+
+			<section class="si-ap-carte" aria-labelledby="t-compteurs">
+				<h2 id="t-compteurs">Compteurs</h2>
+				{% if compteurs is empty %}
+					<p class="si-ap-gris mb-0">Aucun compteur pour l'instant : ils avancent à chaque travail terminé.</p>
+				{% else %}
+					<table class="si-ap-tableau">
+						<tbody>
+							{% for c in compteurs %}
+								<tr>
+									<td><b>{{ c.machine.nom }}</b></td>
+									<td>{{ c.valeur }}</td>
+									<td class="si-ap-gris text-end">{% if c.tetes %}têtes : {{ c.tetes }}{% endif %}
+										{% if chef %}
+											<details class="d-inline-block text-start"><summary class="si-ap-petit" style="color: var(--ap-bleu); cursor: pointer">{{ c.tetes ? 'modifier' : 'pose des têtes' }}</summary>
+												<form method="post" action="{{ path('app_atelier_tetes', {id: c.machine.id}) }}" class="si-ap-formulaire">
+													<input type="hidden" name="_token" value="{{ csrf_token('atelier-production') }}">
+													<input type="date" name="date" class="form-control form-control-sm" aria-label="Date de pose des têtes de {{ c.machine.nom }}">
+													<button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+												</form>
+											</details>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+				<p class="si-ap-gris si-ap-petit mt-2 mb-0">Les compteurs avancent à chaque travail terminé et se recalent sur le relevé du mois (Atelier › Relevés de compteurs).</p>
+			</section>
+		</div>
+	</div>
+	{% endif %}
+</div>
+{% endblock %}

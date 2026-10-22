@@ -1,0 +1,367 @@
+{#
+	Accueil du site (maquettes SW01 à SW04, textes du gérant du 19/10/2026).
+	Rien d'inventé : chaque bloc disparaît quand il n'a pas de vraie donnée.
+	- accroche : « Votre prix en 10 secondes. » seulement si le calculateur
+	  marche (EtatCatalogue), sinon le slogan ; badge « en direct » et
+	  compteurs seulement avec des chiffres frais de l'ERP (AtelierDirect) ;
+	  badges du délai (réglage des délais de l'espace client) et de la
+	  largeur (tuile « Site : contact et accueil ») ;
+	- « Prix de départ, sans surprise » : vrais produits avec leur prix de
+	  départ, les plus commandés (CatalogueSite::phares) ; sans produit,
+	  les univers (catégories publiées) avec leur photo ;
+	- packs (tuile « Site : accueil et packs », éteints par défaut), quatre
+	  étapes, Studio textile, vraies réalisations publiées, avis recopiés,
+	  engagements (tuile « Site : engagements et rappels »), « Venez nous voir ».
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_accueil' %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set lien_calcul = calculateur ? site_lien('app_site_calculateur') : null %}
+{% set donnees_entreprise = true %}
+{% set photo_accroche = site_photo(constant('App\\Controller\\SiteController::PHOTO_ACCROCHE')) %}
+{% set photo_projet = site_photo(constant('App\\Controller\\SiteController::PHOTO_PROJET')) %}
+{% set whatsapp_projet = site_whatsapp('Bonjour Succès Imprim, j\'ai un projet à imprimer : ') %}
+{% set visite = site_visite() %}
+
+{% block title %}Imprimerie à Bamako : bâches, roll-up, t-shirts · Succès Imprim{% endblock %}
+{% block description %}Succès Imprim, imprimerie à Bamako : bâches et banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite. BAT avant chaque impression.{% endblock %}
+{% block entete %}{{ site_styles('css/site-accueil.css') }}{% endblock %}
+
+{% block contenu %}
+	<section class="si-accroche">
+		<div class="si-cadre si-accroche-cadre">
+			<div class="si-accroche-texte">
+				{% if direct and direct.machines > 0 %}
+					<p class="si-direct-badge"><span class="si-direct-point" aria-hidden="true"></span>L'atelier tourne en ce moment · {{ direct.machines }} machine{{ direct.machines > 1 ? 's' }} active{{ direct.machines > 1 ? 's' }}</p>
+				{% endif %}
+				<p class="si-accroche-sur">Imprimerie à Bamako</p>
+				{% if lien_calcul %}
+					<h1>Votre prix en 10 secondes. <span>{{ delaiVisuel ? 'Votre visuel en ' ~ delaiVisuel ~ ' heures.' : 'Nous imprimons vos succès !' }}</span></h1>
+				{% else %}
+					<h1>Nous imprimons <span>vos succès&nbsp;!</span></h1>
+				{% endif %}
+				<p>
+					Bâches{% if largeurMax %} jusqu'à {{ largeurMax }} de large{% endif %}, roll-up, supports de porte, t-shirts et cartes de visite.
+					{% if lien_calcul %}Vous voyez le prix tout de suite, vous validez le BAT, vous payez par Orange Money.{% else %}Vous validez le BAT avant chaque impression, vous payez par Orange Money.{% endif %}
+				</p>
+				<div class="si-accroche-actions">
+					{% if lien_calcul %}
+						<a href="{{ lien_calcul }}" class="si-bouton si-bouton-rouge si-bouton-grand">Calculer mon prix</a>
+					{% elseif devis %}
+						<a href="{{ devis }}" class="si-bouton si-bouton-rouge si-bouton-grand">Devis gratuit</a>
+					{% endif %}
+					{% if whatsapp_projet %}
+						<a href="{{ whatsapp_projet }}" class="si-bouton si-bouton-wa si-bouton-grand" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }}WhatsApp</a>
+					{% endif %}
+					{% if not lien_calcul and not devis and not whatsapp_projet %}<a href="{{ path('app_espace_connexion') }}" class="si-bouton si-bouton-rouge si-bouton-grand">Ouvrir mon espace client</a>{% endif %}
+				</div>
+				<ul class="si-accroche-preuves">
+					<li>{{ include('site/_icone.svg.twig', {nom: 'bat', taille: 14}) }}BAT avant impression</li>
+					<li>{{ include('site/_icone.svg.twig', {nom: 'refait', taille: 14}) }}Réimpression garantie</li>
+					<li>{{ include('site/_icone.svg.twig', {nom: 'orange', taille: 14}) }}Orange Money</li>
+				</ul>
+			</div>
+			{% if photo_accroche %}
+				<figure class="si-accroche-photo">
+					{{ include('site/_photo.html.twig', {photo: photo_accroche, sizes: '(max-width: 860px) calc(100vw - 32px), (max-width: 1180px) 46vw, 540px', principale: true, telephone: 800}) }}
+					<p class="si-accroche-badge si-badge-delai"><strong>{{ delaiStandard }}&nbsp;h</strong><span>Votre commande prête<small>après validation du BAT</small></span></p>
+					{% if largeurMax %}<p class="si-accroche-badge si-badge-largeur"><strong>jusqu'à {{ largeurMax }}</strong><small>de large, sans raccord</small></p>{% endif %}
+				</figure>
+			{% endif %}
+		</div>
+	</section>
+
+	{# En direct de l'atelier : chiffres de l'ERP (frais de moins de 20 minutes) et chiffres publiés par la direction. #}
+	{% set compteurs = [] %}
+	{% if direct %}
+		{% if direct.m2 > 0 %}{% set compteurs = compteurs|merge([{valeur: direct.m2, decimales: direct.m2 != direct.m2|round ? 1 : 0, suffixe: ' m²', libelle: 'imprimés aujourd\'hui', direct: true}]) %}{% endif %}
+		{% if direct.travaux > 0 %}{% set compteurs = compteurs|merge([{valeur: direct.travaux, decimales: 0, suffixe: '', libelle: 'travaux en cours', direct: true}]) %}{% endif %}
+		{% if direct.machines > 0 and direct.total > 0 %}{% set compteurs = compteurs|merge([{valeur: direct.machines, decimales: 0, suffixe: '/' ~ direct.total, libelle: 'machines actives', direct: true}]) %}{% endif %}
+	{% endif %}
+	{% for c in (chiffresEngagements.chiffres ?? [])|filter(c => c.cle == 'a_la_date') %}
+		{% set compteurs = compteurs|merge([{valeur: c.valeur, decimales: 0, suffixe: ' %', libelle: 'livrés à la date' ~ (chiffresEngagements.periode ? ' · ' ~ chiffresEngagements.periode : ''), direct: false}]) %}
+	{% endfor %}
+	{% if compteurs %}
+		<section class="si-direct" aria-labelledby="si-direct-titre">
+			<div class="si-cadre si-direct-cadre">
+				<h2 id="si-direct-titre">{% if direct %}<span class="si-direct-point" aria-hidden="true"></span>En direct de l'atelier{% else %}Nos chiffres{% endif %}</h2>
+				<ul>
+					{% for c in compteurs %}
+						<li data-revele><strong data-compte="{{ c.valeur }}" data-decimales="{{ c.decimales }}">{{ c.valeur|number_format(c.decimales, ',', ' ') }}</strong>{{ c.suffixe }}<span>{{ c.libelle }}</span></li>
+					{% endfor %}
+				</ul>
+			</div>
+		</section>
+	{% endif %}
+
+	{% if phares %}
+		<section class="si-phares" aria-labelledby="si-phares-titre">
+			<div class="si-cadre">
+				<div class="si-titre-bloc">
+					<div>
+						<p class="si-sur-titre">Les plus demandés</p>
+						<h2 id="si-phares-titre">Prix de départ, sans surprise</h2>
+					</div>
+					{% if site_lien('app_site_produits') %}<a href="{{ site_lien('app_site_produits') }}" class="si-lien-fleche">Tous les produits</a>{% endif %}
+				</div>
+				<ul class="si-phares-grille">
+					{% for p in phares %}
+						{% set lien = p.configuration ? site_lien('app_site_calculateur', {produit: p.configuration}) : null %}{% set lien = lien ?? devis %}
+						{% set photo = site_photo_produit(p.nom ~ ' ' ~ p.technique) %}
+						{% if not photo and p.photoSecours %}{% set photo = site_photo(p.photoSecours) %}{% endif %}
+						<li class="si-phare si-famille-{{ p.famille }}" data-revele>
+							<div class="si-phare-visuel">
+								{% if photo %}{{ include('site/_photo.html.twig', {photo: photo, sizes: '(max-width: 640px) calc(50vw - 24px), 274px', classe: 'si-phare-photo'}) }}{% endif %}
+								{% if p.delai %}<span class="si-phare-delai">{{ include('site/_icone.svg.twig', {nom: 'date', taille: 12}) }}{{ p.delai }}&nbsp;h</span>{% endif %}
+							</div>
+							<div class="si-phare-corps">
+								<h3>{% if lien %}<a href="{{ lien }}">{{ p.nom }}</a>{% else %}{{ p.nom }}{% endif %}</h3>
+								<p class="si-phare-prix">dès {{ p.prix.montant|number_format(0, ',', ' ') }}&nbsp;F <span>{{ p.prix.unite }}</span></p>
+								{% if p.pret %}<p class="si-phare-pret">prête {{ p.pret }}</p>{% endif %}
+								<span class="si-phare-voir" aria-hidden="true">{{ lien and p.configuration ? 'Voir les options' : 'Demander un prix' }}<span class="si-phare-rond">{{ include('site/_icone.svg.twig', {nom: 'fleche', taille: 16}) }}</span></span>
+							</div>
+						</li>
+					{% endfor %}
+				</ul>
+				{% if autres %}
+					<ul class="si-pastilles" aria-label="Autres produits">
+						{% for a in autres %}
+							{% set lien = a.configuration ? site_lien('app_site_calculateur', {produit: a.configuration}) : null %}{% set lien = lien ?? site_lien('app_site_produits', {categorie: a.cle}) %}
+							<li>{% if lien %}<a href="{{ lien }}">{{ a.nom }}</a>{% else %}<span>{{ a.nom }}</span>{% endif %}</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+		</section>
+	{% elseif univers %}
+		<section class="si-univers" aria-labelledby="si-univers-titre">
+			<div class="si-cadre">
+				<div class="si-titre-bloc">
+					<div>
+						<p class="si-sur-titre">Ce que nous imprimons</p>
+						<h2 id="si-univers-titre">Nos univers d'impression</h2>
+					</div>
+				</div>
+				<div class="si-univers-grille">
+					{% for u in univers %}
+						{% set lien = u.textile ? site_lien('app_site_atelier') : (catalogue_site.produits ? site_lien('app_site_produits', {categorie: u.cle}) : null) %}{% set lien = lien ?? devis %}
+						<article class="si-univers-carte si-famille-{{ u.famille }}{{ u.photo ? ' si-univers-avec-photo' }}" data-revele>
+							{% if u.photo %}
+								{{ include('site/_photo.html.twig', {photo: u.photo, sizes: '(max-width: 520px) 104px, (max-width: 960px) calc(50vw - 25px), 274px', classe: 'si-univers-photo'}) }}
+							{% else %}
+								<span class="si-univers-icone" aria-hidden="true">{{ include('site/_icone_famille.svg.twig', {famille: u.famille}) }}</span>
+							{% endif %}
+							<h3>{{ u.nom }}</h3>
+							<p>{{ u.exemples }}</p>
+							{% if lien %}<a href="{{ lien }}">{{ u.textile ? 'Composer mon modèle' : (catalogue_site.produits ? 'Voir les produits' : 'Devis gratuit') }} <span aria-hidden="true">→</span></a>{% endif %}
+						</article>
+					{% endfor %}
+				</div>
+			</div>
+		</section>
+	{% endif %}
+
+	{% if packs %}
+		<section class="si-packs" id="packs" aria-labelledby="si-packs-titre">
+			<div class="si-cadre">
+				<div class="si-titre-bloc">
+					<div>
+						<p class="si-sur-titre">Packs</p>
+						<h2 id="si-packs-titre">Pour votre occasion</h2>
+					</div>
+				</div>
+				<ul class="si-packs-grille">
+					{% for pack in packs %}
+						<li class="si-pack" data-revele>
+							<h3>{{ pack.nom }}</h3>
+							<p>{{ pack.contenu }}</p>
+							<p class="si-pack-prix">{% if pack.prix %}dès <strong>{{ pack.prix|number_format(0, ',', ' ') }}&nbsp;F</strong>{% else %}<strong>Sur devis</strong>{% endif %}</p>
+							{% set wa_pack = site_whatsapp('Bonjour Succès Imprim, je suis intéressé par le pack « ' ~ pack.nom ~ ' » : ') %}
+							{% if wa_pack %}<a href="{{ wa_pack }}" class="si-lien-fleche" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% elseif devis %}<a href="{{ devis }}" class="si-lien-fleche">Devis gratuit</a>{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</section>
+	{% endif %}
+
+	<section class="si-etapes" id="comment-ca-marche" aria-labelledby="si-etapes-titre">
+		<div class="si-cadre">
+			<div class="si-etapes-carte" data-revele>
+				<p class="si-sur-titre">Comment ça marche</p>
+				<h2 id="si-etapes-titre">Votre impression en 4 étapes</h2>
+				<ol>
+					<li><span class="si-etape-numero">1</span><strong>Envoyez votre idée ou fichier</strong><span>par le site ou WhatsApp</span></li>
+					<li><span class="si-etape-numero">2</span><strong>Recevez votre prix</strong><span>et payez l'acompte par Orange Money</span></li>
+					<li><span class="si-etape-numero">3</span><strong>Validez le BAT</strong><span>rien n'est imprimé sans votre accord</span></li>
+					<li><span class="si-etape-numero">4</span><strong>Retirez ou faites livrer</strong><span>dans Bamako</span></li>
+				</ol>
+			</div>
+		</div>
+	</section>
+
+	{% if atelier and site_lien('app_site_atelier') %}
+		<section class="si-atelier-bande" aria-labelledby="si-atelier-titre">
+			<div class="si-cadre">
+				<div class="si-atelier-carte" data-revele>
+					<div class="si-atelier-texte">
+						<span class="si-atelier-nouveau">Studio textile</span>
+						<h2 id="si-atelier-titre">Voyez votre logo dessus, avant de payer</h2>
+						<p>T-shirt, polo ou casquette en 3D&nbsp;: choisissez la couleur, placez votre logo et votre texte devant et dos, voyez le prix selon la quantité. L'atelier prépare ensuite le BAT.</p>
+					</div>
+					<a class="si-bouton si-bouton-jaune si-bouton-grand" href="{{ site_lien('app_site_atelier') }}">Déposez votre logo</a>
+				</div>
+			</div>
+		</section>
+	{% endif %}
+
+	{% if realisations %}
+		<section class="si-travaux" aria-labelledby="si-travaux-titre">
+			<div class="si-cadre">
+				<div class="si-titre-bloc">
+					<div>
+						<p class="si-sur-titre">Nos réalisations</p>
+						<h2 id="si-travaux-titre">Imprimé chez nous, à Bamako</h2>
+					</div>
+					{% if site_lien('app_site_realisations') %}<a href="{{ site_lien('app_site_realisations') }}" class="si-lien-fleche">Voir nos réalisations</a>{% endif %}
+				</div>
+				<ul class="si-travaux-grille">
+					{% for r in realisations %}
+						{% set image = site_image(r.imagePrincipale, loop.first ? 'grande' : 'petite') %}
+						{% if image %}
+							<li data-revele>
+								<figure>
+									<img src="{{ asset(image.chemin) }}" width="{{ image.largeur }}" height="{{ image.hauteur }}" alt="{{ r.imagePrincipale.texteAlternatif ?: r.titre|replace({'(démo)': ''})|trim }}" loading="lazy" decoding="async">
+									<figcaption>{{ r.titre|replace({'(démo)': ''})|trim }}</figcaption>
+								</figure>
+							</li>
+						{% endif %}
+					{% endfor %}
+				</ul>
+			</div>
+		</section>
+	{% endif %}
+
+	{% if avantApres|default(null) %}
+		{% set r = avantApres.realisation %}
+		<section class="si-aa-bande" aria-labelledby="si-aa-titre">
+			<div class="si-cadre si-aa-grille" data-revele>
+				<div>
+					<p class="si-sur-titre">Avant · après</p>
+					<h2 id="si-aa-titre">{{ r.titre|replace({'(démo)': ''})|trim }}</h2>
+					{% if r.description %}<p>{{ r.description|length > 180 ? r.description|slice(0, 179)|trim ~ '…' : r.description }}</p>{% endif %}
+				</div>
+				{{ include('site/_avant_apres.html.twig', {avant: avantApres.avant, apres: avantApres.apres}) }}
+			</div>
+		</section>
+	{% endif %}
+
+	{% if avis %}
+		<section class="si-avis" aria-labelledby="si-avis-titre">
+			<div class="si-cadre">
+				<div class="si-titre-bloc">
+					<div>
+						<p class="si-sur-titre">Avis</p>
+						<h2 id="si-avis-titre">Ce que disent nos clients</h2>
+					</div>
+					{% if site_fiche_google() %}<a href="{{ site_fiche_google() }}" class="si-lien-fleche" target="_blank" rel="noopener">Tous les avis sur Google</a>{% endif %}
+				</div>
+				<ul class="si-avis-grille">
+					{% for a in avis %}
+						<li data-revele>
+							<p class="si-etoiles" aria-label="{{ a.note }} sur 5">{{ '★★★★★'|slice(0, a.note) }}<span aria-hidden="true">{{ '★★★★★'|slice(a.note) }}</span></p>
+							<blockquote><p>{{ a.texte }}</p></blockquote>
+							<p class="si-avis-auteur"><strong>{{ a.nomAffiche }}</strong>{% if a.source %} · {{ a.source }}{% endif %}</p>
+						</li>
+					{% endfor %}
+				</ul>
+			</div>
+		</section>
+	{% endif %}
+
+	<section class="si-engagements" aria-labelledby="si-engagements-titre">
+		<div class="si-cadre">
+			<h2 id="si-engagements-titre" class="si-invisible">Nos engagements</h2>
+			<ul class="si-engagements-grille">
+				{% for e in promesses %}
+					<li data-revele><span class="si-engagement-icone si-icone-{{ e.icone }}">{{ include('site/_icone.svg.twig', {nom: e.icone}) }}</span><strong>{{ e.titre }}</strong><span>{{ e.sinon ?? e.promesse }}</span></li>
+				{% endfor %}
+				<li data-revele><span class="si-engagement-icone si-icone-orange">{{ include('site/_icone.svg.twig', {nom: 'orange'}) }}</span><strong>Orange Money</strong><span>Un reçu à chaque paiement, jamais votre code secret demandé</span></li>
+			</ul>
+			{% if site_lien('app_site_engagements') %}<p class="si-engagements-lien"><a href="{{ site_lien('app_site_engagements') }}" class="si-lien-fleche">Nos engagements, et ce qu'on fait si on les rate</a></p>{% endif %}
+		</div>
+	</section>
+
+	{# Venez nous voir (maquette SW03) : vraie façade, plan ou carte de l'imprimerie, coordonnées ; e-mail seulement s'il est rempli. #}
+	{% set photo_facade = site_photo(constant('App\\Service\\Site\\PhotosSite::FACADE')) %}
+	{% set lienPlan = visite.itineraire %}
+	{% set positionPlan = position %}
+	<section class="si-visite" aria-labelledby="si-visite-titre">
+		<div class="si-cadre">
+			<div class="si-visite-carte" data-revele>
+				<div class="si-visite-texte">
+					<p class="si-sur-titre">Venez nous voir</p>
+					<h2 id="si-visite-titre">{{ visite.ville }}</h2>
+					{% if visite.repere %}<p class="si-visite-ligne">{{ include('site/_icone.svg.twig', {nom: 'lieu', taille: 16}) }}<span>{{ visite.repere }}</span></p>{% endif %}
+					<p class="si-visite-ligne">{{ include('site/_icone.svg.twig', {nom: 'date', taille: 16}) }}<span>{{ visite.horaires.texte }}{% if visite.horaires.fermes %} · {{ visite.horaires.fermes }}{% endif %}<br><span class="si-pastille-etat{{ visite.horaires.ouvert ? ' si-ouvert-maintenant' }}"><span class="si-point" aria-hidden="true"></span>{{ visite.horaires.etat }}</span></span></p>
+					{% if visite.tel %}<p class="si-visite-ligne">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 16}) }}<a href="{{ visite.tel }}">{{ visite.telephone }}</a></p>{% endif %}
+					{% if visite.email %}<p class="si-visite-ligne">{{ include('site/_icone.svg.twig', {nom: 'mail', taille: 16}) }}<a href="mailto:{{ visite.email }}">{{ visite.email }}</a></p>{% endif %}
+					<div class="si-visite-actions">
+						<a href="{{ visite.itineraire }}" class="si-bouton si-bouton-blanc" target="_blank" rel="noopener">Itinéraire</a>
+						{% if visite.tel %}<a href="{{ visite.tel }}" class="si-bouton si-bouton-clair si-visite-appel">Appeler</a>{% endif %}
+						{% if visite.whatsapp %}<a href="{{ visite.whatsapp }}" class="si-bouton si-bouton-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }}WhatsApp</a>{% endif %}
+					</div>
+				</div>
+				<div class="si-visite-visuel">
+					{% if photo_facade %}
+						<figure class="si-visite-photo{{ positionPlan ? ' si-visite-photo-coin' }}">
+							{{ include('site/_photo.html.twig', {photo: photo_facade, sizes: positionPlan ? '160px' : '(max-width: 860px) calc(100vw - 32px), 560px'}) }}
+							{% if positionPlan %}<figcaption>Notre façade</figcaption>{% endif %}
+						</figure>
+					{% endif %}
+					{% if positionPlan %}{{ site_styles('css/site-carte.css') }}{{ include('site/_carte_plan.html.twig', {entreprise: site_entreprise()}) }}{% endif %}
+				</div>
+			</div>
+		</div>
+	</section>
+
+	{% if lien_calcul or devis or whatsapp_projet %}
+		{# Fond décoratif (rubans d'encre) ; le texte reste sur un cadre blanc, lisible quel que soit le recadrage. #}
+		<section class="si-projet" aria-labelledby="si-projet-titre">
+			{% if photo_projet %}{{ include('site/_photo.html.twig', {photo: photo_projet, sizes: '100vw', classe: 'si-projet-fond'}) }}{% endif %}
+			<div class="si-cadre">
+				<div class="si-projet-texte" data-revele>
+					{% if lien_calcul %}
+						<h2 id="si-projet-titre">Convaincu&nbsp;? Votre prix en 10 secondes.</h2>
+						<p>Choisissez le produit, la taille et la quantité&nbsp;: le prix et la date s'affichent tout de suite.</p>
+					{% else %}
+						<h2 id="si-projet-titre">Un projet à imprimer&nbsp;?</h2>
+						<p>Décrivez-nous votre idée ou envoyez votre fichier&nbsp;: l'atelier vous répond avec un prix, puis vous montre le BAT avant d'imprimer.</p>
+					{% endif %}
+					<div class="si-projet-actions">
+						{% if lien_calcul %}<a href="{{ lien_calcul }}" class="si-bouton si-bouton-rouge si-bouton-grand">Calculer mon prix</a>{% elseif devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge si-bouton-grand">Devis gratuit</a>{% endif %}
+						{% if whatsapp_projet %}<a href="{{ whatsapp_projet }}" class="si-bouton si-bouton-contour si-bouton-grand" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+					</div>
+				</div>
+			</div>
+		</section>
+	{% endif %}
+
+	{% block apres_engagements %}
+		{# Chiffres et partenaires (contenu du site) : chacun absent quand il est vide. #}
+		{% set chiffres = site_chiffres() %}
+		{% set partenaires = site_partenaires() %}
+		{% if chiffres or partenaires %}
+			{# Sous la ligne de flottaison : feuille à part, gardée par le navigateur, qui ne retarde pas le haut de la page. #}
+			<link rel="stylesheet" href="{{ asset('css/site-contenu.css') }}">
+			{{ include('site/_chiffres.html.twig', {chiffres: chiffres}) }}
+			{{ include('site/_partenaires.html.twig', {partenaires: partenaires}) }}
+		{% endif %}
+	{% endblock %}
+
+	{# « Nos actions sociales » et « Laisser un avis » : chacun absent tant qu'il n'a rien à montrer. #}
+	{{ include('site/_accueil_social.html.twig') }}
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

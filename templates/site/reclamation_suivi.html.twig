@@ -1,0 +1,81 @@
+{#
+	Suivre une réclamation (maquette EC03) : numéro + téléphone, comme le
+	suivi de commande sans compte. Étapes datées, délai de réponse comparé
+	à l'engagement (tuile « Site : engagements »), réponse sans montant ;
+	une fois résolue, lien pour laisser un avis Google. Jamais en cache ni
+	indexée.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = '' %}
+{% set soutien = site_soutien() %}
+{% set jours = ['', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'] %}
+
+{% block title %}Suivre une réclamation · Succès Imprim{% endblock %}
+{% block description %}Suivez votre réclamation chez Succès Imprim avec son numéro et votre téléphone : étapes, réponse de la direction et solution appliquée.{% endblock %}
+
+{% block entete %}
+	<meta name="robots" content="noindex, nofollow">
+	{{ site_styles('css/site-formulaires.css', 'css/site-contact.css', 'css/site-engagements.css') }}
+{% endblock %}
+
+{% block contenu %}
+	<section class="se-page">
+		<div class="si-cadre">
+			{% if not reclamation %}
+				<div class="se-carte">
+					<p class="se-etiquette">Réclamation</p>
+					<h1>Suivre une réclamation</h1>
+					<p>Le numéro (R-…) est dans la confirmation reçue à l'envoi. Le téléphone est celui de votre commande.</p>
+					{% if erreur %}<p class="si-alerte" role="alert"><strong>{{ erreur }}</strong></p>{% endif %}
+					<form method="post" class="se-recherche" action="{{ path('app_site_reclamation_suivi') }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('site-reclamation') }}">
+						<div class="si-champ"><label for="re-num">N° de réclamation</label><input id="re-num" name="numero" value="{{ numero }}" placeholder="R-0027" maxlength="30" required autocomplete="off"></div>
+						<div class="si-champ"><label for="re-tel">Téléphone</label><input id="re-tel" name="telephone" type="tel" inputmode="tel" value="{{ telephone }}" placeholder="7X XX XX XX" maxlength="20" required autocomplete="tel-national"></div>
+						<div class="si-champ"><button class="si-bouton si-bouton-rouge si-bouton-grand">Voir</button></div>
+					</form>
+					<p class="si-note">Seules les étapes et la réponse s'affichent ici, jamais de montant. Le détail est dans votre <a href="{{ path('app_espace_connexion') }}">espace client</a>.</p>
+				</div>
+			{% else %}
+				{% set r = reclamation %}
+				<div class="se-page-grille">
+					<article class="se-carte">
+						<p class="se-etiquette">Réclamation {{ r.numero }} <span class="se-statut {{ r.statut }}">{{ r.libelleStatut }}</span></p>
+						<h1>« {{ r.objet }} »</h1>
+						<p class="si-note">{{ r.commande ? 'Commande ' ~ r.commande.numero ~ ' · ' }}{{ r.libelleMotif }}</p>
+						<ol class="se-ligne-temps">
+							<li><span class="se-pastille">{{ include('site/_icone.svg.twig', {nom: 'envoi', taille: 18}) }}</span><div><small>{{ jours[r.creeLe|date('N')] }} {{ r.creeLe|date('d/m · H:i') }}</small><strong>Réclamation envoyée</strong><p>{{ r.description|length > 160 ? r.description|slice(0, 160) ~ '…' : r.description }}</p></div></li>
+							{% set limite = r.creeLe|date_modify('+' ~ delai ~ ' hours') %}
+							<li class="{{ r.reponduLe ? '' : 'a-venir' }}"><span class="se-pastille">{{ include('site/_icone.svg.twig', {nom: 'utilisateur', taille: 18}) }}</span><div><small>{{ r.reponduLe ? jours[r.reponduLe|date('N')] ~ ' ' ~ r.reponduLe|date('d/m · H:i') : 'au plus tard ' ~ jours[limite|date('N')] ~ ' ' ~ limite|date('d/m · H:i') }}</small><strong>Réponse de la direction</strong>{% if reponse %}<p>{{ reponse }}</p>{% endif %}</div></li>
+							<li class="{{ r.statut == 'resolue' ? 'vert' : 'a-venir' }}"><span class="se-pastille">{{ include('site/_icone.svg.twig', {nom: 'refait', taille: 18}) }}</span><div><small>{{ r.closeLe ? jours[r.closeLe|date('N')] ~ ' ' ~ r.closeLe|date('d/m · H:i') : 'à venir' }}</small><strong>{{ r.statut == 'refusee' ? 'Dossier clos' : 'Solution appliquée' }}</strong></div></li>
+						</ol>
+					</article>
+					<div class="se-cote">
+						{% if duree is not null %}
+							{% set tenu = duree <= delai * 60 %}
+							<div class="se-tenu{{ tenu ? '' : ' depasse' }}">
+								<p class="se-tenu-etiquette">{{ tenu ? 'Engagement tenu' : 'Engagement dépassé' }}</p>
+								<b>{{ duree >= 60 ? (duree // 60) ~ ' h ' ~ ('%02d'|format(duree % 60)) : duree ~ ' min' }}</b>
+								<p>pour vous répondre (engagement&nbsp;: {{ delai }}&nbsp;h)</p>
+							</div>
+						{% else %}
+							<div class="se-tenu attente">
+								<p class="se-tenu-etiquette">En cours</p>
+								<b>{{ delai }}&nbsp;h</b>
+								<p>La direction vous répond au plus tard dans ce délai.</p>
+							</div>
+						{% endif %}
+						{% if r.statut == 'resolue' and soutien %}
+							<div class="se-carte">
+								<h2>Votre avis sur la solution</h2>
+								<p>Si vous le souhaitez, vous pouvez laisser un avis public sur Google.</p>
+								<a href="{{ soutien.lien }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Donner mon avis sur Google</a>
+							</div>
+						{% endif %}
+						<a href="{{ path('app_espace_connexion') }}" class="se-carte si-lien-fleche">Une question sur ce dossier&nbsp;? Votre espace client</a>
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

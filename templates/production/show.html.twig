@@ -191,7 +191,7 @@
 										<small class="text-muted">Produit / désignation</small>
 										<div class="font-weight-bold">
 											{% if detail.designation is defined and detail.designation %}
-												{{ detail.designation }}
+												{{ detail|ligne_interne }}
 											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.produit %}
 												{{ detail.produitConfiguration.produit.nom }}
 												{% else %}Non renseigné
@@ -212,7 +212,7 @@
 												×
 												{{ detail.longueur }}
 											{% elseif detail.produitConfiguration is defined and detail.produitConfiguration and detail.produitConfiguration.format %}
-												{{ detail.produitConfiguration.format.nom }}
+												{{ detail.produitConfiguration.format|texte_interne }}
 												{% else %}—
 											{% endif %}
 										</div>
@@ -304,7 +304,7 @@
 												<tbody>
 													{% for finitionDetail in detail.finitions %}
 														<tr>
-															<td class="font-weight-bold">{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition.nom : 'Finition' }}</td>
+															<td class="font-weight-bold">{{ finitionDetail.configurationFinition and finitionDetail.configurationFinition.finition ? finitionDetail.configurationFinition.finition|texte_interne : 'Finition' }}</td>
 															<td>{{ finitionDetail.modeCalcul|default('—')|replace({'_': ' '})|capitalize }}</td>
 															<td>{{ finitionDetail.quantite|default('—') }}</td>
 															<td>{{ finitionDetail.configurationFinition ? finitionDetail.configurationFinition.description|default('—') : '—' }}</td>
@@ -643,6 +643,7 @@
 												{% endif %}
 											</div>
 											<div class="p-3">
+												{% if fichier.estDecoupe %}<span class="si-pm-decoupe mb-1"><i class="fas fa-cut"></i>Fichier de découpe</span>{% endif %}
 												<div class="font-weight-bold text-truncate mb-2" title="{{ fichier.nomOriginal }}">{{ fichier.nomOriginal }}</div>
 												<a class="btn btn-sm btn-outline-primary mr-1" target="_blank" rel="noopener" href="{{ urlVisualisation }}">
 													<i class="fa fa-eye mr-1"></i>Visionner</a>
@@ -724,7 +725,7 @@
 							</form>
 
 							{% if ordre.aUneEtiquette %}
-								<form method="post" action="{{ path('app_production_retirer_etiquette', {id: ordre.id}) }}" class="js-confirm-form mt-2" data-message="Retirer l’étiquette {{ ordre.numeroEtiquette }} de cet ordre ?">
+								<form method="post" action="{{ path('app_production_retirer_etiquette', {id: ordre.id}) }}" class="mt-2" data-confirmer="Retirer l’étiquette {{ ordre.numeroEtiquette }} de cet ordre ?" data-confirmer-bouton="Retirer" data-confirmer-danger>
 									<input type="hidden" name="_token" value="{{ csrf_token('production_retirer_etiquette_' ~ ordre.id) }}">
 									<button type="submit" class="btn btn-link text-danger btn-block">
 										<i class="fa fa-unlink mr-1"></i>
@@ -750,7 +751,7 @@
 																																																																																													                                de cet ordre à l’atelier.
 								</p>
 
-								<form method="post" action="{{ path( 'app_production_transmettre', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Confirmer la transmission de cet ordre à la production ?">
+								<form method="post" action="{{ path( 'app_production_transmettre', {id: ordre.id} ) }}" data-confirmer="Transmettre cet ordre à la production ?" data-confirmer-bouton="Transmettre">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'production_transmettre_' ~ ordre.id ) }}">
 
@@ -823,7 +824,7 @@
 							</div>
 
 							<div class="card-body">
-								<form method="post" action="{{ path( 'app_production_demarrer', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Voulez-vous démarrer cette production ?">
+								<form method="post" action="{{ path( 'app_production_demarrer', {id: ordre.id} ) }}" data-confirmer="Démarrer cette production ?" data-confirmer-bouton="Démarrer">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'production_demarrer_' ~ ordre.id ) }}">
 
@@ -900,7 +901,7 @@
 
 								<h6>Clôturer la production</h6>
 
-								<form method="post" action="{{ path( 'app_production_terminer', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Confirmer la clôture définitive de cette production ?">
+								<form method="post" action="{{ path( 'app_production_terminer', {id: ordre.id} ) }}" data-confirmer="Clôturer cette production ?" data-confirmer-detail="La clôture est définitive." data-confirmer-bouton="Clôturer">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'production_terminer_' ~ ordre.id ) }}">
 
@@ -970,7 +971,7 @@
 									</p>
 								{% endif %}
 
-								<form method="post" action="{{ path( 'app_production_reprendre', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Voulez-vous reprendre cette production ?">
+								<form method="post" action="{{ path( 'app_production_reprendre', {id: ordre.id} ) }}" data-confirmer="Reprendre cette production ?" data-confirmer-bouton="Reprendre">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'production_reprendre_' ~ ordre.id ) }}">
 
@@ -993,7 +994,7 @@
 							</div>
 
 							<div class="card-body">
-								<form method="post" action="{{ path( 'app_production_annuler', {id: ordre.id} ) }}" class="js-confirm-form" data-message="Cette annulation est définitive. Voulez-vous continuer ?">
+								<form method="post" action="{{ path( 'app_production_annuler', {id: ordre.id} ) }}" data-confirmer="Annuler cette production ?" data-confirmer-detail="Cette annulation est définitive." data-confirmer-bouton="Annuler la production" data-confirmer-danger>
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'production_annuler_' ~ ordre.id ) }}">
 
@@ -1101,39 +1102,5 @@
 
 {% block javascripts %}
 	{{ parent() }}
-
-	<script>
-		document.addEventListener('DOMContentLoaded', function () {
-const forms = document.querySelectorAll('.js-confirm-form');
-
-forms.forEach(function (form) {
-form.addEventListener('submit', function (event) {
-event.preventDefault();
-
-const message = form.dataset.message || 'Voulez-vous continuer ?';
-
-if (typeof window.Swal === 'undefined') {
-if (window.confirm(message)) {
-form.submit();
-}
-
-return;
-}
-
-window.Swal.fire({
-icon: 'question',
-title: 'Confirmation',
-text: message,
-showCancelButton: true,
-confirmButtonText: 'Oui, continuer',
-cancelButtonText: 'Annuler'
-}).then(function (resultat) {
-if (resultat.isConfirmed) {
-form.submit();
-}
-});
-});
-});
-});
-	</script>
+	{# Confirmations : data-confirmer (public/js/confirmation.js, chargé par base.html.twig). #}
 {% endblock %}

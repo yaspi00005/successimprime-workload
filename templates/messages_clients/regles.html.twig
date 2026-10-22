@@ -1,0 +1,31 @@
+{% extends 'base.html.twig' %}
+
+{# Clients › Règles de réponse (maquette MS04, Direction) : délais, responsable des paiements, escalade, pénalité, clôture automatique. #}
+{% block title %}Règles de réponse{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<form method="post" class="mc-carte">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<h2>Délais de réponse aux clients</h2>
+		<div class="mc-form-regles">
+			<div><label for="r1">1re réponse (minutes ouvrées)</label><input type="number" min="5" max="480" id="r1" name="premiere_minutes" value="{{ regles.premiere }}" class="form-control"><small>Affiché au client : « Réponse en général sous {{ regles.premiere|duree_messagerie }}… »</small></div>
+			<div><label for="r2">Réponses suivantes (minutes ouvrées)</label><input type="number" min="5" max="960" id="r2" name="suivantes_minutes" value="{{ regles.suivantes }}" class="form-control"></div>
+			<div><label for="r3">Paiement et facture : responsable</label>
+				<select id="r3" name="tresoriere" class="form-select">
+					<option value="0">La caisse en poste</option>
+					{% for u in tresorieres %}<option value="{{ u.id }}"{{ regles.tresoriere and regles.tresoriere.id == u.id ? ' selected' }}>{{ u.employe ? u.employe.nomComplet : u.username }} (trésorière)</option>{% endfor %}
+				</select>
+				<small>Les autres sujets vont à l'agent de la commande ou du devis, sinon à la caisse.</small></div>
+			<div><label for="r4">Escalade à la Direction après (minutes)</label><input type="number" min="15" max="1440" id="r4" name="escalade_minutes" value="{{ regles.escalade }}" class="form-control"></div>
+			<div><label for="r5">Points retirés par réponse en retard</label><input type="number" min="0" max="50" id="r5" name="penalite_points" value="{{ regles.penalite }}" class="form-control"><small>Seuls la caisse, le commercial et la trésorière sont imputables.</small></div>
+			<div><label for="r6">Clôture automatique (heures sans réponse du client)</label><input type="number" min="12" max="720" id="r6" name="cloture_auto_heures" value="{{ regles.clotureAutoHeures }}" class="form-control"></div>
+			<div><label for="r7">Le client peut rouvrir pendant (jours)</label><input type="number" min="0" max="60" id="r7" name="reouverture_jours" value="{{ regles.reouvertureJours }}" class="form-control"><small>Ensuite, il ouvre une nouvelle demande liée à l'ancienne.</small></div>
+		</div>
+		<p class="mc-aide">Heures comptées : {{ regles.heuresOuvrees }} (Paramètres › Horaires). Le chronomètre s'arrête hors de ces heures et les jours fériés.</p>
+		<button class="btn btn-primary mt-2">Enregistrer</button>
+	</form>
+{% endblock %}

@@ -1,0 +1,122 @@
+{#
+	Onglet Fidélité de la fiche client (docs/fidelite.md). Visible de qui
+	gère les commandes ; les ajustements, les valeurs propres et les motifs
+	internes, de la direction seulement (ROLE_ADMIN, vérifié aussi dans
+	FideliteController).
+#}
+{% import 'fidelite/_macros.html.twig' as f %}
+{% set fi = fidelite_client(client) %}
+{% set admin = is_granted('ROLE_ADMIN') %}
+
+{% if fi.exclu %}
+	<p class="si-fiche-vide">Client au prix B2B : hors programme de fidélité.</p>
+{% else %}
+	{% set r = fi.resume %}
+	<div class="si-fi-fiche">
+		<div class="si-fi-solde">
+			<span class="si-fi-sur">Solde disponible</span>
+			<strong>{{ r.disponible|number_format(0, ',', ' ') }} <small>points</small></strong>
+			<span>= {{ r.disponibleF|number_format(0, ',', ' ') }} F à utiliser sur une commande</span>
+			{% if r.dette is defined and r.dette > 0 %}<span class="si-fi-alerte">{{ r.dette|number_format(0, ',', ' ') }} points retirés en trop seront repris sur les prochains gains</span>{% endif %}
+			{% if r.expirant > 0 %}<span class="si-fi-alerte"><i class="far fa-clock me-1"></i>{{ r.expirant|number_format(0, ',', ' ') }} points expirent le {{ r.prochaineExpiration|date('d/m/Y') }}</span>{% endif %}
+		</div>
+		<div class="si-fi-progres">
+			{% for cle, libelle in {m2: 'Grand format', autre: 'Autres articles'} %}
+				{% set p = r[cle] %}
+				<div>
+					<div class="d-flex justify-content-between gap-2">
+						<b>{{ libelle }}</b>
+						{% if p.eligible %}
+							<span class="si-pastille si-pastille-vert">{{ cle == 'm2' ? f.nombre(p.taux) ~ ' pts/m²' : f.nombre(p.taux) ~ ' %' }}</span>
+						{% else %}
+							<span class="text-muted">{{ cle == 'm2' ? f.nombre(p.cumule) ~ ' / ' ~ f.nombre(p.seuil) ~ ' m²' : p.cumule|number_format(0, ',', ' ') ~ ' / ' ~ p.seuil|number_format(0, ',', ' ') ~ ' F' }}</span>
+						{% endif %}
+					</div>
+					<div class="si-jauge-piste mt-1"><span class="{{ p.eligible ? 'si-fond-vert' : 'si-fi-fond-bleu' }}" style="width: {{ p.part }}%"></span></div>
+					<small class="text-muted">{% if p.eligible %}{{ cle == 'm2' ? f.nombre(p.cumule) ~ ' m² payés' : p.cumule|number_format(0, ',', ' ') ~ ' F payés' }} · seuil atteint{% else %}rapporte au-delà de {{ cle == 'm2' ? f.nombre(p.seuil) ~ ' m²' : p.seuil|number_format(0, ',', ' ') ~ ' F' }}{% endif %}{% if p.propre is defined and p.propre %} · <span class="text-primary">valeur propre au client</span>{% endif %}</small>
+				</div>
+			{% endfor %}
+		</div>
+	</div>
+
+	{% if fi.promo %}
+		<div class="si-fi-promo"><i class="fas fa-gift"></i><span><b>Promo de réveil : −{{ f.nombre(fi.promo.taux) }} %</b> sur la prochaine commande, {{ fi.promo.estDuJourSeulement ? "aujourd'hui seulement" : "jusqu'au " ~ fi.promo.fin|date('d/m/Y') }}. À appliquer depuis la commande.</span></div>
+	{% endif %}
+
+	{% if fi.en_ligne %}
+		<p class="si-pg-note">Site en ligne : le relevé vient de l'imprimerie ; les ajustements s'y font.</p>
+	{% endif %}
+
+	<h5 class="si-fi-titre">Relevé</h5>
+	{% if fi.historique is empty %}
+		<p class="si-fiche-vide">Aucun mouvement de points.</p>
+	{% else %}
+		<div class="table-responsive"><table class="table si-fiche-table si-fi-releve">
+			<thead><tr><th>Date</th><th>Mouvement</th><th>Commande</th><th class="text-end">Points</th><th class="si-masque-mobile">Expire</th></tr></thead>
+			<tbody>
+				{% for h in fi.historique %}
+					<tr class="{{ h.annule ? 'si-fi-annule' }}">
+						<td class="text-nowrap">{{ h.date|date('d/m/Y') }}</td>
+						<td>
+							{{ h.libelle }}{% if h.annule %} <span class="si-badge">annulé</span>{% endif %}
+							{% if h.type == 'gain' and h.points == 0 and h.multiplicateur %}<small class="d-block text-muted">sous le seuil, ou article sans bonification : compte pour la progression</small>{% endif %}
+							{% if admin and (h.motif or h.agent) %}<small class="d-block text-muted">{{ h.motif }}{{ h.motif and h.agent ? ' · ' }}{{ h.agent ? h.agent.userIdentifier }}</small>{% endif %}
+						</td>
+						<td class="text-nowrap">{% if h.commande %}<a href="{{ path('app_commandes_show', {id: h.commande.id}) }}">{{ h.commande.numero }}</a>{% endif %}</td>
+						<td class="text-end text-nowrap fw-semibold {{ h.points > 0 ? 'text-success' : (h.points < 0 ? 'text-danger' : 'text-muted') }}">{{ h.points > 0 ? '+' }}{{ h.points|number_format(0, ',', ' ') }}</td>
+						<td class="si-masque-mobile text-nowrap"><small class="text-muted">{{ h.expireLe and h.points > 0 ? h.expireLe|date('d/m/Y') }}</small></td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table></div>
+	{% endif %}
+
+	{% if admin and not fi.en_ligne %}
+		<div class="si-fi-admin">
+			<form method="post" action="{{ path('app_fidelite_ajuster', {publicId: client.publicId}) }}" class="si-fi-cadre">
+				<input type="hidden" name="_token" value="{{ csrf_token('fidelite-client-' ~ client.id) }}">
+				<h6>Ajouter ou retirer des points</h6>
+				<div class="d-flex gap-2 flex-wrap">
+					<input type="number" name="points" step="1" required class="form-control form-control-sm si-fi-points" placeholder="+500 ou −200" aria-label="Points">
+					<input type="text" name="motif" required minlength="3" maxlength="200" class="form-control form-control-sm flex-grow-1" placeholder="Motif (obligatoire)" aria-label="Motif">
+					<button class="btn btn-sm btn-danger">Enregistrer</button>
+				</div>
+				<small class="text-muted">Journalisé avec votre nom. Les points ajoutés expirent dans {{ fi.reglages.validiteMois }} mois.</small>
+			</form>
+
+			{% set propres = r.propres %}
+			<form method="post" action="{{ path('app_fidelite_personnaliser', {publicId: client.publicId}) }}" class="si-fi-cadre">
+				<input type="hidden" name="_token" value="{{ csrf_token('fidelite-client-' ~ client.id) }}">
+				<h6>Valeurs propres à ce client <small class="text-muted fw-normal">(vide : valeur générale)</small></h6>
+				<div class="row g-2">
+					<div class="col-6 col-md-3"><label class="form-label small" for="fi-pm2">Points par m²</label><input type="text" inputmode="decimal" id="fi-pm2" name="points_m2" value="{{ propres.pointsParM2 is not null ? f.nombre(propres.pointsParM2) }}" placeholder="{{ f.nombre(fi.reglages.pointsParM2) }}" class="form-control form-control-sm"></div>
+					<div class="col-6 col-md-3"><label class="form-label small" for="fi-sm2">Seuil m²</label><input type="text" inputmode="decimal" id="fi-sm2" name="seuil_m2" value="{{ propres.seuilM2 is not null ? f.nombre(propres.seuilM2) }}" placeholder="{{ f.nombre(fi.reglages.seuilM2) }}" class="form-control form-control-sm"></div>
+					<div class="col-6 col-md-3"><label class="form-label small" for="fi-ta">% autres articles</label><input type="text" inputmode="decimal" id="fi-ta" name="taux_autre" value="{{ propres.tauxAutre is not null ? f.nombre(propres.tauxAutre) }}" placeholder="{{ f.nombre(fi.reglages.tauxAutre) }}" class="form-control form-control-sm"></div>
+					<div class="col-6 col-md-3"><label class="form-label small" for="fi-sf">Seuil F</label><input type="text" inputmode="numeric" id="fi-sf" name="seuil_montant" value="{{ propres.seuilMontant is not null ? propres.seuilMontant }}" placeholder="{{ fi.reglages.seuilMontant }}" class="form-control form-control-sm"></div>
+				</div>
+				<div class="d-flex gap-2 flex-wrap mt-2">
+					<input type="text" name="motif" required minlength="3" maxlength="200" class="form-control form-control-sm flex-grow-1" placeholder="Motif (obligatoire)" value="{{ fi.compte and fi.compte.motifPerso ? fi.compte.motifPerso }}" aria-label="Motif">
+					<button class="btn btn-sm btn-primary">Enregistrer</button>
+					{% if fi.compte and fi.compte.aDesValeursPropres %}<button class="btn btn-sm btn-light" name="general" value="1">Revenir aux valeurs générales</button>{% endif %}
+				</div>
+				{% if fi.compte and fi.compte.aDesValeursPropres %}<small class="text-muted">Fixées le {{ fi.compte.persoLe|date('d/m/Y') }}{{ fi.compte.persoPar ? ' par ' ~ fi.compte.persoPar.userIdentifier }}.</small>{% endif %}
+			</form>
+
+			{% if not fi.promo %}
+				<form method="post" action="{{ path('app_fidelite_reveil_offrir', {publicId: client.publicId}) }}" class="si-fi-cadre">
+					<input type="hidden" name="_token" value="{{ csrf_token('fidelite-reveil') }}">
+					<input type="hidden" name="retour" value="{{ path('app_clients_show', {publicId: client.publicId}) }}#fidelite">
+					<h6>Promo de réveil</h6>
+					<div class="d-flex gap-2 flex-wrap align-items-center">
+						<span class="si-fi-champ">−<input type="number" name="taux" min="1" max="50" step="0.5" value="{{ fi.reveil.taux }}" class="form-control form-control-sm" aria-label="Remise en %"> %</span>
+						<select name="duree" class="form-select form-select-sm w-auto" aria-label="Durée">
+							<option value="0">aujourd'hui seulement</option>
+							<option value="{{ fi.reveil.duree }}" selected>{{ fi.reveil.duree }} jours</option>
+						</select>
+						<button class="btn btn-sm btn-light">Offrir</button>
+					</div>
+				</form>
+			{% endif %}
+		</div>
+	{% endif %}
+{% endif %}

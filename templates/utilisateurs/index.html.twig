@@ -1,0 +1,192 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Utilisateurs{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_utilisateurs_roles_menus') }}" class="btn btn-light btn-sm si-btn-entete">Rôles et menus</a>
+	</li>
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_journal_activite_index') }}" class="btn btn-light btn-sm si-btn-entete">Journal des accès</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_utilisateurs_nouveau') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Nouvel utilisateur</a>
+	</li>
+{% endblock %}
+
+{% macro initiales(nom) %}{% for mot in nom|split(' ')|slice(0, 2) %}{{ mot|first|upper }}{% endfor %}{% endmacro %}
+{% import _self as u %}
+
+{% block body %}
+	<div class="row si-kpis si-masque-mobile">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Utilisateurs actifs</span>
+				<div class="si-kpi-valeur">{{ indicateurs.actifs }}</div>
+				<span class="si-tendance si-hausse">sur {{ indicateurs.comptes }} comptes</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Connectés aujourd'hui</span>
+				<div class="si-kpi-valeur">{{ indicateurs.connectesAujourdhui }}</div>
+				<span class="si-tendance">depuis minuit</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Rôles</span>
+				<div class="si-kpi-valeur">{{ indicateurs.roles }}</div>
+				<span class="si-tendance si-hausse">{{ indicateurs.rolesPersonnalises }} créé{{ indicateurs.rolesPersonnalises > 1 ? 's' }} ici</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Droits personnalisés</span>
+				<div class="si-kpi-valeur">{{ indicateurs.droitsPersonnalises }}</div>
+				<span class="si-tendance">personne{{ indicateurs.droitsPersonnalises > 1 ? 's' }} avec des cases en plus ou en moins</span>
+			</div></div>
+		</div>
+	</div>
+
+	<div class="card si-bloc si-utilisateurs">
+		<div class="si-utilisateurs-tete">
+			<nav class="si-onglets si-onglets-carte" aria-label="Filtrer la liste">
+				{% for cle, libelle in filtres %}
+					<a href="{{ path('app_utilisateurs_index', {filtre: cle, q: recherche ?: null}) }}" class="{{ filtre == cle ? 'actif' }} {{ cle == 'tous' ? 'si-masque-mobile' }}">{{ libelle }} ({{ nombres[cle] }})</a>
+				{% endfor %}
+			</nav>
+			<form method="get" class="si-recherche-liste">
+				<input type="hidden" name="filtre" value="{{ filtre }}">
+				<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Nom, téléphone, rôle…" aria-label="Rechercher un utilisateur">
+			</form>
+		</div>
+
+		{% if utilisateurs is empty %}
+			<p class="text-muted py-4 text-center mb-0">Aucun utilisateur ici.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr>
+							<th>Utilisateur</th>
+							<th>Rôle</th>
+							<th class="si-masque-mobile">Accès</th>
+							<th class="si-masque-mobile">Dernière connexion</th>
+							<th class="text-center">Actif</th>
+							<th class="si-masque-mobile text-end">Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for utilisateur in utilisateurs %}
+							{% set employe = utilisateur.employe %}
+							{% set nom = employe and (employe.prenom ~ employe.nom)|trim ? (employe.prenom ~ ' ' ~ employe.nom)|trim : utilisateur.username %}
+							{% set fiche = path('app_utilisateurs_fiche', {id: utilisateur.id}) %}
+							<tr class="{{ not utilisateur.actif ? 'si-ligne-eteinte' }}" data-lien="{{ fiche }}">
+								<td>
+									<a href="{{ fiche }}" class="si-personne">
+										<span class="si-initiales si-initiales-{{ utilisateur.id % 6 }}" aria-hidden="true">{{ u.initiales(nom) }}</span>
+										<span>
+											<strong class="d-block">{{ nom }}</strong>
+											<small class="text-muted">{{ employe.telephone ?? utilisateur.username }}</small>
+										</span>
+									</a>
+								</td>
+								<td>
+									{% if utilisateur.profil %}
+										<span class="si-pastille {{ utilisateur.profil.estAdmin ? 'si-pastille-bleu' : 'si-pastille-gris' }}">{{ utilisateur.profil.nom }}</span>
+									{% else %}
+										<span class="si-pastille si-pastille-rouge">Sans rôle</span>
+									{% endif %}
+									{% if utilisateur.nombreDroitsPersonnalises > 0 %}
+										<span class="si-pastille si-pastille-orange" title="Droits ajoutés ou retirés pour cette personne">{{ utilisateur.nombreDroitsPersonnalises > 0 ? '±' ~ utilisateur.nombreDroitsPersonnalises }}</span>
+									{% endif %}
+								</td>
+								<td class="si-masque-mobile text-muted">
+									{% if utilisateur.actif %}Application{% else %}Désactivé le {{ utilisateur.disabledAt ? utilisateur.disabledAt|date('d/m') }}{{ utilisateur.motifDesactivation ? ' · ' ~ utilisateur.motifDesactivation }}{% endif %}
+								</td>
+								<td class="si-masque-mobile text-nowrap">
+									{% if utilisateur.lastLoginAt %}
+										{{ utilisateur.lastLoginAt|date('Y-m-d') == 'now'|date('Y-m-d') ? 'Aujourd\'hui ' ~ utilisateur.lastLoginAt|date('H:i') : utilisateur.lastLoginAt|date('d/m H:i') }}
+									{% else %}
+										<span class="text-muted">Jamais</span>
+									{% endif %}
+								</td>
+								<td class="text-center">
+									<label class="si-interrupteur" title="{{ utilisateur.actif ? 'Désactiver' : 'Réactiver' }} le compte">
+										<input type="checkbox" class="js-actif" {{ utilisateur.actif ? 'checked' }} {{ utilisateur == app.user ? 'disabled' }}
+											data-url="{{ path('app_user_toggle_status', {id: utilisateur.id}) }}"
+											data-token="{{ csrf_token('toggle_user_' ~ utilisateur.id) }}"
+											data-nom="{{ nom }}"
+											data-desactiver="{{ path('app_utilisateurs_desactiver', {id: utilisateur.id}) }}"
+											aria-label="Compte de {{ nom }} actif">
+										<span></span>
+									</label>
+								</td>
+								<td class="si-masque-mobile text-end text-nowrap">
+									<a href="{{ fiche }}" class="btn btn-sm si-btn-discret">Droits</a>
+									<div class="dropdown d-inline-block">
+										<button class="btn btn-sm si-btn-discret" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Plus d'actions">⋯</button>
+										<ul class="dropdown-menu dropdown-menu-end">
+											<li><a class="dropdown-item" href="{{ fiche }}">Modifier les droits</a></li>
+											<li><button type="button" class="dropdown-item js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}" data-confirmer="Réinitialiser le mot de passe de {{ nom }} ?" data-confirmer-detail="Un mot de passe temporaire s'affichera ; il devra le changer à sa prochaine connexion." data-confirmer-bouton="Réinitialiser">Réinitialiser le mot de passe</button></li>
+											<li><a class="dropdown-item" href="{{ fiche }}#journal">Voir son journal</a></li>
+										</ul>
+									</div>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		document.querySelectorAll('.si-utilisateurs tr[data-lien]').forEach(function (ligne) {
+			ligne.addEventListener('click', function (e) {
+				if (window.matchMedia('(max-width: 767px)').matches && !e.target.closest('a, button, label, input')) {
+					window.location = ligne.dataset.lien;
+				}
+			});
+		});
+
+		async function envoyer(url, donnees) {
+			const reponse = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify(donnees)});
+			const json = await reponse.json().catch(function () { return {success: false, message: 'Réponse invalide.'}; });
+			if (!reponse.ok || !json.success) { throw new Error(json.message || 'Action impossible.'); }
+			return json;
+		}
+
+		document.querySelectorAll('.js-actif').forEach(function (bouton) {
+			bouton.addEventListener('change', async function () {
+				if (!bouton.checked) {
+					bouton.checked = true;
+					window.location = bouton.dataset.desactiver;
+					return;
+				}
+				try {
+					await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
+					window.location.reload();
+				} catch (erreur) {
+					bouton.checked = false;
+					window.alert(erreur.message);
+				}
+			});
+		});
+
+		document.querySelectorAll('.js-mdp').forEach(function (bouton) {
+			bouton.addEventListener('click', async function () {
+				// Confirmé avant (data-confirmer, public/js/confirmation.js).
+				try {
+					const json = await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
+					window.prompt('Mot de passe temporaire de ' + json.username + ' (à changer à la connexion) :', json.temporaryPassword);
+				} catch (erreur) {
+					window.alert(erreur.message);
+				}
+			});
+		});
+	</script>
+{% endblock %}

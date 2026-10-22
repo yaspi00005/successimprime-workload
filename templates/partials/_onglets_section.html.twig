@@ -1,0 +1,14 @@
+{#
+	Onglets des ecrans de la section courante (NavigationExtension::ONGLETS).
+	Rien n'est affiche quand la section n'a qu'un ecran autorise.
+#}
+{% set rangActif = onglet_actif_admin(routeCourante) %}
+{% set onglets = onglets_autorises_admin(section_admin(routeCourante)) %}
+{% if onglets|length > 1 %}
+	<nav class="si-onglets" aria-label="Écrans de la section">
+		{% for onglet in onglets %}
+			{% set actif = rangActif is not null and onglet.rang == rangActif %}
+			<a href="{{ path(onglet.route, onglet.parametres|default({})) }}" class="{{ actif ? 'actif' }}" {% if actif %}aria-current="page"{% endif %}>{{ onglet.libelle }}</a>
+		{% endfor %}
+	</nav>
+{% endif %}

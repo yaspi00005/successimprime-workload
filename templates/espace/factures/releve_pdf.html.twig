@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<title>Relevé de compte du {{ du|date('d/m/Y') }} au {{ au|date('d/m/Y') }}</title>
+	{#
+		Relevé de compte du client entre deux dates, en PDF
+		(EspaceFacturesController::releve, FacturesClient::releve) : solde au
+		début, factures au débit, paiements validés au crédit, solde à la fin.
+		En-tête de l'entreprise qui facture le client ; un client entreprise
+		voit sa raison sociale. Les paiements encore en validation sont dits à
+		part : ils n'entrent pas dans le solde.
+	#}
+	{% set c = entreprise.couleurs %}
+	<style>
+		@page { margin: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; font-family: DejaVu Sans, sans-serif; font-size: 8.6px; line-height: 1.4; color: #1f2937; }
+		table { width: 100%; border-collapse: collapse; }
+		td, th { vertical-align: top; }
+		.bandes td { height: 5px; padding: 0; }
+		.page { padding: 9mm 15mm 18mm; }
+		.logo { max-height: 46px; max-width: 180px; }
+		.nom { font-size: 11px; font-weight: bold; margin-top: 5px; color: #111827; }
+		.coord { font-size: 7.6px; color: #4b5563; margin-top: 2px; }
+		.droite { text-align: right; }
+		.insecable { white-space: nowrap; }
+		.muted { color: #6b7280; }
+		.titre { font-size: 20px; font-weight: bold; letter-spacing: .5px; color: {{ c[1] ?? c[0] ?? '#0f2f6b' }}; }
+		.bloc { background: #f3f5f9; padding: 9px 11px; margin-top: 12px; }
+		.etiquette { font-size: 6.8px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #6b7280; }
+		.lignes { margin-top: 12px; }
+		.lignes th { background: {{ c[0] ?? '#0f2f6b' }}; color: #fff; font-size: 7.4px; text-align: left; padding: 6px 7px; }
+		.lignes td { padding: 5px 7px; border-bottom: 1px solid #e5e7eb; }
+		.lignes tr.paire td { background: #f8fafc; }
+		.lignes .num { text-align: right; white-space: nowrap; }
+		.lignes .total td { font-weight: bold; border-top: 1.5px solid #9ca3af; background: #fff; }
+		.solde { margin-top: 12px; }
+		.solde td { padding: 9px 12px; font-size: 11px; font-weight: bold; }
+		.note { margin-top: 10px; border: 1px solid #f59e0b; color: #92400e; padding: 6px 8px; }
+		.pied { margin-top: 18px; font-size: 7.4px; color: #6b7280; border-top: 1px solid #e5e7eb; padding-top: 8px; }
+	</style>
+</head>
+<body>
+	<table class="bandes"><tr>{% for couleur in c %}<td style="background: {{ couleur }}"></td>{% endfor %}</tr></table>
+	<div class="page">
+		<table><tr>
+			<td style="width: 58%">
+				{% if logo %}<img src="{{ logo }}" class="logo" alt="">{% endif %}
+				<div class="nom">{{ entreprise.nomAffiche }}</div>
+				<div class="coord">
+					{{ [entreprise.adresse, entreprise.rccm ? 'RCCM ' ~ entreprise.rccm, entreprise.nif ? 'NIF ' ~ entreprise.nif]|filter(v => v)|join(' · ') }}<br>
+					{{ [entreprise.telephone, entreprise.email]|filter(v => v)|join(' · ') }}
+				</div>
+			</td>
+			<td class="droite">
+				<div class="titre">RELEVÉ DE COMPTE</div>
+				<div><b>du {{ du|date('d/m/Y') }} au {{ au|date('d/m/Y') }}</b></div>
+				<div class="coord">Édité le {{ edite|date('d/m/Y à H:i') }}</div>
+			</td>
+		</tr></table>
+
+		<div class="bloc">
+			<div class="etiquette">Client</div>
+			{% if client.raisonSociale %}
+				<b>{{ client.raisonSociale }}</b>
+				{% set legal = [client.rccm ? 'RCCM ' ~ client.rccm, client.nif ? 'NIF ' ~ client.nif]|filter(v => v) %}
+				{% if legal is not empty %} · {{ legal|join(' · ') }}{% endif %}
+			{% else %}
+				<b>{{ client.nomComplet }}</b>
+			{% endif %}
+			{% set coord = [client.adresse, client.telephone]|filter(v => v) %}
+			{% if coord is not empty %}<br>{{ coord|join(' · ') }}{% endif %}
+			{% if client.code %}<br><span class="coord">Code client {{ client.code }}</span>{% endif %}
+		</div>
+
+		<table class="lignes">
+			<thead><tr>
+				<th style="width: 13%">Date</th>
+				<th>Libellé</th>
+				<th class="num" style="width: 15%">Débit (F)</th>
+				<th class="num" style="width: 15%">Crédit (F)</th>
+				<th class="num" style="width: 16%">Solde (F)</th>
+			</tr></thead>
+			<tbody>
+				<tr>
+					<td>{{ du|date('d/m/Y') }}</td>
+					<td><b>Solde au début de la période</b></td>
+					<td class="num"></td>
+					<td class="num"></td>
+					<td class="num"><b>{{ releve.ouverture|number_format(0, ',', ' ') }}</b></td>
+				</tr>
+				{% for l in releve.lignes %}
+					<tr class="{{ loop.index is odd ? 'paire' }}">
+						<td>{{ l.date|date('d/m/Y') }}</td>
+						<td>{{ l.libelle }}{% if l.paiement is defined %}{% set numero = l.paiement|numero_recu %}{% if numero %} · reçu <span class="insecable">{{ numero }}</span>{% endif %}{% endif %}</td>
+						<td class="num">{{ l.debit > 0 ? l.debit|number_format(0, ',', ' ') }}</td>
+						<td class="num">{{ l.credit > 0 ? l.credit|number_format(0, ',', ' ') }}</td>
+						<td class="num">{{ l.solde|number_format(0, ',', ' ') }}</td>
+					</tr>
+				{% else %}
+					<tr><td colspan="5" class="muted" style="text-align: center; padding: 10px">Aucun mouvement sur la période.</td></tr>
+				{% endfor %}
+				<tr class="total">
+					<td></td>
+					<td>Totaux de la période</td>
+					<td class="num">{{ releve.debits|number_format(0, ',', ' ') }}</td>
+					<td class="num">{{ releve.credits|number_format(0, ',', ' ') }}</td>
+					<td class="num"></td>
+				</tr>
+			</tbody>
+		</table>
+
+		<table class="solde" style="background: {{ releve.cloture > 0 ? '#fde8e8' : '#e7f6ec' }}"><tr>
+			<td>{{ releve.cloture > 0 ? 'Solde dû' : (releve.cloture < 0 ? 'Solde en votre faveur' : 'Solde') }} au {{ au|date('d/m/Y') }}</td>
+			<td class="droite">{{ releve.cloture|abs|number_format(0, ',', ' ') }} F</td>
+		</tr></table>
+
+		{% if releve.enValidation > 0 %}
+			<div class="note">{{ releve.enValidation|number_format(0, ',', ' ') }} F payés en ligne attendent la validation de l'imprimerie : ils entreront dans le solde une fois validés.</div>
+		{% endif %}
+
+		<div class="pied">
+			Débit : factures émises et soldes d'ouverture. Crédit : paiements validés par l'imprimerie. Les frais Orange Money, payés en plus, n'y figurent pas.<br>
+			{{ entreprise.mentionsLegales }}
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{# Fiche du guide « factures-liste » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Encaissements », onglet « Facturation » (Direction : Finances › Facturation). L'écran « Documents de facturation » s'ouvre.</li>
+	<li>En haut : le facturé du mois, l'encaissé (dont « à confirmer »), ce qui reste « À encaisser » et l'« Échu ».</li>
+	<li>Choisissez un onglet : Tous, Factures, Avoirs, Reçus, Proformas, Bons de livraison, Devis. Changez de mois ou cherchez un numéro, un client, une commande.</li>
+	<li>Chaque ligne donne le type, le numéro, le client, le montant, le statut et la commande liée. « PDF » ouvre le document.</li>
+	<li>« + Nouveau document » : choisissez le type, puis partez d'une commande, d'un devis accepté ou d'un document vide. Touchez « Créer… ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>« Facture d'acompte » demande une part de la commande (30, 50, 70 ou 100 %) ; elle est déduite de la facture finale.</li>
+	<li>« Proforma » : pour un client qui doit obtenir un accord de paiement. Elle n'a pas de valeur comptable.</li>
+	<li>Un type grisé demande un droit que vous n'avez pas. Sans le droit de voir les paiements, l'encaissé et les restes ne s'affichent pas.</li>
+	<li>« Exporter pour la comptabilité » donne la liste du mois pour Excel.</li>
+</ul>
+{% endblock %}

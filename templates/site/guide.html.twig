@@ -1,0 +1,66 @@
+{#
+	Préparer son fichier (maquette 06), page « guide-fichiers » : les
+	règles en cartes (icône d'après le titre), et à côté la section dont
+	le titre parle de gabarits : un gabarit avec un lien se télécharge,
+	sans lien il se demande sur WhatsApp.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set envoi = site_lien('app_site_devis') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais vous envoyer mon fichier pour une impression.') %}
+{% set gabarits = contenu.sections|filter(s => 'gabarit' in s.titre|lower)|first %}
+{% set regles = contenu.sections|filter(s => s != gabarits) %}
+
+{# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
+{% set image_partage = site_image(page.image) %}
+
+{% block title %}{{ page.titre|site_titre }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'Formats acceptés, résolution, fonds perdus, couleurs : préparer un fichier prêt à imprimer, et les gabarits à télécharger.')|site_description }}{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-contenu.css') }}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: page.titre, accroche: page.accroche, ariane: definition.libelle}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre sc-guide{{ gabarits ? ' sc-guide-avec-aside' }}">
+			<div class="sc-guide-regles">
+				{% if contenu.intro %}<div class="sc-prose sc-intro">{{ site_blocs(contenu.intro) }}</div>{% endif %}
+				{% for s in regles %}
+					{{ include('site/_section.html.twig', {s: s}) }}
+				{% endfor %}
+			</div>
+
+			{% if gabarits %}
+				<aside class="sc-gabarits" aria-labelledby="{{ gabarits.ancre }}">
+					<h2 id="{{ gabarits.ancre }}">{{ gabarits.html|raw }}</h2>
+					{% for b in gabarits.blocs %}
+						{% if b.type == 'liste' or b.type == 'etapes' %}
+							<ul class="sc-gabarits-liste">
+								{% for element in b.elements %}
+									{% set texte = element|site_sans_balises %}
+									{% set parties = texte|split(' — ', 2) %}
+									{% set lien = site_lien_de(element) %}
+									<li>
+										<span class="sc-gabarit-icone" aria-hidden="true">{{ include('site/_icone_contenu.svg.twig', {icone: 'fichier'}) }}</span>
+										<span class="sc-gabarit-nom"><strong>{{ parties[0] }}</strong>{% if parties[1] is defined %}<small>{{ parties[1] }}</small>{% endif %}</span>
+										{% if lien %}
+											<a href="{{ lien }}" class="sc-gabarit-action" download>Télécharger<span class="sc-masque"> le gabarit {{ parties[0] }}</span></a>
+										{% else %}
+											{% set wa = site_whatsapp('Bonjour Succès Imprim, pouvez-vous m\'envoyer le gabarit « ' ~ parties[0] ~ ' » ?') %}
+											{% if wa %}<a href="{{ wa }}" class="sc-gabarit-action" target="_blank" rel="noopener">Demander<span class="sc-masque"> le gabarit {{ parties[0] }}</span></a>{% endif %}
+										{% endif %}
+									</li>
+								{% endfor %}
+							</ul>
+						{% else %}
+							<div class="sc-prose">{{ site_blocs([b]) }}</div>
+						{% endif %}
+					{% endfor %}
+					{% if envoi %}<a href="{{ envoi }}" class="si-bouton si-bouton-rouge si-bouton-grand sc-gabarits-envoi"{% if envoi starts with 'https://wa.me' %} target="_blank" rel="noopener"{% endif %}>Envoyer mon fichier</a>{% endif %}
+				</aside>
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

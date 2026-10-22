@@ -1,0 +1,73 @@
+{% extends 'base.html.twig' %}
+{% import 'stock_articles/_macros.html.twig' as m %}
+
+{% block title %}Bon de commande{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_stock_articles_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Stock</a>
+	</li>
+	{% if fournisseurs is not empty %}
+		<li class="nav-item si-masque-mobile">
+			<button type="button" class="btn btn-danger btn-sm si-btn-entete" onclick="window.print()"><i class="fas fa-print me-1"></i>Imprimer</button>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if fournisseurs is empty %}
+		<div class="card si-bloc text-center py-5">
+			<p class="mb-0"><i class="fas fa-check-circle text-success me-1"></i>Aucun article sous le seuil : rien à commander.</p>
+		</div>
+	{% endif %}
+	{% for groupe in fournisseurs %}
+		{% set f = groupe.fournisseur %}
+		{% set message %}Bonjour{{ f ? ' ' ~ f.nom }}, Succès Imprim souhaite commander :
+{% for l in groupe.lignes %}- {{ l.lien and l.lien.referenceFournisseur ? l.lien.referenceFournisseur ~ ' · ' }}{{ l.article.designation }} : {{ l.unitesAchat ? l.unitesAchat ~ ' ' ~ l.article.uniteAchat : m.q(l.quantite) ~ ' ' ~ l.article.uniteCourte }}
+{% endfor %}Merci de confirmer le prix et le délai.{% endset %}
+		<section class="card si-bloc si-bon-commande">
+			<div class="si-pp-carte-tete">
+				<h2>{{ f ? f.nom : 'Sans fournisseur principal' }}
+					{% if f and f.telephone %}<small class="text-muted fw-normal">· {{ f.telephone }}</small>{% endif %}
+				</h2>
+				{% if f and f.telephone %}
+					<a class="btn btn-success btn-sm d-print-none" href="https://wa.me/{{ f.telephone|length == 8 ? '223' ~ f.telephone : f.telephone }}?text={{ message|trim|url_encode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Envoyer</a>
+				{% elseif not f %}
+					<span class="text-muted small">Choisissez un fournisseur principal sur la fiche article.</span>
+				{% endif %}
+				{% if f %}
+					{# Commande d'achat (docs/achats.md) : depuis l'alerte du premier article, les autres du fournisseur sont proposés. #}
+					<a class="btn btn-danger btn-sm d-print-none" href="{{ path('app_achat_new', {article: groupe.lignes[0].article.id, fournisseur: f.id}) }}"><i class="fas fa-file-invoice me-1"></i>Commande d'achat</a>
+				{% endif %}
+			</div>
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr>
+							<th>Article</th>
+							<th class="text-end">Disponible</th>
+							<th class="text-end si-masque-mobile">Seuil</th>
+							<th class="text-end">À commander</th>
+							<th class="text-end si-masque-mobile">Prix d'achat</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in groupe.lignes %}
+							<tr>
+								<td><a href="{{ path('app_stock_articles_fiche', {id: l.article.id}) }}" class="fw-semibold text-body">{{ l.article.designation }}</a>
+									<small class="text-muted d-block">{{ l.lien and l.lien.referenceFournisseur ? 'Réf. ' ~ l.lien.referenceFournisseur : l.article.reference }}{{ l.lien and l.lien.delaiJours ? ' · délai ' ~ l.lien.delaiJours ~ ' j' }}</small></td>
+								<td class="text-end text-nowrap text-danger">{{ m.q(l.disponible) }} {{ l.article.uniteCourte }}</td>
+								<td class="text-end text-nowrap si-masque-mobile">{{ m.q(l.article.stockMin) }} {{ l.article.uniteCourte }}</td>
+								<td class="text-end text-nowrap fw-bold">{{ l.unitesAchat ? l.unitesAchat ~ ' ' ~ l.article.uniteAchat ~ ' (' ~ m.q(l.quantite) ~ ' ' ~ l.article.uniteCourte ~ ')' : m.q(l.quantite) ~ ' ' ~ l.article.uniteCourte }}</td>
+								<td class="text-end text-nowrap si-masque-mobile">{{ l.lien and l.lien.prixAchat ? m.f(l.lien.prixAchat) ~ (l.unitesAchat ? ' / ' ~ l.article.uniteAchat : '') : '—' }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+					{% if groupe.total > 0 %}
+						<tfoot><tr><td colspan="3" class="text-end si-masque-mobile">Total estimé</td><td colspan="2" class="text-end fw-bold">{{ m.f(groupe.total) }}</td></tr></tfoot>
+					{% endif %}
+				</table>
+			</div>
+		</section>
+	{% endfor %}
+{% endblock %}

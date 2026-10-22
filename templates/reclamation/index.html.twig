@@ -81,7 +81,7 @@
 
 									<td class="text-center">
 										{% if reclamation.justificatif %}
-											<a href="{{ asset('uploads/reclamations/' ~ reclamation.justificatif) }}" target="_blank" title="Voir le justificatif">
+											<a href="{{ path('app_reclamation_justificatif', {id: reclamation.id}) }}" target="_blank" title="Voir le justificatif">
 												<i class="fa fa-file-o"></i>
 											</a>
 										{% else %}

@@ -1,0 +1,103 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Clients › Engagements clients (maquette EC09, direction) : ce que
+	l'atelier a tenu sur le mois, mesuré dans l'ERP. La page « Nos
+	engagements » du site n'affiche ces chiffres qu'après « Publier les
+	chiffres sur le site ».
+#}
+{% block title %}Engagements clients · {{ periode }}{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/demandes-contact.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% macro carte(titre, m, detail) %}
+	{% set ton = m.pct is null ? 'vide' : (m.pct >= 95 ? 'vert' : (m.pct >= 80 ? 'orange' : 'rouge')) %}
+	<div class="de-kpi {{ ton }}">
+		<h3>{{ titre }}</h3>
+		<b>{{ m.pct is null ? '—' : m.pct ~ ' %' }}</b>
+		<small>{{ m.total > 0 ? detail : 'rien à mesurer ce mois-ci' }}</small>
+	</div>
+{% endmacro %}
+
+{% block body %}
+	{% import _self as de %}
+	<form method="get" class="mc-filtres" aria-label="Mois">
+		<label for="de-mois" class="visually-hidden">Mois</label>
+		<select name="mois" id="de-mois" class="form-select form-select-sm" onchange="this.form.submit()">
+			{% for i in 0..11 %}
+				{% set m = date('first day of this month')|date_modify('-' ~ i ~ ' months') %}
+				<option value="{{ m|date('Y-m') }}"{{ m|date('Y-m') == mois ? ' selected' }}>{{ m|date('m/Y') }}</option>
+			{% endfor %}
+		</select>
+		<noscript><button class="mc-btn">Voir</button></noscript>
+	</form>
+
+	<div class="de-grille">
+		<div>
+			<div class="de-kpis">
+				{{ de.carte('Date tenue', mesures.a_la_date, mesures.a_la_date.retards|length ~ ' en retard sur ' ~ mesures.a_la_date.total ~ ' commande' ~ (mesures.a_la_date.total > 1 ? 's')) }}
+				{{ de.carte('BAT avant impression', mesures.bat, mesures.bat.sans ~ ' partie' ~ (mesures.bat.sans > 1 ? 's') ~ ' sans BAT validé sur ' ~ mesures.bat.total) }}
+				{{ de.carte('Réclamations résolues', mesures.reclamations_resolues, mesures.reclamations_resolues.total ~ ' réclamation' ~ (mesures.reclamations_resolues.total > 1 ? 's') ~ ' ce mois-ci') }}
+				{{ de.carte('Réponse dans le délai', mesures.reponse, mesures.reponse.enRetard ~ ' réponse' ~ (mesures.reponse.enRetard > 1 ? 's') ~ ' en retard · ' ~ mesures.reponse.total ~ ' conversations') }}
+			</div>
+
+			<section class="mc-carte">
+				<h2>Retards · {{ periode }}</h2>
+				{% if mesures.a_la_date.retards is empty %}
+					<p class="mc-vide">{{ mesures.a_la_date.total > 0 ? 'Toutes les commandes du mois ont été prêtes à la date annoncée.' : 'Aucune commande avec une date annoncée passée ce mois-ci.' }}</p>
+				{% else %}
+					<table class="mc-table">
+						<thead><tr><th>Commande</th><th>Client</th><th>Date annoncée</th><th>Retard</th><th>État</th></tr></thead>
+						<tbody>
+							{% for r in mesures.a_la_date.retards %}
+								<tr>
+									<td><a href="{{ path('app_commandes_show', {id: r.commande.id}) }}"><b>{{ r.commande.numero }}</b></a></td>
+									<td>{{ r.commande.clients ? r.commande.clients.nomComplet : '—' }}</td>
+									<td>{{ r.commande.dateLivraison|date('d/m') }}</td>
+									<td class="dc-rouge">{{ r.retardHeures >= 24 ? (r.retardHeures / 24)|round(0, 'ceil') ~ ' j' : r.retardHeures ~ ' h' }}</td>
+									<td>{{ r.terminee ? 'terminée en retard' : 'pas encore terminée' }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				{% endif %}
+				<p class="dc-note">La cause et le geste commercial (« Si on ne tient pas → ») se notent sur la commande ou dans la réclamation du client.</p>
+			</section>
+		</div>
+
+		<div>
+			<section class="mc-carte">
+				<h2>Réclamations</h2>
+				{% if mesures.reclamations_resolues.liste is empty %}
+					<p class="mc-vide">Aucune réclamation ce mois-ci.</p>
+				{% else %}
+					<ul class="de-reclam">
+						{% for r in mesures.reclamations_resolues.liste %}
+							<li><span><b>{{ r.numero }}</b> · {{ r.client ? r.client.nomComplet : '' }}<small>{{ r.libelleMotif ?? '' }}</small></span><span class="mc-puce {{ r.statut == 'resolue' ? 'vert' : (r.statut == 'refusee' ? 'gris' : 'rouge') }}">{{ r.libelleStatut }}</span></li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</section>
+
+			<section class="de-site">
+				<p class="de-etiquette">● Affiché sur le site</p>
+				{% if publies %}
+					<p>« Nos engagements » montre{{ publies.periode ? ' (' ~ publies.periode ~ ')' }}{{ publies.publieLe ? ', publié le ' ~ publies.publieLe|date('d/m/Y') }} :</p>
+					<div class="de-chiffres">{% for c in publies.chiffres %}<span><b>{{ c.valeur }} %</b><small>{{ c.libelle }}</small></span>{% endfor %}</div>
+				{% else %}
+					<p>Rien pour l'instant : la page montre les promesses, sans chiffre.</p>
+				{% endif %}
+				<form method="post" action="{{ path('app_engagements_direction_publier') }}" class="d-flex flex-wrap gap-2 mt-2">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<input type="hidden" name="mois" value="{{ mois }}">
+					<button class="btn btn-warning btn-sm" name="action" value="publier"{% if enLigne %} disabled title="À faire sur l'ERP de l'imprimerie"{% endif %}>Publier les chiffres {{ periode matches '/^[aeiouyéèh]/i' ? "d'" : 'de ' }}{{ periode }}</button>
+					{% if publies %}<button class="btn btn-outline-light btn-sm" name="action" value="retirer" data-confirmer="Retirer les chiffres de la page « Nos engagements » ?"{% if enLigne %} disabled{% endif %}>Retirer du site</button>{% endif %}
+				</form>
+				<p class="mt-2 mb-0"><small>Seuls les chiffres mesurés partent ; un chiffre vide n'est jamais affiché.</small></p>
+			</section>
+		</div>
+	</div>
+{% endblock %}

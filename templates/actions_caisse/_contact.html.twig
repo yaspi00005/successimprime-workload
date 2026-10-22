@@ -1,0 +1,13 @@
+{# Appel ou WhatsApp touché : l'heure est enregistrée comme preuve, puis le lien s'ouvre. #}
+<script>
+	document.addEventListener('click', function (e) {
+		var lien = e.target.closest('[data-si-contact]');
+		if (!lien) { return; }
+		var donnees = new FormData();
+		donnees.append('_token', {{ csrf_token('actions-caisse')|json_encode|raw }});
+		donnees.append('canal', lien.dataset.siContact);
+		if (!(navigator.sendBeacon && navigator.sendBeacon(lien.dataset.url, donnees))) {
+			fetch(lien.dataset.url, {method: 'POST', body: donnees, keepalive: true});
+		}
+	});
+</script>

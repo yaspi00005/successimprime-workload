@@ -1,0 +1,153 @@
+/*
+ * Site vitrine : nos produits (maquette 02) et calculateur de prix
+ * (maquette 03). Complète public/css/site.css (couleurs, boutons, cadre),
+ * sans police ni bibliothèque externe.
+ */
+
+/* Bouton vert WhatsApp : plus foncé que le bouton flottant, pour lire le texte blanc. */
+.si-site a.si-bouton-whatsapp, .si-bouton-whatsapp { background: #15803D; color: #fff; }
+.si-bouton-whatsapp:hover { background: #116632; }
+.si-bouton-whatsapp svg { flex: 0 0 auto; }
+
+/* Dessins des cartes (templates/site/_illustrations_produits.svg.twig) */
+.si-dessins { position: absolute; width: 0; height: 0; overflow: hidden; }
+
+/* Nos produits */
+.si-produits { padding-top: 22px; }
+.si-filtres { display: flex; gap: 8px; overflow-x: auto; margin: 0 -16px 14px; padding: 2px 16px 8px; scrollbar-width: none; }
+.si-filtres::-webkit-scrollbar { display: none; }
+.si-site a.si-filtre { flex: 0 0 auto; display: inline-flex; align-items: center; min-height: 42px; padding: 8px 18px; border: 1px solid var(--bordure); border-radius: 999px; background: #fff; color: var(--texte); font-weight: 600; font-size: 15px; text-decoration: none; box-shadow: 0 1px 3px rgba(15, 35, 75, .06); }
+.si-site a.si-filtre:hover { border-color: var(--bleu); color: var(--bleu); }
+.si-site a.si-filtre.actif { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+
+.si-produits-grille { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr; gap: 12px; }
+.si-produit { position: relative; display: grid; grid-template-columns: 124px minmax(0, 1fr); background: #fff; border: 1px solid var(--bordure); border-radius: var(--rayon); box-shadow: var(--ombre); overflow: hidden; transition: border-color .15s, box-shadow .15s; }
+.si-produit:hover { border-color: var(--bleu-clair); box-shadow: 0 10px 28px rgba(15, 35, 75, .13); }
+.si-produit[data-incline] { transition: border-color .15s, box-shadow .15s, transform .2s ease-out; }
+.si-produit:focus-within { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-produit-dessin { display: block; width: 100%; height: 100%; min-height: 116px; }
+.si-produit-photo { display: block; width: 100%; height: 100%; min-height: 116px; object-fit: contain; background: #fff; }
+.si-produit-corps { display: flex; flex-direction: column; gap: 2px; padding: 12px 14px; }
+.si-produit h2 { margin: 0; font-size: 17px; }
+.si-produit-texte { display: -webkit-box; margin: 0; overflow: hidden; font-size: 14px; line-height: 1.4; color: var(--texte-doux); -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+.si-produit-prix { margin: 6px 0 0; font-size: 14px; line-height: 1.4; }
+.si-produit-prix strong { color: var(--bleu); font-size: 15px; white-space: nowrap; }
+.si-produit-prix span { color: var(--texte-doux); }
+.si-site a.si-produit-lien { margin-top: auto; padding-top: 6px; color: var(--rouge); font-size: 14px; font-weight: 700; text-decoration: none; }
+.si-site a.si-produit-lien:focus-visible { outline: none; }
+.si-produit-lien::after { content: ""; position: absolute; inset: 0; }
+
+@media (min-width: 560px) {
+  .si-produits-grille { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+  .si-produit { grid-template-columns: 1fr; grid-template-rows: 168px auto; }
+  .si-produit-photo { padding-top: 8px; }
+  .si-produit-corps { padding: 14px 16px 16px; }
+}
+@media (min-width: 860px) { .si-produits-grille { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1100px) { .si-produits-grille { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.si-produits-vide { max-width: 560px; }
+.si-produits-vide p { color: var(--texte-doux); }
+.si-produits-vide-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.si-produits-autre { display: flex; flex-direction: column; gap: 14px; margin-top: 28px; padding: 20px; border-radius: var(--rayon); background: var(--bleu-pale); }
+.si-produits-autre h2 { margin: 0 0 4px; font-size: 20px; }
+.si-produits-autre p { margin: 0; color: var(--texte-doux); }
+.si-produits-autre-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.si-produits-autre-image { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; border-radius: 10px; }
+@media (min-width: 860px) {
+  .si-produits-autre { flex-direction: row; align-items: center; justify-content: space-between; padding: 22px 28px; }
+  .si-produits-autre-photo { gap: 24px; padding-left: 22px; }
+  .si-produits-autre-photo .si-produits-autre-image { flex: 0 0 240px; width: 240px; }
+  .si-produits-autre-photo .si-produits-autre-texte { flex: 1 1 auto; }
+}
+
+/* Calculateur */
+.si-calc-section { padding-top: 24px; }
+.si-calc { display: grid; gap: 22px; counter-reset: etape; }
+.si-calc [hidden] { display: none !important; }
+.si-calc-formulaire { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.si-calc-etape { min-width: 0; margin: 0; padding: 0; border: 0; }
+.si-calc-titre { display: block; margin-bottom: 6px; padding: 0; font-size: 14px; font-weight: 700; color: var(--texte); }
+.si-calc-num::before { counter-increment: etape; content: counter(etape) "."; }
+.si-calc-saisie, .si-calc-select select { width: 100%; min-height: 50px; padding: 10px 14px; border: 1px solid #C9D1DE; border-radius: 10px; background: #fff; color: var(--texte); font: inherit; font-size: 16px; }
+.si-calc-saisie:focus, .si-calc-select select:focus { outline: 2px solid var(--bleu-clair); outline-offset: 0; border-color: var(--bleu-clair); }
+.si-calc-select { position: relative; }
+.si-calc-select select { padding-right: 42px; -webkit-appearance: none; appearance: none; text-overflow: ellipsis; }
+.si-calc-select::after { content: ""; position: absolute; top: 50%; right: 18px; width: 8px; height: 8px; border-right: 2px solid var(--texte-doux); border-bottom: 2px solid var(--texte-doux); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.si-calc-deux { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.si-puces { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-puce { position: relative; cursor: pointer; }
+.si-puce input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.si-puce span { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 8px 16px; border: 1px solid #C9D1DE; border-radius: 999px; background: #fff; font-size: 15px; font-weight: 600; transition: background .15s, color .15s, border-color .15s; }
+.si-puce:hover span { border-color: var(--bleu); }
+.si-puce input:checked + span { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.si-puce input:checked + span::before { content: "✓"; }
+.si-puce input:focus-visible + span { outline: 3px solid var(--jaune); outline-offset: 2px; }
+.si-puce input:disabled + span { cursor: default; }
+
+.si-calc-ligne { display: grid; grid-template-columns: 1fr; gap: 18px; }
+.si-calc-quantite { display: flex; }
+.si-calc-quantite .si-calc-saisie { min-width: 0; text-align: center; }
+.si-calc-quantite button { flex: 0 0 48px; border: 1px solid #C9D1DE; background: var(--fond-doux); color: var(--bleu); font: inherit; font-size: 22px; font-weight: 700; cursor: pointer; }
+.si-calc-quantite button:first-child { border-radius: 10px 0 0 10px; border-right: 0; }
+.si-calc-quantite button:last-child { border-radius: 0 10px 10px 0; border-left: 0; }
+.si-calc-vivant .si-calc-quantite .si-calc-saisie { border-radius: 0; }
+.si-calc-minimum { margin: 4px 0 0; }
+.si-calc-minimum:empty { display: none; }
+.si-calc-fichier { display: flex; gap: 12px; align-items: flex-start; min-height: 50px; padding: 12px 14px; border: 2px dashed #C9D1DE; border-radius: 10px; color: var(--texte-doux); font-size: 14px; line-height: 1.45; }
+.si-calc-fichier svg { flex: 0 0 auto; color: var(--bleu); }
+.si-calc-fichier p { margin: 0; }
+.si-calc-envoi .si-bouton { width: 100%; }
+.si-calc-vivant .si-calc-envoi { display: none; }
+
+.si-calc-resultat { align-self: start; padding: 20px; background: #fff; border: 1px solid var(--bordure); border-radius: 16px; box-shadow: var(--ombre); transition: opacity .2s; }
+.si-calc-attente { opacity: .7; }
+.si-calc-resultat h2 { margin: 0 0 2px; font-size: 21px; }
+.si-calc-produit { margin: 0 0 8px; font-size: 14px; color: var(--texte-doux); }
+.si-calc-lignes { margin: 0; }
+.si-calc-lignes div { display: flex; justify-content: space-between; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--bordure); font-size: 15px; }
+.si-calc-lignes dt { flex: 0 0 auto; color: var(--texte-doux); }
+.si-calc-lignes dd { margin: 0; font-weight: 700; color: var(--noir); text-align: right; }
+.si-calc-erreur { margin: 12px 0 0; padding: 10px 12px; border-radius: 10px; background: #FDECEE; color: var(--rouge-fonce); font-size: 14px; font-weight: 600; }
+.si-calc-detail { margin: 12px 0 0; padding: 10px 12px; list-style: none; border-radius: 10px; background: var(--fond-doux); font-size: 13px; color: var(--texte-doux); }
+.si-calc-detail li { display: flex; justify-content: space-between; gap: 10px; }
+.si-calc-detail li span:last-child { white-space: nowrap; }
+.si-calc-total { margin: 16px 0 14px; }
+.si-calc-total span { display: block; font-size: 14px; color: var(--texte-doux); }
+.si-calc-total strong { display: block; font-size: clamp(34px, 4vw, 46px); font-weight: 800; line-height: 1.1; letter-spacing: -.5px; color: var(--bleu); white-space: nowrap; }
+.si-calc-pret { display: flex; align-items: center; gap: 8px; margin: -6px 0 14px; padding: 8px 12px; border-radius: 10px; background: #E6F6EC; color: #126B34; font-size: 14px; }
+.si-calc-pret[hidden] { display: none; }
+.si-calc-pret strong { font-weight: 700; }
+.si-calc-actions { display: flex; flex-direction: column; gap: 10px; }
+.si-calc-actions .si-bouton { width: 100%; padding-left: 12px; padding-right: 12px; white-space: normal; text-align: center; }
+.si-calc-precision { margin: 12px 0 0; }
+.si-calc-resultat { scroll-margin-top: 84px; }
+
+/* Total collé en bas de l'écran du téléphone pendant la saisie (avec le script seulement). */
+.si-calc-barre { display: none; }
+@media (max-width: 899px) {
+  .si-calc-vivant .si-calc-barre { position: sticky; bottom: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 -16px; padding: 10px 16px calc(10px + env(safe-area-inset-bottom, 0px)); background: #fff; border-top: 1px solid var(--bordure); box-shadow: 0 -6px 18px rgba(15, 35, 75, .08); }
+  .si-calc-barre p { margin: 0; line-height: 1.2; }
+  .si-calc-barre span { display: block; font-size: 12px; color: var(--texte-doux); }
+  .si-calc-barre strong { font-size: 22px; font-weight: 800; color: var(--bleu); white-space: nowrap; }
+  body:has(.si-calc-vivant) .si-whatsapp { bottom: 86px; }
+}
+
+@media (min-width: 560px) {
+  .si-calc-ligne { grid-template-columns: 200px minmax(0, 1fr); }
+}
+@media (min-width: 900px) {
+  .si-calc { grid-template-columns: minmax(0, 1.45fr) minmax(330px, 1fr); gap: 36px; align-items: start; }
+  .si-calc-resultat { position: sticky; top: 90px; padding: 24px 26px; }
+}
+
+/* Nom commercial et recherche (docs/noms-commerciaux.md) */
+.si-produit h2 .si-produit-technique { font-size: 13px; font-weight: 600; color: var(--texte-doux); }
+.si-produits-recherche { margin: 0 0 14px; }
+.si-produits-recherche-titre { display: block; margin-bottom: 6px; font-size: 14px; font-weight: 700; color: var(--texte); }
+.si-produits-recherche-ligne { display: flex; gap: 8px; max-width: 520px; }
+.si-produits-recherche input { flex: 1 1 auto; min-width: 0; min-height: 46px; padding: 10px 14px; border: 1px solid #C9D1DE; border-radius: 10px; background: #fff; color: var(--texte); font: inherit; font-size: 16px; }
+.si-produits-recherche input:focus { outline: 2px solid var(--bleu-clair); outline-offset: 0; border-color: var(--bleu-clair); }
+.si-produits-recherche .si-bouton { flex: 0 0 auto; min-height: 46px; font-family: inherit; }
+.si-produits-resultat { margin: 0 0 14px; color: var(--texte-doux); font-size: 15px; }

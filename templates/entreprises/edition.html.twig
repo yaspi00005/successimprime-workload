@@ -1,0 +1,206 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Entreprises et en-têtes des documents{% endblock %}
+
+{% block header_actions %}
+	{% if entreprise %}
+		<li class="nav-item">
+			<a href="{{ path('app_entreprises_apercu', {id: entreprise.id, format: 'pdf'}) }}" target="_blank" rel="noopener" class="btn btn-light btn-sm si-btn-entete">Aperçu PDF</a>
+		</li>
+		<li class="nav-item">
+			<button type="submit" form="form-entreprise" class="btn btn-danger btn-sm si-btn-entete">Enregistrer</button>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% macro image(nom, libelle, chemin, apercu, aide) %}
+	<div class="si-entreprise-image">
+		<span class="si-libelle-champ">{{ libelle }}</span>
+		<div class="si-entreprise-image-corps">
+			<span class="si-entreprise-vignette">{% if apercu %}<img src="{{ apercu }}" alt="">{% else %}<small class="text-muted">Aucune</small>{% endif %}</span>
+			<div>
+				<input type="file" name="image_{{ nom }}" accept=".png,.jpg,.jpeg,.webp" class="form-control form-control-sm" aria-label="{{ libelle }}">
+				{% if chemin %}<label class="small text-muted mt-1"><input type="checkbox" name="retirer_{{ nom }}" value="1"> Retirer</label>{% endif %}
+				{% if aide %}<div class="form-text">{{ aide }}</div>{% endif %}
+			</div>
+		</div>
+	</div>
+{% endmacro %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-3">
+			<div class="card si-bloc">
+				<div class="si-entreprises">
+					{% for e in entreprises %}
+						<a href="{{ path('app_entreprises_edition', {id: e.id}) }}" class="si-entreprise-carte {{ entreprise and e.id == entreprise.id ? 'active' }} {{ not e.actif ? 'inactive' }}">
+							<span class="si-pastille-entreprise" style="background: {{ e.couleurPrincipale }}"></span>
+							<span>
+								<b>{{ e.nomAffiche }}</b>
+								<small>{{ e.nomCommercial ? e.raisonSociale : (e.mention ?: 'Entreprise') }}{{ not e.actif ? ' · désactivée' }}</small>
+							</span>
+						</a>
+					{% endfor %}
+				</div>
+				<form method="post" action="{{ path('app_entreprises_nouvelle') }}" class="mt-3">
+					<input type="hidden" name="_token" value="{{ csrf_token('entreprise-nouvelle') }}">
+					<label class="si-libelle-champ" for="nouvelle">Ajouter une entreprise</label>
+					<div class="input-group input-group-sm">
+						<input type="text" name="raison_sociale" id="nouvelle" class="form-control" placeholder="Raison sociale" maxlength="150" required>
+						<button type="submit" class="btn btn-light">+ Ajouter</button>
+					</div>
+				</form>
+				<p class="text-muted small mt-3 mb-0">Chaque facture ou devis est rattaché à une entreprise émettrice. L'en-tête, les couleurs et les mentions suivent ce choix.</p>
+			</div>
+		</div>
+
+		{% if entreprise %}
+			<div class="col-xl-5">
+				<form method="post" id="form-entreprise" enctype="multipart/form-data" class="card si-bloc">
+					<input type="hidden" name="_token" value="{{ csrf_token('entreprise-' ~ entreprise.id) }}">
+					<div class="si-bloc-tete">
+						<h4>En-tête · {{ entreprise.nomAffiche }}</h4>
+						<span class="si-bloc-note">code {{ entreprise.code }}</span>
+					</div>
+
+					{% for erreur in erreurs %}<div class="alert alert-danger py-2 small">{{ erreur }}</div>{% endfor %}
+
+					{{ _self.image('logo', 'Logo de l\'en-tête', entreprise.logo, images.logo, null) }}
+
+					<div class="row g-2 mt-1">
+						<div class="col-md-7">
+							<label class="si-libelle-champ" for="raison_sociale">Raison sociale</label>
+							<input type="text" name="raison_sociale" id="raison_sociale" value="{{ entreprise.raisonSociale }}" maxlength="150" class="form-control form-control-sm" required>
+						</div>
+						<div class="col-md-5">
+							<label class="si-libelle-champ" for="nom_commercial">Nom commercial</label>
+							<input type="text" name="nom_commercial" id="nom_commercial" value="{{ entreprise.nomCommercial }}" maxlength="150" class="form-control form-control-sm" placeholder="Succès Imprim">
+						</div>
+						<div class="col-md-7">
+							<label class="si-libelle-champ" for="mention">Mention</label>
+							<input type="text" name="mention" id="mention" value="{{ entreprise.mention }}" maxlength="150" class="form-control form-control-sm" placeholder="Nom commercial de Madial Group SARL">
+						</div>
+						<div class="col-md-5">
+							<label class="si-libelle-champ" for="activite">Activité</label>
+							<input type="text" name="activite" id="activite" value="{{ entreprise.activite }}" maxlength="150" class="form-control form-control-sm">
+						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="societe">Société</label>
+							<select name="societe" id="societe" class="form-select form-select-sm" required>
+								{% for s in societes %}
+									<option value="{{ s.id }}" {{ entreprise.societe and s.id == entreprise.societe.id ? 'selected' }}>{{ s.libelle }}{{ not s.actif ? ' · désactivée' }}</option>
+								{% endfor %}
+							</select>
+							<div class="form-text">Entité juridique (RCCM, NIF, comptabilité) qui émet sous cet en-tête. Les documents déjà émis gardent leur société.</div>
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="rccm">RCCM</label>
+							<input type="text" name="rccm" id="rccm" value="{{ entreprise.rccm }}" maxlength="60" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-6">
+							<label class="si-libelle-champ" for="nif">NIF</label>
+							<input type="text" name="nif" id="nif" value="{{ entreprise.nif }}" maxlength="60" class="form-control form-control-sm">
+						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="adresse">Adresse</label>
+							<input type="text" name="adresse" id="adresse" value="{{ entreprise.adresse }}" maxlength="255" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="telephone">Téléphone</label>
+							<input type="text" name="telephone" id="telephone" value="{{ entreprise.telephone }}" maxlength="60" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="email">E-mail</label>
+							<input type="email" name="email" id="email" value="{{ entreprise.email }}" maxlength="150" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="site_web">Site</label>
+							<input type="text" name="site_web" id="site_web" value="{{ entreprise.siteWeb }}" maxlength="150" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="banque">Banque</label>
+							<input type="text" name="banque" id="banque" value="{{ entreprise.banque }}" maxlength="100" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="compte_bancaire">Compte · IBAN</label>
+							<input type="text" name="compte_bancaire" id="compte_bancaire" value="{{ entreprise.compteBancaire }}" maxlength="80" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-4">
+							<label class="si-libelle-champ" for="marchand_orange_money">Orange Money marchand</label>
+							<input type="text" name="marchand_orange_money" id="marchand_orange_money" value="{{ entreprise.marchandOrangeMoney }}" maxlength="40" class="form-control form-control-sm">
+						</div>
+						<div class="col-md-7">
+							<label class="si-libelle-champ" for="format_numero">Numérotation des factures</label>
+							<input type="text" name="format_numero" id="format_numero" value="{{ entreprise.formatNumero }}" maxlength="60" class="form-control form-control-sm" placeholder="F-SI-{AAAA}-{0000}">
+						</div>
+						<div class="col-md-5">
+							<span class="si-libelle-champ">Prochain numéro</span>
+							<div class="form-control form-control-sm bg-light">{{ prochainNumero ?: 'FAC-000123-10-2026 (actuelle)' }}</div>
+						</div>
+						<div class="col-12 form-text mt-0">
+							{AAAA} année, {MM} mois, {0000} compteur. Vide : la numérotation actuelle continue. Le compteur repart à 1 chaque année. Changez de format de préférence en début d'année.
+						</div>
+						<div class="col-12">
+							<label class="si-libelle-champ" for="conditions_paiement">Conditions de paiement (bloc « NB » des factures)</label>
+							<textarea name="conditions_paiement" id="conditions_paiement" rows="3" maxlength="{{ constant('App\\Entity\\Entreprise::CONDITIONS_PAIEMENT_LONGUEUR') }}" class="form-control form-control-sm" placeholder="Conditions de paiement : …">{{ entreprise.conditionsPaiement }}</textarea>
+							<div class="form-text">Imprimé en bas des factures et des proformas, après « NB : ». Vide : pas de bloc. Les factures déjà archivées ne changent pas.</div>
+						</div>
+					</div>
+
+					<span class="si-libelle-champ mt-3">Couleurs du document</span>
+					<div class="si-couleurs">
+						{% for couleur in entreprise.couleurs %}
+							<input type="color" name="couleurs[]" value="{{ couleur }}" aria-label="{{ loop.first ? 'Couleur principale' : (loop.index == 2 ? 'Couleur du titre' : 'Bande ' ~ loop.index) }}">
+						{% endfor %}
+					</div>
+					<div class="form-text">1 : tableaux et totaux · 2 : titre FACTURE · les 5 : bandes du haut.</div>
+
+					<div class="mt-3">
+						{% for champ, option in {
+							qr_suivi: {actif: entreprise.qrSuivi, libelle: 'QR « Suivre la facture en ligne »'},
+							qr_paiement: {actif: entreprise.qrPaiement, libelle: 'QR de paiement Orange Money'},
+							logo_pied_actif: {actif: entreprise.afficherLogoPied, libelle: 'Logo en pied de page'},
+							montant_en_lettres: {actif: entreprise.montantEnLettres, libelle: 'Montant en lettres'},
+							actif: {actif: entreprise.actif, libelle: 'Entreprise proposée dans les factures et devis'}
+						} %}
+							<label class="si-interrupteur-ligne">
+								<span class="si-interrupteur"><input type="checkbox" name="{{ champ }}" value="1" {{ option.actif ? 'checked' }}><span></span></span>
+								{{ option.libelle }}
+							</label>
+						{% endfor %}
+					</div>
+
+					<div class="row g-2 mt-2">
+						<div class="col-md-6">{{ _self.image('logoPied', 'Logo du pied de page', entreprise.logoPied, images.logoPied ?: null, 'Par exemple le logo MDG.') }}</div>
+						<div class="col-md-6">{{ _self.image('signature', 'Cachet et signature', entreprise.signature, images.signature, 'PNG sur fond transparent.') }}</div>
+					</div>
+
+					<button type="submit" class="btn btn-danger btn-sm align-self-start mt-3">Enregistrer</button>
+				</form>
+			</div>
+
+			<div class="col-xl-4">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Aperçu du modèle</h4></div>
+					<div class="si-apercu-document">
+						<iframe src="{{ path('app_entreprises_apercu', {id: entreprise.id}) }}" title="Aperçu de la facture" loading="lazy" tabindex="-1"></iframe>
+					</div>
+					<p class="text-muted small text-center mt-2 mb-0">Modèle unique : seuls l'en-tête, les couleurs et les coordonnées changent. Données fictives. Enregistrez pour mettre l'aperçu à jour.</p>
+				</div>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(() => {
+			const cadre = document.querySelector('.si-apercu-document');
+			if (!cadre) return;
+			const ajuster = () => cadre.style.setProperty('--echelle', cadre.clientWidth / 794);
+			new ResizeObserver(ajuster).observe(cadre);
+			ajuster();
+		})();
+	</script>
+{% endblock %}

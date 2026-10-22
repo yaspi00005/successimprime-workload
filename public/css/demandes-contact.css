@@ -1,0 +1,33 @@
+/* Clients › Demandes de contact (EC08) et Engagements clients (EC09). */
+.dc-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.dc-onglets { margin: 0 0 12px; }
+.dc-table td { vertical-align: top; }
+.dc-rouge { color: #C40D22; font-weight: 800; }
+.dc-vert { color: #178444; font-weight: 700; }
+.dc-note { margin: 10px 0 0; color: #6B7385; font-size: .8rem; }
+.dc-rappels { list-style: none; margin: 0; padding: 0; }
+.dc-rappels li { display: flex; align-items: center; gap: 14px; padding: 10px 0; border-bottom: 1px solid #F0F2F6; }
+.dc-rappels li.dc-en-retard { background: #FFF6F7; }
+.dc-heure { flex: none; width: 64px; text-align: center; font-size: .72rem; color: #6B7385; }
+.dc-heure b { display: block; font-size: 1.25rem; color: #0F4590; }
+.dc-qui { flex: 1; min-width: 0; }
+.dc-qui small { display: block; color: #6B7385; }
+.dc-lien { margin-left: 8px; font-size: .78rem; font-weight: 700; }
+.de-grille { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 14px; align-items: start; }
+.de-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+.de-kpi { padding: 12px 14px; background: #fff; border-radius: 12px; border-left: 4px solid #C9D1DE; box-shadow: 0 1px 3px rgba(18,33,58,.08); }
+.de-kpi.vert { border-color: #178444; } .de-kpi.orange { border-color: #D88A00; } .de-kpi.rouge { border-color: #C40D22; }
+.de-kpi h3 { margin: 0; font-size: .82rem; font-weight: 800; color: #12213A; }
+.de-kpi b { display: block; margin: 2px 0; font-size: 1.7rem; font-weight: 800; }
+.de-kpi.vert b { color: #178444; } .de-kpi.orange b { color: #B87500; } .de-kpi.rouge b { color: #C40D22; } .de-kpi.vide b { color: #9AA3B2; }
+.de-kpi small { color: #6B7385; font-size: .74rem; }
+.de-site { padding: 16px; border-radius: 12px; background: #0B1A36; color: rgba(255,255,255,.85); }
+.de-site p.de-etiquette { margin: 0 0 4px; font-size: .7rem; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: #6EE7A0; }
+.de-site p { font-size: .82rem; }
+.de-site .de-chiffres { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 10px 0; }
+.de-site .de-chiffres b { display: block; color: #FDC82A; font-size: 1.5rem; }
+.de-site .de-chiffres small { color: rgba(255,255,255,.7); font-size: .7rem; }
+.de-reclam { list-style: none; margin: 0; padding: 0; }
+.de-reclam li { display: flex; justify-content: space-between; gap: 8px; padding: 8px 0; border-bottom: 1px solid #F0F2F6; font-size: .84rem; }
+.de-reclam small { display: block; color: #6B7385; }
+@media (max-width: 900px) { .dc-kpis, .de-kpis { grid-template-columns: 1fr 1fr; } .de-grille { grid-template-columns: 1fr; } }

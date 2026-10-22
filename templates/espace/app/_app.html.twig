@@ -1,0 +1,128 @@
+{#
+	Espace client connecté (maquettes EC01 à EC05). Ordinateur : barre du
+	haut (recherche, nouvelle commande, cloche, personne) et menu à gauche
+	avec ses pastilles et la carte du conseiller. Téléphone : en-tête
+	(avatar, client, « Bonjour Prénom », cloche) et onglets en bas.
+	Menu, pastilles et cloche viennent de espace_coque(), selon les droits
+	de la personne.
+#}
+{% set coque = espace_coque() %}
+{% set prenom = coque.prenom ?? '' %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#F4F6FA">
+	<meta name="robots" content="noindex">
+	<title>{% block title %}Mon espace{% endblock %} · Succès Imprim</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	{# Application installable sur le téléphone (J5) : /espace seulement. iPhone : icône 180 px, plein écran. #}
+	<link rel="manifest" href="/espace.webmanifest">
+	<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/icone-180.png') }}">
+	<meta name="apple-mobile-web-app-title" content="Succès Imprim">
+	<meta name="mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="default">
+	<link href="{{ asset('css/espace-app.css') }}" rel="stylesheet">
+	{% block styles %}{% endblock %}
+</head>
+<body class="ec">
+	{% if coque %}
+		<header class="ec-haut">
+			<a href="{{ path('app_espace_accueil') }}" class="ec-haut-logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"><span class="ec-pilule">Espace client</span></a>
+			<form class="ec-recherche" method="get" action="{{ path('app_espace_recherche') }}" role="search">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.5 18a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15zM21 21l-5.2-5.2"/></svg>
+				<input type="search" name="q" value="{{ app.request.query.get('q')|default('') }}" placeholder="Rechercher une commande, une facture, un fichier…" aria-label="Rechercher" maxlength="60">
+			</form>
+			<div class="ec-haut-droite">
+				{% if coque.ecrit %}<a class="ec-bouton-nouvelle" href="{{ path('app_espace_nouvelle_commande') }}">+ Nouvelle commande</a>{% endif %}
+				{% include 'espace/app/_cloche.html.twig' %}
+				<a class="ec-moi" href="{{ path('app_espace_compte') }}">
+					<span class="ec-avatar">{{ coque.initiales }}</span>
+					<span class="ec-moi-texte"><b>{{ coque.personne }}</b><small>{{ coque.sousTitre }}</small></span>
+				</a>
+			</div>
+		</header>
+
+		<nav class="ec-menu" aria-label="Espace client">
+			{% for e in coque.menu %}
+				<a href="{{ path(e.route) }}" class="ec-entree{{ e.actif ? ' actif' }}"{{ e.actif ? ' aria-current="page"' }}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ e.icone }}"/></svg>
+					<span>{{ e.libelle }}</span>
+					{% if e.pastille and e.pastille.nombre > 0 %}<span class="ec-compteur {{ e.pastille.couleur }}">{{ e.pastille.nombre }}</span>{% endif %}
+				</a>
+			{% endfor %}
+			<div class="ec-menu-bas">
+				{% if coque.conseiller %}
+					<div class="ec-conseiller">
+						<span class="ec-avatar rouge">{{ coque.conseiller.initiales }}</span>
+						<span>
+							<small>Votre conseiller(ère)</small>
+							<b>{{ coque.conseiller.nom }}</b>
+							{% if coque.conseiller.whatsapp %}<span class="ec-conseiller-liens"><a href="{{ coque.conseiller.whatsapp }}" target="_blank" rel="noopener">WhatsApp</a> · <a href="{{ coque.conseiller.appeler }}">Appeler</a></span>{% endif %}
+						</span>
+					</div>
+				{% endif %}
+				{# Réseaux sociaux de l'imprimerie (Réglages › Site vitrine › Référencement et réseaux). #}
+				{{ include('site/_reseaux.html.twig', {variante: 'espace', titre: 'Suivez-nous'}) }}
+				<a href="{{ path('app_espace_deconnexion') }}" class="ec-menu-sortie">Se déconnecter</a>
+			</div>
+		</nav>
+
+		<nav class="ec-onglets" aria-label="Espace client">
+			{% for o in coque.onglets %}
+				<a href="{{ path(o.route) }}" class="ec-onglet{{ o.actif ? ' actif' }}"{{ o.actif ? ' aria-current="page"' }}>
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="{{ o.icone }}"/></svg><span>{{ o.libelle }}</span>
+				</a>
+			{% endfor %}
+		</nav>
+	{% endif %}
+
+	<div class="ec-page{% block page_classe %}{% endblock %}">
+		<header class="ec-entete">
+			{% block entete %}
+				{% if coque %}
+					<a class="ec-salut" href="{{ path('app_espace_compte') }}">
+						<span class="ec-avatar">{{ coque.initiales }}</span>
+						<span><small>{{ coque.nomClient }}</small><b>Bonjour {{ coque.prenom }}</b></span>
+					</a>
+				{% endif %}
+			{% endblock %}
+			{% if coque %}
+				<a href="{{ path('app_espace_notifications') }}" class="ec-cloche ec-cloche-tel" aria-label="Notifications{{ coque.nonLues > 0 ? ', ' ~ coque.nonLues ~ ' nouvelles' }}">
+					<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16V11a6 6 0 1 1 12 0v5l2 2H4zM10 20a2 2 0 0 0 4 0"/></svg>
+					{% if coque.nonLues > 0 %}<span class="ec-compteur rouge">{{ coque.nonLues > 99 ? '99+' : coque.nonLues }}</span>{% endif %}
+				</a>
+			{% endif %}
+		</header>
+
+		<main class="ec-contenu">
+			{% if coque %}{% include 'site/_annonces.html.twig' with {cible: 'espace'} only %}{% endif %}
+			{% for message in app.flashes('succes') %}<div class="ec-flash ec-flash-ok" role="status">{{ message }}</div>{% endfor %}
+			{% for message in app.flashes('error') %}<div class="ec-flash ec-flash-erreur" role="alert">{{ message }}</div>{% endfor %}
+			{% block contenu %}{% endblock %}
+		</main>
+		{# Téléphone : le menu de gauche n'est pas là, les réseaux passent en bas de page. #}
+		{% if coque and site_reseaux() %}
+			<footer class="ec-pied-reseaux">{{ include('site/_reseaux.html.twig', {variante: 'espace', titre: 'Suivez Succès Imprim'}) }}</footer>
+		{% endif %}
+	</div>
+	<script>
+		if ('serviceWorker' in navigator) { navigator.serviceWorker.register('/sw.js', {scope: '/espace'}).catch(function () {}); }
+		// Installation sur l'écran d'accueil : c'est l'espace qui la propose (tableau de bord, Mon compte,
+		// public/js/espace-installer.js), pas la barre du navigateur. L'invitation est gardée pour le bouton.
+		window.addEventListener('beforeinstallprompt', function (e) {
+			e.preventDefault();
+			window.siInvitation = e;
+			document.dispatchEvent(new CustomEvent('si-invitation'));
+		});
+	</script>
+	{# Fenêtre de confirmation des suppressions (data-confirmer, docs/corbeille.md). #}
+	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
+	<script src="{{ asset('js/espace-coque.js') }}" defer></script>
+	{% if coque %}{% include 'assistant/_widget.html.twig' with {contexte: 'espace'} %}{% endif %}
+	{% block scripts %}{% endblock %}
+	<script src="{{ asset('js/montants-saisie.js') }}"></script>
+</body>
+</html>

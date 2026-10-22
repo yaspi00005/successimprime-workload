@@ -1,0 +1,90 @@
+{#
+	Réglages › Atelier 3D (docs/atelier-3d.md) : les articles proposés dans
+	l'atelier. Chacun est un produit du catalogue (prix public et B2B,
+	quantités mini et maxi, finitions : ceux de la grille), avec le modèle
+	3D, les couleurs, les tailles et la zone d'impression. Direction
+	seulement ; en ligne, consultation (ils descendent par la synchronisation).
+#}
+{% extends 'base.html.twig' %}
+
+{% block title %}Atelier 3D · articles{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_reglages_parametres_index', {tuile: 'atelier_3d'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1"></i>Remises<span class="si-masque-mobile"> et seconde face</span></a></li>
+	<li class="nav-item"><a href="{{ path('app_creations_atelier_index') }}" class="btn btn-light btn-sm si-btn-entete" title="Créations Studio textile" aria-label="Créations Studio textile"><i class="fas fa-tshirt me-1" aria-hidden="true"></i><span class="si-masque-mobile">Créations</span></a></li>
+{% endblock %}
+
+{% macro article(m, produits, jeton, enLigne) %}
+	{% set id = m.id ?? 'nouveau' %}
+	<form method="post" action="{{ path('app_reglages_parametres_atelier_enregistrer', {id: id}) }}" class="si-cr-modele">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<fieldset{{ enLigne ? ' disabled' }}>
+			<div class="si-cr-modele-ligne">
+				<label class="si-cr-large">Produit du catalogue
+					<select class="form-select form-select-sm" name="configuration" required>
+						{% if not m %}<option value="">Choisir…</option>{% endif %}
+						{% for p in produits %}<option value="{{ p.id }}"{{ m and m.configuration and m.configuration.id == p.id ? ' selected' }}>{{ p }}</option>{% endfor %}
+						{% if m and m.configuration and m.configuration.id not in produits|map(p => p.id) %}<option value="{{ m.configuration.id }}" selected>{{ m.configuration }} (pas commandable en ligne)</option>{% endif %}
+					</select>
+				</label>
+				<label>Modèle 3D
+					<select class="form-select form-select-sm" name="forme">
+						{% for cle, libelle in constant('App\\Entity\\ModeleAtelier::FORMES') %}<option value="{{ cle }}"{{ (m.forme ?? 'tshirt') == cle ? ' selected' }}>{{ libelle }}</option>{% endfor %}
+					</select>
+				</label>
+				<label>Zone : largeur (cm)<input class="form-control form-control-sm" name="zone_largeur" inputmode="decimal" value="{{ m ? m.zoneLargeurCm|number_format(1, ',', '')|replace({',0': ''}) : '' }}" placeholder="28"></label>
+				<label>Hauteur (cm)<input class="form-control form-control-sm" name="zone_hauteur" inputmode="decimal" value="{{ m ? m.zoneHauteurCm|number_format(1, ',', '')|replace({',0': ''}) : '' }}" placeholder="35"></label>
+				<label>Ordre<input class="form-control form-control-sm" name="ordre" type="number" min="0" max="999" value="{{ m.ordre ?? 10 }}"></label>
+				<label class="si-pg-case"><input type="checkbox" name="actif" value="1"{{ (m.actif ?? true) ? ' checked' }}> Proposé</label>
+			</div>
+			<div class="si-cr-modele-ligne">
+				<label class="si-cr-large">Couleurs, une par ligne : « Nom #RRGGBB »
+					<textarea class="form-control form-control-sm" name="couleurs" rows="4" spellcheck="false">{{ (m ? m.couleurs : constant('App\\Entity\\ModeleAtelier::COULEURS_DEFAUT'))|map(c => c.nom ~ ' ' ~ c.hex)|join("\n") }}</textarea>
+				</label>
+				<label class="si-cr-large">Tailles, séparées par des espaces (vide pour une casquette : une seule quantité)
+					<input class="form-control form-control-sm" name="tailles" value="{{ (m ? m.tailles : constant('App\\Entity\\ModeleAtelier::TAILLES_DEFAUT'))|join(' ') }}" placeholder="S M L XL XXL">
+					{% if m %}<span class="si-cr-pastilles" aria-hidden="true">{% for c in m.couleurs %}<i style="background: {{ c.hex }}" title="{{ c.nom }}"></i>{% endfor %}</span>{% endif %}
+				</label>
+			</div>
+			{% if not enLigne %}<button class="btn btn-primary btn-sm">{{ m ? 'Enregistrer' : 'Ajouter l\'article' }}</button>{% endif %}
+		</fieldset>
+	</form>
+{% endmacro %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		<h2>Articles de l'Atelier 3D <span class="si-pg-compte">{{ modeles|length }}</span></h2>
+		<p class="si-pg-note">Chaque article est un produit du catalogue : son prix public, son prix B2B, ses quantités minimum et maximum et ses finitions obligatoires restent ceux de la grille tarifaire. Ici se règlent le modèle 3D qui le montre, ses couleurs, ses tailles et sa zone d'impression (qui sert à juger la résolution des images des clients). Un article n'est proposé que si son produit est publié, actif et a un prix. {% if enLigne %}<b>En ligne, consultation seulement : les articles se règlent au local, puis descendent sur le site.</b>{% endif %}</p>
+		{% for m in modeles %}
+			<div class="si-cr-etat">
+				<b>{{ m.configuration }}</b>
+				{% if m.id in proposes %}<span class="si-pastille si-pastille-vert">Proposé en ligne</span>
+				{% elseif not m.actif %}<span class="si-pastille si-pastille-gris">Retiré</span>
+				{% else %}<span class="si-pastille si-pastille-orange">Pas proposé : produit non publié, sans prix ou sans couleur</span>{% endif %}
+			</div>
+			{{ _self.article(m, produits, jeton, enLigne) }}
+		{% else %}
+			<p class="si-ac-vide">Aucun article pour l'instant : l'atelier 3D du site et de l'espace client affiche « bientôt ».</p>
+		{% endfor %}
+	</section>
+	{% if not enLigne %}
+		{% if textiles is not empty %}
+			<section class="card si-ac-bloc">
+				<h2>Produits textile du catalogue sans article</h2>
+				<p class="si-pg-note">Produits dont un article de stock est de la famille « Textile » : {{ textiles|map(t => t ~ '')|join(', ') }}. Le bouton leur crée un article avec les couleurs, les tailles et la zone du prototype, à vérifier ensuite.</p>
+				<form method="post" action="{{ path('app_reglages_parametres_atelier_textiles') }}">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<button class="btn btn-primary btn-sm"><i class="fas fa-plus me-1"></i>Ajouter {{ textiles|length > 1 ? 'ces ' ~ textiles|length ~ ' produits' : 'ce produit' }}</button>
+				</form>
+			</section>
+		{% endif %}
+		<section class="card si-ac-bloc">
+			<h2>Nouvel article</h2>
+			{{ _self.article(null, produits, jeton, enLigne) }}
+		</section>
+	{% endif %}
+	<section class="card si-ac-bloc">
+		<h2>Vrais modèles 3D</h2>
+		<p class="si-pg-note">Les modèles affichés sont dessinés par la page. Un modèle acheté (format GLB) déposé sur le serveur dans <code>public/{{ constant('App\\Service\\Atelier\\CatalogueAtelier::DOSSIER_GLB') }}/tshirt.glb</code>, <code>polo.glb</code> ou <code>casquette.glb</code> le remplace sans autre réglage (pièces nommées « tissu », « visiere », « zone_devant » et « zone_dos » : voir docs/atelier-3d.md).</p>
+	</section>
+{% endblock %}

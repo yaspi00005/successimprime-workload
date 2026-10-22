@@ -1,0 +1,5 @@
+<label for="{{ id|default('telephone') }}">Numéro de téléphone</label>
+<div class="si-espace-tel">
+	<span aria-hidden="true">🇲🇱 +223</span>
+	<input type="tel" id="{{ id|default('telephone') }}" name="telephone" value="{{ valeur|default('') }}" inputmode="tel" autocomplete="tel-national" placeholder="76 12 34 56" required>
+</div>

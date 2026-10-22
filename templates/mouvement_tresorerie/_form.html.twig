@@ -378,6 +378,78 @@
 
 
 		{# ======================================================
+				           ORANGE MONEY : FRAIS PRÉLEVÉS PAR ORANGE
+				           ======================================================
+
+				           Paraît quand l'argent sort d'un compte Orange
+				           Money (transfert, décaissement) : Orange débite
+				           le fonds de soutien et le frais de retrait. Le
+				           montant transféré se pré-remplit avec la part
+				           transférable (seulement pour qui voit les soldes).
+				           ====================================================== #}
+
+		<div id="blocFraisOrange" class="si-frais-orange border rounded p-3 mb-3" hidden>
+
+			<p class="mb-2" id="texteTransferableOrange" hidden>
+				<i class="fa fa-info-circle mr-1"></i>
+				Transférable : <strong data-transferable-texte></strong> FCFA
+				<span class="text-muted">(sans les <span data-a-prelever-texte></span> FCFA de frais qu’Orange va débiter)</span>
+			</p>
+
+			<div class="form-group mb-0">
+
+				{{ form_label(
+                    form.fraisOrange,
+                    null,
+                    {
+                        label_attr: {
+                            class: 'font-weight-bold'
+                        }
+                    }
+                ) }}
+
+				<div class="input-group">
+
+					{{ form_widget(
+                        form.fraisOrange,
+                        {
+                            attr:
+                                form.fraisOrange.vars.attr|merge({
+                                    class:
+                                        'form-control montant-input text-right'
+                                        ~ (
+                                            form.fraisOrange.vars.errors|length
+                                            ? ' is-invalid'
+                                            : ''
+                                        )
+                                })
+                        }
+                    ) }}
+
+					<div class="input-group-append">
+						<span class="input-group-text font-weight-bold">FCFA</span>
+					</div>
+
+				</div>
+
+				{% for error in form.fraisOrange.vars.errors %}
+					<div class="invalid-feedback d-block">
+						<i class="fa fa-exclamation-circle mr-1"></i>
+						{{ error.message }}
+					</div>
+				{% endfor %}
+
+				<small class="form-text text-muted">
+					{{ form.fraisOrange.vars.help }}
+					Ils sortent du compte Orange Money en plus du montant transféré. Mettez le numéro du chèque d’Orange ou de la transaction dans « Référence externe ».
+				</small>
+
+			</div>
+
+		</div>
+
+
+		{# ======================================================
 				           INFORMATION SUR LE TYPE
 				           ====================================================== #}
 
@@ -864,7 +936,7 @@
 
 	<div>
 
-		<a href="{{ path('app_mouvement_tresorerie_index') }}" class="btn btn-light border mr-2">
+		<a href="{{ path(retour|default('app_mouvement_tresorerie_index')) }}" class="btn btn-light border mr-2">
 
 			<i class="fa fa-arrow-left mr-1"></i>
 
@@ -1086,6 +1158,33 @@ champ.setCustomValidity('');
 
 /*
          * ========================================================
+         * COMPTES PERMIS POUR LE TYPE CHOISI
+         * ========================================================
+         *
+         * Chaque compte porte les types pour lesquels
+         * l'enregistrement l'acceptera (data-types, calculé par
+         * MouvementTresorerieType::typesPourCompte) : les autres
+         * sont masqués. Le serveur contrôle de toute façon.
+         * ========================================================
+         */
+function filtrerComptes(champ, type) {
+if (! champ) {
+return;
+}
+Array.from(champ.options).forEach(function (option) {
+if (option.value === '') {
+return;
+}
+const permis = (option.dataset.types || '').split(' ').indexOf(type) !== -1;
+option.hidden = ! permis;
+option.disabled = ! permis;
+if (! permis && option.selected) {
+champ.value = '';
+}
+});
+}
+/*
+         * ========================================================
          * CONTRÔLER LE TRANSFERT
          * ========================================================
          */
@@ -1113,6 +1212,109 @@ champDestination.setCustomValidity(memeCompte ? 'Les comptes source et destinati
 
 
 return ! memeCompte;
+}
+
+
+/*
+         * ========================================================
+         * ORANGE MONEY : FRAIS PRÉLEVÉS PAR ORANGE
+         * ========================================================
+         *
+         * Source Orange Money et sortie d'argent (transfert,
+         * décaissement) : la ligne des frais paraît, calculée aux
+         * taux de Réglages › Paiements tant que la personne ne l'a
+         * pas corrigée. Avec les soldes (data-transferable), le
+         * montant se pré-remplit avec la part transférable.
+         * ========================================================
+         */
+
+const blocFraisOrange = document.getElementById('blocFraisOrange');
+const champFraisOrange = document.getElementById({{ form.fraisOrange.vars.id|json_encode|raw }});
+const texteTransferable = document.getElementById('texteTransferableOrange');
+const champReference = document.getElementById({{ form.referenceExterne.vars.id|json_encode|raw }});
+const placeholderReference = champReference ? champReference.placeholder : '';
+
+function optionSource() {
+if (! champSource || champSource.disabled || champSource.selectedIndex < 0) {
+return null;
+}
+const option = champSource.options[champSource.selectedIndex];
+return option && option.value !== '' ? option : null;
+}
+
+function sortieOrange() {
+const option = optionSource();
+const type = typeMouvement ? typeMouvement.value : '';
+return option !== null && option.dataset.orange === '1' && (type === 'transfert' || type === 'decaissement');
+}
+
+function chiffres(valeur) {
+const nettoye = String(valeur || '').replace(/\D/g, '');
+return nettoye === '' ? 0 : parseInt(nettoye, 10);
+}
+
+function estimerFraisOrange() {
+if (! champFraisOrange || champFraisOrange.dataset.modifie === '1') {
+return;
+}
+const montant = champMontant ? chiffres(champMontant.value) : 0;
+const fonds = Math.round(montant * (parseFloat(champFraisOrange.dataset.tauxFonds) || 0) / 100);
+const retrait = Math.round(montant * (parseFloat(champFraisOrange.dataset.tauxRetrait) || 0) / 100);
+champFraisOrange.value = montant > 0 ? formaterMontant(fonds + retrait) : '';
+}
+
+function actualiserFraisOrange(sourceChangee) {
+if (! blocFraisOrange) {
+return;
+}
+const orange = sortieOrange();
+blocFraisOrange.hidden = ! orange;
+if (champFraisOrange) {
+champFraisOrange.disabled = ! orange;
+}
+if (champReference) {
+champReference.placeholder = orange ? 'Numéro du chèque d’Orange ou de la transaction' : placeholderReference;
+}
+if (! orange) {
+if (texteTransferable) {
+texteTransferable.hidden = true;
+}
+return;
+}
+const option = optionSource();
+const transferable = option.dataset.transferable;
+if (texteTransferable) {
+texteTransferable.hidden = transferable === undefined;
+if (transferable !== undefined) {
+texteTransferable.querySelector('[data-transferable-texte]').textContent = formaterMontant(transferable) || '0';
+texteTransferable.querySelector('[data-a-prelever-texte]').textContent = formaterMontant(option.dataset.aPrelever) || '0';
+}
+}
+// Nouveau compte choisi : le montant reprend sa part transférable (jamais les frais).
+if (sourceChangee && transferable !== undefined && champMontant && (chiffres(champMontant.value) === 0 || champMontant.dataset.prerempli === '1')) {
+champMontant.value = formaterMontant(transferable);
+champMontant.dataset.prerempli = '1';
+}
+estimerFraisOrange();
+}
+
+if (champFraisOrange) {
+champFraisOrange.value = formaterMontant(champFraisOrange.value);
+// Revenu avec une erreur : les frais déjà saisis restent tels quels.
+if (champFraisOrange.value !== '') {
+champFraisOrange.dataset.modifie = '1';
+}
+champFraisOrange.addEventListener('input', function () {
+this.value = formaterMontant(this.value);
+this.dataset.modifie = '1';
+});
+}
+
+if (champMontant) {
+champMontant.addEventListener('input', function () {
+delete this.dataset.prerempli;
+estimerFraisOrange();
+});
 }
 
 
@@ -1287,6 +1489,9 @@ afficherBloc(blocSource, champSource, type === 'decaissement' || type === 'trans
              */
 afficherBloc(blocDestination, champDestination, type === 'encaissement' || type === 'transfert');
 
+filtrerComptes(champSource, type);
+filtrerComptes(champDestination, type);
+
 
 actualiserCategorie();
 
@@ -1295,6 +1500,9 @@ actualiserInformation(type);
 
 
 verifierTransfert();
+
+
+actualiserFraisOrange(false);
 }
 
 
@@ -1313,6 +1521,10 @@ typeMouvement.addEventListener('change', actualiserInterface);
 if (champSource) {
 
 champSource.addEventListener('change', verifierTransfert);
+
+champSource.addEventListener('change', function () {
+actualiserFraisOrange(true);
+});
 }
 
 
@@ -1488,6 +1700,10 @@ if (destinationTexte) {
 recap += '<br>Compte destination : ' + destinationTexte;
 }
 
+if (sortieOrange() && champFraisOrange && chiffres(champFraisOrange.value) > 0) {
+recap += '<br>Prélevés par Orange en plus : <strong>' + champFraisOrange.value + ' FCFA</strong>';
+}
+
 recap += '</div>';
 
 
@@ -1560,5 +1776,9 @@ boutonEnregistrer.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i>' + ' E
          */
 
 actualiserInterface();
+
+
+// Compte Orange Money choisi d'avance (« Virer » depuis la trésorerie) : montant transférable.
+actualiserFraisOrange(true);
 });
 </script>

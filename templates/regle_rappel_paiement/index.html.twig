@@ -85,10 +85,11 @@
 
 										<td class="align-middle">
 											<strong>{{ regle.nom }}</strong>
+											<small class="d-block text-muted">{{ regle.retrait ? 'Commande prête à retirer' : 'Rappel de paiement' }}</small>
 										</td>
 
 										<td class="align-middle">
-											J+{{ regle.delaiJours }}, puis tous les {{ regle.delaiJours }} jours
+											J+{{ regle.delaiJours }}{{ regle.retrait ? ' après le jour où elle est prête' }}, puis tous les {{ regle.delaiJours }} jours
 										</td>
 
 										<td class="align-middle">
@@ -121,7 +122,7 @@
 													</button>
 												</form>
 
-												<form method="post" action="{{ path('app_regle_rappel_paiement_delete', {id: regle.id}) }}" class="d-inline js-confirm-form" data-message="Supprimer définitivement cette règle de rappel ?">
+												<form method="post" action="{{ path('app_regle_rappel_paiement_delete', {id: regle.id}) }}" class="d-inline" {{ confirmer_suppression('la règle de rappel « ' ~ regle.nom ~ ' »') }}>
 													<input type="hidden" name="_token" value="{{ csrf_token('delete' ~ regle.id) }}">
 													<button type="submit" class="btn btn-sm btn-danger-light" title="Supprimer">
 														<i class="fa fa-trash"></i>

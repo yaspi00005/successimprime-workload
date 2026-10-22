@@ -56,6 +56,22 @@ class MouvementTresorerieService
     }
 
     /**
+     * Prépare un mouvement qui attend toujours une validation, même sur
+     * une caisse (dépense préparée par le planning). Pas de flush : il est
+     * enregistré avec le reste de la page.
+     */
+    public function preparerEnAttente(
+        MouvementTresorerie $mouvement
+    ): MouvementTresorerie {
+        $this->preparerMouvement($mouvement);
+        $this->verifierMouvement($mouvement);
+        $mouvement->setStatut(MouvementTresorerie::STATUT_EN_ATTENTE);
+        $this->entityManager->persist($mouvement);
+
+        return $mouvement;
+    }
+
+    /**
      * Valide manuellement un mouvement en attente,
      * notamment lorsqu’un compte bancaire est concerné.
      */

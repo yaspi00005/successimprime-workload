@@ -1,0 +1,52 @@
+{% extends 'base.html.twig' %}
+
+{# Un avoir validé (maquette FD04) : il ne se modifie plus. #}
+
+{% block title %}Avoir {{ avoir.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="fd-page">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › <a href="{{ path('app_factures_show', {id: facture.id}) }}">{{ facture.numero }}</a> › Avoir</div>
+				<h1>Avoir {{ avoir.numero }} <span class="fd-badge avoir">Validé · {{ avoir.suiteLibelle|lower }}</span></h1>
+			</div>
+			<div class="fd-actions">
+				<a href="{{ path('app_factures_avoir_pdf', {id: avoir.id}) }}" target="_blank" class="btn fd-btn-blanc">PDF</a>
+				<a href="{{ path('app_factures_show', {id: facture.id}) }}" class="btn fd-btn-blanc">Voir la facture</a>
+			</div>
+		</div>
+		<div class="fd-grille">
+			<div class="fd-carte">
+				<h2>Lignes créditées</h2>
+				<table class="fd-table">
+					<thead><tr><th>Désignation</th><th class="num">Facturé</th><th class="num">Crédité</th><th class="num">Montant</th></tr></thead>
+					<tbody>
+						{% for l in avoir.lignes %}
+							<tr><td><b>{{ l.designation }}</b></td><td class="num">{{ l.facture|number_format(l.facture == l.facture|round ? 0 : 2, ',', ' ') }}</td><td class="num">{{ l.quantite|number_format(l.quantite == l.quantite|round ? 0 : 2, ',', ' ') }}</td><td class="num">{{ l.montant|number_format(0, ',', ' ') }} F</td></tr>
+						{% endfor %}
+						{% if avoir.remise > 0 %}<tr class="fd-remise"><td colspan="3">Part de la remise de la facture</td><td class="num">− {{ avoir.remise|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+						<tr class="fd-total"><td colspan="3">Total de l'avoir</td><td class="num fd-violet">{{ avoir.total|number_format(0, ',', ' ') }} F</td></tr>
+					</tbody>
+				</table>
+			</div>
+			<div>
+				<div class="fd-carte">
+					<h2>Avoir</h2>
+					<div class="fd-ligne-solde"><span>Motif</span><b>{{ avoir.motifLibelle }}</b></div>
+					{% if avoir.reclamation %}<div class="fd-ligne-solde"><span>Réclamation</span><b>{{ avoir.reclamation.numero }} · {{ avoir.reclamation.objet }}</b></div>{% endif %}
+					<div class="fd-ligne-solde"><span>Déduit de la facture</span><b>{{ avoir.deduit|number_format(0, ',', ' ') }} F</b></div>
+					<div class="fd-ligne-solde"><span>Rendu au client</span><b>{{ avoir.rembourse|number_format(0, ',', ' ') }} F</b></div>
+					<div class="fd-ligne-solde"><span>En crédit sur son compte</span><b>{{ avoir.enCredit|number_format(0, ',', ' ') }} F</b></div>
+					<p class="fd-muet mt-2 mb-0">Validé le {{ avoir.creeLe|date('d/m/Y à H:i') }}{{ avoir.validePar ? ' par ' ~ avoir.validePar.prenom|default(avoir.validePar.userIdentifier) }}.{% if avoir.observation %} {{ avoir.observation }}{% endif %}</p>
+				</div>
+				<div class="fd-carte fd-regle"><b>Règle :</b> un avoir validé ne se modifie plus. Pour corriger, faites un nouvel avoir sur la facture.</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

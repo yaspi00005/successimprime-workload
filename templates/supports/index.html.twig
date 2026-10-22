@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}User index
+{% block title %}Supports
 {% endblock %}
 
 {% block body %}
@@ -9,9 +9,9 @@
 	<div class="page-header">
 		<ol class="breadcrumb">
 			<li class="breadcrumb-item">
-				<a href="#">Utilisateurs</a>
+				<a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a>
 			</li>
-			<li class="breadcrumb-item active" aria-current="page">Liste des Utilisateurs</li>
+			<li class="breadcrumb-item active" aria-current="page">Supports</li>
 		</ol>
 		<div>
 			<button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#supportCreateModal">
@@ -28,9 +28,14 @@
 				Dépublier
 			</button>
 
-			<button type="button" id="supportMassDeleteButton" class="btn btn-danger">
+			<button type="button" id="supportMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les supports cochés') }}>
 				Supprimer
 			</button>
+
+			<a href="{{ path('app_produits_noms_commerciaux') }}#nc-supports" class="btn btn-outline-primary" title="Le nom que tout le monde connaît, à côté de la désignation">
+				<i class="fa fa-tags mr-1" aria-hidden="true"></i>
+				Noms commerciaux
+			</a>
 
 		</div>
 	</div>
@@ -44,7 +49,7 @@
 		<!-- COL-END -->
 		<div class="col-lg-8 col-xl-12">
 			<div class="input-group mb-5">
-				<input type="text" class="form-control" placeholder="">
+				<input type="search" id="supportRecherche" class="form-control" placeholder="Rechercher un support (nom ou nom commercial)…" aria-label="Rechercher un support" data-recherche-liste="#supportSortableBody" autocomplete="off">
 				<div class="input-group-append ">
 					<button type="button" class="btn btn-primary-light">
 						<i class="fa fa-search" aria-hidden="true"></i>
@@ -53,11 +58,11 @@
 			</div>
 			<div class="card">
 				<div class="card-header border-bottom-0 p-4">
-					<h2 class="card-title">1 - 30 of 546 users</h2>
+					<h2 class="card-title" style="text-transform: none">{{ supports|length }} {{ supports|length > 1 ? 'supports' : 'support' }}</h2>
 					<div class="page-options d-flex float-right">
 						<select class="form-control custom-select w-auto">
-							<option value="asc">Latest</option>
-							<option value="desc">Oldest</option>
+							<option value="asc">Plus récents</option>
+							<option value="desc">Plus anciens</option>
 						</select>
 					</div>
 				</div>
@@ -102,7 +107,7 @@
 
 								{% for support in supports %}
 
-									<tr id="support-row-{{ support.id }}" class="support-sortable-row" data-id="{{ support.id }}">
+									<tr id="support-row-{{ support.id }}" class="support-sortable-row" data-id="{{ support.id }}" data-recherche="{{ cle_recherche(support.nom, support.nomCommercial) }}">
 
 										<td class="text-center align-middle">
 											<i class="fa fa-arrows-alt support-drag-handle" style="cursor: move;" title="Déplacer"></i>
@@ -118,6 +123,7 @@
 
 										<td class="align-middle">
 											<strong>{{ support.nom }}</strong>
+											{% if support.nomCommercial %}<small class="d-block text-muted">{{ support.nomCommercial }}</small>{% endif %}
 										</td>
 
 										<td class="align-middle">
@@ -137,7 +143,7 @@
 										<td class="align-middle">
 											{% for format in support.formats %}
 												<span class="badge badge-info mb-1">
-													{{ format.nom }}
+													{{ format|texte_interne }}
 												</span>
 											{% else %}
 												<span class="text-muted">Aucun format</span>
@@ -147,7 +153,7 @@
 										<td class="align-middle">
 											{% for finition in support.finitions %}
 												<span class="badge badge-secondary mb-1">
-													{{ finition.nom }}
+													{{ finition|texte_interne }}
 												</span>
 											{% else %}
 												<span class="text-muted">Aucune finition</span>
@@ -185,7 +191,7 @@
 													{% endif %}
 												</button>
 
-												<button type="button" class="btn btn-sm btn-danger-light btn-delete-support" data-url="{{ path( 'app_support_delete_ajax', {id: support.id} ) }}" data-token="{{ csrf_token( 'delete_support_' ~ support.id ) }}" data-nom="{{ support.nom }}">
+												<button type="button" class="btn btn-sm btn-danger-light btn-delete-support" {{ confirmer_suppression('le support « ' ~ support.nom ~ ' »') }} data-url="{{ path( 'app_support_delete_ajax', {id: support.id} ) }}" data-token="{{ csrf_token( 'delete_support_' ~ support.id ) }}" data-nom="{{ support.nom }}">
 													<i class="fa fa-trash"></i>
 												</button>
 
@@ -231,7 +237,7 @@
 								Nom du support
 							</label>
 
-							<input type="text" id="supportCreateNom" class="form-control" placeholder="Exemple : Papier couché mat 300 g">
+							<input type="text" id="supportCreateNom" class="form-control" maxlength="255" placeholder="Exemple : Papier couché mat 300 g">
 						</div>
 
 						<div class="form-group">
@@ -271,7 +277,7 @@
 										<input type="checkbox" value="{{ format.id }}" class="selectgroup-input support-create-format">
 
 										<span class="selectgroup-button">
-											{{ format.nom }}
+											{{ format|texte_interne }}
 										</span>
 									</label>
 								{% endfor %}
@@ -289,7 +295,7 @@
 										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input support-create-finition">
 
 										<span class="selectgroup-button">
-											{{ finition.nom }}
+											{{ finition|texte_interne }}
 										</span>
 									</label>
 								{% endfor %}
@@ -341,7 +347,7 @@
 						<div class="form-group">
 							<label for="supportEditNom">Nom</label>
 
-							<input type="text" id="supportEditNom" class="form-control">
+							<input type="text" id="supportEditNom" class="form-control" maxlength="255">
 						</div>
 
 						<div class="form-group">
@@ -377,7 +383,7 @@
 										<input type="checkbox" value="{{ format.id }}" class="selectgroup-input support-edit-format">
 
 										<span class="selectgroup-button">
-											{{ format.nom }}
+											{{ format|texte_interne }}
 										</span>
 									</label>
 								{% endfor %}
@@ -393,7 +399,7 @@
 										<input type="checkbox" value="{{ finition.id }}" class="selectgroup-input support-edit-finition">
 
 										<span class="selectgroup-button">
-											{{ finition.nom }}
+											{{ finition|texte_interne }}
 										</span>
 									</label>
 								{% endfor %}
@@ -428,6 +434,7 @@
 	</div>
 </div>
 <!-- ROW CLOSED -->{% endblock %}{% block javascripts %}
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 <script src="../assets/js/traitement_supports.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>{% endblock %}
+<script src="{{ asset('js/recherche-catalogue.js') }}"></script>
+<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>{% endblock %}

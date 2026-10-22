@@ -2,12 +2,20 @@
 
 namespace App\Controller;
 
+use App\Entity\Campagne;
+use App\Entity\CampagneDestinataire;
+use App\Entity\ModeleMessage;
 use App\Entity\User;
 use App\Repository\CampagneDestinataireRepository;
 use App\Repository\CampagneRepository;
 use App\Repository\ClientsRepository;
 use App\Repository\ModeleMessageRepository;
 use App\Service\CampagneService;
+use App\Service\Http\Entree;
+use App\Service\ResultatsCampagnes;
+use App\Service\SegmentsClients;
+use App\Service\WhatsAppService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -28,20 +36,117 @@ final class CampagneController extends AbstractController
     #[Route('', name: 'index', methods: ['GET'])]
     public function index(
         CampagneRepository $campagneRepository,
-        CampagneDestinataireRepository $destinataireRepository
+        SegmentsClients $segments,
+        ResultatsCampagnes $resultats,
+        WhatsAppService $whatsApp
     ): Response {
-        $campagnes = $campagneRepository->findToutes();
-
-        $compteurs = [];
-
-        foreach ($campagnes as $campagne) {
-            $compteurs[$campagne->getId()] = $destinataireRepository->compterParStatut($campagne);
+        $campagnes = \array_slice($campagneRepository->findToutes(), 0, 12);
+        $parCampagne = $resultats->parCampagne($campagnes);
+        $comptes = [];
+        foreach ($segments->parSegment(new \DateTimeImmutable()) as $cle => $clients) {
+            foreach (array_keys(ModeleMessage::CANAUX_LABELS) as $canal) {
+                foreach (array_keys(SegmentsClients::CONSENTEMENTS) as $consentement) {
+                    $comptes[$cle][$canal][$consentement] = \count(SegmentsClients::joignables($clients, $canal, $consentement));
+                }
+            }
         }
 
         return $this->render('campagne/index.html.twig', [
             'campagnes' => $campagnes,
-            'compteurs' => $compteurs,
+            'resultats' => $parCampagne,
+            'meilleure' => ResultatsCampagnes::meilleure($parCampagne),
+            'comptes' => $comptes,
+            'whatsapp_api' => $whatsApp->estConfigure(),
         ]);
+    }
+
+    /**
+     * Nouvelle campagne de la maquette 35 : un segment, un canal, un
+     * texte, une date d'envoi et le consentement exigé.
+     */
+    #[Route('/programmer', name: 'programmer', methods: ['POST'])]
+    public function programmer(Request $request, SegmentsClients $segments, CampagneService $campagneService): Response
+    {
+        if (!$this->isCsrfTokenValid('campagne_programmer', $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $p = $request->getPayload();
+        $nom = mb_substr(trim($p->getString('nom')), 0, 255);
+        $segment = $p->getString('segment');
+        $canal = $p->getString('canal');
+        $consentement = $p->getString('consentement');
+        $message = trim($p->getString('message'));
+        $envoi = trim($p->getString('envoi'));
+        $date = '' === $envoi ? null : \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $envoi);
+
+        $erreur = match (true) {
+            '' === $nom => 'Donnez un nom à la campagne.',
+            !isset(SegmentsClients::SEGMENTS[$segment]) => 'Choisissez un segment.',
+            !isset(ModeleMessage::CANAUX_LABELS[$canal]) => 'Choisissez un canal.',
+            !isset(SegmentsClients::CONSENTEMENTS[$consentement]) => 'Choisissez le consentement exigé.',
+            '' === $message => 'Écrivez le message.',
+            false === $date => 'La date d’envoi n’est pas valide.',
+            default => null,
+        };
+        $clients = null === $erreur ? SegmentsClients::joignables($segments->parSegment(new \DateTimeImmutable())[$segment], $canal, $consentement) : [];
+        if (null === $erreur && [] === $clients) {
+            $erreur = 'Aucun client joignable dans ce segment avec ce consentement.';
+        }
+        if (null !== $erreur) {
+            $this->addFlash('warning', $erreur);
+
+            return $this->redirectToRoute('app_campagne_index');
+        }
+
+        $utilisateur = $this->getUser();
+        $campagne = $campagneService->programmer(
+            $nom,
+            $canal,
+            $message,
+            $segment,
+            null !== $date && $date > new \DateTimeImmutable() ? $date : null,
+            $clients,
+            $utilisateur instanceof User ? $utilisateur : null
+        );
+        $this->addFlash('success', sprintf(
+            '« %s » : %d destinataire%s, envoi %s.',
+            $campagne->getNom(),
+            \count($clients),
+            \count($clients) > 1 ? 's' : '',
+            null === $campagne->getEnvoiPrevuLe() ? 'en cours' : 'le '.$campagne->getEnvoiPrevuLe()->format('d/m à H\hi')
+        ));
+
+        return $this->redirectToRoute('app_campagne_show', ['id' => $campagne->getId()]);
+    }
+
+    /**
+     * Sans l'API WhatsApp : l'agent ouvre le lien wa.me puis marque le
+     * message comme envoyé.
+     */
+    #[Route('/{id}/envoye/{destinataire}', name: 'marquer_envoye', requirements: ['id' => '\d+', 'destinataire' => '\d+'], methods: ['POST'])]
+    public function marquerEnvoye(int $id, int $destinataire, Request $request, CampagneDestinataireRepository $destinataires, EntityManagerInterface $em): Response
+    {
+        if (!$this->isCsrfTokenValid('campagne_manuel', $request->getPayload()->getString('_token'))) {
+            throw $this->createAccessDeniedException('Jeton de sécurité invalide.');
+        }
+        $d = $destinataires->find($destinataire);
+        $campagne = $d?->getCampagne();
+        if (null === $d || null === $campagne || $campagne->getId() !== $id) {
+            throw $this->createNotFoundException();
+        }
+        if (CampagneDestinataire::STATUT_ENVOYE !== $d->getStatut()) {
+            $d->setStatut(CampagneDestinataire::STATUT_ENVOYE)->setErreur(null)->setDateEnvoi(new \DateTimeImmutable());
+            $em->flush();
+            if (0 === $destinataires->compteEnAttente($campagne)) {
+                $campagne->setStatut(Campagne::STATUT_TERMINEE);
+                $em->flush();
+            }
+        }
+        if ($request->isXmlHttpRequest()) {
+            return $this->json(['ok' => true]);
+        }
+
+        return $this->redirectToRoute('app_campagne_show', ['id' => $id]);
     }
 
     #[Route('/new', name: 'new', methods: ['GET', 'POST'])]
@@ -62,7 +167,7 @@ final class CampagneController extends AbstractController
             }
 
             $nom = trim($request->getPayload()->getString('nom'));
-            $modeleId = $request->getPayload()->getInt('modele');
+            $modeleId = Entree::entier($request->getPayload(), 'modele');
             $clientIds = array_map('intval', $request->getPayload()->all('clients'));
             $senderName = trim($request->getPayload()->getString('senderName'));
 
@@ -127,7 +232,9 @@ final class CampagneController extends AbstractController
     public function show(
         int $id,
         CampagneRepository $campagneRepository,
-        CampagneDestinataireRepository $destinataireRepository
+        CampagneDestinataireRepository $destinataireRepository,
+        ResultatsCampagnes $resultats,
+        WhatsAppService $whatsApp
     ): Response {
         $campagne = $campagneRepository->find($id);
 
@@ -139,6 +246,8 @@ final class CampagneController extends AbstractController
             'campagne' => $campagne,
             'destinataires' => $destinataireRepository->findParCampagne($campagne),
             'compteurs' => $destinataireRepository->compterParStatut($campagne),
+            'resultat' => $resultats->parCampagne([$campagne])[$id],
+            'envoi_manuel' => ModeleMessage::CANAL_WHATSAPP === $campagne->getCanal() && !$whatsApp->estConfigure(),
         ]);
     }
 }

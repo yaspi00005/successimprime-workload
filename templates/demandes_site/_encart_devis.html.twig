@@ -1,0 +1,18 @@
+{#
+	Fiche d'un devis né d'une demande du site (maquette 11) : d'où il vient
+	et ce qu'il faut vérifier avant de l'envoyer. Rien si le devis n'en vient pas.
+#}
+{% set demande = demande_du_devis(devis) %}
+{% if demande %}
+	<div class="card border-primary">
+		<div class="card-header">
+			<h3 class="card-title"><span class="si-pastille si-pastille-bleu me-1">Site</span> Demande {{ demande.numero }}</h3>
+		</div>
+		<div class="card-body">
+			<p class="mb-2">Écrite sur le site le {{ demande.creeLe|date('d/m/Y à H:i') }} par {{ demande.nom }} ({{ demande.telephoneLocal }}, non vérifié). Prix au tarif public, calculé tout seul : vérifiez la taille, les finitions et le fichier, appelez le client, puis envoyez le devis vous-même.</p>
+			{% if is_granted('ROLE_DEVIS') %}
+				<a href="{{ path('app_demandes_site_voir', {id: demande.id}) }}" class="btn btn-primary btn-sm">Voir la demande{{ demande.nombreFichiers > 1 ? ' et ses ' ~ demande.nombreFichiers ~ ' fichiers' : (demande.nombreFichiers == 1 ? ' et son fichier' : '') }}</a>
+			{% endif %}
+		</div>
+	</div>
+{% endif %}

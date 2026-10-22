@@ -1,0 +1,152 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Synchronisation{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_synchronisation_journal') }}" class="btn btn-outline-primary btn-sm si-btn-entete">Journal complet</a></li>
+	{% if configuree and not en_ligne %}
+		<li class="nav-item ms-2">
+			<form method="post" action="{{ path('app_synchronisation_maintenant') }}" class="d-inline js-synchroniser">
+				<input type="hidden" name="_token" value="{{ csrf_token('synchro') }}">
+				<button class="btn btn-primary btn-sm si-btn-entete"><i class="fas fa-sync-alt me-1"></i>Synchroniser maintenant</button>
+			</form>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if not configuree %}
+		<div class="alert alert-info">
+			La synchronisation n'est pas encore réglée. Elle se met en route avec le serveur en ligne : une clé commune dans <code>.env.local</code> des deux machines, et l'adresse du site sur l'ERP local (guide <code>docs/synchronisation.md</code>).
+		</div>
+	{% elseif alerte %}
+		<div class="alert alert-danger">
+			<i class="fas fa-exclamation-triangle me-2"></i><strong>{{ panne ? panne.titre : 'Synchronisation en panne' }}</strong> · {{ alerte }}
+			{% if panne %}<div class="mt-1">{{ panne.conseil }}</div>{% endif %}
+		</div>
+	{% endif %}
+
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				{% if en_ligne %}
+					<span class="si-kpi-libelle">Dernier passage de l'agent local</span>
+					<div class="si-kpi-valeur">{{ contact ? contact|temps_ecoule : 'jamais' }}</div>
+					{% if contact %}<span class="si-tendance si-hausse">{{ contact|date('H:i:s') }}</span>{% endif %}
+				{% else %}
+					<span class="si-kpi-libelle">Dernière synchro réussie</span>
+					<div class="si-kpi-valeur">{{ reussite ? reussite|temps_ecoule : 'jamais' }}</div>
+					{% if reussite %}<span class="si-tendance {{ alerte ? 'si-baisse' : 'si-hausse' }}">{{ reussite|date('H:i:s') }}</span>{% endif %}
+				{% endif %}
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">En attente d'envoi</span>
+				<div class="si-kpi-valeur">{{ en_attente }}</div>
+				<span class="si-tendance {{ en_attente == 0 ? 'si-hausse' : (bloques is not empty ? 'si-baisse') }}">{{ en_attente == 0 ? 'file vide' : (bloques is not empty ? bloques|length ~ ' bloqué' ~ (bloques|length > 1 ? 's') : (en_ligne ? 'attend l\'agent local' : 'part au prochain cycle')) }}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">{{ en_ligne ? 'Reçus du local (jour)' : 'Reçus du site (jour)' }}</span>
+				<div class="si-kpi-valeur">{{ en_ligne ? envoyes_jour : recus_jour }}</div>
+				<span class="si-tendance si-hausse">{{ en_ligne ? 'catalogue, clients' : 'nouveaux clients' }}{% if not en_ligne %} · {{ envoyes_jour }} envoyé{{ envoyes_jour > 1 ? 's' }}{% endif %}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Erreurs (24 h)</span>
+				<div class="si-kpi-valeur">{{ erreurs }}</div>
+				<span class="si-tendance {{ erreurs_ouvertes > 0 ? 'si-baisse' : 'si-hausse' }}">{{ erreurs == 0 ? 'aucune' : (erreurs_ouvertes > 0 ? erreurs_ouvertes ~ ' en cours' : 'résolue' ~ (erreurs > 1 ? 's' : '') ~ ' automatiquement') }}</span>
+			</div></div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-xl-8">
+			{% if bloques is not empty %}
+				<div class="card si-bloc si-sy-bloques">
+					<div class="si-bloc-tete"><h4>Bloqués après {{ constant('App\\Entity\\SynchroJournal::TENTATIVES_MAX') }} essais</h4></div>
+					{% for b in bloques %}
+						<div class="si-sy-bloque">
+							<div>
+								<strong>{{ b.type }}</strong> · {{ b.creeLe|date('d/m H:i') }}
+								<div class="si-sy-message">{{ b.erreur }}</div>
+							</div>
+							<form method="post" action="{{ path('app_synchronisation_ecarter', {id: b.id}) }}" data-confirmer="Écarter cet élément ? Il ne sera plus envoyé.">
+								<input type="hidden" name="_token" value="{{ csrf_token('ecarter' ~ b.id) }}">
+								<button class="btn btn-outline-danger btn-xs">Écarter</button>
+							</form>
+						</div>
+					{% endfor %}
+				</div>
+			{% endif %}
+
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Derniers échanges</h4>{% if conflits > 0 %}<a href="{{ path('app_synchronisation_journal', {statut: 'conflit'}) }}">{{ conflits }} conflit{{ conflits > 1 ? 's' }} sur 7 jours</a>{% endif %}</div>
+				{% if echanges is empty %}
+					<p class="text-muted py-4 text-center mb-0">Aucun échange pour le moment.</p>
+				{% else %}
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead><tr><th>Heure</th><th>Sens</th><th>Donnée</th><th>Statut</th></tr></thead>
+							<tbody>
+								{% for e in echanges %}{% include 'synchronisation/_ligne.html.twig' %}{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>État des liaisons</h4></div>
+				{% set agent_actif = (en_ligne ? contact : cycle) and date((en_ligne ? contact : cycle)) > date('-3 minutes') %}
+				<div class="si-sy-liaison">
+					<div><strong>Agent local</strong><span>{{ agent_actif ? 'Actif' : 'Arrêté' }}{% if (en_ligne ? contact : cycle) %} · {{ (en_ligne ? contact : cycle)|temps_ecoule }}{% endif %}</span></div>
+					<i class="si-sy-point {{ agent_actif ? 'vert' : 'rouge' }}"></i>
+				</div>
+				{% if not en_ligne %}
+					<div class="si-sy-liaison">
+						{% set site_ko = panne and panne.cause not in ['agent_arrete', 'operation'] %}
+						<div><strong>Site {{ site ?: 'en ligne' }}</strong><span>{{ not configuree ? 'pas réglé' : (site_ko ? panne.titre : 'Joignable' ~ (latence ? ' · ' ~ latence ~ ' ms')) }}</span></div>
+						<i class="si-sy-point {{ not configuree ? 'gris' : (site_ko ? 'rouge' : 'vert') }}"></i>
+					</div>
+					<div class="si-sy-liaison">
+						{% set internet_ko = panne and panne.cause == 'internet' %}
+						{% set agent_arrete = panne and panne.cause == 'agent_arrete' %}
+						<div><strong>Connexion internet de l'imprimerie</strong><span>{{ not configuree ? '—' : (internet_ko ? 'Coupée' : (agent_arrete ? 'Non vérifiée (agent arrêté)' : 'Fonctionne')) }}</span></div>
+						<i class="si-sy-point {{ not configuree ? 'gris' : (internet_ko ? 'rouge' : (agent_arrete ? 'orange' : 'vert')) }}"></i>
+					</div>
+					<div class="si-sy-liaison">
+						{% set lot_max = constant('App\\Service\\Synchro\\Synchro::LOT') %}
+						<div><strong>Taille des envois</strong><span>{{ taille_lot }} opération{{ taille_lot > 1 ? 's' }} par lot{{ taille_lot < lot_max ? ' · réduite, le site ne suivait pas' }}</span></div>
+						<i class="si-sy-point {{ taille_lot < lot_max ? 'orange' : 'vert' }}"></i>
+					</div>
+				{% endif %}
+				<div class="si-sy-liaison">
+					<div><strong>Webhook Orange Money</strong><span>branché avec le paiement en ligne (J5)</span></div>
+					<i class="si-sy-point gris"></i>
+				</div>
+				<div class="si-sy-liaison">
+					<div><strong>Sauvegarde quotidienne</strong><span>{{ sauvegarde.alerte ?: (sauvegarde.derniereComplete ? 'Dernière ' ~ date(sauvegarde.derniereComplete.debut)|date('d/m à H:i') : 'à venir') }}</span></div>
+					<i class="si-sy-point {{ sauvegarde.alerte ? 'rouge' : 'vert' }}"></i>
+				</div>
+				<p class="si-sg-note mt-3 mb-0">Le local envoie le catalogue et les clients ; le site renvoie les clients créés en ligne. Les coûts, marges, comptes et données du personnel ne quittent jamais le local. Alerte aux administrateurs si aucune synchro ne réussit pendant 15 minutes.</p>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		document.querySelector('.js-synchroniser')?.addEventListener('submit', (e) => {
+			const bouton = e.target.querySelector('button');
+			bouton.disabled = true;
+			bouton.innerHTML = '<i class="fas fa-sync-alt fa-spin me-1"></i>Synchronisation…';
+		});
+	</script>
+{% endblock %}

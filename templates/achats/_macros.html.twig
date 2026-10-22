@@ -1,0 +1,28 @@
+{# Petits morceaux communs aux écrans Achats. #}
+
+{# Montant en francs CFA : « 1 244 900 F », ou un tiret. #}
+{% macro f(montant) %}{{ montant is null ? '—' : montant|number_format(0, ',', ' ') ~ ' F' }}{% endmacro %}
+
+{# Quantité sans décimales inutiles : « 304 », « 68,5 ». #}
+{% macro q(v) %}{{ v is null ? '—' : (v == v|round(0, 'floor') ? v|number_format(0, ',', ' ') : v|number_format(1, ',', ' ')) }}{% endmacro %}
+
+{# Pastille aux initiales du fournisseur, dans sa couleur. #}
+{% macro avatar(fournisseur, grand) %}<span class="ac-avatar{{ grand|default(false) ? ' grand' }}" style="background: {{ fournisseur.couleurPastille }}" aria-hidden="true">{{ fournisseur.initiales }}</span>{% endmacro %}
+
+{# Ponctualité sur 12 mois : barre verte, jaune ou rouge et pourcentage. #}
+{% macro ponctualite(pourcentage) %}
+	{% if pourcentage is null %}
+		<span class="ac-muet">pas encore de livraison</span>
+	{% else %}
+		<span class="ac-ponctualite"><span class="ac-barre {{ pourcentage < 80 ? 'faible' : (pourcentage < 90 ? 'moyen') }}"><i style="width: {{ pourcentage }}%"></i></span><b>{{ pourcentage }} %</b></span>
+	{% endif %}
+{% endmacro %}
+
+{# Statut d'une commande d'achat. #}
+{% macro statut(achat) %}
+	{% set classes = {brouillon: 'brouillon', a_valider: 'attente', commandee: 'bleu', demande: 'bleu', en_route: 'attente', recu: 'ok', annule: 'retard'} %}
+	<span class="ac-badge {{ classes[achat.statut]|default('') }}">{{ achat.libelleStatut }}</span>
+{% endmacro %}
+
+{# Jours avec une décimale seulement si utile : « 9 j », « 2,5 j ». #}
+{% macro jours(v) %}{{ v is null ? '—' : (v == v|round(0, 'floor') ? v|number_format(0) : v|number_format(1, ',', ' ')) ~ ' j' }}{% endmacro %}

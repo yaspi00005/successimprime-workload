@@ -1,0 +1,21 @@
+{# Fiche du guide « tournee » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Ma tournée » (sur le téléphone, en bas : « Tournée »).</li>
+	<li>Les arrêts sont numérotés dans l'ordre, avec la carte. Chacun donne le client, son téléphone, l'adresse et les articles.</li>
+	<li>Au chargement, touchez « Chargée ». Au départ, touchez « Je pars ». À l'arrivée, touchez « Je suis arrivé ».</li>
+	<li>Touchez le numéro pour appeler le client. « Voir sur la carte » ouvre le chemin.</li>
+	<li>Touchez « Livrée » pour remettre la commande (fiche suivante).</li>
+	<li>Pas de remise possible : touchez « Échec », choisissez la raison, puis « Noter l'échec ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Quand vous partez, l'espace client montre au client que le livreur est en route.</li>
+	<li>Après un échec, le bureau replanifie la livraison. Si le client vous rappelle, touchez « Réessayer ».</li>
+	<li>« À encaisser » : le reste à payer, sur vos livraisons seulement.</li>
+	<li>« Mes livraisons » : vos remises et vos échecs des 30 derniers jours.</li>
+	<li>En haut : votre ponctualité et vos points du mois.</li>
+</ul>
+{% endblock %}

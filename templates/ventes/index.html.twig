@@ -1,0 +1,107 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Devis et commandes{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_ventes_export', {onglet: onglet}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Export</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ voirDevis ? path('app_devis_new') : path('app_commandes_new') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>{{ voirDevis ? 'Nouveau devis' : 'Nouvelle commande' }}</a>
+	</li>
+{% endblock %}
+
+{% macro tendance(valeur, suffixe) %}
+	{% if valeur is not null %}
+		<span class="si-tendance {{ valeur >= 0 ? 'si-hausse' : 'si-baisse' }}"><i class="fas fa-caret-{{ valeur >= 0 ? 'up' : 'down' }}"></i> {{ valeur > 0 ? '+' }}{{ valeur }}{{ suffixe }}</span>
+	{% endif %}
+{% endmacro %}
+{% import _self as v %}
+
+{% block body %}
+	{# Les indicateurs commerciaux (devis, transformation, panier) seulement avec leur droit ; la grille reste fermée dans les deux cas. #}
+	<div class="row si-kpis">
+		{% if voirStatsVentes %}
+			<div class="col-xl-3 col-6">
+				<div class="card si-kpi"><div class="card-body">
+					<span class="si-kpi-libelle">Devis envoyés (mois)</span>
+					<div class="si-kpi-valeur">{{ indicateurs.devisEnvoyes }}</div>
+					{{ v.tendance(indicateurs.ecartDevis, ' vs mois dernier') }}
+				</div></div>
+			</div>
+			<div class="col-xl-3 col-6">
+				<div class="card si-kpi"><div class="card-body">
+					<span class="si-kpi-libelle">Taux de transformation</span>
+					<div class="si-kpi-valeur {{ indicateurs.tauxTransformation is not null and indicateurs.tauxTransformation < 50 ? 'text-danger' }}">{{ indicateurs.tauxTransformation is null ? '—' : indicateurs.tauxTransformation ~ ' %' }}</div>
+					{{ v.tendance(indicateurs.ecartTaux, ' pts') }}
+				</div></div>
+			</div>
+		{% endif %}
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Commandes en cours</span>
+				<div class="si-kpi-valeur">{{ indicateurs.commandesEnCours }}</div>
+				{% if indicateurs.commandesEnRetard > 0 %}
+					<span class="si-tendance si-baisse">{{ indicateurs.commandesEnRetard }} en retard</span>
+				{% else %}
+					<span class="si-tendance si-hausse">Aucune en retard</span>
+				{% endif %}
+			</div></div>
+		</div>
+		{% if voirStatsVentes %}
+			<div class="col-xl-3 col-6">
+				<div class="card si-kpi"><div class="card-body">
+					<span class="si-kpi-libelle">Panier moyen</span>
+					<div class="si-kpi-valeur">{{ indicateurs.panierMoyen|number_format(0, ',', ' ') }} F</div>
+					{{ v.tendance(indicateurs.variationPanier, ' %') }}
+				</div></div>
+			</div>
+		{% endif %}
+	</div>
+
+	<div class="card si-bloc">
+		<nav class="si-onglets si-onglets-carte" aria-label="Filtrer la liste">
+			{% for cle, libelle in onglets %}
+				<a href="{{ path('app_ventes_index', {onglet: cle}) }}" class="{{ onglet == cle ? 'actif' }}">{{ libelle }}{% if cle == 'a_relancer' %} ({{ nombres[cle] }}){% endif %}</a>
+			{% endfor %}
+		</nav>
+
+		{% if lignes is empty %}
+			<p class="text-muted py-4 text-center mb-0">Rien à afficher ici pour le moment.</p>
+		{% else %}
+			<div class="table-responsive si-table-ventes">
+				<table class="table si-table mb-0">
+					<thead>
+						<tr><th>N°</th><th>Client</th><th>Objet</th><th class="si-masque-mobile">Agent</th><th class="text-end">Montant TTC</th><th>Statut</th></tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignes %}
+							{% set lien = ligne.type == 'devis' ? path('app_devis_show', {id: ligne.id}) : path('app_commandes_show', {id: ligne.id}) %}
+							<tr data-lien="{{ lien }}">
+								<td><a href="{{ lien }}" class="si-numero">{{ ligne.numero }}</a>{% if ligne.type == 'devis' and devis_du_site()[ligne.id] is defined %} <span class="si-pastille si-pastille-bleu" title="Demande {{ devis_du_site()[ligne.id] }} écrite sur le site">Site</span>{% endif %}{% if ligne.hors|default(false) %} <span class="si-badge-hors">Hors imprimerie</span>{% endif %}</td>
+								<td>{{ ligne.client|default('—') }}</td>
+								<td class="si-objet">{{ ligne.objet }}</td>
+								<td class="si-masque-mobile">{{ ligne.agent }}</td>
+								<td class="text-end fw-bold text-nowrap">{{ ligne.montant|number_format(0, ',', ' ') }}</td>
+								<td class="text-nowrap">
+									<span class="si-pastille si-pastille-{{ ligne.statut.ton }}">{{ ligne.statut.libelle }}</span>
+									{% if ligne.enRetard|default(false) %}<span class="si-pastille si-pastille-rouge">En retard</span>{% endif %}
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+
+			{% if pages > 1 %}
+				<nav class="d-flex justify-content-between align-items-center pt-3" aria-label="Pages">
+					<small class="text-muted">Page {{ page }} sur {{ pages }}</small>
+					<div class="d-flex gap-2">
+						{% if page > 1 %}<a class="btn btn-light btn-sm" href="{{ path('app_ventes_index', {onglet: onglet, page: page - 1}) }}">Précédent</a>{% endif %}
+						{% if page < pages %}<a class="btn btn-light btn-sm" href="{{ path('app_ventes_index', {onglet: onglet, page: page + 1}) }}">Suivant</a>{% endif %}
+					</div>
+				</nav>
+			{% endif %}
+		{% endif %}
+	</div>
+{% endblock %}

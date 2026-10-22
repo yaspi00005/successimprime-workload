@@ -2,6 +2,10 @@
 
 namespace App\Form;
 
+use App\Service\Parametres\Parametres;
+use App\Service\Parametres\ReglagesSaisie;
+use App\Entity\DevisDetails;
+use App\Repository\EntrepriseRepository;
 use App\Entity\Clients;
 use App\Entity\Devis;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
@@ -21,10 +25,15 @@ use Symfony\Component\Form\Extension\Core\Type\EmailType;
 use Symfony\Component\Form\Extension\Core\Type\TelType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Validator\Constraints\GreaterThanOrEqual;
+use Symfony\Component\Validator\Constraints\Length;
 use Symfony\Component\Validator\Constraints\NotNull;
 
 class DevisType extends AbstractType
 {
+    public function __construct(private readonly EntrepriseRepository $entreprises, private readonly ?Parametres $parametres = null, private readonly ?ReglagesSaisie $reglagesSaisie = null)
+    {
+    }
+
      public function buildForm(
         FormBuilderInterface $builder,
         array $options
@@ -32,12 +41,15 @@ class DevisType extends AbstractType
         $builder
             ->add('emetteur', ChoiceType::class, [
                 'label' => 'Émetteur',
-                'choices' => Devis::getEmetteursPourFormulaire(),
+                // Entreprises de Réglages › Entreprises (maquette I03).
+                'choices' => $this->entreprises->choixEmetteurs(($options['data'] ?? null)?->getEmetteur())
+                    ?: Devis::getEmetteursPourFormulaire(),
                 'required' => true,
             ])
 
             ->add('clients', EntityType::class, [
                 'class' => Clients::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
                 'choice_label' => static function (
                     Clients $client
                 ): string {
@@ -69,6 +81,15 @@ class DevisType extends AbstractType
 
                     return $libelle;
                 },
+                // Carte du client de la saisie (maquette 22).
+                'choice_attr' => static fn (Clients $client): array => [
+                    'data-type-client' => $client->getTypeClient(),
+                    // Grille de prix (Standard, Partenaire, Association, Revendeur) : aperçu des remises (docs/produits.md).
+                    'data-grille' => $client->getGrille(),
+                    'data-nom' => $client->getNomComplet(),
+                    'data-compte' => $client->getTypeCompteLabel(),
+                    'data-telephone' => (string) $client->getTelephone(),
+                ],
                 'placeholder' => 'Sélectionnez un client',
                 'required' => true,
                 'attr' => [
@@ -83,7 +104,54 @@ class DevisType extends AbstractType
                 ],
             ])
 
-           
+            /*
+             * Frais de livraison (docs/documents-livraisons.md) : « Sans
+             * frais » ou un palier des Réglages, jamais un montant tapé ;
+             * un autre montant envoyé est refusé. Ils suivent à la commande.
+             */
+            ->add('fraisLivraison', ChoiceType::class, [
+                'label' => 'Frais de livraison',
+                'choices' => ReglagesSaisie::choixFrais(
+                    $this->reglagesSaisie?->paliers() ?? ReglagesSaisie::lirePaliers(ReglagesSaisie::PALIERS_DEFAUT) ?? [],
+                    ($options['data'] ?? null) instanceof Devis ? $options['data']->getFraisLivraison() : 0
+                ),
+                'expanded' => true,
+                'required' => false,
+                'placeholder' => false,
+                'empty_data' => '0',
+                'invalid_message' => 'Frais de livraison non permis : choisissez « Sans frais » ou un montant proposé.',
+            ])
+
+            // Objet du devis (« Impressions »…), imprimé sur le devis puis sur la facture.
+            ->add('objet', TextType::class, [
+                'label' => 'Objet',
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control',
+                    'maxlength' => 150,
+                    'list' => 'objets-suggeres',
+                    'autocomplete' => 'off',
+                    'placeholder' => 'Impressions, prestations informatiques…',
+                ],
+                'constraints' => [
+                    new Length(max: 150, maxMessage: 'L\'objet tient en {{ limit }} caractères au plus.'),
+                ],
+            ])
+
+            // Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part dans les statistiques ; suit le devis à la commande.
+            ->add('horsImprimerie', CheckboxType::class, [
+                'label' => 'Hors imprimerie',
+                'required' => false,
+                'help' => 'Vente de matériel, informatique… : comptée à part de l\'imprimerie dans les statistiques',
+            ])
+
+            // « À l'attention de » : la personne du client qui demande (une entreprise en a souvent plusieurs).
+            ->add('interlocuteur', TextType::class, [
+                'label' => 'À l\'attention de',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80],
+            ])
 
             ->add('remise', IntegerType::class, [
                 'label' => 'Remise globale',
@@ -101,6 +169,30 @@ class DevisType extends AbstractType
                     ),
                 ],
             ])
+
+            /*
+             * Code promo tapé au comptoir (docs/promotions.md) : il ne
+             * sert qu'à l'enregistrement, pour les promotions qui en
+             * demandent un. Les lignes qui l'ont eu le gardent ensuite.
+             */
+            ->add('codePromo', TextType::class, [
+                'label' => 'Code promo',
+                'mapped' => false,
+                'required' => false,
+                'attr' => [
+                    'class' => 'form-control js-code-promo',
+                    'maxlength' => 30,
+                    'autocomplete' => 'off',
+                    'placeholder' => 'Facultatif',
+                ],
+            ])
+            // Le code retenu (ou tapé en ligne) revient dans le champ : l'enregistrer de nouveau le garde.
+            ->addEventListener(\Symfony\Component\Form\FormEvents::POST_SET_DATA, static function (\Symfony\Component\Form\FormEvent $event): void {
+                $document = $event->getData();
+                if ($document instanceof \App\Entity\Devis && null !== $document->getLibelleCodePromo()) {
+                    $event->getForm()->get('codePromo')->setData($document->getLibelleCodePromo());
+                }
+            })
 
             ->add('tva', IntegerType::class, [
                 'label' => 'TVA',
@@ -217,20 +309,64 @@ class DevisType extends AbstractType
                 'required' => false,
             ])
 
-            ->add('statut', ChoiceType::class, [
-                'label' => 'Statut',
-                'choices' => [
-                    'Brouillon' => Devis::STATUT_BROUILLON,
-                    'Envoyé' => Devis::STATUT_ENVOYE,
-                    'Accepté' => Devis::STATUT_ACCEPTE,
-                    'Refusé' => Devis::STATUT_REFUSE,
-                    'Expiré' => Devis::STATUT_EXPIRE,
-                    'Converti en commande' => Devis::STATUT_CONVERTI,
-                    'Annulé' => Devis::STATUT_ANNULE,
-                ],
-                'attr' => [
-                    'class' => 'form-control',
-                ],
+            /*
+             * Le statut ne se choisit plus dans le formulaire (maquette
+             * GC04) : « Enregistrer le brouillon », « Envoyer au client »,
+             * puis la réponse du client ou la fiche (docs/devis.md).
+             */
+
+            // En-tête et conditions du devis (maquette GC04), imprimés sur le PDF et montrés au client.
+            ->add('validiteJours', ChoiceType::class, [
+                'label' => 'Valable',
+                'choices' => array_combine(array_map(static fn (int $j): string => $j.' jours', Devis::VALIDITES), Devis::VALIDITES),
+                'attr' => ['class' => 'form-select js-validite'],
+            ])
+            ->add('delaiRealisation', TextType::class, [
+                'label' => 'Délai de réalisation',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 80, 'placeholder' => '5 jours ouvrés', 'list' => 'delais-suggeres'],
+                'constraints' => [new Length(max: 80)],
+            ])
+            ->add('acomptePourcentage', ChoiceType::class, [
+                'label' => 'Acompte',
+                'choices' => array_combine(array_map(static fn (int $p): string => 0 === $p ? 'Pas d\'acompte' : $p.' % à l\'acceptation', Devis::ACOMPTES), Devis::ACOMPTES),
+                'attr' => ['class' => 'form-select form-select-sm js-acompte-pourcentage'],
+            ])
+            ->add('conditionSolde', TextType::class, [
+                'label' => 'Solde',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'à la livraison'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('conditionFichier', TextType::class, [
+                'label' => 'Fichier',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'fichier fourni par le client'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('conditionGarantie', TextType::class, [
+                'label' => 'Garantie',
+                'required' => false,
+                'empty_data' => null,
+                'attr' => ['maxlength' => 120, 'placeholder' => 'facultatif, ex. 12 mois sur les LED'],
+                'constraints' => [new Length(max: 120)],
+            ])
+            ->add('canauxEnvoi', ChoiceType::class, [
+                'label' => 'Envoyer par',
+                'choices' => array_flip(Devis::CANAUX_LIBELLES),
+                'multiple' => true,
+                'expanded' => true,
+            ])
+            // Mot facultatif joint à l'envoi : il part dans les messages de l'espace client.
+            ->add('messageClient', TextareaType::class, [
+                'label' => 'Message au client',
+                'mapped' => false,
+                'required' => false,
+                'attr' => ['rows' => 2, 'maxlength' => 600, 'placeholder' => 'Facultatif : un mot avec le devis'],
+                'constraints' => [new Length(max: 600)],
             ])
 
             /*
@@ -248,6 +384,8 @@ class DevisType extends AbstractType
     'by_reference' => false,
     'prototype' => true,
     'prototype_name' => '__detail__',
+                // Nouvelle ligne : TVA par défaut de Paramètres › Taxes.
+                'prototype_data' => (new DevisDetails())->setTva($this->parametres?->tvaParDefaut() ?? 0),
     'label' => false,
     'required' => true,
     'constraints' => [

@@ -1,0 +1,130 @@
+{#
+	Réalisations (maquette 04) : travaux livrés publiés dans Réglages ›
+	Site vitrine, filtrés par catégorie (?categorie=… sans JavaScript),
+	ouverts en grand dans une fenêtre <dialog>. Le nom du client n'est
+	montré qu'avec son accord (SitePagesController::carte).
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_realisations' %}
+{# Sans page de devis ni de contact, la demande part sur WhatsApp (« devis » est déjà pris par le gabarit). #}
+{% set lien_devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') ?? site_whatsapp('Bonjour Succès Imprim, je voudrais un devis.') %}
+{% set devis_externe = lien_devis and lien_devis starts with 'https://' %}
+
+{# La photo de la réalisation la plus récente pour le partage sur les réseaux. #}
+{% set image_partage = cartes is not empty ? site_image((cartes|first).realisation.imagePrincipale) : null %}
+
+{% block title %}Nos réalisations : bâches, vitrines, textile · Succès Imprim{% endblock %}
+{% block description %}Bâches et banderoles, vitrines, t-shirts, signalétique et petit format livrés par l'atelier Succès Imprim à Bamako. Une idée vous plaît ? Demandez la même.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-contenu.css') }}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Nos réalisations', accroche: 'Quelques travaux livrés récemment. Une idée vous plaît ? Demandez la même chose.', ariane: 'Réalisations'}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre">
+			{% if cartes is empty %}
+				<div class="sc-vide">
+					<p>Les photos de nos derniers travaux arrivent bientôt sur cette page.</p>
+					{% if lien_devis %}<a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis</a>{% endif %}
+				</div>
+			{% else %}
+				<div class="sc-real-barre">
+					{% if filtres|length > 1 %}
+						<nav class="sc-filtres" aria-label="Filtrer par catégorie">
+							<a href="{{ path('app_site_realisations') }}" data-filtre="" class="{{ filtre == '' ? 'actif' }}" {{ filtre == '' ? 'aria-current="true"' }}>Tout</a>
+							{% for cle, nom in filtres %}
+								<a href="{{ path('app_site_realisations', {categorie: cle}) }}" data-filtre="{{ cle }}" class="{{ filtre == cle ? 'actif' }}" {{ filtre == cle ? 'aria-current="true"' }}>{{ nom }}</a>
+							{% endfor %}
+						</nav>
+					{% endif %}
+					{% if lien_devis %}<a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge sc-real-meme"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Je veux la même chose</a>{% endif %}
+				</div>
+
+				<ul class="sc-mosaique">
+					{% for c in cartes %}
+						{% set r = c.realisation %}
+						{% set image = site_image(r.imagePrincipale, 'petite') %}
+						<li class="sc-real" data-filtre="{{ c.filtre }}" {{ filtre and c.filtre != filtre ? 'hidden' }}>
+							<a href="#realisation-{{ r.id }}" class="sc-real-lien" data-ouvrir="realisation-{{ r.id }}" aria-haspopup="dialog">
+								{% if image %}
+									<img src="{{ asset(image.chemin) }}" width="{{ image.largeur }}" height="{{ image.hauteur }}" alt="{{ r.imagePrincipale.texteAlternatif ?? c.titre }}" loading="{{ loop.index > 3 ? 'lazy' : 'eager' }}">
+								{% else %}
+									<span class="sc-real-illu sc-format-{{ loop.index0 % 3 }}">{{ include('site/_illustration_contenu.svg.twig', {famille: c.illustration, id: 'r' ~ r.id}) }}</span>
+								{% endif %}
+								<span class="sc-real-legende">{{ c.titre }}{% if c.client %} · {{ c.client }}{% endif %}</span>
+							</a>
+						</li>
+					{% endfor %}
+				</ul>
+
+				{% for c in cartes %}
+					{% set r = c.realisation %}
+					<dialog id="realisation-{{ r.id }}" class="sc-visionneuse" aria-labelledby="realisation-{{ r.id }}-titre">
+						<div class="sc-visionneuse-cadre">
+							<a href="#" class="sc-visionneuse-fermer" data-fermer aria-label="Fermer"><span aria-hidden="true">×</span></a>
+							<div class="sc-visionneuse-images">
+								{% if c.avantApres %}{{ include('site/_avant_apres.html.twig', {avant: c.avantApres.avant, apres: c.avantApres.apres}) }}{% endif %}
+								{% for image in r.images|filter(i => not c.avantApres or (i is not same as(c.avantApres.avant) and i is not same as(c.avantApres.apres))) %}
+									{% set fichier = site_image(image, 'grande') %}
+									{% if fichier %}<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="{{ image.texteAlternatif ?? c.titre }}" loading="lazy">{% endif %}
+								{% else %}
+									{% if not c.avantApres %}<span class="sc-real-illu sc-format-0">{{ include('site/_illustration_contenu.svg.twig', {famille: c.illustration, id: 'v' ~ r.id}) }}</span>{% endif %}
+								{% endfor %}
+							</div>
+							<div class="sc-visionneuse-texte">
+								{% if c.categorie %}<span class="sc-etiquette">{{ c.categorie }}</span>{% endif %}
+								<h2 id="realisation-{{ r.id }}-titre">{{ c.titre }}</h2>
+								<p class="sc-meta">Livré en {{ r.dateRealisation|site_date(false) }}{% if c.client %} · {{ c.client }}{% endif %}</p>
+								{% if r.description %}<p>{{ r.description|nl2br }}</p>{% endif %}
+								<div class="sc-visionneuse-actions">
+									{% if lien_devis %}<a href="{{ lien_devis }}" class="si-bouton si-bouton-rouge"{% if devis_externe %} target="_blank" rel="noopener"{% endif %}>Demander un devis pour un projet similaire</a>{% endif %}
+									{% set wa = site_whatsapp('Bonjour Succès Imprim, je voudrais un travail comme « ' ~ c.titre ~ ' » (page Réalisations).') %}
+									{% if wa and not devis_externe %}<a href="{{ wa }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">En parler sur WhatsApp</a>{% endif %}
+								</div>
+							</div>
+						</div>
+					</dialog>
+				{% endfor %}
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/site-animations.js') }}" defer></script>
+	<script>
+		(function () {
+			// Filtres sans rechargement ; l'adresse garde le filtre choisi.
+			var filtres = document.querySelectorAll('.sc-filtres [data-filtre]');
+			var cartes = document.querySelectorAll('.sc-real');
+			filtres.forEach(function (lien) {
+				lien.addEventListener('click', function (e) {
+					e.preventDefault();
+					var choix = lien.dataset.filtre;
+					filtres.forEach(function (l) { var actif = l === lien; l.classList.toggle('actif', actif); if (actif) { l.setAttribute('aria-current', 'true'); } else { l.removeAttribute('aria-current'); } });
+					cartes.forEach(function (c) { c.hidden = choix !== '' && c.dataset.filtre !== choix; });
+					history.replaceState(null, '', lien.href);
+				});
+			});
+			// Visionneuse : <dialog> modale ; sans JavaScript, le lien #realisation-… l'affiche quand même (:target).
+			if (typeof HTMLDialogElement !== 'function') { return; }
+			document.querySelectorAll('[data-ouvrir]').forEach(function (lien) {
+				lien.addEventListener('click', function (e) {
+					var fenetre = document.getElementById(lien.dataset.ouvrir);
+					if (!fenetre) { return; }
+					e.preventDefault();
+					fenetre.showModal();
+				});
+			});
+			document.querySelectorAll('.sc-visionneuse').forEach(function (fenetre) {
+				// Ouverte par l'adresse (#realisation-…, lien partagé) et non par un clic : le lien « × » la referme.
+				fenetre.querySelector('[data-fermer]').addEventListener('click', function (e) { if (fenetre.open) { e.preventDefault(); fenetre.close(); } });
+				fenetre.addEventListener('click', function (e) { if (e.target === fenetre) { fenetre.close(); } });
+			});
+		})();
+	</script>
+{% endblock %}

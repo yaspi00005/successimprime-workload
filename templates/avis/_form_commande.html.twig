@@ -1,0 +1,40 @@
+{#
+	Sondage d'une commande livrée (modèle fixe, SondageCommande) : note
+	globale, une note par article, délai et accueil, recommandation,
+	proposition libre. Partagé par l'espace client et le lien reçu à la
+	livraison. Aucun montant.
+#}
+{% set q = questions|reduce((carry, x) => carry|merge({(x.cle): x}), {}) %}
+<form method="post" class="av-form">
+	<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+	<div class="av-piege" aria-hidden="true"><label>Site <input type="text" name="site" tabindex="-1" autocomplete="off"></label></div>
+
+	<div class="ec-carte">
+		{% include 'avis/_question.html.twig' with {q: q.globale, nom: null} %}
+	</div>
+
+	{% if articles|length > 0 %}
+		<div class="ec-carte">
+			<h2>Chaque article <span class="ec-petit" style="font-weight:400">· facultatif</span></h2>
+			<p class="ec-petit" style="margin:-.3rem 0 .7rem">La qualité de chaque travail reçu.</p>
+			{% for l in articles %}
+				{% include 'avis/_question.html.twig' with {q: {cle: l.publicId ~ '', type: 'etoiles', libelle: l|espace_titre_ligne, choix: [], obligatoire: false}, nom: 'articles[' ~ l.publicId ~ ']', saisie: saisie.articles ?? {}, petites: true} %}
+			{% endfor %}
+		</div>
+	{% endif %}
+
+	<div class="ec-carte">
+		{% include 'avis/_question.html.twig' with {q: q.delai, nom: null} %}
+		{% include 'avis/_question.html.twig' with {q: q.accueil, nom: null} %}
+	</div>
+
+	<div class="ec-carte">
+		{% include 'avis/_question.html.twig' with {q: q.nps, nom: null} %}
+	</div>
+
+	<div class="ec-carte">
+		{% include 'avis/_question.html.twig' with {q: q.proposition, nom: null} %}
+	</div>
+
+	<button type="submit" class="ec-bouton av-envoyer">Envoyer mon avis</button>
+</form>

@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Ajout d'un client sur le terrain, au téléphone du commercial (K05) :
+	nom, contact, numéro, position et besoin. La ligne « Prospection » du
+	jour est validée à l'enregistrement.
+#}
+
+{% block title %}Nouveau client{% endblock %}
+
+{% block body %}
+	<div id="si-cf-doublon" class="si-cf-doublon" hidden></div>
+	{% if erreurs is not empty %}
+		<div class="alert alert-danger" role="alert">{{ erreurs|join(' ') }}</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_clients_nouveau', {mode: 'terrain'}) }}" class="si-tr" data-doublons="{{ path('app_clients_doublons') }}" data-sauf="" data-gps-auto novalidate>
+		<input type="hidden" name="_token" value="{{ csrf_token('client') }}">
+		<div class="si-cf-types" role="radiogroup" aria-label="Type de client">
+			{% for k, l in constant('App\\Entity\\Clients::TYPES_COMPTE_LABELS') %}
+				<label><input type="radio" name="c[type]" value="{{ k }}"{{ v.type|default('entreprise') == k ? ' checked' }}><span>{{ l }}</span></label>
+			{% endfor %}
+		</div>
+
+		<section class="card si-cf-bloc">
+			<label class="si-cf-champ">
+				<span>Nom</span>
+				<input name="c[nomTerrain]" value="{{ v.nomTerrain|default(v.raisonSociale|default('')) }}" class="form-control form-control-lg" maxlength="100" required placeholder="Garage du Carrefour ou Prénom Nom" autocomplete="off">
+			</label>
+			<div data-orga>
+				<label class="si-cf-champ">
+					<span>Contact</span>
+					<input name="c[contactTerrain]" value="{{ v.contactTerrain|default('') }}" class="form-control form-control-lg" maxlength="160" placeholder="Modibo Coulibaly · gérant" autocomplete="off">
+				</label>
+			</div>
+			<label class="si-cf-champ">
+				<span>Téléphone</span>
+				<span class="si-tr-tel"><b>+223</b><input name="c[telephone]" value="{{ v.telephone|default('') }}" class="form-control form-control-lg" inputmode="tel" placeholder="79 00 00 00" required data-tel autocomplete="off"></span>
+			</label>
+			<label class="si-tr-wa">
+				<input type="hidden" name="c[whatsapp]" value="0">
+				<input type="checkbox" name="c[whatsapp]" value="1" class="form-check-input"{{ v.whatsapp|default('1') ? ' checked' }}>
+				Même numéro sur WhatsApp
+			</label>
+		</section>
+
+		<section class="card si-cf-bloc">
+			<input type="hidden" name="c[latitude]" value="{{ v.latitude|default('') }}" data-lat>
+			<input type="hidden" name="c[longitude]" value="{{ v.longitude|default('') }}" data-lng>
+			<div class="si-tr-gps">
+				<span class="si-tr-pin"><i class="fas fa-map-marker-alt"></i></span>
+				<span><b>Position</b><small data-gps-texte>Recherche de la position…</small></span>
+				<button type="button" class="btn btn-link btn-sm" data-gps>Reprendre</button>
+			</div>
+			<label class="si-cf-champ">
+				<span>Besoin</span>
+				<input name="c[besoin]" value="{{ v.besoin|default('') }}" class="form-control form-control-lg" maxlength="255" placeholder="Enseigne 3 × 1 m + 500 cartes">
+			</label>
+		</section>
+
+		{% if is_granted('ROLE_DEVIS') %}
+			<button type="submit" name="apres" value="devis" class="btn btn-primary btn-lg si-tr-btn">Enregistrer et créer un devis</button>
+		{% endif %}
+		<button type="submit" class="btn btn-light btn-lg si-tr-btn">Enregistrer seulement</button>
+		<p class="si-cf-aide text-center mt-2">Prospection du jour : la ligne « Prospection » est validée à votre nom.</p>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/clients-formulaire.js') }}" defer></script>
+{% endblock %}

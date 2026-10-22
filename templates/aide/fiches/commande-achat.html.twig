@@ -1,0 +1,20 @@
+{# Fiche du guide « commande-achat » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Partez d'une alerte : « Prochaine commande » dans Fournisseurs, « Commander » sur la fiche article, ou « Commande d'achat » sur le bon de commande du stock. La commande s'ouvre préparée.</li>
+	<li>Vérifiez les lignes : quantité en unité d'achat (rouleaux), quantité en stock (m²), prix d'achat. La « Suggestion » dit combien de semaines la quantité couvre.</li>
+	<li>Dans « Frais pour amener la marchandise à Bamako », remplissez le transport et le transit.</li>
+	<li>À droite, lisez le « Total rendu Bamako », l'acompte, le coût de revient au m² et la « Livraison prévue ».</li>
+	<li>Touchez « Passer la commande ». Au-dessus du seuil, le bouton dit « Envoyer pour validation » : la Direction la valide avec « Valider la commande ».</li>
+	<li>Quand le fournisseur expédie, touchez « En route ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Les autres articles du même fournisseur à commander bientôt sont ajoutés pour partager le transport ; le bandeau dit l'économie.</li>
+	<li>Le transport et le transit sont répartis sur chaque m² acheté : c'est le coût de revient.</li>
+	<li>La livraison prévue ajoute au délai promis le retard habituel du fournisseur.</li>
+	<li>« Brouillon » garde la commande sans l'envoyer. Les commandes sont numérotées CA-année-numéro.</li>
+</ul>
+{% endblock %}

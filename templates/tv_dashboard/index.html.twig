@@ -3,406 +3,632 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<meta http-equiv="refresh" content="300">
+	<meta name="robots" content="noindex">
+	<title>Succès Imprim · Notre activité en direct</title>
+	<link rel="stylesheet" href="{{ asset('vendor/archivo-v25/archivo.css') }}">
+	<link rel="stylesheet" href="{{ asset('vendor/figtree-v9/figtree.css') }}">
 
-	<title>SuccessImprim — Écran d'accueil</title>
-
-	<link
-		rel="stylesheet"
-		href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css"
-	>
-
+	{#
+		Écran 16:9 dessiné en 1920 × 1080 puis mis à l'échelle de la fenêtre.
+		Quatre zones : en-tête fixe, scènes qui tournent à gauche, colonne
+		« en direct » à droite, bandeau rouge en bas. Programme réglé dans
+		Réglages > Écran TV.
+	#}
 	<style>
-
-		* {
-			margin: 0;
-			padding: 0;
-			box-sizing: border-box;
+		:root {
+			--marine: #0b1f45; --marine2: #081733; --bleu: #0F4590; --rouge: #DE1028; --jaune: #FDC82A;
+			--orange: #E95B35; --rose: #E8398A; --cyan: #2A93D5; --vert: #3ddc84;
+			--doux: rgba(255, 255, 255, .72); --verre: rgba(255, 255, 255, .07); --bord: rgba(255, 255, 255, .14);
+			--titre: "Archivo", "Segoe UI", system-ui, sans-serif; --texte: "Figtree", "Segoe UI", system-ui, sans-serif;
+			color-scheme: dark;
 		}
+		* { box-sizing: border-box; }
+		[hidden] { display: none !important; }
+		html, body { height: 100%; margin: 0; }
+		body { background: #05080f; color: #fff; font-family: var(--texte); overflow: hidden; }
+		.cadre { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; }
+		.tv { width: 1920px; height: 1080px; flex: 0 0 auto; position: relative; overflow: hidden; transform-origin: center;
+			background: radial-gradient(1400px 800px at 75% -10%, #1d4fa3 0%, var(--marine) 55%, var(--marine2) 100%); }
 
-		html, body {
-			width: 100%;
-			height: 100%;
-			overflow: hidden;
-			background: #0b1120;
-			font-family: 'Segoe UI', Arial, sans-serif;
-			color: #fff;
+		.bandes { position: absolute; right: -200px; top: -140px; width: 1100px; height: 560px; opacity: .45; pointer-events: none; }
+		.bandes i { position: absolute; right: 0; height: 46px; border-radius: 60px 0 0 60px; transform: skewX(-28deg) rotate(-10deg); animation: derive 14s ease-in-out infinite; }
+		.bandes i:nth-child(1) { top: 120px; width: 880px; background: linear-gradient(90deg, transparent, var(--cyan)); }
+		.bandes i:nth-child(2) { top: 200px; width: 820px; background: linear-gradient(90deg, transparent, var(--orange), var(--jaune)); animation-delay: -3s; }
+		.bandes i:nth-child(3) { top: 280px; width: 700px; background: linear-gradient(90deg, transparent, #000); animation-delay: -6s; }
+		.bandes i:nth-child(4) { top: 360px; width: 640px; background: linear-gradient(90deg, transparent, var(--rose)); animation-delay: -9s; }
+		@keyframes derive { 0%, 100% { translate: 0 0; } 50% { translate: -60px 0; } }
+
+		header { position: absolute; left: 56px; right: 56px; top: 40px; height: 94px; display: flex; align-items: center; gap: 24px; }
+		.logo { background: #fff; border-radius: 18px; padding: 10px 16px; }
+		.logo img { height: 74px; display: block; }
+		.entete-texte { margin-left: auto; text-align: right; }
+		.entete-texte b { font-family: var(--titre); font-size: 34px; font-weight: 800; letter-spacing: -.01em; }
+		.entete-texte div { font-size: 20px; color: var(--doux); margin-top: 4px; }
+		.live { display: inline-flex; align-items: center; gap: 8px; background: var(--rouge); border-radius: 999px; padding: 4px 14px; font-size: 17px; font-weight: 800; margin-left: 14px; vertical-align: middle; }
+		.live::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: #fff; animation: clignote 1.4s infinite; }
+		.hors-ligne .live { background: #5b6478; }
+		.hors-ligne .live::before { animation: none; opacity: .5; }
+		@keyframes clignote { 50% { opacity: .25; } }
+		.horloge { font-family: var(--titre); font-weight: 800; font-size: 46px; margin-left: 30px; font-variant-numeric: tabular-nums; }
+		.sans-logo header .logo, .sans-logo header .horloge { display: none; }
+
+		.principale { position: absolute; left: 56px; top: 170px; width: 1290px; height: 780px; border-radius: 28px; background: var(--verre); border: 1px solid var(--bord); overflow: hidden; }
+		.sans-colonne .principale { width: 1808px; }
+		.sans-bandeau .principale, .sans-bandeau .colonne { height: 854px; }
+		.scene { position: absolute; inset: 0; padding: 40px 44px; opacity: 0; transform: translateY(30px) scale(.985); transition: opacity .9s ease, transform .9s cubic-bezier(.2, .8, .2, 1); }
+		.scene.active { opacity: 1; transform: none; }
+		.scene.plein { padding: 0; }
+		.surtitre { font-size: 20px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--jaune); }
+		.titre { font-family: var(--titre); font-weight: 900; font-size: 58px; letter-spacing: -.02em; margin: 6px 0 0; line-height: 1.02; }
+		.titre em, .grand em { font-style: normal; color: var(--jaune); }
+		.progression { position: absolute; left: 0; bottom: 0; height: 6px; background: var(--jaune); width: 0; z-index: 3; }
+		.points { position: absolute; right: 30px; top: 30px; display: flex; gap: 10px; z-index: 3; }
+		.points i { width: 12px; height: 12px; border-radius: 50%; background: rgba(255, 255, 255, .25); }
+		.points i.active { background: var(--jaune); }
+
+		/* Chiffres */
+		.compteurs { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 20px; margin-top: 34px; }
+		.compteur { background: rgba(255, 255, 255, .06); border: 1px solid var(--bord); border-radius: 22px; padding: 24px; }
+		.compteur .l { font-size: 22px; color: var(--doux); }
+		.compteur .v { white-space: nowrap; font-family: var(--titre); font-weight: 900; font-size: 64px; letter-spacing: -.03em; line-height: 1; margin-top: 8px; font-variant-numeric: tabular-nums; }
+		.compteur .g { font-size: 21px; font-weight: 800; color: var(--vert); margin-top: 10px; }
+		.compteur .g.neutre { color: var(--doux); }
+		.barres { display: flex; align-items: flex-end; gap: 16px; height: 300px; margin-top: 34px; }
+		.barres i { flex: 1; border-radius: 12px 12px 4px 4px; background: linear-gradient(180deg, #5a97f2, #2457b8); height: 0; transition: height 1.2s cubic-bezier(.2, .8, .2, 1); }
+		.barres i.dernier { background: linear-gradient(180deg, var(--jaune), var(--orange)); box-shadow: 0 0 34px rgba(253, 200, 42, .45); }
+		.mois { display: flex; gap: 16px; margin-top: 10px; font-size: 18px; color: var(--doux); }
+		.mois span { flex: 1; text-align: center; }
+
+		/* Photos */
+		.cliche { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s; overflow: hidden; }
+		.cliche.active { opacity: 1; }
+		.cliche img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+		.cliche.active img { animation: zoom 9s ease-out both; }
+		@keyframes zoom { from { transform: scale(1.12) translate(2%, 1%); } to { transform: none; } }
+		.etiquette { position: absolute; left: 44px; top: 40px; background: rgba(0, 0, 0, .55); border-radius: 12px; padding: 8px 14px; z-index: 2; }
+		.legende { position: absolute; left: 44px; bottom: 44px; max-width: 70%; background: rgba(0, 0, 0, .55); backdrop-filter: blur(6px); border-radius: 18px; padding: 18px 24px; }
+		.legende b { display: block; font-family: var(--titre); font-size: 38px; font-weight: 800; }
+		.legende span { font-size: 22px; color: var(--doux); }
+
+		/* Vidéo */
+		.scene video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #0d1322; }
+		.voile { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0, 0, 0, .55), transparent 40%); }
+		.en-tete-video { position: absolute; left: 44px; top: 40px; right: 320px; }
+		.pastille-video { position: absolute; right: 44px; top: 44px; background: rgba(0, 0, 0, .55); border-radius: 14px; padding: 10px 16px; font-size: 20px; font-weight: 700; }
+
+		/* Avis */
+		.titre-partenaires { font-family: var(--titre); font-weight: 800; font-size: 56px; line-height: 1.1; letter-spacing: -.02em; margin-top: 18px; }
+		.titre-partenaires em { font-style: normal; color: var(--jaune); }
+		.logos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: 54px; }
+		.logos.n1, .logos.n2 { grid-template-columns: repeat(2, minmax(0, 360px)); }
+		.logos.n3 { grid-template-columns: repeat(3, 1fr); }
+		.logo-partenaire { background: #fff; border-radius: 22px; height: 170px; display: flex; align-items: center; justify-content: center; padding: 26px; opacity: 0; transform: translateY(16px); transition: opacity .6s, transform .6s; }
+		.scene.active .logo-partenaire { opacity: 1; transform: none; }
+		.scene.active .logo-partenaire:nth-child(2) { transition-delay: .12s; } .scene.active .logo-partenaire:nth-child(3) { transition-delay: .24s; } .scene.active .logo-partenaire:nth-child(4) { transition-delay: .36s; }
+		.scene.active .logo-partenaire:nth-child(n+5) { transition-delay: .48s; }
+		.logo-partenaire img { max-width: 100%; max-height: 100%; object-fit: contain; }
+		.citation { font-family: var(--titre); font-weight: 800; font-size: 64px; line-height: 1.1; letter-spacing: -.02em; margin-top: 60px; max-width: 22ch; }
+		.etoiles { color: var(--jaune); font-size: 50px; margin-top: 30px; letter-spacing: 6px; }
+		.etoiles s { text-decoration: none; color: rgba(255, 255, 255, .25); }
+		.signature { font-size: 26px; color: var(--doux); margin-top: 14px; }
+
+		/* Promo et texte */
+		.affiche { position: absolute; inset: 0; padding: 60px; display: flex; gap: 40px; }
+		.affiche > div:first-child { flex: 1; min-width: 0; }
+		.fond-rouge { background: linear-gradient(120deg, #DE1028, #9e0a1d); }
+		.fond-bleu { background: linear-gradient(120deg, #1d4fa3, #0b1f45); }
+		.fond-jaune { background: linear-gradient(120deg, #FDC82A, #E95B35); color: #10213f; }
+		.fond-jaune .grand em { color: #fff; }
+		.fond-sombre { background: linear-gradient(120deg, #1b2233, #0b0f19); }
+		.affiche .surtitre { color: inherit; }
+		.grand { font-family: var(--titre); font-weight: 900; font-size: 116px; line-height: .98; letter-spacing: -.03em; margin-top: 10px; overflow-wrap: anywhere; }
+		.affiche p { font-size: 32px; margin-top: 24px; max-width: 30ch; }
+		.etiquette-promo { display: inline-block; margin-top: 30px; background: #fff; color: var(--rouge); font-family: var(--titre); font-weight: 900; font-size: 40px; padding: 14px 26px; border-radius: 16px; }
+		.affiche-image { width: 520px; flex: 0 0 520px; border-radius: 24px; overflow: hidden; align-self: center; height: 620px; }
+		.affiche-image img { width: 100%; height: 100%; object-fit: cover; }
+		.texte-seul { align-items: center; text-align: center; }
+		.texte-seul .grand { font-size: 104px; }
+		.texte-seul p { margin-left: auto; margin-right: auto; }
+
+		/* Colonne en direct */
+		.colonne { position: absolute; left: 1376px; right: 56px; top: 170px; height: 780px; display: flex; flex-direction: column; gap: 16px; }
+		.boite { background: var(--verre); border: 1px solid var(--bord); border-radius: 28px; padding: 22px 24px; }
+		.boite:first-child { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+		.boite h3 { margin: 0 0 16px; font-family: var(--titre); font-size: 28px; font-weight: 800; display: flex; align-items: center; gap: 12px; }
+		.boite h3 small { margin-left: auto; font-family: var(--texte); font-size: 17px; color: var(--doux); font-weight: 600; }
+		.flux { display: flex; flex-direction: column; gap: 10px; flex: 1; min-height: 0; overflow: hidden; }
+		.cmd { display: flex; align-items: center; gap: 14px; background: rgba(255, 255, 255, .06); border-radius: 16px; padding: 14px 16px; flex: 0 0 auto; }
+		.cmd.arrive { animation: glisse .7s cubic-bezier(.2, .9, .3, 1.2) both; }
+		@keyframes glisse { from { transform: translateX(60px); opacity: 0; } to { transform: none; opacity: 1; } }
+		.cmd i { width: 48px; height: 48px; border-radius: 12px; flex: 0 0 48px; }
+		.cmd div { min-width: 0; }
+		.cmd b, .cmd span { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+		.cmd b { font-size: 22px; }
+		.cmd span { font-size: 17px; color: var(--doux); }
+		.cmd em { margin-left: auto; font-style: normal; font-size: 15px; font-weight: 800; color: var(--marine); background: var(--vert); border-radius: 999px; padding: 4px 10px; }
+		.c0 { background: var(--rouge); } .c1 { background: var(--rose); } .c2 { background: var(--bleu); } .c3 { background: var(--orange); } .c4 { background: var(--jaune); } .c5 { background: var(--cyan); }
+		.vide { font-size: 20px; color: var(--doux); padding: 12px 4px; }
+		.pretes { display: flex; flex-wrap: wrap; gap: 12px; max-height: 136px; overflow: hidden; }
+		.pretes span { background: #fff; color: var(--bleu); font-family: var(--titre); font-weight: 900; font-size: 40px; border-radius: 14px; padding: 8px 18px; animation: pulse 2.4s ease-in-out infinite; }
+		.pretes span:nth-child(3n+2) { animation-delay: .4s; } .pretes span:nth-child(3n) { animation-delay: .8s; }
+		@keyframes pulse { 50% { transform: scale(1.06); } }
+		.jour { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+		.jour div { background: rgba(255, 255, 255, .06); border-radius: 16px; padding: 14px 16px; }
+		.jour b { display: block; font-family: var(--titre); font-size: 44px; font-weight: 900; font-variant-numeric: tabular-nums; }
+		.jour span { font-size: 17px; color: var(--doux); }
+
+		.bandeau { position: absolute; left: 0; right: 0; bottom: 0; height: 78px; background: var(--rouge); display: flex; align-items: center; overflow: hidden; }
+		.bandeau .defile { display: flex; gap: 80px; white-space: nowrap; font-size: 30px; font-weight: 700; animation: defile var(--duree-bandeau, 40s) linear infinite; padding-left: 100%; }
+		.bandeau em { font-style: normal; color: var(--jaune); }
+		@keyframes defile { to { transform: translateX(-100%); } }
+
+		/* Fermé */
+		.ferme { position: absolute; inset: 0 0 78px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 26px; }
+		.ferme .logo img { height: 120px; }
+		.ferme h1 { font-family: var(--titre); font-size: 96px; font-weight: 900; margin: 20px 0 0; }
+		.ferme p { font-size: 40px; color: var(--doux); margin: 0; }
+		.ferme .horloge { margin: 0; font-size: 64px; }
+		.eteint, .eteint .tv { background: #000; }
+
+		.apercu { position: fixed; left: 50%; transform: translateX(-50%); top: 10px; z-index: 5; font: 600 13px var(--texte); color: #cfd8ea; background: rgba(0, 0, 0, .55); border-radius: 999px; padding: 6px 12px; white-space: nowrap; }
+
+		/* Alertes : l'annonce affichée (sans nom ni montant) et « Activer le son » */
+		.alerte { position: absolute; left: 300px; top: 30px; width: 850px; z-index: 6; display: flex; align-items: center; gap: 22px; background: var(--jaune); color: var(--marine); border-radius: 26px; padding: 18px 28px 18px 18px; box-shadow: 0 18px 50px rgba(0, 0, 0, .45); opacity: 0; transform: translateY(-30px); transition: opacity .5s, transform .5s cubic-bezier(.2, .9, .3, 1.2); }
+		.alerte.visible { opacity: 1; transform: none; }
+		.alerte .cloche { flex: 0 0 72px; height: 72px; border-radius: 50%; background: var(--marine); color: var(--jaune); display: flex; align-items: center; justify-content: center; }
+		.alerte .cloche svg { width: 40px; height: 40px; }
+		.alerte.visible .cloche svg { animation: sonne 1s ease-in-out 2; transform-origin: 50% 10%; }
+		@keyframes sonne { 20% { transform: rotate(14deg); } 40% { transform: rotate(-12deg); } 60% { transform: rotate(8deg); } 80% { transform: rotate(-4deg); } }
+		.alerte [data-lignes] { min-width: 0; font-family: var(--titre); font-weight: 800; font-size: 30px; line-height: 1.15; letter-spacing: -.01em; }
+		.alerte [data-lignes] div:first-child { font-size: 34px; }
+		.alerte [data-lignes] div + div { margin-top: 6px; }
+		.activer-son { position: absolute; left: 701px; bottom: 120px; transform: translateX(-50%); z-index: 7; display: flex; align-items: center; gap: 22px; border: 0; border-radius: 28px; background: #fff; color: var(--marine); font-family: var(--texte); padding: 24px 40px 24px 28px; cursor: pointer; box-shadow: 0 0 0 0 rgba(253, 200, 42, .7), 0 20px 50px rgba(0, 0, 0, .45); animation: appel 2.2s ease-out infinite; text-align: left; }
+		.activer-son:focus-visible { outline: 6px solid var(--jaune); outline-offset: 6px; }
+		.activer-son svg { flex: 0 0 64px; width: 64px; height: 64px; color: var(--rouge); }
+		.activer-son b { display: block; font-family: var(--titre); font-size: 44px; font-weight: 900; letter-spacing: -.02em; line-height: 1; }
+		.activer-son small { display: block; font-size: 22px; color: #3d4b66; margin-top: 8px; }
+		/* Écran « Fermé » : logo au centre, l'alerte et le bouton aussi. */
+		.tv-ferme .alerte { left: 535px; }
+		.tv-ferme .activer-son, .sans-colonne .activer-son { left: 960px; }
+		/* Écran noir hors horaires : rien d'allumé (un toucher n'importe où active quand même le son). */
+		.eteint .activer-son { display: none; }
+		@keyframes appel { 70% { box-shadow: 0 0 0 26px rgba(253, 200, 42, 0), 0 20px 50px rgba(0, 0, 0, .45); } 100% { box-shadow: 0 0 0 0 rgba(253, 200, 42, 0), 0 20px 50px rgba(0, 0, 0, .45); } }
+
+		@media (prefers-reduced-motion: reduce) {
+			*, *::before { animation: none !important; transition: none !important; }
 		}
-
-		/* ============================================================
-		   FOND — DIAPORAMA
-		   ============================================================ */
-
-		.tv-fond {
-			position: fixed;
-			inset: 0;
-			z-index: 0;
-			background: linear-gradient(135deg, #4338ca, #0ea5e9, #22c55e);
-			background-size: 400% 400%;
-			animation: degradeAnime 18s ease infinite;
-		}
-
-		@keyframes degradeAnime {
-			0%   { background-position: 0% 50%; }
-			50%  { background-position: 100% 50%; }
-			100% { background-position: 0% 50%; }
-		}
-
-		.tv-media {
-			position: absolute;
-			inset: 0;
-			width: 100%;
-			height: 100%;
-			object-fit: cover;
-			opacity: 0;
-			transform: scale(1);
-			transition: opacity 1.8s ease;
-		}
-
-		.tv-media.actif {
-			opacity: 1;
-			animation: kenBurns 14s ease forwards;
-		}
-
-		@keyframes kenBurns {
-			from { transform: scale(1); }
-			to   { transform: scale(1.12); }
-		}
-
-		.tv-overlay {
-			position: fixed;
-			inset: 0;
-			z-index: 1;
-			background: linear-gradient(180deg, rgba(5, 10, 25, .55) 0%, rgba(5, 10, 25, .35) 45%, rgba(5, 10, 25, .85) 100%);
-		}
-
-		/* ============================================================
-		   CONTENU
-		   ============================================================ */
-
-		.tv-contenu {
-			position: relative;
-			z-index: 2;
-			height: 100vh;
-			display: flex;
-			flex-direction: column;
-			padding: 3rem 4rem;
-		}
-
-		.tv-entete {
-			display: flex;
-			align-items: center;
-			justify-content: space-between;
-			animation: glisserHaut .9s ease both;
-		}
-
-		.tv-marque {
-			display: flex;
-			align-items: center;
-			gap: .9rem;
-			font-size: 1.7rem;
-			font-weight: 700;
-			letter-spacing: .5px;
-			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
-		}
-
-		.tv-marque i {
-			background: rgba(255, 255, 255, .15);
-			border: 1px solid rgba(255, 255, 255, .3);
-			width: 52px;
-			height: 52px;
-			border-radius: 14px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1.5rem;
-		}
-
-		.tv-horloge {
-			text-align: right;
-			text-shadow: 0 2px 12px rgba(0, 0, 0, .4);
-		}
-
-		.tv-heure {
-			font-size: 2.4rem;
-			font-weight: 700;
-			font-variant-numeric: tabular-nums;
-		}
-
-		.tv-date {
-			font-size: 1.05rem;
-			opacity: .85;
-			text-transform: capitalize;
-		}
-
-		/* ============================================================
-		   BLOC CENTRAL — CLIENTS
-		   ============================================================ */
-
-		.tv-central {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			align-items: center;
-			justify-content: center;
-			text-align: center;
-		}
-
-		.tv-central-titre {
-			font-size: 1.5rem;
-			font-weight: 400;
-			opacity: .9;
-			letter-spacing: 1px;
-			text-transform: uppercase;
-			animation: apparaitre 1s ease .3s both;
-		}
-
-		.tv-central-chiffre {
-			font-size: 9rem;
-			font-weight: 800;
-			line-height: 1;
-			margin: .5rem 0;
-			background: linear-gradient(90deg, #ffffff, #a5f3fc);
-			-webkit-background-clip: text;
-			background-clip: text;
-			-webkit-text-fill-color: transparent;
-			text-shadow: 0 8px 40px rgba(0, 0, 0, .35);
-			animation: apparaitre 1s ease .5s both, pulsationDouce 4s ease-in-out infinite 2s;
-		}
-
-		.tv-central-soustitre {
-			font-size: 1.3rem;
-			opacity: .9;
-			animation: apparaitre 1s ease .7s both;
-		}
-
-		@keyframes pulsationDouce {
-			0%, 100% { transform: scale(1); }
-			50%      { transform: scale(1.03); }
-		}
-
-		/* ============================================================
-		   TUILES STATS
-		   ============================================================ */
-
-		.tv-tuiles {
-			display: grid;
-			grid-template-columns: repeat(3, 1fr);
-			gap: 1.75rem;
-		}
-
-		.tv-tuile {
-			background: rgba(255, 255, 255, .1);
-			border: 1px solid rgba(255, 255, 255, .22);
-			backdrop-filter: blur(14px);
-			border-radius: 20px;
-			padding: 1.75rem 2rem;
-			display: flex;
-			align-items: center;
-			gap: 1.25rem;
-			animation: glisserBas .9s ease both;
-			box-shadow: 0 10px 40px rgba(0, 0, 0, .25);
-		}
-
-		.tv-tuile:nth-child(1) { animation-delay: .2s; }
-		.tv-tuile:nth-child(2) { animation-delay: .4s; }
-		.tv-tuile:nth-child(3) { animation-delay: .6s; }
-
-		.tv-tuile-icone {
-			width: 60px;
-			height: 60px;
-			min-width: 60px;
-			border-radius: 16px;
-			display: flex;
-			align-items: center;
-			justify-content: center;
-			font-size: 1.6rem;
-			background: rgba(255, 255, 255, .18);
-		}
-
-		.tv-tuile-valeur {
-			font-size: 2.6rem;
-			font-weight: 800;
-			line-height: 1;
-			font-variant-numeric: tabular-nums;
-		}
-
-		.tv-tuile-libelle {
-			opacity: .85;
-			font-size: 1rem;
-			margin-top: .15rem;
-		}
-
-		@keyframes glisserHaut {
-			from { opacity: 0; transform: translateY(-24px); }
-			to   { opacity: 1; transform: translateY(0); }
-		}
-
-		@keyframes glisserBas {
-			from { opacity: 0; transform: translateY(24px); }
-			to   { opacity: 1; transform: translateY(0); }
-		}
-
-		@keyframes apparaitre {
-			from { opacity: 0; transform: scale(.92); }
-			to   { opacity: 1; transform: scale(1); }
-		}
-
-		@media (max-width: 900px) {
-			.tv-central-chiffre { font-size: 5.5rem; }
-			.tv-tuiles { grid-template-columns: 1fr; }
-			.tv-contenu { padding: 1.5rem; }
-		}
-
 	</style>
 </head>
-<body>
+{% set zones = programme.zones %}
+<body class="{{ not etat.ouvert and programme.horsHoraires == 'eteint' ? 'eteint' }}">
+	{% if apercu %}
+		<div class="apercu">Aperçu du brouillon · horaires ignorés</div>
+	{% endif %}
 
-	<div class="tv-fond" id="tvFond">
-		{% for media in medias %}
-			{% if media.type == 'image' %}
-				<img
-					class="tv-media"
-					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
-					alt=""
-				>
+	<div class="cadre">
+		<div class="tv {{ not etat.ouvert ? 'tv-ferme' }} {{ not zones.colonneLive ? 'sans-colonne' }} {{ not zones.bandeau ? 'sans-bandeau' }} {{ not zones.horlogeLogo ? 'sans-logo' }}" id="tv"
+			data-url="{{ urlDonnees }}" data-signature="{{ etat.signature }}" data-son="{{ zones.son ? '1' : '0' }}" data-alertes="{{ alertes|json_encode }}">
+
+			{% if not etat.ouvert %}
+				{% if programme.horsHoraires == 'ferme' %}
+					<div class="bandes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+					<div class="ferme">
+						<span class="logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></span>
+						<h1>Nous sommes fermés</h1>
+						{% if etat.prochaineOuverture %}<p>{{ etat.prochaineOuverture }}</p>{% endif %}
+						<p>Commandez à tout moment sur succesimprim.com</p>
+						<div class="horloge" data-horloge>--:--</div>
+					</div>
+				{% endif %}
 			{% else %}
-				<video
-					class="tv-media"
-					src="{{ asset('uploads/tv/' ~ media.fichier) }}"
-					muted
-					playsinline
-					preload="auto"
-				></video>
+				<div class="bandes" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+
+				<header>
+					<span class="logo"><img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim"></span>
+					<div class="entete-texte">
+						<b>Notre activité en direct <span class="live">LIVE</span></b>
+						<div>un service de MDG · succesimprim.com</div>
+					</div>
+					<div class="horloge" data-horloge>--:--</div>
+				</header>
+
+				<section class="principale" aria-live="off">
+					<div class="points" id="points"></div>
+
+					{% for scene in etat.scenes %}
+						{% set titre %}{% for m in scene.titreMorceaux %}{% if m.fort %}<em>{{ m.texte }}</em>{% else %}{{ m.texte }}{% endif %}{% endfor %}{% endset %}
+
+						{% if scene.type == 'chiffres' %}
+							<div class="scene" data-duree="{{ scene.duree }}" data-type="chiffres">
+								<div class="surtitre">{{ scene.surtitre ?: 'Notre croissance' }}</div>
+								<div class="titre">{{ titre }}</div>
+								<div class="compteurs">
+									{% for cle, libelle in {livrees: 'Commandes livrées', metresCarres: 'm² imprimés', clients: 'Clients servis'} %}
+										{% set variation = attribute(donnees, cle).variation %}
+										<div class="compteur">
+											<div class="l">{{ libelle }}</div>
+											<div class="v" data-cle="{{ cle }}" data-valeur="{{ attribute(donnees, cle).total }}">{{ attribute(donnees, cle).total|number_format(0, ',', ' ') }}</div>
+											{% if variation is not null and variation >= 0 %}
+												<div class="g">▲ +{{ variation }} % sur 12 mois</div>
+											{% else %}
+												<div class="g neutre">depuis nos débuts</div>
+											{% endif %}
+										</div>
+									{% endfor %}
+									{% if programme.noteGoogle is not null %}
+										<div class="compteur">
+											<div class="l">Satisfaction</div>
+											<div class="v" style="color: var(--jaune)">{{ programme.noteGoogle|number_format(1, ',') }}/5</div>
+											<div class="g neutre">★★★★★ {{ programme.avisGoogle ? programme.avisGoogle ~ ' ' }}avis Google</div>
+										</div>
+									{% elseif satisfaction_ecran_tv() is not null %}
+										{# Note des sondages clients sur 12 mois : un chiffre, jamais de nom ni de texte. #}
+										{% set satisfaction = satisfaction_ecran_tv() %}
+										<div class="compteur">
+											<div class="l">Satisfaction</div>
+											<div class="v" style="color: var(--jaune)">{{ satisfaction.moyenne|note_sur_5 }}/5</div>
+											<div class="g neutre">{{ satisfaction.nombre|number_format(0, ',', ' ') }} avis de nos clients</div>
+										</div>
+									{% else %}
+										<div class="compteur">
+											<div class="l">En ligne ce mois</div>
+											<div class="v" data-cle="enLigneMois" data-valeur="{{ donnees.enLigne.mois }}">{{ donnees.enLigne.mois|number_format(0, ',', ' ') }}</div>
+											<div class="g neutre">commandes sur le site</div>
+										</div>
+									{% endif %}
+								</div>
+								{% set plusHaut = max(1, max(donnees.parMois|map(m => m.nombre))) %}
+								<div class="barres">
+									{% for mois in donnees.parMois %}<i class="{{ mois.enCours ? 'dernier' }}" data-hauteur="{{ max(3, (mois.nombre / plusHaut * 100)|round) }}"></i>{% endfor %}
+								</div>
+								<div class="mois">{% for mois in donnees.parMois %}<span>{{ mois.libelle }}</span>{% endfor %}</div>
+							</div>
+
+						{% elseif scene.type == 'photos' %}
+							<div class="scene plein" data-duree="{{ scene.duree }}" data-type="photos">
+								{% for media in scene.medias %}
+									<div class="cliche">
+										<img src="{{ asset(media.chemin ?? ('uploads/tv/' ~ media.fichier)) }}" alt="">
+										{% if media.legende %}
+											{% set parts = media.legende|split(' · ', 2) %}
+											<div class="legende"><b>{{ parts[0] }}</b>{% if parts[1] is defined %}<span>{{ parts[1] }}</span>{% endif %}</div>
+										{% endif %}
+									</div>
+								{% endfor %}
+								<div class="etiquette"><div class="surtitre">{{ scene.titre }}</div></div>
+							</div>
+
+						{% elseif scene.type == 'video' %}
+							<div class="scene plein" data-duree="{{ scene.duree }}" data-type="video">
+								<video src="{{ asset('uploads/tv/' ~ scene.medias[0].fichier) }}" playsinline loop preload="auto" muted></video>
+								<div class="voile"></div>
+								<div class="en-tete-video">
+									{% if scene.surtitre %}<div class="surtitre">{{ scene.surtitre }}</div>{% endif %}
+									<div class="titre">{{ titre }}</div>
+								</div>
+								<div class="pastille-video">▶ {{ scene.medias[0].legende ?: 'Vidéo atelier' }}</div>
+							</div>
+
+						{% elseif scene.type == 'avis' %}
+							{% set premier = programme.avis|first %}
+							<div class="scene" data-duree="{{ scene.duree }}" data-type="avis" data-avis="{{ programme.avis|json_encode }}">
+								<div class="surtitre">{{ scene.surtitre ?: 'Ils parlent de nous' }}</div>
+								<div class="citation" data-citation>«&nbsp;{{ premier.texte }}&nbsp;»</div>
+								<div class="etoiles" data-etoiles>{{ '★★★★★'|slice(0, premier.note) }}<s>{{ '★★★★★'|slice(0, 5 - premier.note) }}</s></div>
+								<div class="signature" data-signature>{{ premier.signature }}</div>
+							</div>
+
+						{% elseif scene.type == 'partenaires' %}
+							<div class="scene" data-duree="{{ scene.duree }}" data-type="partenaires">
+								<div class="surtitre">{{ scene.surtitre ?: 'Nos partenaires' }}</div>
+								<div class="titre-partenaires">{{ titre }}</div>
+								<div class="logos n{{ min(scene.logos|length, 6) }}">
+									{% for logo in scene.logos %}
+										<div class="logo-partenaire"><img src="{{ asset(logo.chemin) }}" alt="{{ logo.nom }}"></div>
+									{% endfor %}
+								</div>
+							</div>
+
+						{% else %}
+							{# promo et texte : une affiche plein cadre #}
+							{% set image = scene.medias|filter(m => m.type == 'image')|first %}
+							<div class="scene plein" data-duree="{{ scene.duree }}" data-type="{{ scene.type }}">
+								<div class="affiche fond-{{ scene.fond }} {{ scene.type == 'texte' and not image ? 'texte-seul' }}">
+									<div>
+										{% if scene.surtitre %}<div class="surtitre">{{ scene.surtitre }}</div>{% endif %}
+										<div class="grand">{{ titre }}</div>
+										{% if scene.texte %}<p>{{ scene.texte }}</p>{% endif %}
+										{% if scene.pastille %}<div class="etiquette-promo">{{ scene.pastille }}</div>{% endif %}
+									</div>
+									{% if image %}
+										<div class="affiche-image"><img src="{{ asset('uploads/tv/' ~ image.fichier) }}" alt=""></div>
+									{% endif %}
+								</div>
+							</div>
+						{% endif %}
+					{% else %}
+						<div class="scene" data-duree="30" data-type="accueil">
+							<div class="surtitre">Bienvenue</div>
+							<div class="titre">Succès Imprim,<br>nous imprimons vos succès</div>
+						</div>
+					{% endfor %}
+
+					<div class="progression" id="progression"></div>
+				</section>
+
+				{% if zones.colonneLive %}
+					<aside class="colonne">
+						<div class="boite">
+							<h3>Commandes en ligne <small>en direct</small></h3>
+							<div class="flux" id="flux"></div>
+						</div>
+						<div class="boite">
+							<h3>Prêtes à retirer</h3>
+							<div class="pretes" id="pretes"></div>
+						</div>
+						<div class="boite">
+							<h3>Aujourd'hui</h3>
+							<div class="jour">
+								<div><b id="jourCommandes">{{ donnees.aujourdhui.commandes|number_format(0, ',', ' ') }}</b><span>commandes</span></div>
+								<div><b id="jourM2">{{ donnees.aujourdhui.metresCarres|number_format(0, ',', ' ') }}</b><span>m² imprimés</span></div>
+							</div>
+						</div>
+					</aside>
+				{% endif %}
 			{% endif %}
-		{% endfor %}
+
+			{% if zones.bandeau and messages is not empty and (etat.ouvert or programme.horsHoraires == 'ferme') %}
+				<div class="bandeau" style="--duree-bandeau: {{ max(30, messages|length * 12) }}s">
+					<div class="defile">
+						{% for morceaux in messages %}
+							<span>{% for m in morceaux %}{% if m.fort %}<em>{{ m.texte }}</em>{% else %}{{ m.texte }}{% endif %}{% endfor %}</span>
+						{% endfor %}
+					</div>
+				</div>
+			{% endif %}
+
+			{# Alertes sonores (Réglages › Écran TV) : des phrases fixes, jamais un nom, un montant ni un numéro. #}
+			{% if alertes.reglages.evenements is not empty %}
+				<div class="alerte" id="alerte" role="status" aria-live="polite" hidden>
+					<span class="cloche" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22Zm7-6V11a7 7 0 0 0-5.5-6.84V3.5a1.5 1.5 0 0 0-3 0v.66A7 7 0 0 0 5 11v5l-2 2v1h18v-1l-2-2Z"/></svg></span>
+					<div data-lignes></div>
+				</div>
+				{% if alertes.reglages.son or alertes.reglages.voix %}
+					<button type="button" class="activer-son" id="activerSon" hidden>
+						<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M3 9v6h4l5 5V4L7 9H3Zm13.5 3A4.5 4.5 0 0 0 14 7.97v8.05A4.48 4.48 0 0 0 16.5 12ZM14 3.23v2.06a7 7 0 0 1 0 13.42v2.06a9 9 0 0 0 0-17.54Z"/></svg>
+						<span><b>Activer le son</b><small>Touchez une fois : l'écran annoncera les nouvelles commandes</small></span>
+					</button>
+				{% endif %}
+			{% endif %}
+		</div>
 	</div>
 
-	<div class="tv-overlay"></div>
-
-	<div class="tv-contenu">
-
-		<div class="tv-entete">
-
-			<div class="tv-marque">
-				<i class="fa fa-print"></i>
-				SuccessImprim
-			</div>
-
-			<div class="tv-horloge">
-				<div class="tv-heure" id="tvHeure">--:--</div>
-				<div class="tv-date" id="tvDate">—</div>
-			</div>
-
-		</div>
-
-		<div class="tv-central">
-			<div class="tv-central-titre">Ils nous font confiance</div>
-			<div class="tv-central-chiffre js-compteur" data-valeur="{{ totalClients }}">0</div>
-			<div class="tv-central-soustitre">clients accompagnés depuis nos débuts</div>
-		</div>
-
-		<div class="tv-tuiles">
-
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-calendar-o"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesSemaine }}">0</div>
-					<div class="tv-tuile-libelle">commandes cette semaine</div>
-				</div>
-			</div>
-
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-calendar"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesMois }}">0</div>
-					<div class="tv-tuile-libelle">commandes ce mois-ci</div>
-				</div>
-			</div>
-
-			<div class="tv-tuile">
-				<div class="tv-tuile-icone"><i class="fa fa-line-chart"></i></div>
-				<div>
-					<div class="tv-tuile-valeur js-compteur" data-valeur="{{ commandesAnnee }}">0</div>
-					<div class="tv-tuile-libelle">commandes cette année</div>
-				</div>
-			</div>
-
-		</div>
-
-	</div>
-
+	<script src="{{ asset('js/ecran-tv-alertes.js') }}"></script>
 	<script>
-		document.addEventListener('DOMContentLoaded', function () {
+	(function () {
+		'use strict';
 
-			/* Horloge en direct */
-			function majHorloge() {
-				const maintenant = new Date();
+		var tv = document.getElementById('tv');
+		var reduit = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+		var donnees = {{ donnees|json_encode|raw }};
+		var NOUVEAU_MINUTES = 15;
 
-				document.getElementById('tvHeure').textContent =
-					maintenant.toLocaleTimeString('fr-FR', {hour: '2-digit', minute: '2-digit'});
+		function echelle() {
+			tv.style.transform = 'scale(' + Math.min(window.innerWidth / 1920, window.innerHeight / 1080) + ')';
+		}
+		window.addEventListener('resize', echelle);
+		echelle();
 
-				document.getElementById('tvDate').textContent =
-					maintenant.toLocaleDateString('fr-FR', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+		function nombre(n) {
+			return Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ');
+		}
+
+		function deux(n) { return String(n).padStart(2, '0'); }
+		function horloge() {
+			var d = new Date();
+			document.querySelectorAll('[data-horloge]').forEach(function (el) { el.textContent = deux(d.getHours()) + ':' + deux(d.getMinutes()); });
+		}
+		horloge();
+		setInterval(horloge, 10000);
+
+		/* ---------- Scènes de la zone principale ---------- */
+		var scenes = Array.prototype.slice.call(document.querySelectorAll('.scene'));
+		var points = document.getElementById('points');
+		var progression = document.getElementById('progression');
+		var indice = -1, minuteur = null, minuteurPhotos = null, indiceAvis = 0;
+		var photosVues = {};
+
+		if (points && scenes.length > 1) {
+			scenes.forEach(function () { points.appendChild(document.createElement('i')); });
+		}
+
+		function compter(scene) {
+			scene.querySelectorAll('.compteur .v[data-cle]').forEach(function (el) {
+				var cible = parseInt(el.dataset.valeur, 10) || 0, debut = performance.now();
+				if (reduit) { el.textContent = nombre(cible); return; }
+				(function pas(t) {
+					var p = Math.min(1, Math.max(0, (t - debut) / 1600));
+					el.textContent = nombre(cible * (1 - Math.pow(1 - p, 3)));
+					if (p < 1) { requestAnimationFrame(pas); }
+				})(debut);
+			});
+			scene.querySelectorAll('.barres i').forEach(function (barre, i) {
+				barre.style.height = '0';
+				setTimeout(function () { barre.style.height = barre.dataset.hauteur + '%'; }, 80 + i * 60);
+			});
+		}
+
+		function photos(scene, duree) {
+			var cliches = scene.querySelectorAll('.cliche');
+			var cle = scenes.indexOf(scene);
+			var parCliche = Math.max(3000, Math.min(8000, duree / Math.max(1, cliches.length)));
+			function montrer() {
+				var i = (photosVues[cle] = ((photosVues[cle] === undefined ? -1 : photosVues[cle]) + 1) % cliches.length);
+				cliches.forEach(function (c, j) { c.classList.toggle('active', j === i); });
+			}
+			montrer();
+			if (cliches.length > 1) { minuteurPhotos = setInterval(montrer, parCliche); }
+		}
+
+		function avis(scene) {
+			var liste = JSON.parse(scene.dataset.avis || '[]');
+			if (!liste.length) { return; }
+			var a = liste[indiceAvis++ % liste.length];
+			scene.querySelector('[data-citation]').textContent = "«\u00a0" + a.texte + "\u00a0»";
+			scene.querySelector('[data-etoiles]').innerHTML = '★'.repeat(a.note) + '<s>' + '★'.repeat(5 - a.note) + '</s>';
+			scene.querySelector('[data-signature]').textContent = a.signature;
+		}
+
+		function suivante() {
+			if (indice >= 0) {
+				scenes[indice].classList.remove('active');
+				var ancienne = scenes[indice].querySelector('video');
+				if (ancienne) { ancienne.pause(); }
+			}
+			clearInterval(minuteurPhotos);
+			indice = (indice + 1) % scenes.length;
+
+			var scene = scenes[indice];
+			var duree = (parseInt(scene.dataset.duree, 10) || 8) * 1000;
+			scene.classList.add('active');
+			if (points) { Array.prototype.forEach.call(points.children, function (p, i) { p.classList.toggle('active', i === indice); }); }
+
+			switch (scene.dataset.type) {
+				case 'chiffres': compter(scene); break;
+				case 'photos': photos(scene, duree); break;
+				case 'avis': avis(scene); break;
+				case 'video':
+					var video = scene.querySelector('video');
+					video.muted = tv.dataset.son !== '1';
+					video.currentTime = 0;
+					video.play().catch(function () { video.muted = true; video.play().catch(function () {}); });
+					break;
 			}
 
-			majHorloge();
-			setInterval(majHorloge, 1000 * 30);
+			if (progression) {
+				progression.style.transition = 'none';
+				progression.style.width = '0';
+				void progression.offsetHeight;
+				progression.style.transition = 'width ' + duree + 'ms linear';
+				progression.style.width = '100%';
+			}
 
-			/* Compteurs animés */
-			document.querySelectorAll('.js-compteur').forEach(function (element) {
-				const cible = parseInt(element.dataset.valeur || '0', 10);
-				const duree = 1600;
-				const depart = performance.now();
+			clearTimeout(minuteur);
+			minuteur = setTimeout(suivante, duree);
+		}
 
-				function animer(maintenant) {
-					const progres = Math.min(1, (maintenant - depart) / duree);
-					const facilite = 1 - Math.pow(1 - progres, 3);
-					element.textContent = Math.round(cible * facilite).toLocaleString('fr-FR');
+		if (scenes.length) { suivante(); }
 
-					if (progres < 1) {
-						requestAnimationFrame(animer);
-					}
-				}
+		/* ---------- Colonne en direct ---------- */
+		var flux = document.getElementById('flux');
+		var vus = {};
 
-				requestAnimationFrame(animer);
+		function quand(minutes) {
+			if (minutes < 1) { return 'à l\'instant'; }
+			if (minutes < 60) { return 'il y a ' + minutes + ' min'; }
+			if (minutes < 1440) { return 'il y a ' + Math.floor(minutes / 60) + ' h'; }
+			return 'il y a ' + Math.floor(minutes / 1440) + ' j';
+		}
+
+		function ligneFlux(c, arrive) {
+			var el = document.createElement('div');
+			el.className = 'cmd' + (arrive ? ' arrive' : '');
+			var carre = document.createElement('i');
+			carre.className = 'c' + c.couleur;
+			var corps = document.createElement('div');
+			var b = document.createElement('b');
+			b.textContent = c.libelle;
+			var s = document.createElement('span');
+			s.textContent = quand(c.minutes) + ' · en ligne';
+			corps.appendChild(b);
+			corps.appendChild(s);
+			el.appendChild(carre);
+			el.appendChild(corps);
+			if (c.minutes < NOUVEAU_MINUTES) {
+				var em = document.createElement('em');
+				em.textContent = 'NOUVEAU';
+				el.appendChild(em);
+			}
+			return el;
+		}
+
+		function vide(texte) {
+			var el = document.createElement('div');
+			el.className = 'vide';
+			el.textContent = texte;
+			return el;
+		}
+
+		function colonne(d, premiereFois) {
+			if (!flux) { return; }
+			flux.textContent = '';
+			if (!d.flux.length) { flux.appendChild(vide('Pas encore de commande en ligne cette semaine.')); }
+			d.flux.forEach(function (c) {
+				flux.appendChild(ligneFlux(c, !premiereFois && !vus[c.id]));
+				vus[c.id] = true;
 			});
 
-			/* Diaporama de fond (images + vidéos) */
-			const medias = Array.from(document.querySelectorAll('.tv-media'));
+			var pretes = document.getElementById('pretes');
+			pretes.textContent = '';
+			if (!d.pretes.length) { pretes.appendChild(vide('Aucune pour l\'instant.')); }
+			d.pretes.forEach(function (n) {
+				var s = document.createElement('span');
+				s.textContent = n;
+				pretes.appendChild(s);
+			});
 
-			if (medias.length > 0) {
+			document.getElementById('jourCommandes').textContent = nombre(d.aujourdhui.commandes);
+			document.getElementById('jourM2').textContent = nombre(d.aujourdhui.metresCarres);
+		}
+		colonne(donnees, true);
 
-				let indexActuel = 0;
-				const dureeAffichage = 9000;
+		/* ---------- Alertes sonores (public/js/ecran-tv-alertes.js) ---------- */
+		var alertes = null;
+		if (window.AlertesSonores && tv.dataset.alertes) {
+			var configAlertes = JSON.parse(tv.dataset.alertes);
+			alertes = AlertesSonores.ecran({
+				reglages: configAlertes.reglages,
+				phrases: configAlertes.phrases,
+				etat: configAlertes.etat,
+				bouton: document.getElementById('activerSon'),
+				bandeau: document.getElementById('alerte')
+			});
+		}
 
-				function afficher(index) {
-					medias.forEach(function (media, i) {
-						media.classList.toggle('actif', i === index);
+		/* ---------- Rafraîchissement et reprise après coupure ---------- */
+		var chargeeLe = Date.now();
+		var RECHARGEMENT = 30 * 60 * 1000;
 
-						if (media.tagName === 'VIDEO') {
-							if (i === index) {
-								media.currentTime = 0;
-								media.play().catch(function () {});
-							} else {
-								media.pause();
-							}
-						}
+		function rafraichir() {
+			fetch(tv.dataset.url, { cache: 'no-store', credentials: 'same-origin' })
+				.then(function (r) {
+					if (!r.ok) { throw new Error(String(r.status)); }
+					return r.json();
+				})
+				.then(function (d) {
+					document.body.classList.remove('hors-ligne');
+					// Programme publié, horaires ou scènes du moment changés, ou page ouverte depuis longtemps :
+					// on recharge, seulement quand le serveur répond (jamais vers une page d'erreur).
+					// Les alertes arrivées entre-temps sont annoncées après le rechargement (ce qui est déjà vu est noté dans le navigateur).
+					if (d.signature !== tv.dataset.signature || Date.now() - chargeeLe > RECHARGEMENT) {
+						window.location.reload();
+						return;
+					}
+					if (alertes) { alertes.recevoir(d.alertes); }
+					colonne(d, false);
+					document.querySelectorAll('.compteur .v[data-cle]').forEach(function (el) {
+						var v = el.dataset.cle === 'enLigneMois' ? d.enLigne.mois : (d[el.dataset.cle] || {}).total;
+						if (v !== undefined) { el.dataset.valeur = v; }
 					});
-				}
-
-				afficher(0);
-
-				if (medias.length > 1) {
-					setInterval(function () {
-						indexActuel = (indexActuel + 1) % medias.length;
-						afficher(indexActuel);
-					}, dureeAffichage);
-				}
-			}
-
-		});
+				})
+				.catch(function () {
+					// Hors ligne : l'écran garde ce qu'il affiche et réessaie à la minute suivante.
+					document.body.classList.add('hors-ligne');
+				});
+		}
+		setInterval(rafraichir, 60000);
+		window.addEventListener('online', rafraichir);
+	})();
 	</script>
-
 </body>
 </html>

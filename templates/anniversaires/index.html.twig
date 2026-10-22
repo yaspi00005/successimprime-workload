@@ -1,0 +1,181 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Anniversaires des clients (docs/promotions.md) : les anniversaires des
+	semaines à venir, les modèles par nombre d'années et le suivi. Le jour J,
+	la tâche app:promotions crée la promotion du client et envoie le SMS.
+#}
+
+{% import 'promotions/_macros.html.twig' as pr %}
+
+{% block title %}Anniversaires à venir{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_reglages_parametres_index', {tuile: 'promotions'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1"></i>Réglages</a></li>
+	{% endif %}
+	{% if not en_ligne %}
+		<li class="nav-item"><a href="{{ path('app_anniversaires_modele_nouveau') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Modèle</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if en_ligne %}
+		<p class="si-pg-note"><i class="fas fa-info-circle me-1"></i>Site en ligne : les anniversaires se gèrent sur l'ERP de l'imprimerie.</p>
+	{% endif %}
+
+	<div class="si-pr-chiffres si-pr-chiffres-haut">
+		<article><span>Fêtés depuis le {{ debut_mois|date('d/m') }}</span><strong>{{ suivi.fetes }}</strong><small>promotions d'anniversaire créées</small></article>
+		<article><span>SMS envoyés</span><strong>{{ suivi.sms }}</strong><small>{{ suivi.whatsapp }} lien{{ suivi.whatsapp > 1 ? 's' }} WhatsApp · {{ suivi.rappels }} rappel{{ suivi.rappels > 1 ? 's' }}</small></article>
+		<article><span>Promotions utilisées</span><strong>{{ suivi.utilisees }}</strong><small>sur une commande</small></article>
+		{% if voir_ca %}<article><span>CA généré</span><strong>{{ pr.montant(suivi.ca) }}</strong><small>lignes portant ces promotions, HT</small></article>{% endif %}
+	</div>
+
+	<div class="card si-bloc">
+		<div class="si-bloc-tete">
+			<h4>Anniversaires à venir</h4>
+			<form method="get" class="si-pr-filtre">
+				<label for="jours">Sur les</label>
+				<input type="number" id="jours" name="jours" min="1" max="90" value="{{ jours }}" class="form-control form-control-sm">
+				<span>prochains jours</span>
+				<button class="btn btn-sm btn-outline-secondary">Afficher</button>
+			</form>
+		</div>
+		<p class="si-pg-note">
+			Date de départ : la création de la fiche, ou la première commande si elle est plus ancienne.
+			{% if reglages.anniversaire_validation %}Seuls les anniversaires validés sont fêtés le jour J (encore {{ constant('App\\Service\\Promotions\\CalculAnniversaire::RATTRAPAGE_JOURS') }} jours après pour un oubli).{% else %}Le jour J, la promotion part toute seule sauf si vous l'excluez.{% endif %}
+			Le SMS ne donne jamais de montant ; rien n'est envoyé aux fiches de démonstration. Les revendeurs au prix B2B ne sont pas fêtés.
+		</p>
+		{% if liste is empty %}
+			<p class="si-ac-vide">Aucun anniversaire dans les {{ jours }} prochains jours.</p>
+		{% else %}
+			{% if a_valider > 0 and not en_ligne %}
+				<form method="post" action="{{ path('app_anniversaires_tout_valider') }}" class="mb-2">
+					<input type="hidden" name="_token" value="{{ csrf_token('anniversaires') }}">
+					<input type="hidden" name="jours" value="{{ jours }}">
+					<button class="btn btn-sm btn-success"><i class="fas fa-check-double me-1"></i>Tout valider ({{ a_valider }})</button>
+				</form>
+			{% endif %}
+			<div class="table-responsive">
+				<table class="table si-table si-pr-table mb-0">
+					<thead>
+						<tr>
+							<th>Jour J</th>
+							<th>Client</th>
+							<th class="text-center">Années</th>
+							{% if voir_ca %}<th class="text-end si-masque-mobile">CA 12 mois</th>{% endif %}
+							<th>Promotion prévue</th>
+							<th>État</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for e in liste %}
+							{% set a = e.anniversaire %}
+							{% set ecart = ((e.date|date('U') - aujourdhui|date('U')) / 86400)|round %}
+							<tr class="{{ a and (a.estExclu or a.estTraite) ? 'si-pr-passe' }}">
+								<td class="text-nowrap">{{ e.date|date('d/m/Y') }}<small class="d-block {{ ecart == 0 ? 'text-success fw-bold' : 'text-muted' }}">{{ ecart == 0 ? "aujourd'hui" : (ecart > 0 ? 'dans ' ~ ecart ~ ' j' : 'il y a ' ~ (0 - ecart) ~ ' j') }}</small></td>
+								<td>
+									<a href="{{ path('app_clients_show', {publicId: e.client.publicId}) }}"><b>{{ e.client.nomComplet }}</b></a>
+									<small class="d-block text-muted">{{ e.client.code }}{{ e.client.telephone ? ' · ' ~ e.client.telephone }} · depuis le {{ e.depart|date('d/m/Y') }}</small>
+								</td>
+								<td class="text-center"><span class="si-pr-annees">{{ e.annees }}</span></td>
+								{% if voir_ca %}<td class="text-end text-nowrap si-masque-mobile">{{ pr.montant(e.ca) }}</td>{% endif %}
+								<td>
+									{% if a and a.estTraite %}
+										{% if a.promotion %}<a href="{{ path('app_promotions_voir', {id: a.promotion.id}) }}">{{ a.promotion.nom }}</a>{% else %}—{% endif %}
+									{% elseif not en_ligne %}
+										<form method="post" action="{{ path('app_anniversaires_decider') }}" class="si-pr-decision-ligne" id="decider-{{ loop.index }}">
+											<input type="hidden" name="_token" value="{{ csrf_token('anniversaires') }}">
+											<input type="hidden" name="client" value="{{ e.client.id }}">
+											<input type="hidden" name="annees" value="{{ e.annees }}">
+											<input type="hidden" name="date" value="{{ e.date|date('Y-m-d') }}">
+											<input type="hidden" name="jours" value="{{ jours }}">
+											<select name="modele" class="form-select form-select-sm" aria-label="Promotion prévue">
+												{% for m in modeles|filter(m => m.actif) %}
+													<option value="{{ m.id }}"{{ e.modele and e.modele.id == m.id ? ' selected' }}>{{ m.annees }} an{{ m.annees > 1 ? 's' }} · {{ m.nom }} ({{ m.libelleAvantage }})</option>
+												{% else %}
+													<option value="">Aucun modèle</option>
+												{% endfor %}
+											</select>
+										</form>
+									{% else %}{{ e.modele ? e.modele.nom : '—' }}{% endif %}
+								</td>
+								<td class="text-nowrap">
+									{% if a and a.estTraite %}
+										<span class="si-pastille {{ a.promotion ? 'si-pastille-vert' : 'si-pastille-gris' }}">{{ a.promotion ? 'Fêté' : 'Écarté' }}</span>
+										<small class="d-block text-muted">{{ a.erreur ?? (a.canal == 'sms' ? 'SMS envoyé' : (a.canal == 'whatsapp' ? 'lien WhatsApp' : '')) }}</small>
+									{% else %}
+										{% if a and a.estExclu %}<span class="si-pastille si-pastille-gris">Exclu</span>
+										{% elseif a and a.estValide %}<span class="si-pastille si-pastille-vert">Validé</span>
+										{% elseif e.modele is null %}<span class="si-pastille si-pastille-orange">Sans modèle</span>
+										{% else %}<span class="si-pastille si-pastille-bleu">À valider</span>{% endif %}
+										{% if not en_ligne %}
+											<span class="si-pr-boutons">
+												{% if not (a and a.estValide) and e.modele %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-success" title="Valider avec la promotion choisie"><i class="fas fa-check"></i></button>{% elseif a and a.estValide %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-outline-secondary" title="Changer la promotion">Changer</button>{% endif %}
+												{% if not (a and a.estExclu) %}<button form="decider-{{ loop.index }}" name="decision" value="exclure" class="btn btn-sm btn-outline-secondary" title="Ni promotion ni SMS">Exclure</button>{% else %}<button form="decider-{{ loop.index }}" name="decision" value="valider" class="btn btn-sm btn-outline-secondary">Réintégrer</button>{% endif %}
+											</span>
+										{% endif %}
+									{% endif %}
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+
+	<div class="row">
+		<div class="col-xl-7">
+			<div class="card si-bloc" id="modeles">
+				<div class="si-bloc-tete"><h4>Modèles par nombre d'années</h4>{% if not en_ligne %}<a href="{{ path('app_anniversaires_modele_nouveau') }}">Ajouter</a>{% endif %}</div>
+				{% if modeles is empty %}
+					<p class="si-ac-vide">Aucun modèle : ajoutez au moins celui d'un an.</p>
+				{% else %}
+					<ul class="si-pr-modeles">
+						{% for m in modeles %}
+							<li class="{{ not m.actif ? 'si-pr-passe' }}">
+								<span class="si-pr-annees">{{ m.annees }}</span>
+								<div>
+									<b>{{ m.nom }}</b> <span class="si-pr-avantage">{{ m.libelleAvantage }}</span>{% if not m.actif %} <span class="si-pastille si-pastille-gris">désactivé</span>{% endif %}
+									<small class="d-block text-muted">{{ m.libelleArticles }} · {{ m.validiteJours }} jours dès le jour J{{ loop.last ? ' · vaut aussi pour les années suivantes' : (modeles[loop.index].annees > m.annees + 1 ? ' · jusqu\'à ' ~ (modeles[loop.index].annees - 1) ~ ' ans') }}</small>
+									<small class="d-block si-pr-sms">« {{ m.texteSms }} »</small>
+								</div>
+								{% if not en_ligne %}<a href="{{ path('app_anniversaires_modele', {id: m.id}) }}" class="btn btn-sm btn-primary-light" title="Modifier"><i class="fa fa-edit"></i></a>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+		</div>
+		<div class="col-xl-5">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Fêtés ces 60 derniers jours</h4></div>
+				{% if recents is empty %}
+					<p class="si-ac-vide">Aucun encore.</p>
+				{% else %}
+					<ul class="si-pr-journal">
+						{% for a in recents %}
+							{% set l = liens[a.id] ?? null %}
+							<li>
+								<span class="si-pr-quand">{{ a.dateAnniversaire|date('d/m') }}</span>
+								<b>{{ a.client.nomComplet }}</b> · {{ a.annees }} an{{ a.annees > 1 ? 's' }}
+								<small class="d-block text-muted">
+									{% if a.promotion %}<a href="{{ path('app_promotions_voir', {id: a.promotion.id}) }}">{{ a.promotion.nom }}</a> jusqu'au {{ a.promotion.fin|date('d/m') }}{% else %}{{ a.erreur ?? 'écarté' }}{% endif %}
+									{% if a.promotion %} · {{ a.canal == 'sms' ? (a.envoyeLe ? 'SMS envoyé' : 'SMS en échec') : (a.canal == 'whatsapp' ? 'WhatsApp' : (a.erreur ?? 'sans message')) }}{{ a.rappelLe ? ' · rappel le ' ~ a.rappelLe|date('d/m') }}{% endif %}
+								</small>
+								{% if l and l.message %}<a href="{{ l.message }}" target="_blank" rel="noopener" class="btn btn-sm btn-success mt-1"><i class="fab fa-whatsapp me-1"></i>Message</a>{% endif %}
+								{% if l and l.rappel %}<a href="{{ l.rappel }}" target="_blank" rel="noopener" class="btn btn-sm btn-outline-secondary mt-1"><i class="fab fa-whatsapp me-1"></i>Rappel</a>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

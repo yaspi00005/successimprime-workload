@@ -1,0 +1,44 @@
+/* Atelier › Demandes de conception (docs/demande-conception.md). Complète les styles des réclamations (si-rc-*). */
+.si-dc-cout { display: flex; flex-wrap: wrap; gap: 8px 28px; font-size: .9rem; }
+.si-dc-cout small { color: #64748B; }
+.si-dc-choix { display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; background: #EAF1FC; color: #0F4590; }
+.si-dc-choix.si-dc-ia { background: #FCE7F1; color: #BE185D; }
+.si-dc-statut-recue, .si-dc-statut-commandee { background: #FEE2E2; color: #B91C1C; }
+.si-dc-statut-en_cours { background: #FEF3C7; color: #B45309; }
+.si-dc-statut-bat_envoye { background: #EAF1FC; color: #0F4590; }
+.si-dc-statut-terminee { background: #DCFCE7; color: #15803D; }
+.si-dc-statut-annulee, .si-dc-statut-brouillon, .si-dc-statut-a_payer, .si-dc-statut-en_ia { background: #F1F5F9; color: #475569; }
+.si-dc-alerte { background: #FCE7F1; color: #9D174D; border-radius: 12px; padding: 10px 14px; font-size: .88rem; margin: 12px 0; }
+.si-dc-image { display: block; max-width: 260px; max-height: 360px; border-radius: 10px; border: 1px solid #E2E8F0; margin-bottom: 12px; }
+.si-dc-brief { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 8px 16px; margin: 14px 0; font-size: .92rem; }
+.si-dc-brief dt { color: #64748B; font-weight: 600; }
+.si-dc-brief dd { margin: 0; color: #0F172A; overflow-wrap: anywhere; }
+.si-dc-couleur { display: inline-block; width: 22px; height: 22px; border-radius: 6px; border: 1px solid #CBD5E1; margin-right: 6px; vertical-align: middle; }
+.si-dc-sous { font-size: .9rem; margin: 16px 0 8px; }
+.si-dc-elements { display: flex; flex-wrap: wrap; gap: 10px; }
+.si-dc-elements a { display: flex; flex-direction: column; gap: 4px; width: 120px; color: inherit; }
+.si-dc-elements img, .si-dc-elements span { width: 120px; height: 90px; object-fit: cover; border-radius: 10px; border: 1px solid #E2E8F0; display: grid; place-items: center; background: #F8FAFC; font-weight: 700; color: #64748B; }
+.si-dc-elements small { font-size: .72rem; color: #64748B; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-dc-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.si-dc-bandeau { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px; margin: 0 0 14px; border-radius: 12px; background: #FCE7F1; color: #9D174D; font-size: .9rem; }
+.si-dc-bandeau a { font-weight: 700; color: #9D174D; white-space: nowrap; }
+@media (max-width: 767px) {
+  .si-dc-brief { grid-template-columns: 1fr; gap: 2px; }
+  .si-dc-brief dd { margin-bottom: 8px; }
+  .si-dc-choix { display: none; }
+}
+
+/* Réglages › Conception : un support par carte */
+.si-dc-support { border-top: 1px solid #EEF1F6; padding: 14px 0; }
+.si-dc-support fieldset { border: 0; padding: 0; margin: 0; display: grid; gap: 10px; }
+.si-dc-support label { display: flex; flex-direction: column; gap: 3px; font-size: .75rem; color: #64748B; font-weight: 600; }
+.si-dc-support-tete { display: grid; grid-template-columns: 44px minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1.4fr) auto; gap: 10px; align-items: end; }
+.si-dc-support-tete input[type=color] { width: 44px; height: 34px; border: 1px solid #E2E8F0; border-radius: 8px; padding: 2px; background: #fff; }
+.si-dc-support-tete .si-pg-case { flex-direction: row; align-items: center; gap: 6px; color: #0F172A; padding-bottom: 6px; }
+.si-dc-support-chiffres { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 10px; }
+.si-dc-produits select { font-size: .8rem; }
+.si-dc-support .btn { justify-self: start; }
+@media (max-width: 991px) {
+  .si-dc-support-tete { grid-template-columns: 44px 1fr 1fr; }
+  .si-dc-support-chiffres { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}

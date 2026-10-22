@@ -1,0 +1,18 @@
+{# Fiche du guide « documents-lies » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Sur la facture, touchez « Voir tous les documents liés ». Sur la commande : « … » (autres actions) › « Documents liés ».</li>
+	<li>La chaîne du dossier, dans l'ordre : devis, commande, BAT, bon de livraison, factures, avoirs, paiements. Touchez un document pour l'ouvrir.</li>
+	<li>« Équilibre du dossier » : le facturé, le payé et le reste.</li>
+	<li>« Écart devis → facture » : ce qui a changé entre le devis et la facture.</li>
+	<li>« À faire » : ce qui manque encore. « Rien à faire : le dossier est en ordre. » quand tout est réglé.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>En haut de chaque facture, « Lié à » montre la même chaîne en une ligne.</li>
+	<li>Un paiement « Payé, à confirmer » attend encore la validation de la trésorière.</li>
+	<li>Sans le droit de voir les paiements, le payé et le reste ne s'affichent pas.</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,6 @@
+{# Compte à rebours d'une ligne : vert, orange sous 2 h, rouge en retard. #}
+{% if etat == 'retard' %}
+	<span class="si-ac-compteur si-ac-retard">en retard{% if action.penalite > 0 %} · −{{ action.penalite }} appliqué{% endif %}</span>
+{% else %}
+	<span class="si-ac-compteur si-ac-{{ etat }}">reste {{ reste|duree_pointage }}</span>
+{% endif %}

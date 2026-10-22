@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set ici = app.request.requestUri %}
+
+{% block title %}Mes tâches{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-pl-mobile">
+		<nav class="si-pl-onglets" aria-label="Période">
+			{% for k, l in {jour: 'Aujourd\'hui', semaine: 'Semaine', retard: 'En retard'} %}
+				<a href="{{ path('app_planning_mes_taches', {onglet: k}) }}" class="si-pl-onglet{{ onglet == k ? ' si-pl-onglet-on' }}{{ k == 'retard' and onglets.retard is not empty ? ' si-pl-onglet-alerte' }}"{{ onglet == k ? ' aria-current="page"' }}>{{ l }} ({{ onglets[k]|length }})</a>
+			{% endfor %}
+		</nav>
+
+		{% set liste = onglets[onglet] %}
+		{% if liste is empty %}
+			<p class="si-ac-vide card p-3">{{ onglet == 'retard' ? 'Aucune tâche en retard.' : 'Rien de prévu.' }}</p>
+		{% else %}
+			{% set jourCourant = null %}
+			<ul class="si-pl-coches si-pl-cartes">
+				{% for t in liste %}
+					{% if onglet != 'jour' and t.prevueLe|date('Y-m-d') != jourCourant %}
+						{% set jourCourant = t.prevueLe|date('Y-m-d') %}
+						<li class="si-pl-jour-titre">{{ t.prevueLe|date_fr('EEEE d/MM')|capitalize }}</li>
+					{% endif %}
+					{% include 'planning/_coche.html.twig' with {retour: ici} %}
+				{% endfor %}
+			</ul>
+		{% endif %}
+
+		{% if prochain %}
+			{% set dans = ((prochain.prevueLe|date('U') - 'today'|date('U')) / 86400)|round %}
+			<a href="{{ path('app_planning_tache', {id: prochain.id}) }}" class="card si-pl-rappel" style="--si-pl-c: {{ attribute(constant('App\\Entity\\Echeance::CATEGORIES'), prochain.categorie)[1] }}">
+				<small>Rappel · {{ dans == 1 ? 'demain' : 'dans ' ~ dans ~ ' jours' }}</small>
+				<b>{{ prochain.titre }}</b>
+				<small>{{ prochain.prevueLe|date_fr('EEE d/MM')|capitalize }}{{ prochain.estDecalee ? ' (' ~ prochain.raisonDecalage ~ ')' }}</small>
+			</a>
+		{% endif %}
+
+		{% include 'push/_bouton.html.twig' %}
+
+		<a href="{{ path('app_planning_echeance_nouvelle') }}" class="btn btn-light w-100 si-btn-entete mt-2"><i class="fas fa-plus me-1"></i>Nouvelle tâche</a>
+	</div>
+{% endblock %}

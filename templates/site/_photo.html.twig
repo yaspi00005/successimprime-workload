@@ -1,0 +1,31 @@
+{#
+	Photo livrée avec le site (App\Service\Site\PhotosSite, site_photo()) :
+	WebP en plusieurs largeurs, le navigateur prend la plus petite qui
+	suffit. Largeur et hauteur dans la page : rien ne bouge à l'arrivée.
+	Variables :
+	- photo : site_photo('nom') ;
+	- sizes : place prise dans la page (« (max-width: 860px) 100vw, 540px ») ;
+	- classe (facultatif) ;
+	- alt (facultatif) : texte alternatif à la place de celui de la photo ;
+	  '' pour une photo décorative ;
+	- principale (facultatif) : la photo du haut de l'accueil, chargée tout
+	  de suite et en priorité ;
+	- immediate (facultatif) : la première photo d'une page intérieure,
+	  chargée tout de suite (docs/referencement.md : jamais de chargement
+	  différé sur l'image du haut) ; les autres attendent d'approcher de
+	  l'écran ;
+	- telephone (facultatif) : largeur la plus grande envoyée à un écran de
+	  860 px au plus (un téléphone n'a pas besoin de la plus grande).
+#}
+{% set srcset = photo.fichiers|map(f => asset(f.chemin) ~ ' ' ~ f.largeur ~ 'w')|join(', ') %}
+{% set classes = [classe ?? null, photo.cadrage ? 'si-cadrage-' ~ photo.cadrage : null]|filter(c => c)|join(' ') %}
+{% set img %}<img src="{{ asset(photo.src) }}" srcset="{{ srcset }}" sizes="{{ sizes }}" width="{{ photo.largeur }}" height="{{ photo.hauteur }}" alt="{{ alt ?? photo.alt }}"{% if classes %} class="{{ classes }}"{% endif %}{% if principale ?? false %} fetchpriority="high"{% elseif immediate ?? false %} decoding="async"{% else %} loading="lazy" decoding="async"{% endif %}>{% endset %}
+{% if telephone ?? false %}
+	{% set petits = photo.fichiers|filter(f => f.largeur <= telephone) %}
+	<picture>
+		{% if petits is not empty %}<source media="(max-width: 860px)" srcset="{{ petits|map(f => asset(f.chemin) ~ ' ' ~ f.largeur ~ 'w')|join(', ') }}" sizes="{{ sizes }}">{% endif %}
+		{{ img }}
+	</picture>
+{% else %}
+	{{ img }}
+{% endif %}

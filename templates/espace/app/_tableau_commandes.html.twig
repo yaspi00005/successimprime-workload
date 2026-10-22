@@ -1,0 +1,35 @@
+{# Commandes en cours (maquettes EC01 et EC05) : frise en cinq étapes sur ordinateur, barre et étape en cours sur téléphone. Montant pour qui paie. #}
+<section class="ec-carte ec-bloc">
+	<div class="ec-bloc-tete">
+		<h2><span class="ec-bureau">Commandes en cours</span><span class="ec-telephone">En cours</span></h2>
+		<a class="ec-lien ec-bureau" href="{{ path('app_espace_commandes') }}">Toutes mes commandes →</a>
+	</div>
+	{% for carte in enCours %}
+		{% set c = carte.commande %}
+		{% set bl = carte.livraison %}
+		<a class="ec-encours" href="{{ path('app_espace_commande', {id: c.publicId}) }}">
+			<div class="ec-encours-tete">
+				<b>{{ c.numero }} · {{ carte.titre }}</b>
+				{% if droits.payeur and not carte.aConfirmer %}<span class="ec-encours-montant ec-bureau">{{ c.totalTtc|number_format(0, ',', ' ') }} F</span>{% endif %}
+				{% if carte.tableau.courante and not carte.aConfirmer and not carte.aValiderEntreprise %}<span class="ec-etape-courante ec-telephone">{{ carte.tableau.courante }}</span>{% endif %}
+			</div>
+			{% if carte.aValiderEntreprise %}
+				<p class="ec-petit">Demandée par {{ c.demandeePar ?? 'votre entreprise' }}, attend un valideur avant l'atelier.</p>
+			{% elseif carte.aConfirmer %}
+				<p class="ec-petit">Envoyée en ligne : l'atelier confirme le prix et le fichier.</p>
+			{% else %}
+				<ol class="ec-pas ec-bureau">
+					{% for e in carte.tableau.etapes %}<li class="{{ e.etat }}">{{ e.libelle }}</li>{% endfor %}
+				</ol>
+				<div class="ec-barre ec-telephone"><span style="width: {{ max(carte.tableau.avancement, 4) }}%"></span></div>
+			{% endif %}
+			{% if bl and bl.prevuLe and not bl.livreLe %}
+				<p class="ec-petit ec-encours-prevu">{{ bl.enRouteLe ? 'Livreur en route' : 'Livraison prévue le ' ~ bl.prevuLe|date('d/m') }}{{ bl.creneau ? ' · créneau ' ~ bl.creneau }}</p>
+			{% elseif c.dateLivraison %}
+				<p class="ec-petit ec-encours-prevu">{{ c.estALivrer ? 'Livraison prévue le ' : 'Prête prévue le ' }}{{ c.dateLivraison|date('d/m') }}{{ carte.batEnAttente ? ' si le BAT est validé à temps' }}</p>
+			{% endif %}
+		</a>
+	{% else %}
+		<p class="ec-vide">Aucune commande en cours.{% if droits.ecrit %} <a href="{{ path('app_espace_nouvelle_commande') }}">Passer une commande</a>{% endif %}</p>
+	{% endfor %}
+</section>

@@ -1,0 +1,69 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Pointer{% endblock %}
+
+{% block body %}
+	<div class="si-pointer">
+		<section class="card si-pointer-carte">
+			<p class="si-pointer-bonjour">{{ nom }}</p>
+			<h2>Prochain pointage : <strong>{{ prochain == 'depart' ? 'départ' : 'arrivée' }}</strong></h2>
+
+			<div class="si-pointer-scan" data-si-scan hidden>
+				<video playsinline muted></video>
+				<span class="si-pointer-cadre" aria-hidden="true"></span>
+			</div>
+			<button type="button" class="btn btn-primary btn-lg si-pointer-bouton" data-si-scanner><i class="fas fa-qrcode me-2"></i>Scanner le QR de l'entrée</button>
+			<p class="si-pointer-aide" data-si-scan-aide>Ou ouvrez l'appareil photo du téléphone et visez l'affiche « Pointage » : le lien ouvre directement la photo.</p>
+
+			{% if aujourdhui is not empty %}
+				<h3>Aujourd'hui</h3>
+				<ul class="si-pointer-liste">
+					{% for p in aujourdhui %}
+						<li><span>Arrivée{% if p.photoArrivee %} · photo{% endif %}</span><b>{{ p.arriveeLe|date('H:i') }}</b></li>
+						{% if p.departLe %}<li><span>Départ{% if p.photoDepart %} · photo{% endif %}</span><b>{{ p.departLe|date('H:i') }}</b></li>{% endif %}
+					{% endfor %}
+				</ul>
+			{% endif %}
+			<p class="si-pointer-aide"><a href="{{ path('app_mon_espace_pointage') }}">Mes journées et mes points du mois</a></p>
+		</section>
+	</div>
+	<script>
+		(function () {
+			var bouton = document.querySelector('[data-si-scanner]');
+			var zone = document.querySelector('[data-si-scan]');
+			var aide = document.querySelector('[data-si-scan-aide]');
+			var domaine = {{ domaine|json_encode|raw }};
+			if (!('BarcodeDetector' in window) || !navigator.mediaDevices) {
+				bouton.hidden = true;
+				return;
+			}
+			bouton.addEventListener('click', function () {
+				var video = zone.querySelector('video');
+				var detecteur = new BarcodeDetector({formats: ['qr_code']});
+				navigator.mediaDevices.getUserMedia({video: {facingMode: 'environment'}}).then(function (flux) {
+					video.srcObject = flux;
+					video.play();
+					zone.hidden = false;
+					bouton.hidden = true;
+					aide.textContent = 'Placez le code affiché à l\'entrée dans le cadre. Seuls les codes Succès Imprim sont acceptés.';
+					var chercher = function () {
+						detecteur.detect(video).then(function (codes) {
+							var lien = codes.length ? codes[0].rawValue : '';
+							if (lien.indexOf(domaine + '/PT-') === 0) {
+								flux.getTracks().forEach(function (t) { t.stop(); });
+								aide.textContent = 'Code reconnu. Ouverture de la caméra frontale…';
+								window.location = lien;
+								return;
+							}
+							if (lien) { aide.textContent = 'Ce code n\'est pas un code de pointage Succès Imprim.'; }
+							requestAnimationFrame(chercher);
+						}).catch(function () { requestAnimationFrame(chercher); });
+					};
+					chercher();
+				}).catch(function () {
+					aide.textContent = 'La caméra est refusée. Autorisez-la, ou utilisez l\'appareil photo du téléphone.';
+				});
+			});
+		})();
+	</script>
+{% endblock %}

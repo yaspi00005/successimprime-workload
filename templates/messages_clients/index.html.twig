@@ -1,0 +1,244 @@
+{% extends 'base.html.twig' %}
+
+{# Clients › Messages (maquette MS03) : la boîte de l'agent à gauche, la conversation au centre (chronomètre, notes internes, réponses rapides), la fiche du client à droite. #}
+{% block title %}Messages{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/messagerie-admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/messagerie-interne.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% macro av(s, classe) %}{% if s.photo ?? null %}<img src="{{ s.photo }}" alt="" class="mc-av {{ classe }}">{% else %}<span class="mc-av {{ classe }}" style="background: {{ s.teinte is null ? '#0F4590' : ['#DC2626', '#E8590C', '#DB2777', '#1F2937', '#2563EB', '#0E7C66', '#7C2D12', '#6B7280', '#0F4590'][s.teinte % 9] }}">{{ s.initiales }}</span>{% endif %}{% endmacro %}
+{% macro initiales(nom) %}{{ nom|split(' ')|filter(m => m matches '/^\\p{L}/u')|slice(0, 2)|map(m => m|first|upper)|join('') ?: '?' }}{% endmacro %}
+{% macro quand(d, maintenant) %}{% if d %}{{ d|date('Ymd') == maintenant|date('Ymd') ? d|date('H:i') : (d|date('Ymd') == maintenant|date_modify('-1 day')|date('Ymd') ? 'Hier' : d|date('d/m')) }}{% endif %}{% endmacro %}
+{% macro nomUser(u) %}{% if u %}{{ u.employe ? u.employe.nomComplet : u.username }}{% endif %}{% endmacro %}
+
+{% block body %}
+	{% import _self as mc %}
+	{% set liste = boite[onglet] %}
+	<div class="mc-boite {{ active ? 'avec-fil' : 'sans-fil' }}">
+		{# ---------- Boîte ---------- #}
+		<aside class="mc-liste" aria-label="Conversations">
+			<div class="mc-liste-tete">
+				{# Onglets « Clients | Équipe » (messagerie de l'équipe, docs/messagerie-interne.md). #}
+				{% include 'messagerie_interne/_bascule.html.twig' with {actif: 'clients'} only %}
+				<h2>Messages clients</h2>
+				<nav class="mc-onglets" aria-label="Onglets de la boîte">
+					{% for cle, libelle in onglets %}
+						{% set n = boite[cle]|length %}
+						<a href="{{ path('app_messages_clients_index', {onglet: cle, liste: 1}) }}" class="{{ cle == onglet ? 'actif' }} {{ cle == 'retard' and n > 0 ? 'rouge' }}">{{ libelle }}{% if cle != 'cloturees' %} · {{ n }}{% endif %}</a>
+					{% endfor %}
+				</nav>
+			</div>
+			<ul class="mc-conversations">
+				{% for l in liste %}
+					{% set c = l.conversation %}
+					{% set m = derniers[c.id] ?? null %}
+					{% set ch = l.chrono %}
+					<li>
+						<a href="{{ path('app_messages_clients_voir', {publicId: c.publicId, onglet: onglet}) }}" class="mc-conv {{ active and active.id == c.id ? 'actif' }} {{ ch is null or ch.retard == 0 ? 'calme' }}">
+							<span class="mc-av client">{{ mc.initiales(c.client.nomComplet) }}</span>
+							<span class="mc-conv-corps">
+								<span class="mc-conv-tete"><b>{{ c.client.nomComplet }}</b><time>{{ mc.quand(c.dernierMessageLe ?? c.creeLe, maintenant) }}</time></span>
+								<span class="mc-ref">{{ c|conversation_titre }}</span>
+								{% if m %}<span class="mc-extrait">{{ m.estDeLAtelier ? 'Vous : ' }}{{ m.texte }}</span>{% endif %}
+								{% if c.estCloturee %}
+									<span class="mc-puce gris">Clôturée{{ c.avis ? ' · ' ~ c.avis ~ ' ★' }}</span>
+								{% elseif ch and ch.retard > 0 %}
+									<span class="mc-puce rouge">En retard · {{ ch.retard|duree_messagerie }}</span>
+								{% elseif ch %}
+									<span class="mc-puce orange">Reste {{ ch.reste|duree_messagerie }}</span>
+								{% elseif c.clotureEnAttente %}
+									<span class="mc-puce bleu">Clôture proposée</span>
+								{% elseif c.assigneA is null %}
+									<span class="mc-puce gris">Non assignée</span>
+								{% else %}
+									<span class="mc-puce vert">Répondu</span>
+								{% endif %}
+							</span>
+						</a>
+					</li>
+				{% else %}
+					<li class="mc-vide">{{ {mes: 'Aucune conversation pour vous en ce moment.', retard: 'Aucune réponse en retard. Bravo !', non_assignees: 'Aucune conversation en attente d\'un responsable.', cloturees: 'Aucune demande clôturée.'}[onglet] }}</li>
+				{% endfor %}
+			</ul>
+		</aside>
+
+		{% if active is null %}
+			<section class="mc-fil"><p class="mc-vide">Choisissez une conversation à gauche.<br>Un client écrit depuis son espace : sa demande arrive ici, rattachée à sa commande ou à son devis.</p></section>
+		{% else %}
+			{% set c = active %}
+			{% set client = c.client %}
+			{# ---------- Conversation ---------- #}
+			<section class="mc-fil" aria-label="Conversation {{ c|conversation_titre }}">
+				<div class="mc-fil-tete">
+					<div class="mc-qui">
+						<a href="{{ path('app_messages_clients_index', {onglet: onglet, liste: 1}) }}" class="mc-retour-liste">‹ Conversations</a>
+						<h3>{{ client.nomComplet }} <span class="mc-badge">{{ c|conversation_titre }}</span>{% if c.estCloturee %}<span class="mc-puce gris">Clôturée</span>{% endif %}</h3>
+						<small>{{ c.sujet != 'commande' ? (c.sujet == 'paiement' ? 'Paiement / facture' : 'Autre') ~ ' · ' }}Responsable : {{ c.assigneA ? mc.nomUser(c.assigneA) : 'non assignée' }}{% if participants is not empty %} · avec {{ participants|map(p => mc.nomUser(p)|trim)|join(', ') }}{% endif %}</small>
+					</div>
+					{% if not enLigne and c.estOuverte %}
+						<div class="mc-actions">
+							{% if c.assigneA is null %}
+								<form method="post" action="{{ path('app_messages_clients_prendre', {publicId: c.publicId}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="onglet" value="{{ onglet }}"><button class="mc-btn bleu">Je la prends</button></form>
+							{% endif %}
+							{% if c.commande %}<a href="{{ path('app_commandes_edit', {id: c.commande.id}) }}" class="mc-btn">Modifier la commande</a>{% endif %}
+							<details>
+								<summary class="mc-btn">Transférer</summary>
+								<form method="post" action="{{ path('app_messages_clients_transferer', {publicId: c.publicId}) }}" class="mc-menu">
+									<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="onglet" value="{{ onglet }}">
+									<label class="small fw-bold" for="mc-vers">Transférer à</label>
+									<select name="vers" id="mc-vers" class="form-select form-select-sm">{% for u in collegues %}<option value="{{ u.id }}">{{ mc.nomUser(u) }}</option>{% endfor %}</select>
+									<button class="btn btn-sm btn-primary">Transférer</button>
+									<small class="text-muted">Le collègue devient responsable : le délai lui est imputé.</small>
+								</form>
+							</details>
+							<details>
+								<summary class="mc-btn">+ Collègue</summary>
+								<form method="post" action="{{ path('app_messages_clients_ajouter', {publicId: c.publicId}) }}" class="mc-menu">
+									<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="onglet" value="{{ onglet }}">
+									<label class="small fw-bold" for="mc-qui">Ajouter à la conversation</label>
+									<select name="qui" id="mc-qui" class="form-select form-select-sm">{% for u in collegues %}<option value="{{ u.id }}">{{ mc.nomUser(u) }}</option>{% endfor %}</select>
+									<button class="btn btn-sm btn-primary">Ajouter</button>
+									<small class="text-muted">Le client voit « X a ajouté Y » dans le fil.</small>
+								</form>
+							</details>
+							{% if not c.clotureEnAttente %}
+								<form method="post" action="{{ path('app_messages_clients_cloturer', {publicId: c.publicId}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="onglet" value="{{ onglet }}"><button class="mc-btn vert">✓ Clôturer la demande</button></form>
+							{% endif %}
+						</div>
+					{% endif %}
+				</div>
+
+				{% if chrono and chrono.retard > 0 %}
+					<div class="mc-bandeau"><b>⏱ En retard de {{ chrono.retard|duree_messagerie }}</b><span>Le client attend depuis {{ chrono.attente|duree_messagerie }} ouvrées (cible : {{ chrono.cible|duree_messagerie }}{{ chrono.premiere ? ', 1re réponse' }}).</span>{% if chrono.impute %}<span>Imputé à {{ mc.nomUser(chrono.impute) }} · −{{ regles.penalite }} pts à la réponse.</span>{% endif %}</div>
+				{% elseif chrono %}
+					<div class="mc-bandeau orange"><b>Réponse attendue</b><span>Il reste {{ chrono.reste|duree_messagerie }} sur {{ chrono.cible|duree_messagerie }} ({{ chrono.premiere ? '1re réponse' : 'réponse suivante' }}, minutes ouvrées).</span></div>
+				{% elseif c.clotureEnAttente %}
+					<div class="mc-bandeau orange"><b>Clôture proposée</b><span>Le client confirme d'un geste ; sans réponse, la demande se clôture seule après {{ regles.clotureAutoHeures }} h.</span></div>
+				{% endif %}
+
+				<div class="mc-messages">
+					{% for e in fil %}
+						{% if e.type == 'jour' %}
+							<div class="mc-jour">{{ e.texte }}</div>
+						{% elseif e.type == 'evenement' %}
+							<p class="mc-evenement {{ e.vert ? 'vert' }}">{{ e.texte }}</p>
+						{% elseif e.type == 'note' %}
+							{% set n = e.note %}
+							<div class="mc-note"><div class="mc-note-tete"><b>{{ mc.nomUser(n.auteur) }}</b><em>Note interne · le client ne la voit pas</em><span class="mc-heure">{{ n.creeLe|date('H:i') }}</span></div>{{ e.html|raw }}{% if n.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: n, url: path('app_messages_clients_vocale_ecouter', {publicId: c.publicId, genre: 'note', id: n.id})} only %}{% endif %}</div>
+						{% else %}
+							{% set m = e.m %}
+							<div class="mc-bulle {{ m.estDeLAtelier ? 'atelier' }}"{{ loop.last ? ' id=dernier' }}>
+								{% if m.estDeLAtelier %}{{ mc.av(e.signature, 'petit') }}{% else %}<span class="mc-av client petit">{{ mc.initiales(m.auteur ?? client.nomComplet) }}</span>{% endif %}
+								<div>
+									<p class="mc-bulle-tete">
+										{% if m.estDeLAtelier %}<b>{{ e.signature.nom }}</b>{% if e.signature.metier %}<span class="mc-heure">{{ e.signature.metier }}</span>{% endif %}{% else %}<b>{{ m.auteur ?? client.nomComplet }}</b>{% endif %}
+										<span class="mc-heure">{{ m.creeLe|date('H:i') }}</span>
+										{% if m.delaiMinutes is not null %}<span class="mc-heure {{ m.estEnRetard ? 'mc-retard-msg' }}">· répondu en {{ m.delaiMinutes|duree_messagerie }}{{ m.estEnRetard ? ' (retard ' ~ m.retardMinutes|duree_messagerie ~ (m.penalite ? ', −' ~ m.penalite ~ ' pts' : '') ~ ')' }}</span>{% endif %}
+									</p>
+									{% if e.texte != '' %}<div class="mc-texte">{{ e.texte|nl2br }}</div>{% endif %}
+									{% if m.aUneNoteVocale %}{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: m, url: path('app_messages_clients_vocale_ecouter', {publicId: c.publicId, genre: 'message', id: m.id})} only %}{% endif %}
+									{% if m.bat %}<span class="mc-piece">📄 BAT · {{ m.bat.commandeDetail ? m.bat.commandeDetail.designation : 'fichier' }}</span>{% endif %}
+									{% if m.facture %}<span class="mc-piece">🧾 Facture {{ m.facture.numero }}</span>{% endif %}
+									{% if m.estDeLAtelier and e.lu %}<span class="mc-heure">Lu ✓✓</span>{% endif %}
+								</div>
+							</div>
+						{% endif %}
+					{% else %}
+						<p class="mc-vide">Pas encore de message.</p>
+					{% endfor %}
+				</div>
+
+				{% if enLigne %}
+					<p class="mc-ecrire small text-muted mb-0">Lecture seule sur le site en ligne : répondez depuis l'ERP de l'imprimerie.</p>
+				{% elseif c.estCloturee %}
+					<p class="mc-ecrire small text-muted mb-0">Demande clôturée{{ c.clotureeLe ? ' le ' ~ c.clotureeLe|date('d/m/Y à H:i') }}{{ c.avis ? ' · avis du client : ' ~ c.avis ~ ' ★' }}. Le client peut la rouvrir pendant {{ regles.reouvertureJours }} jours ; ensuite il ouvre une nouvelle demande liée.</p>
+				{% else %}
+					<form method="post" action="{{ path('app_messages_clients_repondre', {publicId: c.publicId}) }}" class="mc-ecrire" id="mc-ecrire">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="onglet" value="{{ onglet }}">
+						<input type="hidden" name="mode" value="reponse" id="mc-mode">
+						<div class="mc-rapides">
+							{% for libelle, texte in reponsesRapides %}<button type="button" data-texte="{{ texte }}">{{ libelle }}</button>{% endfor %}
+							<button type="button" class="mc-mode" aria-pressed="false" id="mc-note">🔒 Note interne</button>
+							{# Note vocale (docs/messagerie-clients.md) : au client ou note interne, 3 min au plus. #}
+							<div class="nv-flottant">{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_messages_clients_vocale', {publicId: c.publicId}), jeton: csrf_token(jeton), choix: true, onglet: onglet} only %}</div>
+						</div>
+						<div class="mc-saisie">
+							<label for="mc-texte" class="visually-hidden">Votre réponse</label>
+							<textarea name="texte" id="mc-texte" class="form-control" maxlength="{{ max }}" required placeholder="Répondre à {{ client.nomComplet }}…"></textarea>
+							<button class="btn btn-primary" id="mc-envoyer">Envoyer</button>
+						</div>
+						{% if bats is not empty or factures is not empty %}
+							<div class="mc-joindre">
+								{% if bats is not empty %}<select name="bat" class="form-select form-select-sm" aria-label="Joindre un BAT"><option value="">Joindre un BAT…</option>{% for b in bats %}<option value="{{ b.id }}">BAT · {{ b.commandeDetail ? b.commandeDetail.designation : '#' ~ b.id }}</option>{% endfor %}</select>{% endif %}
+								{% if factures is not empty %}<select name="facture" class="form-select form-select-sm" aria-label="Joindre une facture"><option value="">Joindre une facture…</option>{% for f in factures %}<option value="{{ f.id }}">Facture {{ f.numero }}</option>{% endfor %}</select>{% endif %}
+							</div>
+						{% endif %}
+					</form>
+					<script>
+						(function () {
+							const f = document.getElementById('mc-ecrire'), t = document.getElementById('mc-texte'), mode = document.getElementById('mc-mode'), note = document.getElementById('mc-note'), env = document.getElementById('mc-envoyer');
+							f.querySelectorAll('[data-texte]').forEach(b => b.addEventListener('click', () => { t.value = b.dataset.texte; t.focus(); }));
+							note.addEventListener('click', () => {
+								const n = mode.value !== 'note';
+								mode.value = n ? 'note' : 'reponse';
+								note.setAttribute('aria-pressed', n);
+								f.classList.toggle('note', n);
+								t.placeholder = n ? 'Note interne pour l\'équipe (@prénom pour prévenir un collègue)…' : 'Répondre à {{ client.nomComplet|e('js') }}…';
+								env.textContent = n ? 'Ajouter la note' : 'Envoyer';
+								const r = f.querySelector('input[name="nv-mode"][value="' + (n ? 'note' : 'reponse') + '"]'); if (r) { r.checked = true; }
+							});
+							const m = document.querySelector('.mc-messages'); if (m) { m.scrollTop = m.scrollHeight; }
+						})();
+					</script>
+				{% endif %}
+			</section>
+
+			{# ---------- Fiche du client ---------- #}
+			<aside class="mc-cote" aria-label="Le client">
+				<div class="mc-client">
+					<span class="mc-av client grand">{{ mc.initiales(client.nomComplet) }}</span>
+					<b><a href="{{ path('app_clients_show', {publicId: client.publicId}) }}">{{ client.nomComplet }}</a></b>
+					<small>{{ client.typeCompteLabel }}{{ client.telephone ? ' · ' ~ client.telephone }}</small>
+					<small>{{ nbCommandes }} commande{{ nbCommandes > 1 ? 's' }}</small>
+					{% if fidelite %}<span class="mc-fidelite">★ Fidélité · {{ fidelite|number_format(0, ',', ' ') }} pts</span>{% endif %}
+				</div>
+
+				{% if c.commande %}
+					{% set co = c.commande %}
+					<h4>Commande liée</h4>
+					<div class="mc-ligne"><span>N°</span><b><a href="{{ path('app_commandes_show', {id: co.id}) }}">{{ co.numero }}</a></b></div>
+					{% if carte %}<div class="mc-ligne"><span>Étape</span><b>{{ carte.terminee ? 'Terminée' : (carte.courante.libelle ?? '—') }}</b></div>{% endif %}
+					<div class="mc-ligne"><span>Montant</span><b>{{ co.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+					{% if is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_ADMIN') %}<div class="mc-ligne"><span>Payé</span><b>{{ co.totalPaye|number_format(0, ',', ' ') }} F</b></div>{% endif %}
+					{% if facture %}<div class="mc-ligne"><span>Facture</span><b>{{ facture.numero }}</b></div>{% endif %}
+					<div class="mc-ligne"><span>Agent</span><b>{{ co.agents ? mc.nomUser(co.agents) : '—' }}</b></div>
+				{% elseif c.devis %}
+					<h4>Devis lié</h4>
+					<div class="mc-ligne"><span>N°</span><b><a href="{{ path('app_devis_show', {id: c.devis.id}) }}">{{ c.devis.numero }}</a></b></div>
+					<div class="mc-ligne"><span>Montant</span><b>{{ c.devis.totalTtc|number_format(0, ',', ' ') }} F</b></div>
+				{% endif %}
+				{% if c.precedente %}<div class="mc-ligne"><span>Suite de</span><b><a href="{{ path('app_messages_clients_voir', {publicId: c.precedente.publicId}) }}">{{ c.precedente|conversation_titre }}</a></b></div>{% endif %}
+
+				<h4>Délai de réponse</h4>
+				{% if chrono %}
+					<div class="mc-ligne"><span>Attente</span><b class="{{ chrono.retard > 0 ? 'rouge' }}">{{ chrono.attente|duree_messagerie }}</b></div>
+					<div class="mc-ligne"><span>Cible</span><b>{{ chrono.cible|duree_messagerie }}</b></div>
+				{% endif %}
+				<div class="mc-ligne"><span>Dernière réponse</span><b>{{ dernierDelai is not null ? 'en ' ~ dernierDelai|duree_messagerie : '—' }}</b></div>
+				<p class="mc-aide">1re réponse sous {{ regles.premiere|duree_messagerie }}, suivantes sous {{ regles.suivantes|duree_messagerie }} ({{ regles.heuresOuvrees }}). Le chronomètre s'arrête hors des heures d'ouverture.</p>
+
+				{% if participants is not empty %}
+					<h4>Dans la conversation</h4>
+					<div class="mc-participants">{% for p in participants %}<span class="mc-puce bleu">{{ mc.nomUser(p) }}</span>{% endfor %}</div>
+				{% endif %}
+			</aside>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
+{% endblock %}

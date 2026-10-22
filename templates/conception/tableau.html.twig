@@ -1,0 +1,106 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon tableau · {{ maintenant|date_fr('EEE d/MM') }}{% endblock %}
+
+{% block header_actions %}
+	{% if responsable %}
+		<li class="nav-item si-masque-mobile"><a href="{{ path('app_conception_tableau', tous ? {} : {tous: 1}) }}" class="btn btn-light btn-sm si-btn-entete">{{ tous ? 'Mon tableau' : 'Toute l\'équipe' }}</a></li>
+	{% endif %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_conception_poste') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-desktop me-1"></i>Poste</a></li>
+	<li class="nav-item">
+		<form method="post" action="{{ path('app_conception_suivant') }}">
+			<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+			<button class="btn btn-danger btn-sm"><i class="fas fa-play"></i><span class="si-masque-mobile ms-1">Démarrer le suivant</span></button>
+		</form>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set token = csrf_token(jeton) %}
+	{% set ch = chiffres %}
+	{% include 'conception/_whatsapp.html.twig' %}
+	{% include 'demandes_conception/_bandeau.html.twig' %}
+	<div class="si-cp">
+		<div class="si-ac-kpis">
+			<article class="card">
+				<h2>Travaux sur mon tableau</h2>
+				<strong>{{ ch.travaux }}</strong>
+				<span class="si-p-neutre">{{ ch.validesAujourdhui }} validé{{ ch.validesAujourdhui > 1 ? 's' }} aujourd'hui · {{ ch.enCours }} en cours</span>
+			</article>
+			<article class="card">
+				<h2>Délais respectés (mois)</h2>
+				{% set pc = ch.delais.sur > 0 ? (ch.delais.ok * 100 / ch.delais.sur)|round : null %}
+				<strong class="{{ pc is null ? '' : (pc >= 90 ? 'si-p-ok' : 'si-p-alerte') }}">{{ pc is null ? '—' : pc ~ ' %' }}</strong>
+				<span class="si-p-neutre">{{ ch.delais.ok }} sur {{ ch.delais.sur }}</span>
+			</article>
+			<article class="card">
+				<h2>BAT validés au 1er envoi</h2>
+				{% set pv = ch.premierEnvoi.sur > 0 ? (ch.premierEnvoi.ok * 100 / ch.premierEnvoi.sur)|round : null %}
+				<strong>{{ pv is null ? '—' : pv ~ ' %' }}</strong>
+				<span class="si-p-neutre">{{ ch.premierEnvoi.ok }} sur {{ ch.premierEnvoi.sur }} ce mois</span>
+			</article>
+			<article class="card">
+				<h2>Points aujourd'hui</h2>
+				<strong class="{{ ch.pointsJour < 0 ? 'si-p-alerte' : 'si-p-ok' }}">{{ ch.pointsJour > 0 ? '+' }}{{ ch.pointsJour }}</strong>
+				<span class="si-p-neutre">mois : {{ ch.pointsMois }} pts</span>
+			</article>
+		</div>
+
+		{% if enCours %}
+			{% set e = enCours %}
+			<section class="card si-cp-encours" data-si-chrono="{{ e.secondes }}">
+				<span class="si-cp-badge">En cours</span>
+				<div class="si-cp-encours-texte">
+					<a href="{{ path('app_conception_poste', {id: e.c.id}) }}"><b>{{ e.numero }} · {{ e.titre }}{% if e.client %} · {{ e.client }}{% endif %}</b></a>
+					<small>Démarré à {{ e.c.demarreLe|date('H:i') }} · temps prévu {{ e.c.tempsPrevu|duree_pointage }}{% if e.c.echeanceBat %} · échéance BAT {{ e.c.echeanceBat|date(e.c.echeanceBat|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{% endif %}</small>
+				</div>
+				<div class="si-cp-chrono"><strong data-si-chrono-texte>{{ '%02d:%02d:%02d'|format(e.secondes // 3600, (e.secondes // 60) % 60, e.secondes % 60) }}</strong><small>chronomètre</small></div>
+				<form method="post" action="{{ path('app_conception_agir', {id: e.c.id, action: 'pause'}) }}"><input type="hidden" name="_token" value="{{ token }}"><button class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-pause me-1"></i>Pause</button></form>
+				<form method="post" action="{{ path('app_conception_agir', {id: e.c.id, action: 'bat'}) }}"><input type="hidden" name="_token" value="{{ token }}"><button class="btn btn-success">Envoyer le BAT</button></form>
+			</section>
+		{% endif %}
+
+		<div class="si-kanban si-cp-kanban">
+			{% for etape, libelle in etapes %}
+				{% set cartes = colonnes[etape] %}
+				<section class="si-kanban-colonne">
+					<div class="si-kanban-titre"><span>{{ libelle }}</span><span class="si-kanban-nombre">{{ cartes|length }}</span></div>
+					{% for x in cartes %}
+						{% set c = x.c %}
+						<article class="si-kanban-carte si-cp-carte si-cp-d-{{ x.delai.couleur }}">
+							<a href="{{ path('app_conception_poste', {id: c.id}) }}" class="si-cp-lien"><strong>{{ x.titre }}</strong></a>
+							<small>{{ x.client ?? x.numero }} · {{ c.difficulte == 'simple' ? 'simple' : (c.difficulte == 'moyen' ? 'moyen' : 'complexe') }} ×{{ x.coef|number_format(x.coef == x.coef|round ? 0 : 1, ',') }}{% if tous and c.graphiste %} · {{ c.graphiste|nom_pointage }}{% endif %}</small>
+							{% if etape == 'a_faire' and c.echeanceBat %}<small>échéance BAT {{ c.echeanceBat|date(c.echeanceBat|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}</small>{% endif %}
+							{% if etape == 'bat_envoye' and c.dernierBatLe %}<small>V{{ c.versions }} envoyé à {{ c.dernierBatLe|date('H:i') }}</small>{% endif %}
+							{% if etape == 'valide' and c.valideLe %}<small>validé {{ c.valideLe|date('Ymd') == maintenant|date('Ymd') ? 'à ' ~ c.valideLe|date('H:i') : 'le ' ~ c.valideLe|date('d/m H:i') }}{{ c.valideAuPremierEnvoi ? ' au 1er envoi' }}</small>{% endif %}
+							<span class="si-cp-delai"><i></i>{{ x.delai.texte }}</span>
+							{% if etape == 'en_conception' %}<small><i class="far fa-clock me-1"></i>{{ '%02d:%02d:%02d'|format(x.secondes // 3600, (x.secondes // 60) % 60, x.secondes % 60) }}{{ c.enCours ? '' : ' · en pause' }}</small>{% endif %}
+							{% if etape == 'corrections' %}
+								<span class="si-cp-pts si-cp-pts-neutre">{{ c.erreurs > 0 ? 'erreur à corriger' : '0 pt · changement client' }}</span>
+							{% elseif c.graphiste is null or c.graphiste == app.user or tous %}
+								<span class="si-cp-pts">{{ x.possibles > 0 ? '+' }}{{ x.possibles }} pts {{ x.acquis ? 'acquis' : 'possibles' }}</span>
+							{% endif %}
+							{% if etape in ['a_faire', 'corrections'] or (etape == 'en_conception' and not c.enCours) %}
+								<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'demarrer'}) }}" class="si-cp-action"><input type="hidden" name="_token" value="{{ token }}"><button class="btn btn-light btn-sm"><i class="fas fa-play me-1"></i>{{ etape == 'en_conception' ? 'Reprendre' : 'Démarrer' }}</button></form>
+							{% elseif etape == 'bat_envoye' %}
+								<a href="{{ path('app_conception_poste', {id: c.id}) }}#reponse" class="btn btn-light btn-sm si-btn-entete si-cp-action">Réponse du client</a>
+							{% endif %}
+						</article>
+					{% else %}
+						<p class="si-kanban-vide">—</p>
+					{% endfor %}
+				</section>
+			{% endfor %}
+		</div>
+	</div>
+	<script>
+		(() => {
+			const bloc = document.querySelector('[data-si-chrono]');
+			if (!bloc) return;
+			const texte = bloc.querySelector('[data-si-chrono-texte]');
+			const depart = Date.now() - Number(bloc.dataset.siChrono) * 1000;
+			const deux = n => String(n).padStart(2, '0');
+			setInterval(() => { const s = Math.floor((Date.now() - depart) / 1000); texte.textContent = deux(Math.floor(s / 3600)) + ':' + deux(Math.floor(s / 60) % 60) + ':' + deux(s % 60); }, 1000);
+		})();
+	</script>
+{% endblock %}

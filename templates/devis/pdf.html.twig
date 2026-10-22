@@ -229,6 +229,13 @@
 				font-weight: bold;
 			}
 
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.designation .nc-technique {
+				font-weight: normal;
+				font-size: 7px;
+				color: #637083;
+			}
+
 			.description {
 				margin-top: 3px;
 
@@ -409,9 +416,8 @@
     |default([])
 %}
 
-		{% set montantTvaDevis =
-    (devis.totalTtc|default(0)) - (devis.totalHt|default(0))
-%}
+		{# TVA du devis, remise globale déduite (TotauxDocument) : TOTAL TTC = Total HT après remise + TVA. #}
+		{% set montantTvaDevis = devis.montantTva %}
 
 
 		{# ================================================================
@@ -608,6 +614,10 @@
 
 						</div>
 
+						{# Version et validité (docs/devis.md). #}
+						{% if devis.version > 1 %}<div>Version : <strong>{{ devis.version }}</strong></div>{% endif %}
+						{% if devis.dateValidite %}<div>Valable jusqu'au : <strong>{{ devis.dateValidite|date('d/m/Y') }}</strong></div>{% endif %}
+
 					</div>
 
 				</td>
@@ -713,6 +723,9 @@
 
 					{% endif %}
 
+					{# Une entreprise a souvent plusieurs interlocuteurs : la personne à qui s'adresse le devis. #}
+					{% if devis.interlocuteur %}<div style="margin-top: 4px;">À l'attention de : <strong>{{ devis.interlocuteur }}</strong></div>{% endif %}
+
 				</td>
 
 
@@ -797,6 +810,14 @@
 																										   DÉTAILS
 																										   ================================================================ #}
 
+		{# Objet du devis (« Impressions »…), suivi à la commande puis à la facture. #}
+		{% if devis.objet|default(null) %}
+			<div style="margin: 0 0 8px; font-size: 10px; color: #202938;">
+				<strong style="color: #12346b;">Objet :</strong>
+				{{ devis.objet }}
+			</div>
+		{% endif %}
+
 		<table class="details-table">
 
 			<thead>
@@ -855,10 +876,7 @@
 
 							<div class="designation">
 
-								{{
-                            detail.designation
-                            |default('Prestation')
-                        }}
+								{{ detail|ligne_client }}
 
 							</div>
 
@@ -895,7 +913,7 @@
                                 detail.surfaceTotale|default(0)
                                 |number_format(2, ',', ' ')
                             }}
-									m²)
+									m²{% if pieces_m2_ligne(detail, true) %} · {{ pieces_m2_ligne(detail, true) }}{% endif %})
 								</span>
 
 							{% endif %}
@@ -965,6 +983,18 @@
 
 				{% endfor %}
 
+				{# Frais de livraison : une ligne visible, déjà comprise dans le total HT. #}
+				{% if devis.fraisLivraison|default(0) > 0 %}
+					<tr>
+						<td class="text-center">{{ details|length + 1 }}</td>
+						<td><div class="designation">Livraison</div></td>
+						<td class="text-center">1</td>
+						<td class="text-right">{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F CFA</td>
+						<td class="text-right">—</td>
+						<td class="text-right font-bold">{{ devis.fraisLivraison|number_format(0, ',', ' ') }} F CFA</td>
+					</tr>
+				{% endif %}
+
 			</tbody>
 
 		</table>
@@ -1027,6 +1057,18 @@
 					</div>
 
 
+					{# Conditions du devis (maquette GC04) : acompte, solde, fichier, garantie, délai. #}
+					{% if devis.acomptePourcentage > 0 or devis.conditionSolde or devis.conditionFichier or devis.conditionGarantie or devis.delaiRealisation %}
+						<div style="margin-top: 10px; padding: 7px; border: 1px solid #d5dce6;">
+							<strong>Conditions :</strong><br>
+							{% if devis.acomptePourcentage > 0 %}Acompte : {{ devis.acomptePourcentage }} % à l'acceptation, soit {{ devis.montantAcompte|number_format(0, ',', ' ') }} F CFA.<br>{% endif %}
+							{% if devis.conditionSolde %}Solde : {{ devis.conditionSolde }}.<br>{% endif %}
+							{% if devis.delaiRealisation %}Délai de réalisation : {{ devis.delaiRealisation }}.<br>{% endif %}
+							{% if devis.conditionFichier %}Fichier : {{ devis.conditionFichier }}.<br>{% endif %}
+							{% if devis.conditionGarantie %}Garantie : {{ devis.conditionGarantie }}.{% endif %}
+						</div>
+					{% endif %}
+
 					{% if devis.observation|default('') %}
 
 						<div style="
@@ -1054,55 +1096,19 @@
 
 					<table class="totals-table">
 
-						<tr>
-
-							<td>
-								Total HT
-							</td>
-
-							<td>
-
-								{{
-                            devis.totalHt
-                            |number_format(
-                                0,
-                                ',',
-                                ' '
-                            )
-                        }}
-								F CFA
-
-							</td>
-
-						</tr>
-
-
-						{% if devis.remise > 0 %}
-
-							<tr>
-
-								<td>
-									Remise
-								</td>
-
-								<td>
-
-									-
-									{{
-                                devis.remise
-                                |number_format(
-                                    0,
-                                    ',',
-                                    ' '
-                                )
-                            }}
-									F CFA
-
-								</td>
-
-							</tr>
-
+						{# Code promo du devis (docs/promotions.md) : déjà déduit des lignes, montré à part. #}
+						{% if devis.remiseCodePromo > 0 %}
+							<tr><td>Total HT avant code promo</td><td>{{ devis.totalHtAvantCodePromo|number_format(0, ',', ' ') }} F CFA</td></tr>
+							<tr><td>Code promo {{ devis.libelleCodePromo }}</td><td>- {{ devis.remiseCodePromo|number_format(0, ',', ' ') }} F CFA</td></tr>
 						{% endif %}
+
+						{# Remise globale : une ligne visible, déduite du sous-total HT. #}
+						{% if devis.remiseGlobale > 0 %}
+							<tr><td>Sous-total HT</td><td>{{ devis.totalHt|number_format(0, ',', ' ') }} F CFA</td></tr>
+							<tr><td>Remise globale</td><td>- {{ devis.remiseGlobale|number_format(0, ',', ' ') }} F CFA</td></tr>
+						{% endif %}
+
+						<tr><td>Total HT</td><td>{{ devis.totalHtNet|number_format(0, ',', ' ') }} F CFA</td></tr>
 
 
 						{% if montantTvaDevis > 0 %}

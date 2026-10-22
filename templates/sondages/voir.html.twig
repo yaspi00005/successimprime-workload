@@ -1,0 +1,130 @@
+{% extends 'sondages/_base.html.twig' %}
+{% import 'sondages/_macros.html.twig' as m %}
+
+{% block title %}{{ sondage.titre }}{% endblock %}
+{% block page_title %}Sondage · {{ sondage.titre }}{% endblock %}
+{% block sous_ecran %}ensemble{% endblock %}
+
+{% block contenu %}
+	{% set admin = is_granted('ROLE_ADMIN') %}
+	<section class="card">
+		<div class="si-so-entete">
+			<div>
+				<h2 style="margin:0">{{ sondage.titre }} {{ m.statut_sondage(sondage) }}</h2>
+				<p>{{ sondage.libelleType }}{{ sondage.estLibre ? (sondage.anonymeAutorise ? ' · réponse anonyme possible' : ' · nom et téléphone demandés') : ' · ' ~ sondage.libelleSegment }}</p>
+				<p class="si-so-gris" style="font-size:13px">Créé le {{ sondage.creeLe|date('d/m/Y') }}{{ sondage.creePar ? ' par ' ~ sondage.creePar }}{{ sondage.ouvertLe ? ' · lancé le ' ~ sondage.ouvertLe|date('d/m/Y') }}{{ sondage.closLe ? ' · clos le ' ~ sondage.closLe|date('d/m/Y') }}</p>
+			</div>
+			{% if admin %}
+				<div class="si-so-actions">
+					{% if resultats.reponses == 0 and not sondage.estOuvert %}
+						<a class="btn btn-sm btn-outline-primary" href="{{ path('app_sondages_modifier', {id: sondage.id}) }}"><i class="fas fa-pen me-1"></i>Modifier</a>
+					{% endif %}
+					{% if sondage.estBrouillon %}
+						<form method="post" action="{{ path('app_sondages_ouvrir', {id: sondage.id}) }}" data-confirmer="{{ sondage.estLibre ? 'Lancer ce sondage ? Le lien et le QR code seront actifs.' : 'Lancer ce sondage ? Il sera proposé aux clients dans leur espace.' }}" data-confirmer-bouton="Lancer">
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<button class="btn btn-sm btn-danger" type="submit"><i class="fas fa-play me-1"></i>Lancer</button>
+						</form>
+					{% elseif sondage.estOuvert %}
+						<form method="post" action="{{ path('app_sondages_clore', {id: sondage.id}) }}" data-confirmer="Clore ce sondage ? Il n’acceptera plus de réponses." data-confirmer-bouton="Clore">
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<button class="btn btn-sm btn-outline-secondary" type="submit"><i class="fas fa-stop me-1"></i>Clore</button>
+						</form>
+					{% endif %}
+					{% if resultats.reponses == 0 %}
+						<form method="post" action="{{ path('app_sondages_supprimer', {id: sondage.id}) }}" {{ confirmer_suppression('le sondage « ' ~ sondage.titre ~ ' »') }}>
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<button class="btn btn-sm btn-outline-danger" type="submit" title="Supprimer"><i class="fas fa-trash"></i></button>
+						</form>
+					{% endif %}
+				</div>
+			{% endif %}
+		</div>
+		{% if sondage.introduction %}<p style="margin:12px 0 0;color:#334155">{{ sondage.introduction }}</p>{% endif %}
+	</section>
+
+	{% if lien %}
+		<section class="card">
+			<h2>Partager</h2>
+			<div class="si-so-partage">
+				<img src="{{ qr }}" alt="QR code du sondage">
+				<div style="display:grid;gap:10px">
+					<label class="form-label" for="si-so-lien" style="margin:0">Lien du sondage</label>
+					<input id="si-so-lien" class="form-control" type="text" value="{{ lien }}" readonly onclick="this.select()">
+					<div class="si-so-actions">
+						<button type="button" class="btn btn-sm btn-outline-primary" onclick="navigator.clipboard && navigator.clipboard.writeText(document.getElementById('si-so-lien').value); this.textContent = 'Lien copié'">Copier le lien</button>
+						<a class="btn btn-sm btn-outline-primary" href="{{ path('app_sondages_affiche', {id: sondage.id}) }}" target="_blank"><i class="fas fa-print me-1"></i>Affiche à imprimer</a>
+						<a class="btn btn-sm btn-success" href="https://wa.me/?text={{ (sondage.titre ~ ' : ' ~ lien)|url_encode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Partager</a>
+					</div>
+					{% if not sondage.estOuvert %}<p class="si-so-note-bas" style="margin:0">{{ sondage.estBrouillon ? 'Le lien ne fonctionne qu’une fois le sondage lancé.' : 'Sondage clos : le lien affiche un message de fin.' }}</p>{% endif %}
+				</div>
+			</div>
+		</section>
+	{% endif %}
+
+	<section class="si-so-kpis" aria-label="Résultats">
+		<article class="card si-so-kpi">
+			<h2>Satisfaction moyenne</h2>
+			<strong class="{{ resultats.alerte ? 'si-so-orange' }}">{{ resultats.moyenne|note_sur_5 }}{% if resultats.moyenne is not null %} <small>/ 5</small>{% endif %}</strong>
+			{% if resultats.alerte %}<span class="si-so-orange">sous le seuil de 4,2</span>{% endif %}
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Clients satisfaits</h2>
+			<strong>{{ resultats.satisfaits is null ? '—' : resultats.satisfaits ~ ' %' }}</strong>
+			<span class="si-so-gris">notes de 4 et 5</span>
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Recommandation (NPS)</h2>
+			<strong class="{{ resultats.alerteNps ? 'si-so-rouge' }}">{{ resultats.nps is null ? '—' : (resultats.nps > 0 ? '+' : '') ~ resultats.nps }}</strong>
+		</article>
+		<article class="card si-so-kpi">
+			<h2>Réponses</h2>
+			<strong>{{ resultats.reponses }}</strong>
+			<span class="si-so-gris">{% if resultats.taux is not null %}{{ resultats.taux }} % des {{ resultats.envoyes }} clients visés{% else %}{{ sondage.estLibre ? 'sondage ouvert à tous' : 'pas encore lancé' }}{% endif %}</span>
+		</article>
+	</section>
+
+	<div class="si-so-deux">
+		<section class="card">
+			<h2>Résultats par question</h2>
+			{% for q in questions %}
+				<div class="si-so-question-res">
+					<header>
+						<h3 style="margin:0">{{ loop.index }}. {{ q.libelle }}</h3>
+						<small>{{ q.repondu }} réponse{{ q.repondu > 1 ? 's' }}{% if q.moyenne is defined and q.moyenne is not null %} · moyenne {{ q.moyenne|note_sur_5 }}{% endif %}{% if q.score is defined and q.score is not null %} · NPS {{ q.score > 0 ? '+' }}{{ q.score }}{% endif %}</small>
+					</header>
+					{% if q.repartition is defined %}
+						<div class="si-so-barres">
+							{% for r in q.repartition %}
+								<div class="si-so-barre"><span>{{ m.etoiles(r.note) }}</span><span class="si-so-jauge"><i style="width:{{ r.part }}%"></i></span><span class="n">{{ r.nombre }} · {{ r.part }} %</span></div>
+							{% endfor %}
+						</div>
+					{% elseif q.groupes is defined or q.options is defined %}
+						<div class="si-so-barres">
+							{% for o in q.groupes ?? q.options %}
+								<div class="si-so-barre"><span>{{ o.libelle }}</span><span class="si-so-jauge"><i style="width:{{ o.part }}%"></i></span><span class="n">{{ o.nombre }} · {{ o.part }} %</span></div>
+							{% endfor %}
+						</div>
+					{% elseif q.textes is defined %}
+						{% if q.textes is empty %}
+							<p class="si-so-vide">Aucun texte.</p>
+						{% else %}
+							<ul class="si-so-textes">
+								{% for t in q.textes %}<li>{{ t.texte }}<a href="{{ path('app_sondages_reponse', {id: t.reponse}) }}">Voir la réponse</a></li>{% endfor %}
+							</ul>
+						{% endif %}
+					{% endif %}
+				</div>
+			{% endfor %}
+		</section>
+		<section class="card">
+			<h2>Dernières réponses</h2>
+			{% if reponses is empty %}
+				<p class="si-so-vide">Aucune réponse pour l’instant.</p>
+			{% else %}
+				<ul class="si-so-liste">
+					{% for r in reponses %}<li>{{ m.ligne_reponse(r) }}</li>{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

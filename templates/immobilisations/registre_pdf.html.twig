@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<style>
+		@page { margin: 12mm 10mm; }
+		body { font-family: "DejaVu Sans", sans-serif; font-size: 8pt; color: #1d2a44; }
+		h1 { font-size: 14pt; margin: 0 0 2mm; color: #0d3a8a; }
+		.entete { width: 100%; margin-bottom: 4mm; }
+		.entete td { vertical-align: top; }
+		.droite { text-align: right; color: #5b6780; }
+		table.registre { width: 100%; border-collapse: collapse; }
+		table.registre th { background: #0d3a8a; color: #fff; padding: 3px 4px; text-align: left; font-size: 7.5pt; }
+		table.registre td { border-bottom: 1px solid #dde3ee; padding: 3px 4px; }
+		.n { text-align: right; white-space: nowrap; }
+		tfoot td { font-weight: bold; border-top: 2px solid #0d3a8a; }
+		.pied { margin-top: 5mm; font-size: 7pt; color: #7a879f; }
+	</style>
+</head>
+<body>
+	<table class="entete">
+		<tr>
+			<td><h1>Registre des immobilisations</h1>{{ lignes|length }} biens · valeur d'achat {{ synthese.achat|number_format(0, ',', ' ') }} F · valeur nette {{ synthese.nette|number_format(0, ',', ' ') }} F</td>
+			<td class="droite">Succès Imprim · Madial Groupe<br>Édité le {{ edite|date('d/m/Y à H:i') }}</td>
+		</tr>
+	</table>
+	<table class="registre">
+		<thead>
+			<tr><th>Code</th><th>Bien</th><th>Catégorie</th><th>Comptes</th><th>Mise en service</th><th class="n">Valeur</th><th>Méthode</th><th class="n">Amort. cumulé</th><th class="n">Valeur nette</th><th>Lieu · affecté à</th><th>État</th></tr>
+		</thead>
+		<tbody>
+			{% for l in lignes %}
+				{% set i = l.bien %}
+				<tr>
+					<td>{{ i.code }}</td>
+					<td>{{ i.designation }}</td>
+					<td>{{ i.libelleCourt }}</td>
+					<td>{{ i.compteImmobilisation }} / {{ i.compteAmortissement }}</td>
+					<td>{{ i.dateMiseService ? i.dateMiseService|date('m/Y') : '—' }}</td>
+					<td class="n">{{ l.calcul.valeurAchat|number_format(0, ',', ' ') }}</td>
+					<td>{{ l.calcul.libelleMethode }}</td>
+					<td class="n">{{ l.calcul.cumul|number_format(0, ',', ' ') }}</td>
+					<td class="n">{{ l.calcul.valeurNette|number_format(0, ',', ' ') }}</td>
+					<td>{{ i.lieu }}{% if i.confieA %} · {{ i.confieA.employe ? i.confieA.employe.prenom ~ ' ' ~ i.confieA.employe.nom : i.confieA.userIdentifier }}{% endif %}</td>
+					<td>{{ i.libelleEtat }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+		<tfoot>
+			<tr>
+				<td colspan="5">Total</td>
+				<td class="n">{{ lignes|reduce((t, l) => t + l.calcul.valeurAchat, 0)|number_format(0, ',', ' ') }}</td>
+				<td></td>
+				<td class="n">{{ lignes|reduce((t, l) => t + l.calcul.cumul, 0)|number_format(0, ',', ' ') }}</td>
+				<td class="n">{{ lignes|reduce((t, l) => t + l.calcul.valeurNette, 0)|number_format(0, ',', ' ') }}</td>
+				<td colspan="2"></td>
+			</tr>
+		</tfoot>
+	</table>
+	<p class="pied">Machines amorties à l'usage réel (coût par unité = (achat − valeur résiduelle) ÷ capacité prévue), autres biens en linéaire sur leur durée. Dotations mensuelles au débit du 681 et au crédit du 28x de la catégorie. Comptes à valider avec le cabinet comptable.</p>
+</body>
+</html>

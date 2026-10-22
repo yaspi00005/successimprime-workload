@@ -1,0 +1,71 @@
+{#
+	Confirmation d'une demande de devis ou d'un message (maquette 11) :
+	numéro de la demande, suite des étapes. Montrée une fois. Pour un devis,
+	les produits envoyés avec leur prix indicatif et le total, toujours « à
+	confirmer par l'imprimerie » (panier de devis, docs/site-vitrine.md).
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = devis ? '' : 'app_site_contact' %}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, je vous écris au sujet de ma demande' ~ (envoi.numero ? ' ' ~ envoi.numero : '') ~ '.') %}
+
+{% block title %}{{ devis ? 'Demande de devis envoyée' : 'Message envoyé' }} · Succès Imprim{% endblock %}
+{% block description %}Votre {{ devis ? 'demande de devis' : 'message' }} est bien arrivé chez Succès Imprim : nous vous répondons pendant nos horaires d'ouverture.{% endblock %}
+
+{% block entete %}
+	<meta name="robots" content="noindex, nofollow">
+	{{ site_styles('css/site-formulaires.css', 'css/site-panier.css') }}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: devis ? 'Demande envoyée' : 'Message envoyé', ariane: devis ? 'Demander un devis' : 'Contact', accroche: 'Merci ! Nous vous répondons pendant nos horaires d\'ouverture.'}) }}
+
+	<section class="si-section si-envoyee">
+		<div class="si-cadre">
+			<div class="si-carte si-envoyee-carte">
+				<div class="si-envoyee-tete">
+					<span class="si-envoyee-icone" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9.5 16.2 5.3 12l-1.4 1.4 5.6 5.6 11-11-1.4-1.4z"/></svg></span>
+					<div>
+						<h2>{{ devis ? 'Votre demande de devis est bien arrivée' : 'Votre message est bien arrivé' }}</h2>
+						{% if envoi.numero %}
+							<p class="si-envoyee-ref">Numéro de la demande : <strong>{{ envoi.numero }}</strong></p>
+						{% endif %}
+					</div>
+				</div>
+
+				{% if devis and (envoi.lignes ?? [])|length > 0 %}
+					<ul class="si-envoyee-lignes" aria-label="Produits demandés">
+						{% for l in envoi.lignes %}
+							<li>
+								<b>{{ l.nom }}</b>
+								{% if l.detail or l.fichier %}<small>{{ l.detail }}{% if l.fichier %}{{ l.detail ? ' · ' }}fichier : {{ l.fichier }}{% endif %}</small>{% endif %}
+								<span class="si-envoyee-prix">{% if l.prix %}{{ l.prix }}<em>indicatif</em>{% else %}<em>prix donné avec le devis</em>{% endif %}</span>
+							</li>
+						{% endfor %}
+					</ul>
+					{% if envoi.total %}
+						<p class="si-envoyee-total"><span>Total indicatif{{ envoi.totalComplet ? '' : ' (sans les lignes à chiffrer)' }}</span><strong>{{ envoi.total }}</strong></p>
+						<p class="si-note">Prix au tarif public, à confirmer par l'imprimerie : ce n'est pas un prix ferme.</p>
+					{% endif %}
+				{% elseif envoi.resume ?? null %}
+					<p class="si-envoyee-resume">{{ devis ? 'Demandé' : 'Objet' }} : {{ envoi.resume }}{% if envoi.fichier ?? false %} · fichier joint{% endif %}</p>
+				{% endif %}
+
+				<ol class="si-parcours si-parcours-ligne">
+					<li class="fait"><strong>Demande reçue</strong><span>{{ envoi.accuse ? 'Un SMS de confirmation vient de partir.' : 'Gardez ce numéro pour nous en parler.' }}</span></li>
+					<li><strong>{{ devis ? 'Devis préparé par l\'atelier' : 'Lu par l\'équipe' }}</strong><span>{{ devis ? 'Taille, finitions et fichier vérifiés.' : 'La bonne personne vous répond.' }}</span></li>
+					<li><strong>Nous vous répondons</strong><span>Par téléphone ou WhatsApp, pendant nos horaires ({{ horaires.texte }}).</span></li>
+				</ol>
+
+				<p class="si-note">{{ horaires.etat }}. Le prix ferme vous est donné avec le devis, après vérification : rien à payer pour l'instant.</p>
+
+				<div class="si-formulaire-actions">
+					{% if wa %}
+						<a href="{{ wa }}" class="si-bouton si-bouton-wa si-bouton-grand" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} Écrire sur WhatsApp</a>
+					{% endif %}
+					<a href="{{ site_lien('app_site_accueil') }}" class="si-bouton si-bouton-contour si-bouton-grand">Retour à l'accueil</a>
+				</div>
+			</div>
+		</div>
+	</section>
+{% endblock %}

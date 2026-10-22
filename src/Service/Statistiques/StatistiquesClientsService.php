@@ -31,7 +31,7 @@ final class StatistiquesClientsService
             ->leftJoin('c.clients', 'client')
             ->addSelect('client')
             ->andWhere('c.dateCommande BETWEEN :debut AND :fin')
-            ->andWhere('c.deleted = false')
+            ->andWhere('c.deleted = false AND c.soldeOuverture = false')
             ->setParameter('debut', $debut)
             ->setParameter('fin', $fin)
             ->getQuery()

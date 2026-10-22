@@ -1,0 +1,120 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Programmer la livraison (maquette DB09) : 1. Où (adresse enregistrée ou
+	nouvelle, repère, position), 2. Quand (jour et créneau, les pleins
+	barrés), 3. Qui reçoit (et qui si absent), puis le récapitulatif et le
+	paiement du reste. Le serveur revérifie tout (ProgrammationLivraison::lire).
+#}
+{% set reste = commande.resteAPayer %}
+{% set montrer = montants and peutPayer %}
+{% block title %}Programmer la livraison · {{ commande.numero }}{% endblock %}
+{% block page_classe %} ec-page-large db-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+	<link href="{{ asset('vendor/leaflet/leaflet.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_livraisons') }}"><span class="fl">‹</span>Programmer la livraison · {{ commande.numero }}</a>{% endblock %}
+
+{% block contenu %}
+	{% if erreurs is not empty %}<div class="ec-note rouge" role="alert">{{ erreurs|join(' ') }}</div>{% endif %}
+	<form method="post" class="db-grille db-lv-form" data-lv-programmer>
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<input type="hidden" name="mode" value="livraison">
+		<div class="db-gauche">
+			<section class="ec-carte">
+				<h2 class="db-lv-etape">1. Où ?</h2>
+				<div class="db-lv-adresses">
+					{% for a in adresses %}
+						<label class="db-lv-adresse"><input type="radio" name="adresse" value="{{ a.id }}" data-repere="{{ a.repere }}" data-telephone="{{ a.telephone }}" data-libelle="{{ a.libelle }}"{{ saisie.adresse == a.id ~ '' or (saisie.libelle is defined and saisie.libelle == a.libelle) ? ' checked' }}>
+							<span><b>{{ loop.first ? '🏬' : '🏠' }} {{ a.libelle }}</b><small>{{ a.adresse }}{{ a.repere ? ' · ' ~ a.repere }}</small></span></label>
+					{% endfor %}
+					<label class="db-lv-adresse nouvelle"><input type="radio" name="adresse" value="nouvelle" data-libelle="Nouvelle adresse"{{ saisie.adresse == 'nouvelle' or adresses is empty ? ' checked' }}>
+						<span><b>＋ Nouvelle adresse</b><small>ou envoyer ma position</small></span></label>
+				</div>
+				<div class="db-lv-nouvelle" data-lv-nouvelle>
+					<label>Nom du lieu<input class="ec-champ" name="nouvelle_libelle" maxlength="60" placeholder="Ex. Boutique, Maison"></label>
+					<label>Adresse<input class="ec-champ" name="nouvelle_adresse" maxlength="255" placeholder="Quartier, rue, porte"></label>
+				</div>
+				<div class="db-lv-ou">
+					<div class="db-lv-mini-carte" data-carte-choix data-position="{{ (saisie.latitude is defined and saisie.latitude ? {lat: saisie.latitude, lng: saisie.longitude} : position)|json_encode|e('html_attr') }}">
+						<span class="db-lv-carte-vide">Touchez « Envoyer ma position »</span>
+					</div>
+					<div>
+						<label class="db-lv-label" for="lv-repere">Repère pour le livreur</label>
+						<input id="lv-repere" class="ec-champ" name="repere" maxlength="160" value="{{ saisie.repere }}" placeholder="Ex. boutique avec le store violet, à côté de la pharmacie">
+						<button type="button" class="db-lien-violet db-lv-gps" data-lv-gps>📍 Envoyer ma position</button>
+						<small class="db-lv-gris" data-lv-gps-etat role="status"></small>
+						<input type="hidden" name="latitude" value="{{ saisie.latitude ?? (position.lat ?? '') }}" data-lv-lat>
+						<input type="hidden" name="longitude" value="{{ saisie.longitude ?? (position.lng ?? '') }}" data-lv-lng>
+					</div>
+				</div>
+			</section>
+
+			<section class="ec-carte">
+				<h2 class="db-lv-etape">2. Quand ?</h2>
+				{% if jours is empty %}
+					<p class="ec-petit">Tous les créneaux des prochains jours sont pris : écrivez-nous, nous trouvons un moment ensemble.</p>
+				{% endif %}
+				<div class="db-lv-jours" role="radiogroup" aria-label="Jour">
+					{% for j in jours %}
+						{% set v = j.jour|date('Y-m-d') %}
+						<label class="db-lv-jour"><input type="radio" name="jour" value="{{ v }}" data-lv-jour{{ (saisie.jour is defined and saisie.jour == v) or (saisie.jour is not defined and loop.first) ? ' checked' }}><span><b>{{ j.libelle|capitalize }}</b>{% if commande.dateLivraison and commande.dateLivraison|date('Y-m-d') == v %}<small>jour où elle est prête</small>{% endif %}</span></label>
+					{% endfor %}
+				</div>
+				{% for j in jours %}
+					{% set v = j.jour|date('Y-m-d') %}
+					<div class="db-lv-creneaux" data-lv-creneaux="{{ v }}" role="radiogroup" aria-label="Créneau du {{ j.libelle }}">
+						{% for c in j.creneaux %}
+							<label class="db-lv-creneau{{ c.plein ? ' plein' }}"><input type="radio" name="creneau" value="{{ c.cle }}" data-libelle="{{ j.libelle }} · {{ c.libelle }}"{{ c.plein ? ' disabled' }}{{ not c.plein and saisie.creneau is defined and saisie.creneau == c.cle and saisie.jour == v ? ' checked' }}><span>{{ c.libelle }}</span></label>
+						{% endfor %}
+					</div>
+				{% endfor %}
+				<p class="db-lv-gris db-lv-note">Un créneau barré est complet.</p>
+			</section>
+
+			<section class="ec-carte">
+				<h2 class="db-lv-etape">3. Qui reçoit ?</h2>
+				<div class="db-lv-qui">
+					<label>Nom<input class="ec-champ" name="nom" maxlength="120" required value="{{ saisie.nom }}"></label>
+					<label>Téléphone<input class="ec-champ" name="telephone" inputmode="tel" maxlength="20" required value="{{ saisie.telephone }}" data-lv-tel></label>
+					<label>Si absente<input class="ec-champ" name="si_absent" maxlength="120" value="{{ saisie.siAbsent ?? '' }}" placeholder="Ex. Fanta (vendeuse)"></label>
+				</div>
+			</section>
+		</div>
+
+		<aside class="db-droite">
+			<section class="ec-carte db-lv-recap">
+				<h2>Récapitulatif</h2>
+				<dl>
+					<div><dt>Commande</dt><dd>{{ titre }}</dd></div>
+					<div><dt>Adresse</dt><dd data-lv-recap-adresse>—</dd></div>
+					<div><dt>Créneau</dt><dd data-lv-recap-creneau>—</dd></div>
+					{% if montrer %}
+						<div><dt>Frais de livraison</dt><dd>{{ frais is null ? 'déjà comptés' : frais|number_format(0, ',', ' ') ~ ' F' }}</dd></div>
+						<div><dt>Reste à payer</dt><dd>{{ reste|number_format(0, ',', ' ') }} F</dd></div>
+					{% endif %}
+				</dl>
+				{% if montrer and reste > 0 %}
+					<fieldset class="db-modes db-lv-paiement">
+						<legend>Payer le reste</legend>
+						<label class="db-mode om"><input type="radio" name="paiement" value="orange_money" data-lv-paiement{{ saisie.paiement == 'orange_money' ? ' checked' }}><span><b>Orange Money</b><small>maintenant</small></span></label>
+						<label class="db-mode"><input type="radio" name="paiement" value="livreur" data-lv-paiement{{ saisie.paiement != 'orange_money' ? ' checked' }}><span><b>Au livreur</b><small>espèces ou Orange Money</small></span></label>
+					</fieldset>
+					{% if frais %}<p class="db-lv-gris db-lv-note">Les frais de livraison s'ajoutent au reste : l'imprimerie les note sur la commande et vous les payez au livreur.</p>{% endif %}
+				{% else %}
+					<input type="hidden" name="paiement" value="livreur">
+				{% endif %}
+				<button type="submit" class="ec-bouton orange" data-lv-valider data-texte-om="Payer {{ reste|number_format(0, ',', ' ') }} F et confirmer" data-texte-livreur="Confirmer la livraison">{{ montrer and reste > 0 and saisie.paiement == 'orange_money' ? 'Payer ' ~ reste|number_format(0, ',', ' ') ~ ' F et confirmer' : 'Confirmer la livraison' }}</button>
+			</section>
+			<section class="ec-carte db-lv-rappel">
+				<p>📲 La veille, vous recevez un rappel. Le jour J, un lien pour suivre le livreur en direct et votre <b>code de réception</b>.</p>
+			</section>
+		</aside>
+	</form>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('vendor/leaflet/leaflet.js') }}" defer></script>
+	<script src="{{ asset('js/espace-livraison.js') }}" defer></script>
+{% endblock %}

@@ -3,6 +3,7 @@
 namespace App\Form;
 
 use App\Entity\Paiements;
+use App\Service\Parametres\Parametres;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
@@ -20,10 +21,23 @@ use Doctrine\ORM\QueryBuilder;
 
 class PaiementsType extends AbstractType
 {
+    public function __construct(private readonly ?Parametres $parametres = null)
+    {
+    }
+
     public function buildForm(
         FormBuilderInterface $builder,
         array $options
     ): void {
+        // Modes autorisés dans Paramètres › Paiements ; le mode déjà
+        // enregistré d'un paiement reste proposé pour ne pas le perdre.
+        $modes = Paiements::getModesPourFormulaire();
+        if ($this->parametres !== null) {
+            $actifs = $this->parametres->modesPaiementActifs();
+            $actuel = $builder->getData() instanceof Paiements ? $builder->getData()->getMode() : null;
+            $modes = array_filter($modes, static fn (string $mode): bool => \in_array($mode, $actifs, true) || $mode === $actuel);
+        }
+
         $builder
             ->add(
                 'montant',
@@ -55,7 +69,7 @@ class PaiementsType extends AbstractType
                     'label' => 'Mode de paiement',
 
                     'choices' =>
-                        Paiements::getModesPourFormulaire(),
+                        $modes,
 
                     'placeholder' =>
                         'Sélectionner un mode de paiement',
@@ -123,6 +137,8 @@ class PaiementsType extends AbstractType
                 ]
             );
             $estAdmin = (bool) $options['est_admin'];
+            // Sans « Trésorerie et soldes » (ROLE_TRESORERIE_VOIR) : aucun solde dans la liste des comptes.
+            $voirSoldes = (bool) $options['voir_soldes'];
 
 $utilisateur =
     $options['utilisateur'];
@@ -147,11 +163,19 @@ $builder->add(
                 $estAdmin,
                 $utilisateur
             ): QueryBuilder {
+                /*
+                 * Le compte « Orange Money en ligne » (API de l'espace
+                 * client) ne reçoit jamais un paiement de la caisse : la
+                 * caisse choisit un numéro Orange Money de l'imprimerie.
+                 */
                 $qb =
                     $repository
                         ->createQueryBuilder('compte')
                         ->andWhere(
                             'compte.actif = :actif'
+                        )
+                        ->andWhere(
+                            'compte.orangeMoneyEnLigne = false'
                         )
                         ->setParameter(
                             'actif',
@@ -243,43 +267,19 @@ $builder->add(
                     );
             },
 
+        /*
+         * Banque : la caissière choisit la banque (chèque, virement)
+         * sans voir son solde. Caisse, Orange Money, Wave : le solde
+         * seulement avec le droit de voir la trésorerie (même logique
+         * que MouvementTresorerieType).
+         */
         'choice_label' =>
-            static function (
+            static fn (
                 CompteTresorerie $compte
-            ): string {
-                /*
-                 * Banque : la caissière doit pouvoir choisir la
-                 * banque (chèque/virement) sans voir son solde
-                 * (même logique que MouvementTresorerieType).
-                 */
-                if (
-                    $compte->getType()
-                    === CompteTresorerie::TYPE_BANQUE
-                ) {
-                    return sprintf(
-                        '%s — %s',
-                        $compte->getNom(),
-                        $compte->getTypeLabel()
-                    );
-                }
-
-                /*
-                 * Caisse / Orange Money / Wave : on affiche le
-                 * solde ici car le paiement va réellement
-                 * créditer ce compte.
-                 */
-                return sprintf(
-                    '%s — %s — %s FCFA',
-                    $compte->getNom(),
-                    $compte->getTypeLabel(),
-                    number_format(
-                        (int) $compte->getSoldeActuel(),
-                        0,
-                        ',',
-                        ' '
-                    )
-                );
-            },
+            ): string => MouvementTresorerieType::libelleSource(
+                $compte,
+                $voirSoldes
+            ),
 
         'label' =>
             'Compte de trésorerie',
@@ -410,10 +410,19 @@ $builder->add(
 
         'utilisateur' =>
             null,
+
+        // Soldes des comptes : seulement si le contrôleur le dit (ROLE_TRESORERIE_VOIR).
+        'voir_soldes' =>
+            false,
     ]);
 
     $resolver->setAllowedTypes(
         'est_admin',
+        'bool'
+    );
+
+    $resolver->setAllowedTypes(
+        'voir_soldes',
         'bool'
     );
 

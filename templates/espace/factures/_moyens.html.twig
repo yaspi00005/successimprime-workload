@@ -1,0 +1,40 @@
+{#
+	Moyens de paiement (maquette FP01), d'après Réglages › Paiements :
+	Orange Money, espèces au comptoir, virement (au-delà du seuil, avec les
+	coordonnées bancaires réglées par la Direction, sinon à demander à l'imprimerie).
+	Variables : moyens, omActif.
+#}
+<section class="ec-carte">
+	<h2>Moyens de paiement</h2>
+	{% if moyens.orangeMoney %}
+		<div class="ef-moyen">
+			<span class="sigle om" aria-hidden="true">OM</span>
+			<div>
+				<b>Orange Money</b>
+				<small>
+					{%- if omActif %}ici, en une fois · vous confirmez sur la page Orange Money avec votre code secret
+					{%- elseif moyens.marchand %}au numéro marchand {{ moyens.marchand }}, avec la référence de la facture
+					{%- else %}à l'imprimerie, ou bientôt ici{% endif -%}
+				</small>
+			</div>
+		</div>
+	{% endif %}
+	{% if moyens.especes %}
+		<div class="ef-moyen">
+			<span class="sigle esp" aria-hidden="true">F</span>
+			<div><b>Espèces</b><small>au comptoir de l'imprimerie, contre un reçu</small></div>
+		</div>
+	{% endif %}
+	{% if moyens.virement %}
+		<div class="ef-moyen">
+			<span class="sigle vir" aria-hidden="true">B</span>
+			<div>
+				<b>Virement</b>
+				<small>
+					{{- moyens.seuil > 0 ? 'au-delà de ' ~ moyens.seuil|francs ~ ' · ' -}}
+					{{- moyens.coordonnees is not empty ? moyens.coordonnees : 'coordonnées à demander à l\'imprimerie' -}}
+				</small>
+			</div>
+		</div>
+	{% endif %}
+</section>

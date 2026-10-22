@@ -1,0 +1,26 @@
+{# Fiche du guide « encaisser » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu « Caisse ». Ou touchez « Encaisser » sur la commande.</li>
+	<li>Choisissez le client : la liste dit ce qu'il reste à payer. Son « Solde client » (monnaie gardée, dépôts) s'affiche dessous.</li>
+	<li>Choisissez la commande ou la facture que le client paie.</li>
+	<li>Tapez le « Montant encaissé ».</li>
+	<li>Touchez le mode : Espèces, Orange Money, Virement ou Chèque. Choisissez le « Compte qui reçoit ».</li>
+	<li>Espèces : tapez le « Montant remis par le client ». La monnaie « À rendre » s'affiche. Si le client la laisse, cochez « Garder la monnaie sur le compte du client ».</li>
+	<li>Touchez « Encaisser et imprimer le reçu ». Le message « Paiement de … enregistré » s'affiche et le reçu s'ouvre dans un nouvel onglet.</li>
+	<li>Donnez le reçu : « Imprimer le reçu » ou « Envoyer le reçu par WhatsApp ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Espèces et Orange Money à l'imprimerie sont validés tout de suite. Virement et chèque attendent la Direction dans « À valider ».</li>
+	<li>Un paiement Orange Money fait par le client sur le site arrive « À valider ». Il n'est jamais validé tout seul.</li>
+	<li>Le bloc « Caisse du jour » montre le fond, l'encaissé, les sorties et le théorique de votre caisse.</li>
+	<li>« Payer avec le solde » paie toute la commande ou une partie avec le solde du client. Le solde ne descend jamais sous zéro.</li>
+	<li>« Dépôt » met de l'argent sur le compte du client sans rien payer. Donnez-lui le reçu « Dépôt sur votre compte ».</li>
+	<li>Rendre l'argent du compte se fait sur la fiche client, onglet « Compte », avec le droit « Rendre l'argent du compte d'un client » (donné d'office à la Direction et à la caisse).</li>
+	<li>Un dépôt Orange Money fait par le client sur le site arrive sur sa fiche (onglet « Compte ») et dans « À valider ». Il n'est jamais validé tout seul.</li>
+	<li>Sans le droit « Encaissements », l'écran Caisse est refusé.</li>
+</ul>
+{% endblock %}

@@ -1,0 +1,42 @@
+{#
+	Page introuvable (erreur 404, en production seulement) : dans l'habillage
+	du site vitrine, avec les pages utiles et WhatsApp, plutôt que la page
+	anglaise de Symfony. La réponse garde son code 404 et n'est pas indexée
+	(docs/referencement.md). Sur l'ERP local, d'abord le tableau de bord.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% block title %}Page introuvable · Succès Imprim{% endblock %}
+{% block description %}Cette page n'existe pas ou n'existe plus. Retrouvez nos produits, le calculateur de prix, nos réalisations ou contactez l'atelier à Bamako.{% endblock %}
+{% block canonique %}{% if site_en_ligne() %}<meta name="robots" content="noindex">{% endif %}{% endblock %}
+
+{% block entete %}
+	<style>.si-liens-404{list-style:none;margin:0 0 24px;padding:0;display:flex;flex-wrap:wrap;gap:10px}.si-liens-404 a{display:inline-block;padding:10px 16px;border:1px solid var(--bordure);border-radius:999px;background:#fff;color:var(--bleu);font-weight:600;text-decoration:none}.si-liens-404 a:hover,.si-liens-404 a:focus-visible{border-color:var(--bleu)}</style>
+{% endblock %}
+
+{% block contenu %}
+	<section class="si-bandeau">
+		<div class="si-cadre">
+			<p class="si-ariane"><a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span>Page introuvable</span></p>
+			<h1>Cette page est introuvable</h1>
+			<p>L'adresse est peut-être mal tapée, ou la page a été retirée. Voici où trouver ce que vous cherchez.</p>
+		</div>
+	</section>
+
+	<section class="si-section">
+		<div class="si-cadre">
+			{% if not site_en_ligne() %}
+				<p><a href="{{ path('app_home') }}" class="si-bouton si-bouton-bleu">Retour au tableau de bord</a></p>
+			{% endif %}
+			{% set pages = site_menu()|merge(site_pied())|filter(l => l.route not in ['app_site_suivi']) %}
+			<ul class="si-liens-404">
+				{% for lien in pages %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+				{% if site_lien('app_site_suivi') %}<li><a href="{{ site_lien('app_site_suivi') }}">Suivre ma commande</a></li>{% endif %}
+			</ul>
+			<div class="si-accroche-actions">
+				{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Demander un devis</a>{% endif %}
+				{% if whatsapp %}<a href="{{ whatsapp }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">Écrire sur WhatsApp</a>{% endif %}
+			</div>
+		</div>
+	</section>
+{% endblock %}

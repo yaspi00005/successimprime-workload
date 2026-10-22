@@ -1,0 +1,9 @@
+{# Pagination par 50 (lier les dossiers). Variables : total, page. #}
+{% set pages = (total / 50)|round(0, 'ceil') %}
+{% if pages > 1 %}
+	<nav class="dc-pages" aria-label="Pages">
+		{% if page > 1 %}<a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: page - 1})) }}">‹ Précédente</a>{% endif %}
+		<span>Page {{ page }} sur {{ pages }}</span>
+		{% if page < pages %}<a href="{{ path(app.request.attributes.get('_route'), app.request.query.all|merge({page: page + 1})) }}">Suivante ›</a>{% endif %}
+	</nav>
+{% endif %}

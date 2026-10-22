@@ -1,0 +1,29 @@
+{#
+	Carte « Installez Succès Imprim » du tableau de bord (docs/espace-client.md,
+	« Application sur l'écran d'accueil »), en attendant les applications
+	Android et iPhone. Cachée au départ : public/js/espace-installer.js la
+	montre la première fois sur cet appareil, seulement si le navigateur sait
+	installer (Android, Chrome, Edge, Samsung Internet) ou sur iPhone et iPad,
+	jamais dans l'application déjà installée. « Plus tard » : de nouveau une
+	fois sept jours après, puis plus jamais (Mon compte garde le bouton).
+	Pas de voile : la page reste cliquable. Ni montant ni donnée personnelle.
+#}
+<section class="ec-inviter" data-installer-carte hidden aria-labelledby="ec-inviter-titre">
+	<div class="ec-inviter-poignee" aria-hidden="true"></div>
+	<div class="ec-inviter-tete">
+		<img class="ec-inviter-icone" src="{{ asset('images/icone-180.png') }}" alt="" width="52" height="52">
+		<div>
+			<h2 id="ec-inviter-titre" data-ordinateur="Installez Succès Imprim sur cet ordinateur">Installez Succès Imprim sur votre téléphone</h2>
+			<p class="ec-petit" data-ordinateur="Ouvrez votre espace d'un clic, dans sa propre fenêtre, et recevez les alertes de vos commandes.">Ouvrez votre espace d'un geste depuis l'écran d'accueil et recevez les alertes de vos commandes.</p>
+		</div>
+	</div>
+	{% include 'espace/app/_installer_etapes.html.twig' with {id: 'ec-inviter-etapes'} %}
+	<p class="ec-inviter-merci" data-installer-merci hidden tabindex="-1" data-ordinateur="C'est fait : Succès Imprim est installé sur cet ordinateur. Merci !">C'est fait : Succès Imprim est sur votre écran d'accueil. Merci !</p>
+	<div class="ec-boutons">
+		<button type="button" class="ec-bouton bleu" data-installer-ajouter aria-controls="ec-inviter-etapes" data-ordinateur="Installer l'application">Ajouter à l'écran d'accueil</button>
+		<button type="button" class="ec-bouton bleu" data-installer-fait hidden>C'est fait</button>
+		<button type="button" class="ec-bouton clair" data-installer-plus-tard>Plus tard</button>
+		<button type="button" class="ec-bouton clair" data-installer-fermer hidden>Fermer</button>
+	</div>
+</section>
+<p class="ec-sr" aria-live="polite" data-installer-annonce></p>

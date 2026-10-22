@@ -1,0 +1,196 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mon compte (maquette EC04) : entreprise, adresses de livraison,
+	utilisateurs, sécurité. La raison sociale et le NIF ne changent pas en
+	ligne : la personne qui gère le compte les propose, l'atelier valide.
+	Un particulier a la même page sans les parties entreprise.
+#}
+{% block title %}Mon compte{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mon compte</a>{% endblock %}
+
+{% block contenu %}
+	{% set modifiable = entreprise and gere and not (proposition and proposition.estEnAttente()) %}
+	<div class="ec-titre-page">
+		<h1 class="ec-bureau">Mon compte</h1>
+		{% if modifiable %}<button type="submit" form="entreprise" class="ec-bouton-vert ec-bureau">Enregistrer</button>{% endif %}
+	</div>
+
+	<div class="ec-compte-grille">
+		{% if entreprise %}
+			<form id="entreprise" class="ec-carte ec-bloc" method="post" action="{{ path('app_espace_compte_entreprise') }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<h2>Entreprise</h2>
+				<div class="ec-champs-deux">
+					<div>
+						<label class="ec-etiquette" for="raison_sociale">Raison sociale</label>
+						{% if modifiable %}
+							<input class="ec-saisie ec-saisie-sobre" id="raison_sociale" name="raison_sociale" maxlength="100" required value="{{ client.raisonSociale }}">
+						{% else %}
+							<div class="ec-valeur" id="raison_sociale">{{ client.raisonSociale ?: '—' }}</div>
+						{% endif %}
+					</div>
+					<div>
+						<label class="ec-etiquette" for="nif">NIF</label>
+						{% if modifiable %}
+							<input class="ec-saisie ec-saisie-sobre" id="nif" name="nif" maxlength="30" value="{{ client.nif }}" placeholder="Numéro d'identification fiscale">
+						{% else %}
+							<div class="ec-valeur" id="nif">{{ client.nif ?: '—' }}</div>
+						{% endif %}
+					</div>
+					<div>
+						<span class="ec-etiquette">Facturé par</span>
+						<div class="ec-valeur">{{ facturePar ?? 'Succès Imprim' }}</div>
+					</div>
+					{% if voitConditions %}
+						<div>
+							<span class="ec-etiquette">Conditions</span>
+							<div class="ec-valeur">{{ conditions ?? 'Comptant' }}</div>
+						</div>
+					{% endif %}
+				</div>
+				{% if voitConditions %}<p class="ec-petit ec-note-carte">Les conditions commerciales sont fixées avec votre conseillère.</p>{% endif %}
+				{% if proposition and proposition.estEnAttente() %}
+					<p class="ec-encart ambre">Changement demandé le {{ proposition.creeLe|date('d/m') }}{{ proposition.auteur ? ' par ' ~ proposition.auteur }} :
+						{% for champ, v in proposition.champs %}{{ champ == 'nif' ? 'NIF' : 'raison sociale' }} « {{ v.apres ?? '—' }} »{{ not loop.last ? ', ' }}{% endfor %}.
+						En attente de validation par l'atelier.</p>
+				{% elseif proposition %}
+					<p class="ec-encart">Votre demande du {{ proposition.creeLe|date('d/m') }} n'a pas été retenue{{ proposition.motif ? ' : ' ~ proposition.motif }}.</p>
+				{% elseif modifiable %}
+					<p class="ec-petit ec-note-carte">Un changement de raison sociale ou de NIF est vérifié par l'atelier avant d'apparaître sur vos documents.</p>
+				{% endif %}
+				{% if modifiable %}<button type="submit" class="ec-bouton bleu ec-telephone" style="margin-top:.6rem">Enregistrer</button>{% endif %}
+			</form>
+		{% else %}
+			<section class="ec-carte ec-bloc">
+				<h2>Mes coordonnées</h2>
+				<ul class="ec-liste">
+					<li class="ec-ligne"><span class="ec-petit">Nom</span><span>{{ compte.nomAffiche }}</span></li>
+					<li class="ec-ligne"><span class="ec-petit">Téléphone</span><span>+223 {{ compte.telephone|slice(3)|split('', 2)|join(' ') }}</span></li>
+					{% if client.email %}<li class="ec-ligne"><span class="ec-petit">E-mail</span><span>{{ client.email }}</span></li>{% endif %}
+					{% if client.adresse or client.ville %}<li class="ec-ligne"><span class="ec-petit">Adresse</span><span style="text-align:right">{{ [client.adresse, client.ville]|filter(v => v)|join(', ') }}</span></li>{% endif %}
+					<li class="ec-ligne"><span class="ec-petit">Facturé par</span><span>{{ facturePar ?? 'Succès Imprim' }}</span></li>
+				</ul>
+				<p class="ec-petit ec-note-carte">Pour changer ces informations, écrivez-nous : nous les mettons à jour sur votre fiche.</p>
+			</section>
+		{% endif %}
+
+		<section class="ec-carte ec-bloc">
+			<h2>Adresses de livraison</h2>
+			<ul class="ec-liste ec-adresses">
+				{% for a in adresses %}
+					<li>
+						{% if gere %}<a class="ec-adresse" href="{{ path('app_espace_adresses', {modifier: a.id}) }}#formulaire">{% else %}<div class="ec-adresse">{% endif %}
+							<span class="ec-epingle" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 21s-6-5.4-6-11a6 6 0 1 1 12 0c0 5.6-6 11-6 11z"/><circle cx="12" cy="10" r="2.2"/></svg></span>
+							<span class="ec-adresse-texte"><b>{{ a.libelle }}</b><span class="ec-petit">{{ [a.adresse, a.repere]|filter(v => v)|join(' · ') }}</span></span>
+							{% if a.parDefaut %}<span class="ec-pastille">par défaut</span>{% endif %}
+						{% if gere %}</a>{% else %}</div>{% endif %}
+					</li>
+				{% else %}
+					<li class="ec-petit">Aucune adresse enregistrée : l'atelier vous demande où livrer à chaque commande.</li>
+				{% endfor %}
+			</ul>
+			{% if gere %}<a class="ec-lien-ajout" href="{{ path('app_espace_adresses') }}#formulaire">+ Ajouter une adresse</a>{% endif %}
+		</section>
+
+		{% if entreprise %}
+			<section class="ec-carte ec-bloc">
+				<div class="ec-bloc-tete">
+					<h2>Utilisateurs du compte</h2>
+					{% if gere %}<a class="ec-lien" href="{{ path('app_espace_utilisateur_nouveau') }}">+ Inviter</a>{% endif %}
+				</div>
+				<ul class="ec-liste">
+					{% for u in utilisateurs %}
+						{% set lien = gere and u.id != compte.id %}
+						<li>
+							{% if lien %}<a class="ec-personne" href="{{ path('app_espace_utilisateur', {id: u.id}) }}">{% else %}<div class="ec-personne">{% endif %}
+								<span class="ec-avatar ec-avatar-carre">{{ u.getInitiales() }}</span>
+								<span><b>{{ u.nomAffiche }}{{ u.id == compte.id ? ' (vous)' }}</b><span class="ec-petit">{{ u.fonction ? u.fonction ~ ' · ' }}{{ u.resumeDroits }}</span></span>
+								{% if lien %}<span class="fl" aria-hidden="true">›</span>{% endif %}
+							{% if lien %}</a>{% else %}</div>{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+
+		<section class="ec-carte ec-bloc" id="securite">
+			<h2>Sécurité</h2>
+			<ul class="ec-liste ec-securite">
+				<li class="ec-ligne"><span class="ec-petit">Connexion</span><b>numéro {{ telephoneMasque }}{{ compte.aUnMotDePasse ? ' et mot de passe' }}</b></li>
+				<li class="ec-ligne"><span class="ec-petit">Codes (mot de passe oublié)</span><b>{{ emailCodesMasque ? 'par e-mail à ' ~ emailCodesMasque : 'par SMS au ' ~ telephoneMasque }}</b></li>
+				<li class="ec-ligne"><span class="ec-petit">Appareils connectés</span><b>{% for a in appareils %}{{ a.libelle }}{{ a.courant ? ' (cet appareil)' : (a.nombre > 1 ? ' (' ~ a.nombre ~ ')') }}{{ not loop.last ? ' · ' }}{% else %}cet appareil{% endfor %}</b></li>
+				<li class="ec-ligne"><span class="ec-petit">Dernière connexion</span><b>{% if compte.derniereConnexion %}{{ compte.derniereConnexion|date('Y-m-d') == 'now'|date('Y-m-d') ? 'aujourd\'hui ' ~ compte.derniereConnexion|date('H:i') : 'le ' ~ compte.derniereConnexion|date('d/m/Y à H:i') }}{% else %}—{% endif %}</b></li>
+			</ul>
+			<div class="ec-securite-actions">
+				<form method="post" action="{{ path('app_espace_appareils_deconnecter') }}" data-confirmer="Déconnecter tous les autres appareils ? Cet appareil reste connecté.">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<button type="submit" class="ec-bouton-blanc">Déconnecter les autres appareils</button>
+				</form>
+				<a class="ec-bouton-blanc" href="{{ path('app_espace_mes_donnees') }}" download>Télécharger mes données</a>
+			</div>
+			<details class="ec-mdp">
+				<summary>{{ compte.aUnMotDePasse ? 'Changer mon mot de passe' : 'Choisir un mot de passe' }}</summary>
+				<form method="post" action="{{ path('app_espace_mot_de_passe') }}" style="margin-top:.75rem;display:grid;gap:.5rem">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace-mdp') }}">
+					<input type="hidden" name="telephone" value="{{ compte.telephone }}" autocomplete="username">
+					<label for="nouveau" class="ec-petit">Nouveau mot de passe (8 caractères ou plus)</label>
+					<input type="password" id="nouveau" name="mot_de_passe" minlength="8" autocomplete="new-password" required class="ec-saisie ec-saisie-sobre">
+					<label for="confirmation" class="ec-petit">Confirmer</label>
+					<input type="password" id="confirmation" name="confirmation" minlength="8" autocomplete="new-password" required class="ec-saisie ec-saisie-sobre">
+					<button type="submit" class="ec-bouton bleu">Enregistrer</button>
+				</form>
+			</details>
+			{% if compte.aUnMotDePasse %}
+				<details class="ec-mdp">
+					<summary>{{ emailCodesMasque ? 'Changer l\'e-mail de mes codes' : 'Recevoir mes codes par e-mail' }}</summary>
+					<form method="post" action="{{ path('app_espace_email') }}" style="margin-top:.75rem;display:grid;gap:.5rem">
+						<input type="hidden" name="_token" value="{{ csrf_token('espace-email') }}">
+						<label for="email-codes" class="ec-petit">Adresse e-mail (les codes y arrivent au lieu d'un SMS)</label>
+						<input type="email" id="email-codes" name="email" maxlength="180" autocomplete="email" required class="ec-saisie ec-saisie-sobre">
+						<label for="mdp-actuel" class="ec-petit">Mot de passe actuel</label>
+						<input type="password" id="mdp-actuel" name="mot_de_passe" autocomplete="current-password" required class="ec-saisie ec-saisie-sobre">
+						<button type="submit" class="ec-bouton bleu">Enregistrer</button>
+					</form>
+				</details>
+			{% endif %}
+		</section>
+	</div>
+
+	<div class="ec-compte-liens">
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_notifications') }}#preferences">
+			<span><b>Notifications</b><span class="ec-petit">Comment je suis prévenu : application, SMS, e-mail</span></span>
+			<span class="fl" aria-hidden="true">›</span>
+		</a>
+		{% if coque.fidelite ?? false %}
+			{% set fidelite = fidelite_espace(client) %}
+			<a class="ec-carte ec-rangee" href="{{ path('app_espace_fidelite') }}">
+				<span><b>Fidélité</b><span class="ec-petit">{{ fidelite.disponible|number_format(0, ',', ' ') }} points · {{ fidelite.disponibleF|number_format(0, ',', ' ') }} F</span></span>
+				<span class="fl" aria-hidden="true">›</span>
+			</a>
+		{% endif %}
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_reclamations') }}">
+			<span><b>Réclamations</b><span class="ec-petit">{{ coque.ecrit ? 'Un souci sur un travail ? Signalez-le avec une photo' : 'Suivi des réclamations de votre entreprise' }}</span></span>
+			<span class="fl" aria-hidden="true">›</span>
+		</a>
+		{% if coque.ecrit %}
+			{% set aDonner = avis_a_donner(client) %}
+			<a class="ec-carte ec-rangee" href="{{ path('app_espace_avis') }}">
+				<span><b>Mes avis</b><span class="ec-petit">{{ aDonner > 0 ? aDonner ~ ' avis à donner' : 'Notez vos commandes livrées' }}</span></span>
+				<span class="fl" aria-hidden="true">›</span>
+			</a>
+		{% endif %}
+		{# Toujours là (la carte du tableau de bord, elle, s'arrête après deux « Plus tard ») : public/js/espace-installer.js. #}
+		<div class="ec-carte ec-installer" data-installer hidden>
+			<span><b>Application Succès Imprim</b><span class="ec-petit">Ajoutez votre espace sur l'écran d'accueil.</span></span>
+			<button type="button" class="ec-bouton-petit" data-installer-ajouter aria-controls="ec-compte-etapes">Installer</button>
+			{% include 'espace/app/_installer_etapes.html.twig' with {id: 'ec-compte-etapes'} %}
+		</div>
+		<div class="ec-boutons ec-telephone"><a class="ec-bouton clair" href="{{ path('app_espace_deconnexion') }}">Se déconnecter</a></div>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/espace-installer.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,65 @@
+{# Contenu de la cloche (maquette NT01) : rendu avec la page, puis rechargé à chaque ouverture (app_notification_cloche). #}
+{% set livreurSeul = livreur_seul() %}
+{% set reclamationsANotifier = livreurSeul ? [] : mes_reclamations_a_notifier() %}
+{% set ne = notifications_equipe() %}
+{% set nombreNotifs = ne.non_lues + reclamationsANotifier|length %}
+<div class="si-cloche-tete">
+	<b>Notifications {% if nombreNotifs > 0 %}<span class="si-cloche-nombre">{{ nombreNotifs > 99 ? '99+' : nombreNotifs }}</span>{% endif %}</b>
+	{% if nombreNotifs > 0 %}
+		<form method="post" action="{{ path('app_notification_tout_lu') }}" data-si-tout-lu>
+			<input type="hidden" name="_token" value="{{ csrf_token('notifications') }}">
+			<button type="submit" class="si-cloche-toutlu">Tout marquer lu</button>
+		</form>
+	{% endif %}
+</div>
+{% set urgentes = ne.critiques|merge(ne.urgentes) %}
+{% if ne.toutes is not empty %}
+	<div class="si-cloche-onglets" role="tablist" aria-label="Trier les notifications">
+		<button type="button" class="actif" data-si-onglet="tout" role="tab" aria-selected="true">Tout · {{ ne.toutes|length + reclamationsANotifier|length }}</button>
+		{% if urgentes is not empty %}<button type="button" data-si-onglet="urgent" role="tab" aria-selected="false">Urgent · {{ urgentes|length }}</button>{% endif %}
+		{% if ne.a_faire is not empty %}<button type="button" data-si-onglet="a_faire" role="tab" aria-selected="false">À faire · {{ ne.a_faire|length }}</button>{% endif %}
+		{% if ne.mentions is not empty %}<button type="button" data-si-onglet="mention" role="tab" aria-selected="false">Mentions · {{ ne.mentions|length }}</button>{% endif %}
+	</div>
+{% endif %}
+{% if reclamationsANotifier is not empty or ne.toutes is not empty %}
+	<ul class="si-cloche-liste">
+		{% for reclamationANotifier in reclamationsANotifier %}
+			<li data-groupe="a_faire">
+				<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item si-cloche-item" title="Réclamation validée — passez à la caisse">
+					<span class="si-cloche-icone si-cloche-icone-caisse" aria-hidden="true"><i class="fa fa-money"></i></span>
+					<span class="si-cloche-corps">
+						<span class="si-cloche-texte">Réclamation validée — passez à la caisse</span>
+						{% if reclamationANotifier.dateValidation %}<time class="si-cloche-quand" datetime="{{ reclamationANotifier.dateValidation|date('c') }}">{{ reclamationANotifier.dateValidation|temps_ecoule(true) }}</time>{% endif %}
+					</span>
+				</a>
+			</li>
+		{% endfor %}
+		{% for groupe, titreGroupe in {urgent: 'Urgent', a_faire: 'À faire', info: 'Info'} %}
+			{% set lignes = groupe == 'urgent' ? urgentes : (groupe == 'a_faire' ? ne.a_faire : ne.info) %}
+			{% if lignes is not empty %}
+				<li class="si-cloche-groupe si-cloche-groupe-{{ groupe }}" data-groupe="{{ groupe }}" aria-hidden="true">{{ titreGroupe }}</li>
+				{% for n in lignes|slice(0, 12) %}
+					<li data-groupe="{{ groupe }}"{% if n.type == 'mention' %} data-mention="1"{% endif %}>
+						<a href="{{ path('app_notification_ouvrir', {id: n.id}) }}" class="dropdown-item si-cloche-item si-niv-{{ n.niveau }}{{ n.lue ? '' : ' non-lue' }}" title="{{ titre_notification(n) }}">
+							<span class="si-cloche-icone si-icone-{{ n.niveau }}" aria-hidden="true"><i class="{{ icone_notification(n) }}"></i></span>
+							<span class="si-cloche-corps">
+								<span class="si-cloche-ligne1">
+									<span class="si-cloche-texte">{{ titre_notification(n) }}{% if n.compteur > 1 %} <small class="si-notif-fois">({{ n.compteur }} fois)</small>{% endif %}</span>
+									{% if n.niveau in ['critique', 'urgent'] %}<span class="si-badge-niveau si-badge-{{ n.niveau }}">{{ n.libelleNiveau }}</span>{% endif %}
+								</span>
+								{% if n.detail %}<span class="si-cloche-detail">{{ n.detail }}</span>{% endif %}
+								<span class="si-cloche-pied-item">
+									{% if n.actionLibelle %}<span class="si-cloche-action">{{ n.actionLibelle }} ›</span>{% endif %}
+									<time class="si-cloche-quand" datetime="{{ n.derniereFois|date('c') }}">{{ n.derniereFois|temps_ecoule(true) }}</time>
+								</span>
+							</span>
+						</a>
+					</li>
+				{% endfor %}
+			{% endif %}
+		{% endfor %}
+	</ul>
+{% else %}
+	<p class="si-cloche-vide"><i class="far fa-bell-slash" aria-hidden="true"></i>Aucune notification en attente</p>
+{% endif %}
+<a href="{{ path('app_notification_index') }}" class="dropdown-item si-cloche-pied">Voir toutes les notifications</a>

@@ -2,13 +2,16 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\StockEntreesRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: StockEntreesRepository::class)]
-class StockEntrees
+class StockEntrees implements AppartientASociete
 {
+    use SocieteTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -17,8 +20,8 @@ class StockEntrees
     #[ORM\ManyToOne(inversedBy: 'stockEntrees')]
     private ?Articles $article = null;
 
-    #[ORM\Column(type: Types::INTEGER)]
-    private ?int $quantites = null;
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3)]
+    private ?string $quantites = null;
 
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $prix = null;
@@ -43,14 +46,14 @@ class StockEntrees
         return $this;
     }
 
-    public function getQuantites(): ?int
+    public function getQuantites(): ?float
     {
-        return $this->quantites;
+        return $this->quantites !== null ? (float) $this->quantites : null;
     }
 
-    public function setQuantites(int $quantites): static
+    public function setQuantites(float|int|string $quantites): static
     {
-        $this->quantites = $quantites;
+        $this->quantites = number_format((float) $quantites, 3, '.', '');
 
         return $this;
     }

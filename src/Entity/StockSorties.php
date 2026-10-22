@@ -2,13 +2,16 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\StockSortiesRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: StockSortiesRepository::class)]
-class StockSorties
+class StockSorties implements AppartientASociete
 {
+    use SocieteTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -20,8 +23,8 @@ class StockSorties
     #[ORM\ManyToOne(inversedBy: 'stockSorties')]
     private ?CommandesDetails $commandeDetail = null;
 
-    #[ORM\Column(type: Types::INTEGER)]
-    private ?int $quantite = null;
+    #[ORM\Column(type: Types::DECIMAL, precision: 14, scale: 3)]
+    private ?string $quantite = null;
 
     #[ORM\Column]
     private ?\DateTimeImmutable $date = null;
@@ -73,14 +76,14 @@ private ?string $referenceOrigine = null;
         return $this;
     }
 
-    public function getQuantite(): ?int
+    public function getQuantite(): ?float
     {
-        return $this->quantite;
+        return $this->quantite !== null ? (float) $this->quantite : null;
     }
 
-    public function setQuantite(int $quantite): static
+    public function setQuantite(float|int|string $quantite): static
     {
-        $this->quantite = $quantite;
+        $this->quantite = number_format((float) $quantite, 3, '.', '');
 
         return $this;
     }

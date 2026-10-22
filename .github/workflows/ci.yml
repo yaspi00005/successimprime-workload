@@ -1,0 +1,94 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Lint et tests (PHP 8.4)
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, gd, zip, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Installer les dependances
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Verifier le conteneur de services
+        run: php bin/console lint:container
+
+      - name: Verifier les gabarits Twig
+        run: php bin/console lint:twig templates
+
+      - name: Verifier la configuration YAML
+        run: php bin/console lint:yaml config --parse-tags
+
+      - name: Tests automatises
+        run: php vendor/bin/phpunit
+
+  migrations:
+    name: Migrations sur MariaDB
+    runs-on: ubuntu-latest
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+    env:
+      APP_ENV: test
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/app?serverVersion=10.11.0-MariaDB&charset=utf8mb4
+      MESSENGER_TRANSPORT_DSN: doctrine://default?auto_setup=0
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: ctype, iconv, intl, gd, zip, pdo_mysql
+          coverage: none
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Installer les dependances
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Creer la base
+        run: php bin/console doctrine:database:create
+
+      - name: Executer toutes les migrations sur une base vide
+        run: php bin/console doctrine:migrations:migrate --no-interaction
+
+      - name: Verifier que la base correspond aux entites
+        run: php bin/console doctrine:schema:validate
+
+      - name: Verifier que les migrations s'annulent
+        run: php bin/console doctrine:migrations:migrate first --no-interaction

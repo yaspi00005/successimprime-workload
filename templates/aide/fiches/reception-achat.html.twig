@@ -1,0 +1,22 @@
+{# Fiche du guide « reception-achat » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu Stock et achats › « Réceptions », puis « Réceptionner » sur la commande arrivée.</li>
+	<li>Dans « Commandé, livré, facturé », corrigez pour chaque ligne le « Reçu », le « Bon état » et le « Facturé ». Pour une casse, écrivez sa nature (« écrasé ») et touchez « Ajouter une photo ».</li>
+	<li>Dans « Frais réels », saisissez le transport et le transit vraiment payés.</li>
+	<li>Dans « Contrôle à 3 points », notez le numéro et la date du bon de livraison, puis le numéro, le montant et la date de la facture du fournisseur.</li>
+	<li>Vérifiez la date « Arrivée le » et l'« Entrée en stock », puis touchez « Valider la réception ».</li>
+	<li>Une casse facturée crée une réclamation : touchez « Envoyer sur WhatsApp », le message au fournisseur est prêt. Joignez la photo dans WhatsApp.</li>
+	<li>Quand le fournisseur répond, choisissez « Remplacée », « Déduite (avoir reçu) » ou « Close sans suite ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Seules les unités en bon état entrent en stock, au coût de revient réel. Une réception ne se refait pas.</li>
+	<li>Les frais réels remplacent les frais prévus ; le coût de revient au m² se recalcule.</li>
+	<li>Tant qu'une réclamation est ouverte, le paiement du solde est bloqué, aussi dans Finances › Dépenses. Il se débloque à la fin de la réclamation, ou avec « Forcer le paiement du solde » et une note.</li>
+	<li>Ce qui manque reste noté sur la ligne (« manque 1 ») et la commande est close : commandez le reste à nouveau.</li>
+	<li>La date d'arrivée compte dans la performance du fournisseur.</li>
+</ul>
+{% endblock %}

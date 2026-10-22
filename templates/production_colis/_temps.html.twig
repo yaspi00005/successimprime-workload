@@ -1,0 +1,34 @@
+{#
+	Temps réel vs estimé (PD06) : par étape (impression, séchage, finition,
+	contrôle), l'estimé du machiniste (OP03, ou le rouleau et le profil de la
+	machine) et le réel mesuré (TempsEtapes). Vert : dans l'estimé ; orange :
+	jusqu'à 10 % de plus ; rouge au-delà. Variable temps : ControlesFinaux::temps().
+#}
+{% macro ecart(estime, reel) %}{% set e = estime and reel is not null ? reel / estime : null %}{{ e is null ? '' : (e <= 1 ? 'vert' : (e <= 1.1 ? 'orange' : 'rouge')) }}{% endmacro %}
+<section class="si-fab-carte" data-bloc="temps">
+	<h2>Temps réel vs estimé</h2>
+	{% if temps.lignes is empty %}
+		<p class="si-fab-muet mb-0">Aucun travail terminé.</p>
+	{% else %}
+		<table class="si-ctl-table si-ctl-temps" data-sans-filtres>
+			<thead class="visually-hidden"><tr><th scope="col">Étape</th><th scope="col" class="num">Estimé</th><th scope="col" class="num">Réel</th></tr></thead>
+			<tbody>
+				{% for l in temps.lignes %}
+					{% if temps.lignes|length > 1 %}<tr class="sous"><td colspan="3">{{ l.nom }}</td></tr>{% endif %}
+					{% for e in l.etapes %}
+						<tr>
+							<td>{{ e.libelle }}</td>
+							<td class="num">{{ e.estime is not null ? e.estime|temps_estime : '–' }}</td>
+							<td class="num {{ _self.ecart(e.estime, e.reel) }}">{% if e.reel is not null %}<b>{{ e.reel|temps_estime }}</b>{% else %}<span class="si-fab-muet" title="Pas encore mesuré">–</span>{% endif %}</td>
+						</tr>
+					{% endfor %}
+					<tr class="total"><td>{{ temps.lignes|length > 1 ? 'Sous-total' : 'Total' }}</td><td class="num">{{ l.estime is not null ? l.estime|temps_estime : '–' }}</td><td class="num {{ _self.ecart(l.estime, l.reel) }}"><b>{{ l.reel is not null ? l.reel|temps_estime : '–' }}</b></td></tr>
+				{% endfor %}
+				{% if temps.lignes|length > 1 %}
+					<tr class="total"><td>Total de la commande</td><td class="num">{{ temps.estime is not null ? temps.estime|temps_estime : '–' }}</td><td class="num {{ _self.ecart(temps.estime, temps.reel) }}"><b>{{ temps.reel is not null ? temps.reel|temps_estime : '–' }}</b></td></tr>
+				{% endif %}
+			</tbody>
+		</table>
+		<p class="si-fab-note">Ces temps améliorent les prochaines estimations de délai.</p>
+	{% endif %}
+</section>

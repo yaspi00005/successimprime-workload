@@ -1,0 +1,45 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Contrôle de l'entretien · {{ jour|date_fr('EEE d/MM') }}{% endblock %}
+
+{% block body %}
+	<div class="si-en si-en-ctrl">
+		<form method="get" class="si-tr-choix">
+			<a class="btn btn-light btn-sm" href="{{ path('app_entretien_controle', {jour: jour|date_modify('-1 day')|date('Y-m-d')}) }}" aria-label="Jour précédent"><i class="fas fa-chevron-left"></i></a>
+			<input type="date" name="jour" value="{{ jour|date('Y-m-d') }}" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Jour">
+			<a class="btn btn-light btn-sm" href="{{ path('app_entretien_controle', {jour: jour|date_modify('+1 day')|date('Y-m-d')}) }}" aria-label="Jour suivant"><i class="fas fa-chevron-right"></i></a>
+		</form>
+		<p class="si-pg-note">{{ nombre }} tâche{{ nombre > 1 ? 's' }} faite{{ nombre > 1 ? 's' }} tirée{{ nombre > 1 ? 's' }} au hasard chaque jour (tuile Barème des points) ; vous pouvez aussi contrôler les autres.</p>
+		{% if parAgent is empty %}
+			<p class="si-ac-vide card p-3">Aucune tâche d'entretien ce jour.</p>
+		{% endif %}
+		{% for g in parAgent %}
+			<section class="card si-ac-bloc">
+				<h2>{{ g.agent ? g.agent|nom_pointage : 'Sans agent' }}{% if g.agent %} <a href="{{ path('app_entretien_index', {agent: g.agent.id}) }}" class="si-pg-note">voir sa journée</a>{% endif %}</h2>
+				<ul class="si-en-ctrl-liste">
+					{% for t in g.taches %}
+						<li class="{{ t.id in tirees ? 'si-en-tiree' }}">
+							{% if t.photo %}<a href="{{ path('app_entretien_photo', {id: t.id}) }}" target="_blank"><img src="{{ path('app_entretien_photo', {id: t.id}) }}" alt="Photo de {{ t.titre }}"></a>{% else %}<span class="si-en-sans">{{ t.estFaite ? 'sans photo' : 'à faire' }}</span>{% endif %}
+							<div class="si-en-ctrl-info">
+								<a href="{{ path('app_entretien_tache', {id: t.id}) }}"><b>{{ t.heure }} · {{ t.titre }}</b></a>
+								<small>{{ t.estFaite ? 'fait à ' ~ t.faitLe|date('H:i') : (t.finCreneau and maintenant > t.finCreneau ? 'créneau dépassé' : 'créneau ' ~ t.heure ~ (t.heureFin ? ' – ' ~ t.heureFin)) }}{{ t.etapes is not empty ? ' · ' ~ t.etapesFaites ~ '/' ~ t.etapes|length ~ ' étapes' }}</small>
+								{% if t.id in tirees %}<span class="si-tr-badge si-tr-retard">À contrôler</span>{% endif %}
+							</div>
+							<span class="si-tr-pts{{ points[t.id] < 0 ? ' si-tr-pts-moins' }}">{{ points[t.id] > 0 ? '+' }}{{ points[t.id] }} pts</span>
+							<div class="si-en-ctrl-actions">
+								{% if t.controle %}
+									<span class="si-tr-badge {{ t.controle == 'conforme' ? 'si-tr-ok' : 'si-tr-retard' }}">{{ t.controle == 'conforme' ? 'Conforme' : 'Non conforme' }}</span>
+								{% elseif t.estFaite %}
+									<form method="post" action="{{ path('app_entretien_controler', {id: t.id}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="resultat" value="conforme"><button class="btn btn-success btn-sm">Conforme</button></form>
+									<form method="post" action="{{ path('app_entretien_controler', {id: t.id}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="resultat" value="non_conforme"><button class="btn btn-outline-danger btn-sm">À refaire</button></form>
+								{% endif %}
+							</div>
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endfor %}
+	</div>
+{% endblock %}

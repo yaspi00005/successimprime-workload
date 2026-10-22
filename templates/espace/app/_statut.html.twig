@@ -1,0 +1,14 @@
+{# Pastille d'état d'une commande (carte = EspaceClient::carte). #}
+{% set c = carte.courante %}
+{% if carte.refuseeEntreprise|default(false) %}{% set st = ['Refusée par l\'entreprise', 'gris'] %}
+{% elseif carte.aValiderEntreprise|default(false) %}{% set st = ['À valider · entreprise', 'ambre'] %}
+{% elseif carte.annulee %}{% set st = ['Annulée', 'gris'] %}
+{% elseif carte.aConfirmer|default(false) %}{% set st = ['Reçue · à confirmer', 'ambre'] %}
+{% elseif carte.terminee %}{% set st = [carte.etapes[5].libelle, 'gris'] %}
+{% elseif carte.batEnAttente %}{% set st = ['BAT à valider', 'rouge'] %}
+{% elseif c.cle == 'bat' %}{% set st = ['Préparation', 'ambre'] %}
+{% elseif c.cle == 'impression' %}{% set st = ['Impression', ''] %}
+{% elseif c.cle == 'finition' %}{% set st = ['Finition', 'ambre'] %}
+{% else %}{% set st = [c.detail == 'en route' ? 'En livraison' : carte.etapes[4].libelle, 'vert'] %}
+{% endif %}
+<span class="ec-pastille {{ st[1] }}">{{ st[0] }}</span>

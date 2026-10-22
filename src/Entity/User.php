@@ -248,6 +248,27 @@ class User implements
 
     /*
      * ============================================================
+     * INFORMATIONS SENSIBLES
+     * ============================================================
+     *
+     * Comme ROLE_STATS_GLOBAL, ces autorisations s'activent ou se
+     * desactivent une par une pour chaque utilisateur, en plus de
+     * son profil principal (demande de Yaya du 10/10/2026).
+     * ============================================================
+     */
+
+    public const ROLE_STATS_VENTES =
+        'ROLE_STATS_VENTES';
+
+    public const ROLE_COUT_MARGE =
+        'ROLE_COUT_MARGE';
+
+    public const ROLE_PAIEMENT_VOIR =
+        'ROLE_PAIEMENT_VOIR';
+
+
+    /*
+     * ============================================================
      * RÔLE TECHNIQUE SYMFONY
      * ============================================================
      *
@@ -294,6 +315,27 @@ class User implements
 
     #[ORM\Column]
     private array $roles = [];
+
+
+    /*
+     * Role de base (Reglages, Roles et droits) et les droits ajoutes ou
+     * retires pour cette personne seulement (fiche utilisateur, U02).
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(onDelete: 'SET NULL')]
+    private ?RoleUtilisateur $profil = null;
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $droitsAjoutes = [];
+
+    /** @var list<string> */
+    #[ORM\Column(type: 'json', options: ['default' => '[]'])]
+    private array $droitsRetires = [];
+
+    /** Objectif de ventes du mois en F TTC (Mes statistiques, U05). */
+    #[ORM\Column(nullable: true)]
+    private ?int $objectifVentesMois = null;
 
 
     /*
@@ -598,7 +640,36 @@ class User implements
             self::ROLE_GRAPHISTE,
             self::ROLE_PRODUCTION,
             self::ROLE_LIVREUR,
-            self::ROLE_STATS_GLOBAL,
+            ...array_keys(self::getPermissionsSensibles()),
+        ];
+    }
+
+
+    /**
+     * Informations sensibles qu'on montre ou cache a chaque
+     * utilisateur, avec ce qu'elles donnent a voir.
+     *
+     * @return array<string, array{libelle: string, detail: string}>
+     */
+    public static function getPermissionsSensibles(): array
+    {
+        return [
+            self::ROLE_STATS_GLOBAL => [
+                'libelle' => 'Statistiques globales',
+                'detail' => 'chiffre d\'affaires, encaissements et créances de l\'accueil, écrans Statistiques',
+            ],
+            self::ROLE_STATS_VENTES => [
+                'libelle' => 'Indicateurs commerciaux',
+                'detail' => 'devis envoyés, taux de transformation et panier moyen (écran Ventes)',
+            ],
+            self::ROLE_COUT_MARGE => [
+                'libelle' => 'Coût de revient et marge',
+                'detail' => 'coût et marge des lignes de commande et des produits du client',
+            ],
+            self::ROLE_PAIEMENT_VOIR => [
+                'libelle' => 'Paiements',
+                'detail' => 'paiements des commandes et écran Caisse (toujours inclus pour Caisse / Commandes)',
+            ],
         ];
     }
 
@@ -627,8 +698,10 @@ class User implements
             self::ROLE_LIVREUR =>
                 'Livreur',
 
-            self::ROLE_STATS_GLOBAL =>
-                'Statistiques globales',
+            ...array_map(
+                static fn (array $permission): string => $permission['libelle'],
+                self::getPermissionsSensibles()
+            ),
         ];
     }
 
@@ -643,6 +716,15 @@ class User implements
     {
         $roles =
             $this->roles;
+
+
+        /*
+         * Hors administrateur, les droits viennent du role de base,
+         * plus ceux ajoutes, moins ceux retires pour la personne.
+         */
+        if (!in_array(self::ROLE_ADMIN, $roles, true)) {
+            $roles = array_merge($roles, $this->getDroitsEffectifs());
+        }
 
 
         /*
@@ -881,19 +963,12 @@ class User implements
 
 
         /*
-         * Permission complémentaire :
-         * statistiques globales.
+         * Informations sensibles cochees en complement.
          */
-        if (
-            in_array(
-                self::ROLE_STATS_GLOBAL,
-                $roles,
-                true
-            )
-        ) {
-
-            $rolesFinals[] =
-                self::ROLE_STATS_GLOBAL;
+        foreach (array_keys(self::getPermissionsSensibles()) as $permission) {
+            if (in_array($permission, $roles, true)) {
+                $rolesFinals[] = $permission;
+            }
         }
 
 
@@ -910,6 +985,114 @@ class User implements
 
 
         return $this;
+    }
+
+
+    public function getProfil(): ?RoleUtilisateur
+    {
+        return $this->profil;
+    }
+
+    /**
+     * Change le role de base. Le role Symfony du profil remplace
+     * l'ancien dans la colonne roles, les informations sensibles
+     * cochees a part sont gardees.
+     */
+    public function setProfil(?RoleUtilisateur $profil): static
+    {
+        $this->profil = $profil;
+
+        if (null !== $profil) {
+            $this->roles = $profil->estAdmin()
+                ? [self::ROLE_ADMIN]
+                : [$profil->getCode()];
+            $this->dateUpdate = new \DateTimeImmutable();
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsAjoutes(): array
+    {
+        return \App\Security\Droits::filtrer($this->droitsAjoutes);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsRetires(): array
+    {
+        return \App\Security\Droits::filtrer($this->droitsRetires);
+    }
+
+    /**
+     * Enregistre les droits coches sur la fiche : ce qui differe du
+     * role de base devient un droit ajoute ou retire.
+     *
+     * @param array<mixed> $droitsCoches
+     */
+    public function definirDroits(array $droitsCoches): static
+    {
+        $coches = \App\Security\Droits::filtrer($droitsCoches);
+        $duRole = $this->profil?->getDroits() ?? [];
+
+        // Les cases ne vivent plus dans la colonne roles (ancien ecran).
+        $this->roles = array_values(array_diff($this->roles, array_keys(\App\Security\Droits::catalogue())));
+        $this->droitsAjoutes = array_values(array_diff($coches, $duRole));
+        $this->droitsRetires = array_values(array_diff($duRole, $coches));
+        $this->dateUpdate = new \DateTimeImmutable();
+
+        return $this;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getDroitsEffectifs(): array
+    {
+        if ($this->profil?->estAdmin() || in_array(self::ROLE_ADMIN, $this->roles, true)) {
+            return \App\Security\Droits::sansRestriction();
+        }
+
+        $droits = array_merge($this->profil?->getDroits() ?? [], $this->getDroitsAjoutes());
+
+        return \App\Security\Droits::filtrer(array_diff($droits, $this->getDroitsRetires()));
+    }
+
+    /**
+     * Etat d'un droit pour la legende de la fiche : herite du role,
+     * ajoute ou retire pour la personne, ou non accorde.
+     */
+    public function etatDroit(string $droit): string
+    {
+        $duRole = $this->profil?->aLeDroit($droit) ?? false;
+
+        return match (true) {
+            $duRole && in_array($droit, $this->getDroitsRetires(), true) => 'retire',
+            $duRole => 'herite',
+            in_array($droit, $this->getDroitsAjoutes(), true) => 'ajoute',
+            default => 'non',
+        };
+    }
+
+    public function getObjectifVentesMois(): ?int
+    {
+        return $this->objectifVentesMois;
+    }
+
+    public function setObjectifVentesMois(?int $objectif): static
+    {
+        $this->objectifVentesMois = null !== $objectif && $objectif > 0 ? $objectif : null;
+
+        return $this;
+    }
+
+    public function nombreDroitsPersonnalises(): int
+    {
+        return count($this->getDroitsAjoutes()) + count($this->getDroitsRetires());
     }
 
 
@@ -1713,5 +1896,105 @@ class User implements
 
 
         return $this;
+    }
+
+    /*
+     * ============================================================
+     * ACCÈS À L'APPLICATION (maquettes E02, E04, E05)
+     * ============================================================
+     *
+     * Chaque employé a un compte, même sans accès : ses pointages, sa
+     * paie et ses demandes y sont rattachés. Sans accès, la connexion est
+     * refusée ; il pointe sur la tablette de l'entrée. L'accès s'ouvre par
+     * une invitation WhatsApp : la personne choisit un code PIN à
+     * 4 chiffres et son téléphone est enregistré.
+     */
+
+    public const ACCES_ACTIF = 'actif';
+    public const ACCES_SANS = 'sans';
+    public const ACCES_INVITE = 'invite';
+    public const ACCES_SUSPENDU = 'suspendu';
+
+    #[ORM\Column(length: 12, options: ['default' => 'actif'])]
+    private string $acces = self::ACCES_ACTIF;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $pin = null;
+
+    #[ORM\Column(options: ['default' => 0])]
+    private int $pinEssais = 0;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $pinBloqueJusqua = null;
+
+    /** Empreinte (sha256) du lien d'invitation : le lien lui-même n'est jamais stocké. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $invitationEmpreinte = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $invitationEnvoyeeLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $invitationExpireLe = null;
+
+    /** Fin du contrat : l'accès est coupé ce jour-là, automatiquement. */
+    #[ORM\Column(type: 'date_immutable', nullable: true)]
+    private ?\DateTimeImmutable $finAccesLe = null;
+
+    public function getAcces(): string { return $this->acces; }
+    public function setAcces(string $acces): static
+    {
+        $this->acces = \in_array($acces, [self::ACCES_ACTIF, self::ACCES_SANS, self::ACCES_INVITE, self::ACCES_SUSPENDU], true) ? $acces : self::ACCES_SANS;
+
+        return $this;
+    }
+
+    public function getPin(): ?string { return $this->pin; }
+    public function setPin(?string $pinHashe): static { $this->pin = $pinHashe; $this->pinEssais = 0; $this->pinBloqueJusqua = null; return $this; }
+    public function getPinEssais(): int { return $this->pinEssais; }
+    public function getPinBloqueJusqua(): ?\DateTimeImmutable { return $this->pinBloqueJusqua; }
+
+    /** Un essai de PIN raté ; au 5e, le PIN est bloqué 15 minutes. */
+    public function pinRate(\DateTimeImmutable $maintenant): void
+    {
+        if (++$this->pinEssais >= 5) {
+            $this->pinEssais = 0;
+            $this->pinBloqueJusqua = $maintenant->modify('+15 minutes');
+        }
+    }
+
+    public function pinReussi(): void { $this->pinEssais = 0; $this->pinBloqueJusqua = null; }
+
+    public function getInvitationEmpreinte(): ?string { return $this->invitationEmpreinte; }
+    public function getInvitationEnvoyeeLe(): ?\DateTimeImmutable { return $this->invitationEnvoyeeLe; }
+    public function getInvitationExpireLe(): ?\DateTimeImmutable { return $this->invitationExpireLe; }
+
+    public function inviter(string $empreinte, \DateTimeImmutable $le, \DateTimeImmutable $expire): static
+    {
+        $this->invitationEmpreinte = $empreinte;
+        $this->invitationEnvoyeeLe = $le;
+        $this->invitationExpireLe = $expire;
+        $this->acces = self::ACCES_INVITE;
+
+        return $this;
+    }
+
+    public function oublierInvitation(): static
+    {
+        $this->invitationEmpreinte = null;
+        $this->invitationExpireLe = null;
+
+        return $this;
+    }
+
+    public function getFinAccesLe(): ?\DateTimeImmutable { return $this->finAccesLe; }
+    public function setFinAccesLe(?\DateTimeImmutable $d): static { $this->finAccesLe = $d; return $this; }
+
+    /** Le compte peut-il se connecter à l'application ? */
+    public function peutSeConnecter(\DateTimeImmutable $maintenant): bool
+    {
+        return $this->actif
+            && $this->acces === self::ACCES_ACTIF
+            && ($this->finAccesLe === null || $this->finAccesLe > $maintenant->setTime(0, 0));
     }
 }

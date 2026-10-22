@@ -42,14 +42,14 @@ class LotEtiquette
     private string $prefixe = 'ETQ';
 
     /**
-     * Nom du dossier dans public/uploads/etiquettes.
-     * Exemple : LOT-20260806-001
+     * Dossier du lot, relatif à var/ (hors de public/, FichiersPrives).
+     * Exemple : uploads/etiquettes/LOT-20260806-001
      */
     #[ORM\Column(length: 255, unique: true)]
     private ?string $dossier = null;
 
     /**
-     * Chemin relatif du fichier ZIP.
+     * Chemin du fichier ZIP, relatif à var/ (FichiersPrives).
      * Exemple :
      * uploads/etiquettes/LOT-20260806-001/LOT-20260806-001.zip
      */

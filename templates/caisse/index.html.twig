@@ -1,0 +1,405 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Caisse · Comptoir{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_ADMIN') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_journal_caisse_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-book me-1"></i>Journal</a>
+		</li>
+	{% endif %}
+	{# Chez qui de l'argent est resté (monnaie gardée, dépôts) : docs/finances.md. #}
+	{% if is_granted('ROLE_CLIENT') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_clients_soldes') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-wallet me-1"></i>Soldes clients</a>
+		</li>
+	{% endif %}
+	{# Verser la caisse à la banque, ou d'un compte à un autre : sans aucun solde affiché.
+	   Sur téléphone, l'icône seule laisse la place au titre « Caisse ». #}
+	{% if is_granted('ROLE_TRESORERIE_TRANSFERER') %}
+		<li class="nav-item">
+			<a href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert'}) }}" class="btn btn-light btn-sm si-btn-entete" title="Verser la caisse à la banque, ou d’un compte à un autre" aria-label="Virement"><i class="fas fa-exchange-alt"></i><span class="si-masque-mobile ms-1">Virement</span></a>
+		</li>
+	{% endif %}
+	{% if is_granted('ROLE_JOURNAL_CAISSE') %}
+		{% if caisses is not empty %}
+			<li class="nav-item">
+				<button type="button" class="btn btn-primary btn-sm si-btn-entete" data-bs-toggle="modal" data-bs-target="#modale-cloture"><i class="fas fa-lock me-1"></i>Clôturer la caisse</button>
+			</li>
+		{% endif %}
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if en_ligne %}
+		<p class="si-caisse-provisoire"><strong>Opération provisoire.</strong> Un encaissement saisi en ligne ne compte qu’après validation sur le serveur de l’atelier par le comptable ou l’admin.</p>
+	{% endif %}
+	{% if recu_solde %}
+		<p class="si-caisse-alerte">
+			<a href="{{ path('app_caisse_solde_recu', {id: recu_solde.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ recu_solde.reference }}</a>
+		</p>
+	{% endif %}
+	{% if recu_groupe %}
+		<p class="si-caisse-alerte">
+			<a href="{{ path('app_caisse_recu_groupe', {groupe: recu_groupe}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ recu_groupe }}</a>
+		</p>
+	{% endif %}
+	{% if recu %}
+		<p class="si-caisse-alerte">
+			<a href="{{ path('app_caisse_recu', {id: recu.id}) }}" target="_blank" rel="noopener" class="btn btn-success btn-sm"><i class="fas fa-print me-1"></i>Imprimer le reçu {{ 'R-' ~ '%06d'|format(recu.id) }}</a>
+			{% if recu_envoi %}
+				<a href="{{ recu_envoi.lien }}" target="_blank" rel="noopener" class="btn btn-light btn-sm"><i class="{{ recu_envoi.canal == 'whatsapp' ? 'fab fa-whatsapp' : 'fas fa-sms' }} me-1"></i>Envoyer le reçu par {{ recu_envoi.canal == 'whatsapp' ? 'WhatsApp' : 'SMS' }}</a>
+			{% endif %}
+		</p>
+	{% endif %}
+	<div class="si-caisse">
+		<section class="card si-caisse-encaissement">
+			<h2>Encaissement</h2>
+			<form method="get" action="{{ path('app_caisse_index') }}" class="si-caisse-client">
+				<label class="form-label" for="caisse-client">Client</label>
+				<select class="form-select" id="caisse-client" name="client" onchange="this.form.submit()" data-placeholder="Rechercher un client par son nom…">
+					<option value="">Choisir un client qui doit encore payer…</option>
+					{% for ligne in clients_avec_solde %}
+						<option value="{{ ligne.client.id }}" {{ client and client.id == ligne.client.id ? 'selected' }}>{{ ligne.client.nomComplet }} · reste dû {{ ligne.solde|number_format(0, ',', ' ') }} F</option>
+					{% endfor %}
+					{% if client and clients_avec_solde|filter(l => l.client.id == client.id) is empty %}
+						<option value="{{ client.id }}" selected>{{ client.nomComplet }} · rien à payer</option>
+					{% endif %}
+				</select>
+				<noscript><button class="btn btn-light btn-sm mt-2">Afficher</button></noscript>
+			</form>
+
+			{# Compte du client (docs/finances.md) : son solde paie la commande choisie, tout ou partie. #}
+			{% if compte_client %}
+				{% set modifiable = not compte_client.en_ligne and not module_en_lecture('app_caisse_solde_depot') %}
+				<div class="si-caisse-compte">
+					<div>
+						<small>Solde client (monnaie gardée, dépôts)</small>
+						<strong>{{ compte_client.solde|number_format(0, ',', ' ') }} F</strong>
+						{% if compte_client.engage > 0 %}<small>dont {{ compte_client.engage|number_format(0, ',', ' ') }} déjà engagés en ligne</small>{% endif %}
+					</div>
+					{% if modifiable and commande and reste > 0 and compte_client.disponible > 0 %}
+						<form method="post" action="{{ path('app_commandes_utiliser_solde_client', {id: commande.id, retour: 'caisse'}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('utiliser_solde_client_' ~ commande.id) }}">
+							<label class="visually-hidden" for="caisse-solde-montant">Montant payé avec le solde client</label>
+							<input class="form-control form-control-sm" id="caisse-solde-montant" name="montant" inputmode="numeric" autocomplete="off" value="{{ min(compte_client.disponible, reste) }}">
+							<button class="btn btn-primary btn-sm">Payer avec le solde</button>
+						</form>
+					{% endif %}
+					{% if modifiable %}
+						<button type="button" class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modale-depot"><i class="fas fa-plus me-1"></i>Dépôt</button>
+					{% endif %}
+					{% if is_granted('ROLE_CLIENT') %}
+						<a class="btn btn-link btn-sm" href="{{ path('app_clients_show', {publicId: client.publicId}) }}#compte">Relevé</a>
+					{% endif %}
+				</div>
+			{% endif %}
+
+			{% if client %}
+				{% if impayees is empty %}
+					<p class="si-caisse-vide">Ce client n’a aucune commande à régler.</p>
+				{% else %}
+					<div class="si-caisse-defile">
+					<table class="table si-caisse-table">
+						<thead>
+							<tr><th>Facture</th><th>Objet</th><th class="text-end">Reste dû</th></tr>
+						</thead>
+						<tbody>
+							{% for ligne in impayees %}
+								{% set c = ligne.commande %}
+								{% set choisie = commande and commande.id == c.id %}
+								<tr class="{{ choisie ? 'si-caisse-choisie' }}">
+									<td class="text-nowrap">
+										<a href="{{ path('app_caisse_index', {client: client.id, commande: c.id}) }}" {{ choisie ? 'aria-current="true"' }}>{{ ligne.facture ?: c.libelle }}</a>
+									</td>
+									<td>
+										{% set objet = c.commandesDetails|map(d => d|texte_ligne_interne(''))|filter(t => t)|join(', ') %}
+										{{ objet|length > 70 ? objet|slice(0, 69) ~ '…' : (objet ?: 'Commande') }}
+										<small class="d-block text-muted">{{ c.numero }}{% if ligne.paye > 0 %} · déjà versé {{ ligne.paye|number_format(0, ',', ' ') }} F{% endif %}</small>
+									</td>
+									<td class="text-end text-nowrap fw-semibold">{{ ligne.reste|number_format(0, ',', ' ') }}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+					</div>
+					{% if not commande %}
+						<p class="si-caisse-vide">Choisissez la facture à régler{{ impayees|length > 1 ? ', ou encaissez sur plusieurs commandes' }}.</p>
+					{% endif %}
+					{% if impayees|length > 1 %}
+						{% include 'caisse/_plusieurs.html.twig' %}
+					{% endif %}
+				{% endif %}
+			{% endif %}
+
+			{% if commande %}
+				{{ form_start(formulaire, {attr: {class: 'si-caisse-form', id: 'form-caisse', novalidate: 'novalidate'}}) }}
+					<div class="si-caisse-montant">
+						<label for="{{ formulaire.montant.vars.id }}">Montant encaissé</label>
+						<div>
+							{{ form_widget(formulaire.montant, {attr: {class: 'form-control', inputmode: 'numeric', autocomplete: 'off', 'aria-describedby': 'caisse-reste'}}) }}
+							<span aria-hidden="true">F</span>
+						</div>
+						<small id="caisse-reste">Reste dû sur {{ commande.libelle }} : {{ reste|number_format(0, ',', ' ') }} F</small>
+						{{ form_errors(formulaire.montant) }}
+					</div>
+
+					<div class="si-caisse-modes" role="radiogroup" aria-label="Mode de paiement">
+						{% for valeur, libelle in modes %}
+							<button type="button" class="si-caisse-mode" role="radio" data-mode="{{ valeur }}" aria-checked="{{ formulaire.mode.vars.value == valeur ? 'true' : 'false' }}">{{ libelle }}</button>
+						{% endfor %}
+					</div>
+					{% if virement_seuil > 0 %}
+						<p class="si-caisse-conseil" data-si-seuil-virement="{{ virement_seuil }}" hidden>Au-delà de {{ virement_seuil|number_format(0, ',', ' ') }} F, le virement bancaire est conseillé plutôt que les espèces.</p>
+					{% endif %}
+					{{ form_widget(formulaire.mode, {attr: {class: 'd-none', 'aria-hidden': 'true', tabindex: '-1'}}) }}
+					{{ form_errors(formulaire.mode) }}
+
+					<div class="row g-3 si-caisse-details">
+						<div class="col-md-6">
+							<label class="form-label" for="caisse-compte">Compte qui reçoit</label>
+							<select class="form-select" id="caisse-compte" name="{{ formulaire.compteTresorerie.vars.full_name }}" required>
+								{% for compte in comptes %}
+									<option value="{{ compte.id }}" data-type="{{ compte.type }}" {{ formulaire.compteTresorerie.vars.value == compte.id ? 'selected' }}>{{ compte.nom }} · {{ compte.typeLabel }}</option>
+								{% endfor %}
+							</select>
+							{{ form_errors(formulaire.compteTresorerie) }}
+							{% do formulaire.compteTresorerie.setRendered() %}
+						</div>
+						<div class="col-md-6 si-caisse-reference">
+							<label class="form-label" for="{{ formulaire.reference.vars.id }}">Référence <span class="text-muted">(transaction, n° de chèque)</span></label>
+							{{ form_widget(formulaire.reference) }}
+							{{ form_errors(formulaire.reference) }}
+						</div>
+					</div>
+					{# Orange Money : fonds de soutien et frais de retrait payés par le client en plus du
+					   montant, cochés d'office (Réglages › Paiements). Le serveur recalcule les montants. #}
+					{% if frais_om.fonds > 0 or frais_om.retrait > 0 %}
+						<fieldset class="si-caisse-frais" data-taux-fonds="{{ frais_om.fonds }}" data-taux-retrait="{{ frais_om.retrait }}" hidden>
+							<legend>Frais Orange Money, payés par le client en plus</legend>
+							{% for cle, ligne in {fonds: {champ: formulaire.fondsSoutienInclus, libelle: 'Fonds de soutien', taux: frais_om.fonds}, retrait: {champ: formulaire.fraisRetraitInclus, libelle: 'Frais de retrait Orange Money', taux: frais_om.retrait}} %}
+								{% if ligne.taux > 0 %}
+									<label class="si-caisse-frais-ligne">
+										<input type="checkbox" class="form-check-input" name="{{ ligne.champ.vars.full_name }}" value="1" data-frais="{{ cle }}">
+										<span>{{ ligne.libelle }} ({{ ligne.taux|frais_taux }})</span>
+										<b data-montant-frais="{{ cle }}">0 F</b>
+									</label>
+								{% endif %}
+							{% endfor %}
+							<p class="si-caisse-frais-total">Total à recevoir <b data-total-om>0 F</b></p>
+						</fieldset>
+					{% endif %}
+					{% do formulaire.fraisRetraitInclus.setRendered() %}
+					{% do formulaire.fondsSoutienInclus.setRendered() %}
+
+					{# Espèces : la monnaie à rendre, ou gardée sur le compte du client (l'argent reste dans la caisse). #}
+					{% if compte_client and not compte_client.en_ligne %}
+						<div class="si-caisse-monnaie" data-si-cc-monnaie>
+							<div class="row g-2">
+								<div class="col-sm-6">
+									<label class="form-label" for="caisse-remis">Montant remis par le client</label>
+									<input class="form-control" id="caisse-remis" name="montant_remis" inputmode="numeric" autocomplete="off">
+								</div>
+								<div class="col-sm-6"><span data-si-cc-rendu aria-live="polite"></span></div>
+							</div>
+							<label class="si-cc-case"><input type="checkbox" class="form-check-input" name="garder_monnaie" value="1"> Garder la monnaie sur le compte du client</label>
+						</div>
+					{% endif %}
+
+					<button type="submit" class="btn btn-success si-caisse-valider"><i class="fas fa-print me-2"></i>Encaisser et imprimer le reçu</button>
+					<p class="si-caisse-note">Les frais Wave ou carte se saisissent depuis <a href="{{ path('app_commandes_paiement', {id: commande.id}) }}">la page de paiement de la commande</a>.</p>
+				{{ form_end(formulaire) }}
+			{% endif %}
+		</section>
+
+		<aside class="si-caisse-cote">
+			{% for c in caisses %}
+				<section class="card si-caisse-bloc">
+					<h2>Caisse du jour{% if caisses|length > 1 %} <small>{{ c.compte.nom }}</small>{% endif %}</h2>
+					<dl class="si-caisse-chiffres">
+						<div><dt>Fond de caisse</dt><dd>{{ c.fond|number_format(0, ',', ' ') }}</dd></div>
+						<div><dt>Encaissé</dt><dd>{{ c.entrees|number_format(0, ',', ' ') }}</dd></div>
+						<div><dt>Sorties (dépenses)</dt><dd>{{ c.sorties > 0 ? '−' ~ c.sorties|number_format(0, ',', ' ') : '0' }}</dd></div>
+						<div class="si-caisse-total"><dt>Théorique en caisse</dt><dd>{{ c.theorique|number_format(0, ',', ' ') }}</dd></div>
+					</dl>
+					{% if c.cloture %}
+						<p class="si-caisse-cloture {{ c.cloture.ecart == 0 ? 'si-ok' : 'si-ecart' }}">
+							Clôturée à {{ c.cloture.clotureLe|date('H:i') }} · compté {{ c.cloture.montantCompte|number_format(0, ',', ' ') }}
+							{% if c.cloture.ecart != 0 %} · écart {{ c.cloture.ecart > 0 ? '+' }}{{ c.cloture.ecart|number_format(0, ',', ' ') }}{% endif %}
+						</p>
+					{% endif %}
+				</section>
+			{% endfor %}
+
+			<section class="card si-caisse-bloc">
+				<h2>Derniers encaissements</h2>
+				<ul class="si-caisse-derniers">
+					{% for p in encaissements %}
+						<li>
+							<div>
+								<strong>{{ p.commande.clients ? p.commande.clients.nomComplet : p.commande.numero }}</strong>
+								<small>{{ p.date|date('H:i') }} · {{ p.modeLabel }}{% if p.statut != 'valide' %} · <span class="text-warning">à valider</span>{% endif %}</small>
+							</div>
+							<span>{{ p.montant|number_format(0, ',', ' ') }}</span>
+							<a href="{{ path('app_caisse_recu', {id: p.id}) }}" target="_blank" rel="noopener" class="si-caisse-recu" title="Reçu" aria-label="Reçu de {{ p.montant|number_format(0, ',', ' ') }} F"><i class="fas fa-receipt"></i></a>
+						</li>
+					{% else %}
+						<li class="si-caisse-vide">Aucun encaissement aujourd’hui.</li>
+					{% endfor %}
+				</ul>
+			</section>
+		</aside>
+	</div>
+
+	{% if compte_client %}
+		{% include 'clients/_compte_modales.html.twig' with {compte: compte_client, retour_compte: 'caisse'} %}
+	{% endif %}
+
+	{% if is_granted('ROLE_JOURNAL_CAISSE') and caisses is not empty %}
+		<div class="modal fade" id="modale-cloture" tabindex="-1" aria-labelledby="titre-cloture" aria-hidden="true">
+			<div class="modal-dialog">
+				<form method="post" action="{{ path('app_caisse_cloturer') }}" class="modal-content">
+					<input type="hidden" name="_token" value="{{ csrf_token('cloturer-caisse') }}">
+					<div class="modal-header">
+						<h2 class="modal-title fs-5" id="titre-cloture">Clôturer la caisse</h2>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+					</div>
+					<div class="modal-body row g-3">
+						<div class="col-12">
+							<label class="form-label" for="cloture-compte">Caisse</label>
+							<select class="form-select" id="cloture-compte" name="compte" required>
+								{% for c in caisses %}
+									<option value="{{ c.compte.id }}">{{ c.compte.nom }} · théorique {{ c.theorique|number_format(0, ',', ' ') }} F</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="cloture-especes">Espèces comptées (F)</label>
+							<input class="form-control" id="cloture-especes" name="compte_especes" inputmode="numeric" autocomplete="off" required>
+							<small class="text-muted">Comptez les billets et pièces avant de regarder le théorique. Un écart est signalé au responsable.</small>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="cloture-observation">Observation</label>
+							<textarea class="form-control" id="cloture-observation" name="observation" rows="2"></textarea>
+						</div>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+						<button class="btn btn-primary">Clôturer</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{% endif %}
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/compte-client.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/compte-client.js') }}" defer></script>
+	<script>
+		// Encaissement : recherche par nom dans la liste des clients (demande de Yaya du 19/10/2026).
+		document.addEventListener('DOMContentLoaded', function () {
+			var $ = window.jQuery, select = document.getElementById('caisse-client');
+			if (!$ || !$.fn.select2 || !select) return;
+			$(select).select2({
+				width: '100%',
+				placeholder: select.dataset.placeholder,
+				allowClear: true,
+				language: {noResults: function () { return 'Aucun client à ce nom'; }, searching: function () { return 'Recherche…'; }}
+			});
+			$(select).on('select2:open', function () { var champ = document.querySelector('.select2-container--open .select2-search__field'); if (champ) { champ.placeholder = 'Nom, prénom ou entreprise'; champ.focus(); } });
+		});
+	</script>
+	<script>
+		(function () {
+			var choisie = document.querySelector('.si-caisse-choisie');
+			if (choisie) {
+				choisie.closest('.si-caisse-defile').scrollTop = choisie.offsetTop - 44;
+			}
+			var form = document.getElementById('form-caisse');
+			if (form) {
+				var select = form.querySelector('select[name$="[mode]"]');
+				var compte = document.getElementById('caisse-compte');
+				var reference = form.querySelector('.si-caisse-reference');
+				var typeParMode = {especes: 'caisse', orange_money: 'orange_money', virement_bancaire: 'banque', cheque: 'banque'};
+				var choisir = function (mode, garderCompte) {
+					select.value = mode;
+					form.querySelectorAll('.si-caisse-mode').forEach(function (b) {
+						b.setAttribute('aria-checked', b.dataset.mode === mode ? 'true' : 'false');
+					});
+					var type = typeParMode[mode];
+					var actuel = compte.options[compte.selectedIndex];
+					Array.prototype.forEach.call(compte.options, function (o) { o.hidden = o.dataset.type !== type; });
+					if (!garderCompte || !actuel || actuel.hidden) {
+						var premier = Array.prototype.find.call(compte.options, function (o) { return !o.hidden; });
+						compte.value = premier ? premier.value : '';
+					}
+					reference.hidden = mode === 'especes';
+				};
+				form.querySelectorAll('.si-caisse-mode').forEach(function (b) {
+					b.addEventListener('click', function () { choisir(b.dataset.mode, false); });
+				});
+				var premierMode = form.querySelector('.si-caisse-mode');
+				choisir(select.value || (premierMode ? premierMode.dataset.mode : ''), true);
+
+				// Rappel du seuil de virement (Paramètres › Paiements).
+				var conseil = form.querySelector('[data-si-seuil-virement]');
+				var montant = form.querySelector('input[name$="[montant]"]');
+				if (conseil && montant) {
+					var verifier = function () {
+						var valeur = parseInt(String(montant.value).replace(/\D/g, ''), 10) || 0;
+						conseil.hidden = !(select.value === 'especes' && valeur > +conseil.dataset.siSeuilVirement);
+					};
+					montant.addEventListener('input', verifier);
+					form.querySelectorAll('.si-caisse-mode').forEach(function (b) { b.addEventListener('click', verifier); });
+					verifier();
+				}
+				// Frais Orange Money : visibles et cochés d'office quand on choisit Orange Money, décochables.
+				var frais = form.querySelector('.si-caisse-frais');
+				if (frais && montant) {
+					var taux = {fonds: +frais.dataset.tauxFonds, retrait: +frais.dataset.tauxRetrait};
+					var francs = function (n) { return new Intl.NumberFormat('fr-FR').format(n).replace(/\u202f/g, ' ') + ' F'; };
+					var calculer = function () {
+						var valeur = parseInt(String(montant.value).replace(/\D/g, ''), 10) || 0;
+						var total = valeur;
+						frais.querySelectorAll('input[data-frais]').forEach(function (c) {
+							var f = Math.round(valeur * taux[c.dataset.frais] / 100);
+							frais.querySelector('[data-montant-frais="' + c.dataset.frais + '"]').textContent = francs(f);
+							if (c.checked) { total += f; }
+						});
+						frais.querySelector('[data-total-om]').textContent = francs(total);
+					};
+					var modeFrais = null;
+					var suivreMode = function () {
+						var om = select.value === 'orange_money';
+						frais.hidden = !om;
+						if (om !== (modeFrais === 'orange_money')) {
+							frais.querySelectorAll('input[data-frais]').forEach(function (c) { c.checked = om; });
+						}
+						modeFrais = select.value;
+						calculer();
+					};
+					form.querySelectorAll('.si-caisse-mode').forEach(function (b) { b.addEventListener('click', suivreMode); });
+					frais.addEventListener('change', calculer);
+					montant.addEventListener('input', calculer);
+					suivreMode();
+				}
+				form.addEventListener('submit', function () {
+					form.querySelector('.si-caisse-valider').disabled = true;
+				});
+			}
+
+			{% if recu %}
+				window.open({{ path('app_caisse_recu', {id: recu.id})|json_encode|raw }}, 'recu-caisse', 'width=420,height=640');
+			{% endif %}
+			{% if recu_groupe %}
+				window.open({{ path('app_caisse_recu_groupe', {groupe: recu_groupe})|json_encode|raw }}, 'recu-caisse', 'width=420,height=640');
+			{% endif %}
+		})();
+	</script>
+{% endblock %}

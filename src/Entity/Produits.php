@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\ProduitsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,8 +11,11 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: ProduitsRepository::class)]
-class Produits
+class Produits implements AUnNomCommercial
 {
+    use PublicIdTrait;
+    use NomCommercialTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -152,8 +157,54 @@ private ?Articles $articleStock = null;
 )]
 private Collection $articlesStock;
 
+    /*
+     * Fiche produit (maquettes PR01 et PR02 du 18/10/2026, docs/produits.md).
+     */
+
+    /** Délai standard de fabrication, en heures (48 h). Vide : délai de l'espace client. */
+    #[ORM\Column(nullable: true)]
+    private ?int $delaiHeures = null;
+
+    /** Machine qui fabrique le produit d'habitude. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Machines $machine = null;
+
+    /** Machine de secours quand la première est occupée ou arrêtée. */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Machines $machineSecours = null;
+
+    /**
+     * Coût de revient d'une unité vendue, saisi à la main. Il ne sert que
+     * si le coût ne peut pas se calculer (service, pose, produit sans
+     * matière liée). Jamais envoyé au site en ligne (CatalogueSynchro).
+     */
+    #[ORM\Column(nullable: true)]
+    private ?int $coutRevientSaisi = null;
+
+    /**
+     * Visible sur le site public (catalogue, calculateur). Décoché, le
+     * produit reste vendu au comptoir.
+     */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $visibleEnLigne = true;
+
+    /**
+     * Commandable dans l'espace client (maquette PR02 : interrupteur à
+     * part du site public). Un motif « hors ligne » (presse en panne) le
+     * masque aussi : voir estEnEspaceClient().
+     */
+    #[ORM\Column(options: ['default' => true])]
+    private bool $visibleEspaceClient = true;
+
+    /** Pourquoi le produit est masqué en ligne (« presse en réparation »). Reste à l'atelier. */
+    #[ORM\Column(length: 160, nullable: true)]
+    private ?string $motifHorsLigne = null;
+
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->typesImpressions = new ArrayCollection();
         $this->supports = new ArrayCollection();
         $this->formats = new ArrayCollection();
@@ -161,6 +212,11 @@ private Collection $articlesStock;
         $this->commandesDetails = new ArrayCollection();
         $this->configurations = new ArrayCollection();
         $this->articlesStock = new ArrayCollection();
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 
     public function getId(): ?int
@@ -549,6 +605,22 @@ public function setGestionStock(
     return $this;
 }
 
+/**
+ * Vrai si une commande de ce produit réserve puis sort du stock : au
+ * moins un article lié (nomenclature active, ou « article associé au
+ * stock »), comme StockService::calculerBesoinsDetail().
+ */
+public function debiteLeStock(): bool
+{
+    foreach ($this->articlesStock as $liaison) {
+        if ($liaison->isActif() && null !== $liaison->getArticle() && (float) $liaison->getCoefficient() > 0) {
+            return true;
+        }
+    }
+
+    return null !== $this->articleStock;
+}
+
 public function getArticleStock(): ?Articles
 {
     return $this->articleStock;
@@ -593,4 +665,107 @@ public function removeArticlesStock(
     return $this;
 }
 
+    public function getDelaiHeures(): ?int
+    {
+        return $this->delaiHeures;
+    }
+
+    public function setDelaiHeures(?int $delaiHeures): static
+    {
+        $this->delaiHeures = null === $delaiHeures ? null : max(1, $delaiHeures);
+
+        return $this;
+    }
+
+    public function getMachine(): ?Machines
+    {
+        return $this->machine;
+    }
+
+    public function setMachine(?Machines $machine): static
+    {
+        $this->machine = $machine;
+
+        return $this;
+    }
+
+    public function getMachineSecours(): ?Machines
+    {
+        return $this->machineSecours;
+    }
+
+    public function setMachineSecours(?Machines $machineSecours): static
+    {
+        $this->machineSecours = $machineSecours;
+
+        return $this;
+    }
+
+    public function getCoutRevientSaisi(): ?int
+    {
+        return $this->coutRevientSaisi;
+    }
+
+    public function setCoutRevientSaisi(?int $cout): static
+    {
+        $this->coutRevientSaisi = null === $cout ? null : max(0, $cout);
+
+        return $this;
+    }
+
+    public function isVisibleEnLigne(): bool
+    {
+        return $this->visibleEnLigne;
+    }
+
+    public function setVisibleEnLigne(bool $visible): static
+    {
+        $this->visibleEnLigne = $visible;
+        if ($visible) {
+            $this->motifHorsLigne = null;
+        }
+
+        return $this;
+    }
+
+    public function getMotifHorsLigne(): ?string
+    {
+        return $this->motifHorsLigne;
+    }
+
+    public function setMotifHorsLigne(?string $motif): static
+    {
+        $motif = null === $motif ? '' : trim($motif);
+        $this->motifHorsLigne = '' === $motif ? null : mb_substr($motif, 0, 160);
+
+        return $this;
+    }
+
+    /** Vendu en ligne : actif, publié et visible en ligne. */
+    public function estEnLigne(): bool
+    {
+        return $this->actif && $this->publie && $this->visibleEnLigne;
+    }
+
+    public function isVisibleEspaceClient(): bool
+    {
+        return $this->visibleEspaceClient;
+    }
+
+    public function setVisibleEspaceClient(bool $visible): static
+    {
+        $this->visibleEspaceClient = $visible;
+
+        return $this;
+    }
+
+    /**
+     * Commandable dans l'espace client : actif, publié, interrupteur
+     * Espace client, et pas masqué en ligne pour un motif (presse en
+     * panne, rupture) : même règle que NouvelleCommande::produits().
+     */
+    public function estEnEspaceClient(): bool
+    {
+        return $this->actif && $this->publie && $this->visibleEspaceClient && ($this->visibleEnLigne || null === $this->motifHorsLigne);
+    }
 }

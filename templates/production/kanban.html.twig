@@ -1,0 +1,93 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Production · vue Kanban{% endblock %}
+
+{% block header_actions %}
+	{% if not site_en_ligne() %}
+	<li class="nav-item">
+		<a href="{{ path('app_atelier_production_rouleaux') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-scroll me-1"></i>Rouleaux</a>
+	</li>
+	{% endif %}
+	{% if poste_production %}
+	<li class="nav-item">
+		<a href="{{ path('app_production_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Vue liste</a>
+	</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<form method="get" class="si-kanban-outils" role="search">
+		<label class="si-kanban-filtre">
+			<span class="visually-hidden">Machine</span>
+			<select name="machine" class="form-select form-select-sm" onchange="this.form.submit()">
+				<option value="">Filtrer : toutes machines</option>
+				{% for machine in machines %}
+					<option value="{{ machine.id }}" {{ machine.id == machine_choisie ? 'selected' }}>{{ machine.nom }}</option>
+				{% endfor %}
+			</select>
+		</label>
+		<label class="si-kanban-recherche">
+			<i class="fas fa-search" aria-hidden="true"></i>
+			<span class="visually-hidden">Rechercher</span>
+			<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Rechercher un travail, un client, un n°…">
+		</label>
+		{% if retards > 0 %}
+			<span class="si-kanban-alerte"><i class="fas fa-exclamation-triangle"></i> {{ retards }} en retard</span>
+		{% endif %}
+	</form>
+
+	<div class="si-kanban" data-rafraichir="90">
+		{% for cle, colonne in colonnes %}
+			<section class="si-kanban-colonne" aria-labelledby="kanban-{{ cle }}">
+				<header>
+					<h2 id="kanban-{{ cle }}">{{ colonne.libelle }}</h2>
+					<span class="si-kanban-compte">{{ colonne.cartes|length }}</span>
+				</header>
+				<div class="si-kanban-cartes">
+					{% for carte in colonne.cartes %}
+						{% set ligne = carte.ligne %}
+						{% if poste_production and carte.ordre and cle not in ['pao', 'bat'] %}
+							{% set lien = path('app_production_show', {id: carte.ordre.id}) %}
+						{% elseif cle in ['pao', 'bat'] and is_granted('ROLE_PREPRESSE') %}
+							{% set lien = path('app_controle_pre_presse_controler', {id: ligne.id}) %}
+						{% elseif is_granted('ROLE_COMMANDE') %}
+							{% set lien = path('app_commandes_show', {id: ligne.commande.id}) %}
+						{% else %}
+							{% set lien = null %}
+						{% endif %}
+						<a {% if lien %}href="{{ lien }}"{% endif %} class="si-kanban-carte si-c-{{ carte.retard ? 'rouge' : carte.couleur }}">
+							<strong class="si-kanban-titre">{{ carte.titre }}</strong>
+							{% if carte.client %}<span class="si-kanban-client">{{ carte.client }}</span>{% endif %}
+							<span class="si-kanban-pieds">
+								{% if carte.machine %}<span class="si-kanban-machine">{{ carte.machine }}</span>{% endif %}
+								{% if carte.urgent %}<span class="si-kanban-urgent">Urgent</span>{% endif %}
+							</span>
+							{% if carte.note %}<span class="si-kanban-note">{{ carte.note }}</span>{% endif %}
+							{% if carte.retard %}<span class="si-kanban-retard"><i class="fas fa-exclamation-triangle"></i> En retard de {{ carte.retard }}</span>{% endif %}
+							<span class="si-kanban-numero">{{ carte.numero }}</span>
+						</a>
+					{% else %}
+						<p class="si-kanban-vide">Rien ici</p>
+					{% endfor %}
+				</div>
+			</section>
+		{% endfor %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		// Le tableau se met à jour tout seul, sauf pendant une saisie.
+		(() => {
+			const tableau = document.querySelector('.si-kanban');
+			const delai = Number(tableau?.dataset.rafraichir || 0) * 1000;
+			if (!delai) return;
+			setInterval(() => {
+				const actif = document.activeElement;
+				if (document.visibilityState === 'visible' && !(actif && ['INPUT', 'SELECT'].includes(actif.tagName))) {
+					location.reload();
+				}
+			}, delai);
+		})();
+	</script>
+{% endblock %}

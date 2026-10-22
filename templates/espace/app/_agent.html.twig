@@ -1,0 +1,7 @@
+{#
+	Qui écrit pour l'atelier dans Messages (maquette MS01) : sa petite photo
+	quand sa fiche en a une, sinon ses initiales sur un disque de teinte fixe ;
+	le bleu de la marque et « SI » pour Succès Imprim. s = MessageClient::getSignature
+	ou AgentMessagerie::getSignature (nom, métier, initiales, teinte, photo).
+#}
+{% macro disque(s, classe) %}{% set photo = s.photo ?? null %}{% if photo %}<img class="ec-avatar ec-agent ec-agent-photo {{ classe|default('') }}" src="{{ photo }}" alt="" aria-hidden="true">{% else %}<span class="ec-avatar ec-agent{{ s.teinte is not null ? ' t' ~ s.teinte }} {{ classe|default('') }}" aria-hidden="true">{{ s.initiales }}</span>{% endif %}{% endmacro %}

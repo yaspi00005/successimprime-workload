@@ -1,0 +1,99 @@
+/*
+ * Devis dans l'espace client (maquettes DT01 et DT04, docs/devis.md).
+ * Chargé après espace-app.css et espace-suivi.css.
+ */
+
+.dv-grille { display: flex; flex-direction: column; }
+.dv-gauche, .dv-droite { display: contents; }
+.dv-grille > * > * { order: 5; }
+.dv-grille .dv-devis { order: 1; }
+.dv-grille .dv-message-mobile { order: 2; }
+.dv-grille .dv-actions { order: 3; }
+.dv-grille .dv-changes { order: 4; }
+
+@media (min-width: 900px) {
+  .dv-grille { display: grid; grid-template-columns: minmax(0, 1fr) minmax(280px, 330px); gap: 0 1.1rem; align-items: start; }
+  .dv-gauche, .dv-droite { display: block; min-width: 0; }
+}
+
+.dv-tete { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: .4rem 1rem; margin-bottom: .8rem; }
+.dv-tete-titre { display: flex; flex-wrap: wrap; align-items: center; gap: .35rem .6rem; min-width: 0; }
+.dv-tete-titre h2 { margin: 0; font-size: 1.05rem; }
+.dv-version { color: var(--gris); font-size: .8rem; }
+.dv-agent { display: inline-flex; align-items: center; gap: .35rem; font-size: .82rem; font-weight: 700; }
+.dv-agent .ec-avatar { width: 22px; height: 22px; font-size: .62rem; }
+.dv-validite { color: var(--orange, #F2611D); font-weight: 800; font-size: .85rem; white-space: nowrap; }
+
+.dv-lignes { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.dv-lignes th { color: var(--gris); font-weight: 600; font-size: .78rem; text-align: left; padding: .45rem .3rem; border-bottom: 1px solid var(--trait); }
+.dv-lignes td { padding: .65rem .3rem; border-bottom: 1px solid var(--trait); vertical-align: top; }
+.dv-lignes .n { text-align: right; white-space: nowrap; }
+.dv-lignes td b { display: block; font-weight: 800; }
+.dv-lignes td small { display: block; color: var(--gris); font-size: .78rem; }
+.dv-total-ligne { font-weight: 800; }
+.dv-offert { color: var(--vert); font-weight: 800; }
+
+.dv-totaux { margin: .6rem 0 0 auto; max-width: 360px; }
+.dv-totaux > div { display: flex; justify-content: space-between; gap: 1rem; padding: .3rem 0; font-size: .86rem; }
+.dv-totaux dt { color: var(--gris); font-weight: 500; }
+.dv-totaux dd { margin: 0; font-weight: 800; text-align: right; }
+.dv-totaux dd small { font-weight: 500; color: var(--gris); }
+.dv-totaux .dv-total dd { font-size: 1rem; }
+
+.dv-versions { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+.dv-v { background: var(--fond, #F3F5FA); border-radius: 12px; padding: .7rem .85rem; }
+.dv-v b { display: block; font-size: .85rem; }
+.dv-v small { display: block; color: var(--gris); font-size: .8rem; margin-top: .15rem; }
+.dv-v.actuelle { background: var(--bleu-clair); }
+.dv-v.actuelle b { color: var(--bleu); }
+.dv-changements { margin: .7rem 0 0; padding-left: 1.1rem; font-size: .84rem; color: var(--encre); }
+.dv-changements li.ajout::marker { color: var(--vert); }
+.dv-changements li.retrait::marker { color: var(--rouge); }
+
+.dv-actions { display: grid; grid-template-columns: 1.9fr 1fr 1fr; gap: .7rem; align-items: start; margin-bottom: 1rem; }
+.dv-actions form { margin: 0; }
+.dv-repondre summary { list-style: none; }
+.dv-repondre summary::-webkit-details-marker { display: none; }
+.dv-repondre[open] { grid-column: 1 / -1; order: 9; }
+.dv-refuser { color: var(--rouge) !important; border-color: #F7C6CE !important; }
+.dv-form { display: grid; gap: .5rem; margin-top: .6rem; }
+.dv-form label { font-weight: 700; font-size: .88rem; }
+.dv-form textarea { min-height: 5rem; }
+.dv-note-acompte { margin: -.4rem 0 1rem; }
+
+.dv-bulle { display: flex; gap: .6rem; align-items: flex-start; margin-bottom: .7rem; }
+.dv-bulle p { margin: 0; background: var(--fond, #F3F5FA); border-radius: 12px; padding: .6rem .8rem; font-size: .86rem; }
+.dv-message-mobile { display: flex; gap: .7rem; align-items: center; }
+.dv-message-mobile p { margin: 0; font-size: .92rem; }
+.dv-info { line-height: 1.5; }
+
+.dv-total-mobile { margin-top: .7rem; padding-top: .7rem; border-top: 1px solid var(--trait); }
+.dv-total-mobile-ligne { display: flex; justify-content: space-between; align-items: baseline; }
+.dv-total-mobile-ligne span { font-weight: 800; font-size: 1.05rem; }
+.dv-total-mobile-ligne strong { color: var(--bleu); font-size: 1.6rem; font-weight: 800; }
+.dv-total-mobile small { color: var(--gris); }
+
+/* Téléphone (DT04) : lignes compactes, total en grand, boutons pleine largeur. */
+@media (max-width: 899.98px) {
+  .dv-lignes thead { display: none; }
+  .dv-lignes tr { display: grid; grid-template-columns: 1fr auto; gap: 0 .6rem; border-bottom: 1px solid var(--trait); padding: .5rem 0; }
+  .dv-lignes td { border: 0; padding: 0; }
+  .dv-lignes td:first-child { grid-column: 1; grid-row: 1 / span 2; }
+  .dv-lignes .dv-q::before { content: "× "; }
+  .dv-lignes .dv-q { grid-column: 2; grid-row: 2; color: var(--gris); font-size: .8rem; }
+  .dv-lignes .dv-pu { display: none; }
+  .dv-lignes .dv-total-ligne { grid-column: 2; grid-row: 1; }
+  .dv-totaux { display: none; }
+  .dv-versions { grid-template-columns: 1fr; }
+  .dv-actions { grid-template-columns: 1fr 1fr; }
+  .dv-accepter { grid-column: 1 / -1; }
+  .dv-accepter .ec-bouton { font-size: 1.05rem; padding: 1rem; }
+  .dv-validite { display: none; }
+  .dv-tete-titre h2 { flex-basis: 100%; order: 3; font-size: 1.25rem; }
+  .dv-agent { display: none; }
+}
+.dv-accepter .ec-bouton { white-space: nowrap; }
+@media (max-width: 899.98px) {
+  .dv-total-mobile { border-top: 0; padding-top: .2rem; }
+  .dv-accepter .ec-bouton { white-space: normal; }
+}

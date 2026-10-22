@@ -2,9 +2,16 @@
 
 namespace App\Controller;
 
+use App\Security\AccesEnLigne;
 use App\Service\EvolutionTemporelleService;
+use App\Service\Statistiques\Export\ExportExcel;
+use App\Service\Statistiques\Export\ExportPdf;
+use App\Service\Statistiques\Activite;
+use App\Service\Statistiques\Export\ExportsStatistiques;
+use App\Service\Statistiques\Objectifs;
 use App\Service\Statistiques\StatistiquesArticlesService;
 use App\Service\Statistiques\StatistiquesGlobalesService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,35 +21,81 @@ use Symfony\Component\Routing\Attribute\Route;
  * Tableaux de bord chiffrés pour l'administrateur : qui vend, qui
  * encaisse, qui produit, sur une période donnée. Les accès sont
  * définis dans security.yaml (ROLE_STATS_GLOBAL, réservé à
- * ROLE_ADMIN via la hiérarchie des rôles).
+ * ROLE_ADMIN via la hiérarchie des rôles). Les montants de vente
+ * demandent en plus ROLE_STATS_VENTES, les encaissements par caissière
+ * ROLE_PAIEMENT_VOIR : sans le droit, ils ne sont ni calculés ni envoyés
+ * à la page, aux graphiques ou aux exports (donnees()).
+ *
+ * Ventes par agent, top produits et ventes d'articles comptent
+ * l'imprimerie seule, sauf filtre « activite » (docs/hors-imprimerie.md) ;
+ * la carte de répartition montre l'imprimerie, le hors imprimerie et le total.
  */
 #[Route('/statistiques/globales', name: 'app_statistiques_globales_')]
 final class StatistiquesController extends AbstractController
 {
-    #[Route('', name: 'index', methods: ['GET'])]
-    public function globales(
-        Request $request,
-        StatistiquesGlobalesService $statistiquesGlobalesService,
-        StatistiquesArticlesService $statistiquesArticlesService,
-        EvolutionTemporelleService $evolutionTemporelleService
-    ): Response {
-        [$debut, $fin, $filtres] = $this->resoudrePeriode($request);
+    use ExporterStatistiques;
 
-        $granulariteStock = $evolutionTemporelleService->normaliserGranularite(
+    public function __construct(
+        private readonly StatistiquesGlobalesService $statistiquesGlobalesService,
+        private readonly StatistiquesArticlesService $statistiquesArticlesService,
+        private readonly EvolutionTemporelleService $evolutionTemporelleService,
+        private readonly AccesEnLigne $acces,
+        private readonly Objectifs $objectifs,
+    ) {
+    }
+
+    #[Route('', name: 'index', methods: ['GET'])]
+    public function globales(Request $request): Response
+    {
+        return $this->render('statistiques/globales.html.twig', $this->donnees($request));
+    }
+
+    #[Route('/export.{format}', name: 'export', methods: ['GET'], requirements: ['format' => 'xlsx|pdf'])]
+    public function exporter(string $format, Request $request, ExportExcel $excel, ExportPdf $pdf, EntityManagerInterface $em): Response
+    {
+        $d = $this->donnees($request);
+        $periode = \sprintf('du %s au %s', (new \DateTimeImmutable($d['filtres']['date_debut']))->format('d/m/Y'), (new \DateTimeImmutable($d['filtres']['date_fin']))->format('d/m/Y'))
+            .(Activite::IMPRIMERIE !== $d['activite'] ? ' · '.Activite::LIBELLES[$d['activite']] : '');
+
+        return $this->reponseExport(ExportsStatistiques::globales($d, $d['droits'], $periode), $format, $excel, $pdf, $em);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function donnees(Request $request): array
+    {
+        [$debut, $fin, $filtres] = $this->resoudrePeriode($request);
+        $droits = $this->droitsStatistiques();
+        $sansMontant = static fn (array $lignes): array => array_map(static function (array $l): array {
+            unset($l['montant']);
+
+            return $l;
+        }, $lignes);
+
+        $granulariteStock = $this->evolutionTemporelleService->normaliserGranularite(
             $request->query->get('granularite_stock')
         );
+        $activite = Activite::lire($request->query->get('activite'));
+        $parAgent = $this->statistiquesGlobalesService->ventesParAgent($debut, $fin, $activite);
+        $ventesArticles = $this->statistiquesArticlesService->ventesArticles($debut, $fin, 15, $activite);
 
-        return $this->render('statistiques/globales.html.twig', [
-            'parAgent' => $statistiquesGlobalesService->ventesParAgent($debut, $fin),
-            'parCaissiere' => $statistiquesGlobalesService->encaissementsParCaissiere($debut, $fin),
-            'parProduction' => $statistiquesGlobalesService->productionParAgent($debut, $fin),
-            'parMachine' => $statistiquesGlobalesService->rendementParMachine($debut, $fin),
-            'topProduits' => $statistiquesGlobalesService->topProduits($debut, $fin),
-            'ventesArticles' => $statistiquesArticlesService->ventesArticles($debut, $fin),
-            'evolutionStock' => $statistiquesArticlesService->evolutionStock($granulariteStock),
+        return [
+            'parAgent' => $droits['ventes'] ? $parAgent : $sansMontant($parAgent),
+            'parCaissiere' => $droits['paiements'] ? $this->statistiquesGlobalesService->encaissementsParCaissiere($debut, $fin) : null,
+            'parProduction' => $this->statistiquesGlobalesService->productionParAgent($debut, $fin),
+            'parMachine' => $this->statistiquesGlobalesService->rendementParMachine($debut, $fin),
+            'topProduits' => $this->statistiquesGlobalesService->topProduits($debut, $fin, 15, $activite),
+            // Le CA facturé n'y est qu'avec le droit de voir les montants de vente.
+            'repartition' => $this->objectifs->repartition($debut, $fin->modify('+1 second'), $droits['ventes']),
+            'activite' => $activite,
+            'ventesArticles' => $droits['ventes'] ? $ventesArticles : $sansMontant($ventesArticles),
+            'evolutionStock' => $this->statistiquesArticlesService->evolutionStock($granulariteStock),
             'granulariteStock' => $granulariteStock,
             'filtres' => $filtres,
-        ]);
+            'droits' => $droits,
+            'local' => !$this->acces->estEnLigne(),
+        ];
     }
 
     /**
@@ -79,6 +132,7 @@ final class StatistiquesController extends AbstractController
             [
                 'date_debut' => $debut->format('Y-m-d'),
                 'date_fin' => $fin->format('Y-m-d'),
+                'activite' => Activite::lire($request->query->get('activite')),
             ],
         ];
     }

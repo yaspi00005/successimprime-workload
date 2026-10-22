@@ -1,0 +1,130 @@
+/*
+ * Réapprovisionnement et alertes d'achat (maquettes SU06 et SU07,
+ * docs/achats.md) : alertes en cartes, tableau des jours restants,
+ * courbe du stock, règles d'alerte à interrupteurs, commande proposée.
+ * S'ajoute à achats.css (mêmes couleurs, préfixe rp-).
+ */
+.rp-page .rp-fil { font-size: 12px; color: var(--ac-gris); margin: 0 0 10px; }
+.rp-page .rp-fil a { color: var(--ac-gris); }
+
+.rp-page .rp-titre { font-size: 22px; font-weight: 800; margin: 0 0 14px; color: #111827; }
+.rp-page .rp-btn { background: #fff; border: 1px solid var(--ac-bord); color: #111827; font-weight: 600; }
+.rp-page .rp-btn:hover { border-color: #C9D3E3; background: var(--ac-fond); }
+
+/* Alertes */
+.rp-page .rp-liste { list-style: none; margin: 0; padding: 0; }
+.rp-page .rp-alerte { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); }
+.rp-page .rp-alerte:last-child { border-bottom: 0; padding-bottom: 0; }
+.rp-page .rp-icone { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; background: #EEF1F6; color: var(--ac-bleu); }
+.rp-page .rp-alerte.rouge .rp-icone { background: #FDE7EA; color: var(--ac-rouge); }
+.rp-page .rp-alerte.orange .rp-icone { background: #FDEDE7; color: var(--ac-orange); }
+.rp-page .rp-alerte.jaune .rp-icone { background: #FFF6DB; color: #A87400; }
+.rp-page .rp-texte { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.rp-page .rp-texte .rp-sorte { font-size: 11px; color: var(--ac-gris); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; }
+.rp-page .rp-texte b { font-size: 14px; line-height: 1.3; }
+.rp-page .rp-texte span { font-size: 12px; color: var(--ac-gris); }
+.rp-page .rp-actions { flex: 0 0 auto; display: flex; align-items: flex-start; gap: 6px; }
+.rp-page .rp-whatsapp { position: relative; }
+.rp-page .rp-whatsapp summary { list-style: none; }
+.rp-page .rp-whatsapp summary::-webkit-details-marker { display: none; }
+.rp-page .rp-whatsapp summary i { color: #1F9D55; }
+.rp-page .rp-whatsapp > div { position: absolute; right: 0; top: calc(100% + 4px); z-index: 5; background: #fff; border: 1px solid var(--ac-bord); border-radius: 10px; box-shadow: 0 8px 24px rgba(17, 24, 39, .12); padding: 6px; min-width: 210px; }
+.rp-page .rp-whatsapp > div a { display: block; padding: 7px 10px; border-radius: 7px; font-size: 13px; color: #111827; text-decoration: none; white-space: nowrap; }
+.rp-page .rp-whatsapp > div a:hover { background: var(--ac-fond); }
+
+/* Tableau */
+.rp-page .rp-table tr.rp-choisi td { background: #F3F7FE; }
+.rp-page .rp-table { font-size: 13px; }
+.rp-page .rp-table th { white-space: normal; line-height: 1.25; }
+.rp-page .rp-table td { padding: 8px 6px; }
+.rp-page .rp-table td:first-child { min-width: 130px; }
+.rp-page .rp-table td:last-child { min-width: 175px; }
+.rp-page .rp-table td.num { white-space: nowrap; }
+.rp-page .rp-jours { font-weight: 800; }
+.rp-page .rp-jours.rouge { color: var(--ac-rouge); }
+.rp-page .rp-jours.orange { color: var(--ac-orange); }
+.rp-page .rp-jours.jaune { color: #A87400; }
+.rp-page .rp-jours.vert { color: var(--ac-vert); }
+.rp-page .rp-jours.commande { color: var(--ac-bleu); }
+.rp-page .rp-quand { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: 13px; text-decoration: none; }
+.rp-page .rp-quand i { width: 8px; height: 8px; border-radius: 50%; background: currentColor; flex: 0 0 auto; }
+.rp-page .rp-quand.rouge { color: var(--ac-rouge); }
+.rp-page .rp-quand.orange { color: var(--ac-orange); }
+.rp-page .rp-quand.jaune { color: #A87400; }
+.rp-page .rp-quand.vert { color: var(--ac-vert); }
+.rp-page .rp-quand.commande { color: var(--ac-bleu); }
+.rp-page .rp-mini { display: block; font-size: 12px; color: var(--ac-bleu); font-weight: 600; margin-top: 2px; }
+
+/* Courbe et règles */
+.rp-page .rp-grille { display: grid; grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); gap: 16px; align-items: start; }
+.rp-page .rp-svg { width: 100%; height: auto; display: block; overflow: visible; }
+.rp-page .rp-svg .rp-passe { fill: none; stroke: var(--ac-bleu); stroke-width: 2.5; stroke-linejoin: round; }
+.rp-page .rp-svg .rp-prevision { fill: none; stroke: var(--ac-bleu); stroke-width: 2.5; stroke-dasharray: 6 5; }
+.rp-page .rp-svg .rp-minimum { stroke: var(--ac-rouge); stroke-width: 1.2; stroke-dasharray: 4 4; }
+.rp-page .rp-svg .rp-axe { stroke: var(--ac-bord); }
+.rp-page .rp-svg .rp-aujourdhui { stroke: #374151; stroke-width: 1.2; }
+.rp-page .rp-svg .rp-bande { fill: rgba(222, 16, 40, .1); }
+.rp-page .rp-svg .rp-point-commande { fill: var(--ac-orange); stroke: #fff; stroke-width: 2; }
+.rp-page .rp-svg .rp-point-arrivee { fill: var(--ac-vert); stroke: #fff; stroke-width: 2; }
+.rp-page .rp-svg text { font-size: 11px; fill: #374151; font-weight: 600; }
+.rp-page .rp-svg text.rp-date { fill: var(--ac-gris); font-weight: 400; }
+.rp-page .rp-svg text.rouge { fill: var(--ac-rouge); }
+.rp-page .rp-svg text.orange { fill: var(--ac-orange); }
+.rp-page .rp-svg text.vert { fill: var(--ac-vert); }
+.rp-page .rp-legende { font-size: 12px; color: var(--ac-gris); margin: 6px 0 0; display: flex; flex-wrap: wrap; gap: 4px 14px; align-items: center; }
+.rp-page .rp-legende i { display: inline-block; width: 18px; height: 0; border-top: 2.5px solid var(--ac-bleu); margin-right: 5px; vertical-align: middle; }
+.rp-page .rp-legende i.prevision { border-top-style: dashed; }
+.rp-page .rp-legende i.minimum { border-top: 1.5px dashed var(--ac-rouge); }
+
+.rp-page .rp-regle { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); margin: 0; }
+.rp-page .rp-regle .rp-icone.stock_bas { background: #FDEDE7; color: var(--ac-orange); }
+.rp-page .rp-regle .rp-icone.prix { background: #FFF6DB; color: #A87400; }
+.rp-page .rp-regle .rp-icone.retard { background: #EEF1F6; color: var(--ac-bleu); }
+.rp-page .rp-regle .rp-icone.oubli { background: #E7F6EE; color: var(--ac-vert); }
+.rp-page .rp-regle-texte { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.rp-page .rp-regle-texte b { font-size: 14px; }
+.rp-page .rp-regle-texte small { font-size: 12px; color: var(--ac-gris); }
+.rp-page .rp-interrupteur { flex: 0 0 auto; width: 44px; height: 26px; border-radius: 99px; border: 0; background: #D1D5DB; position: relative; padding: 0; cursor: pointer; transition: background .15s; }
+.rp-page .rp-interrupteur i { position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .25); transition: left .15s; }
+.rp-page .rp-interrupteur.actif { background: var(--ac-vert); }
+.rp-page .rp-interrupteur.actif i { left: 21px; }
+.rp-page .rp-interrupteur:focus-visible { outline: 2px solid var(--ac-bleu); outline-offset: 2px; }
+.rp-page .rp-prevenir { font-size: 12px; color: var(--ac-gris); margin: 12px 0 0; }
+.rp-page .rp-prevenir b { color: #111827; }
+
+/* Commande proposée (SU07) */
+.rp-proposition { max-width: 560px; }
+.rp-page .rp-entete small { display: block; color: var(--ac-orange); font-weight: 800; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; }
+.rp-page .rp-entete h1 { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 800; margin: 2px 0; color: #111827; }
+.rp-page .rp-entete p { color: var(--ac-gris); font-size: 13px; margin: 0 0 12px; }
+.rp-page .rp-ligne { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--ac-bord); font-size: 14px; }
+.rp-page .rp-ligne:last-child { border-bottom: 0; }
+.rp-page .rp-ligne small { display: block; font-size: 12px; color: var(--ac-gris); font-weight: 400; }
+.rp-page .rp-ligne.rp-total { font-weight: 700; }
+.rp-page .rp-ligne.rp-total > b { font-size: 22px; font-weight: 800; }
+.rp-page .rp-astuce { background: #E7F6EE; color: #146C3B; border-radius: 10px; padding: 10px 12px; font-size: 13px; margin: 0 0 12px; }
+.rp-page .rp-pied { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 16px; }
+.rp-page .rp-pied form { width: 100%; }
+.rp-page .rp-valider { width: 100%; border-radius: 14px; padding: 12px; font-weight: 700; font-size: 15px; }
+.rp-page .rp-modifier { color: var(--ac-bleu); font-weight: 700; font-size: 14px; }
+
+@media (max-width: 1199px) {
+	.rp-page .rp-grille { grid-template-columns: minmax(0, 1fr); }
+}
+
+/* Téléphone (SU07) : les alertes en cartes, boutons sous le texte ; le pied de la proposition reste en bas. */
+@media (max-width: 640px) {
+	.rp-page .rp-alerte { flex-wrap: wrap; align-items: flex-start; background: var(--ac-fond); border: 0; border-radius: 12px; padding: 10px; margin-bottom: 8px; }
+	.rp-page .rp-alerte:last-child { margin-bottom: 0; padding-bottom: 10px; }
+	.rp-page .rp-texte { flex-basis: calc(100% - 46px); }
+	.rp-page .rp-actions { flex-basis: 100%; padding-left: 46px; }
+	.rp-page .rp-whatsapp > div { left: 0; right: auto; }
+	.rp-page .rp-table td.num { text-align: left; }
+	.rp-page .rp-table td:first-child, .rp-page .rp-table td:nth-child(2), .rp-page .rp-table td:last-child { min-width: 0; }
+	.rp-page .rp-titre { font-size: 18px; }
+	.rp-page .rp-svg text { font-size: 15px; }
+	.rp-page .rp-svg text.rp-date { font-size: 14px; }
+	/* Au-dessus de la barre du bas du téléphone (si-barre-mobile, environ 51 px). */
+	.rp-proposition { padding-bottom: 120px; }
+	.rp-page .rp-pied { position: fixed; left: 0; right: 0; bottom: calc(51px + env(safe-area-inset-bottom)); z-index: 1029; background: #fff; border-top: 1px solid var(--ac-bord); padding: 10px 16px 8px; margin: 0; gap: 6px; box-shadow: 0 -6px 20px rgba(15, 69, 144, .06); }
+}

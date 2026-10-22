@@ -1,0 +1,98 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Immobilisations › {{ bien.code }}{% endblock %}
+{% block page_title %}{{ bien.designation }}{% endblock %}
+
+{% block header_actions %}
+	{% if comptable %}
+		{% if bien.machine %}
+			<li class="nav-item si-masque-mobile">
+				<a href="{{ path('app_immobilisations_machine', {id: bien.machine.id}) }}" class="btn btn-light btn-sm si-btn-entete">Fiche machine</a>
+			</li>
+		{% endif %}
+		<li class="nav-item">
+			<a href="{{ path('app_immobilisations_modifier', {id: bien.id}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-pen me-1"></i>Modifier</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-imm">
+		<div class="si-imm-fiche">
+			<section class="card si-imm-identite">
+				<h2>{{ bien.code }}</h2>
+				<dl class="mb-0">
+					<dt>Catégorie</dt><dd>{{ bien.libelleCategorie }}{% if bien.quantite > 1 %} · {{ bien.quantite }} unités{% endif %}</dd>
+					<dt>Lieu · confié à</dt><dd>{{ bien.lieu ?? '—' }} · {{ bien.confieA ? m.nom(bien.confieA) : 'personne' }}</dd>
+					<dt>État</dt><dd><span class="si-fin-statut si-fin-statut-{{ bien.couleurEtat }}">{{ bien.libelleEtat }}</span>{% if bien.controleLe %} <small class="si-fin-gris">contrôlé le {{ bien.controleLe|date('d/m/Y') }}</small>{% endif %}</dd>
+					{% if bien.numeroSerie %}<dt>Numéro de série</dt><dd>{{ bien.numeroSerie }}</dd>{% endif %}
+					{% if bien.note %}<dt>Note</dt><dd>{{ bien.note|nl2br }}</dd>{% endif %}
+				</dl>
+			</section>
+			<section class="card si-imm-identite">
+				<h2>Achat</h2>
+				<dl class="mb-0">
+					<dt>Acheté le · mis en service le</dt><dd>{{ bien.dateAchat ? bien.dateAchat|date('d/m/Y') : '—' }} · {{ bien.dateMiseService ? bien.dateMiseService|date('d/m/Y') : '—' }}</dd>
+					{% if bien.fournisseur %}<dt>Fournisseur</dt><dd>{{ bien.fournisseur }}</dd>{% endif %}
+					{% if comptable %}
+						<dt>Valeur d'achat · résiduelle</dt><dd>{{ m.f(calcul.valeurAchat) }} · {{ m.f(bien.valeurResiduelle) }}</dd>
+						<dt>Méthode</dt><dd>{{ calcul.libelleMethode }}</dd>
+						<dt>Comptes</dt><dd>{{ bien.compteImmobilisation }} · amortissement {{ bien.compteAmortissement }}</dd>
+					{% endif %}
+				</dl>
+			</section>
+			{% if comptable %}
+				<section class="card si-imm-valeur">
+					<h2 class="mb-1">Valeur</h2>
+					<strong>{{ m.f(calcul.valeurNette) }}</strong>
+					<span class="si-fin-gris small">valeur nette comptable</span>
+					{% if calcul.base > 0 %}
+						<span class="si-fin-jauge"><span style="width: {{ min(100, calcul.cumul * 100 / calcul.base)|round(1) }}%"></span></span>
+						<span class="si-fin-gris small">{{ (calcul.cumul * 100 / calcul.base)|round }} % amorti</span>
+					{% endif %}
+					<div class="si-imm-mini">
+						<div>Dotation du mois<b>{{ m.f(calcul.dotation) }}</b></div>
+						<div>Amort. cumulé<b>{{ m.f(calcul.cumul) }}</b></div>
+					</div>
+				</section>
+			{% endif %}
+		</div>
+
+		{% if comptable %}
+			<div class="si-fin-deux">
+				<section class="card">
+					<h2>Dotations passées</h2>
+					{% if dotations is empty %}
+						<p class="si-fin-vide mb-0">Aucune dotation passée pour ce bien.</p>
+					{% else %}
+						<table class="table si-fin-table">
+							<thead><tr><th scope="col">Mois</th><th scope="col">Pièce</th><th scope="col" class="text-end">Dotation</th><th scope="col" class="text-end">Cumul</th></tr></thead>
+							<tbody>
+								{% for d in dotations %}
+									<tr><td>{{ d.mois|date('m/Y') }}</td><td>{{ d.piece }} · 681 / {{ d.compte }}</td><td class="text-end si-fin-f">{{ d.montant|number_format(0, ',', ' ') }}</td><td class="text-end si-fin-f">{{ d.cumul|number_format(0, ',', ' ') }}</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					{% endif %}
+				</section>
+				<section class="card">
+					<h2>Sortie du patrimoine</h2>
+					{% if bien.estSorti %}
+						<p>{{ constant('App\\Entity\\Immobilisation::SORTIES')[bien.sortieMotif] }} le {{ bien.sortieLe|date('d/m/Y') }}{% if bien.sortieMotif == 'vente' %} pour {{ m.f(bien.prixCession) }}{% endif %}.</p>
+						<p class="mb-0">{{ cession >= 0 ? 'Plus-value' : 'Moins-value' }} : <strong class="{{ cession >= 0 ? 'si-fin-vert' : 'si-fin-rouge' }}">{{ m.signe(cession) }}</strong> <span class="si-fin-gris small">(prix de cession − valeur nette au mois de sortie)</span></p>
+					{% else %}
+						<form method="post" action="{{ path('app_immobilisations_sortie', {id: bien.id}) }}" class="si-imm-form" data-confirmer="Sortir {{ bien.code }} du patrimoine ?">
+							<input type="hidden" name="_token" value="{{ csrf_token('sortie-' ~ bien.id) }}">
+							<div><label for="motif">Motif</label><select class="form-select" id="motif" name="motif">{% for cle, libelle in constant('App\\Entity\\Immobilisation::SORTIES') %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}</select></div>
+							<div><label for="date-sortie">Date</label><input class="form-control" type="date" id="date-sortie" name="date" value="{{ 'now'|date('Y-m-d') }}"></div>
+							<div><label for="prix">Prix de vente (F)</label><input class="form-control" id="prix" name="prix" inputmode="numeric" placeholder="0 pour un rebut ou un vol"></div>
+							<div class="d-flex align-items-end"><button class="btn btn-outline-danger">Sortir le bien</button></div>
+						</form>
+						<p class="si-fin-note">L'amortissement s'arrête au mois de sortie ; la fiche calcule la plus ou moins-value.</p>
+					{% endif %}
+				</section>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}

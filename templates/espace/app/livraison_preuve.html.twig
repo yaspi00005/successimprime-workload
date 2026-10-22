@@ -1,0 +1,83 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Preuve de livraison (maquettes DB11, DB13) : heure de remise, photo,
+	personne qui a reçu, code vérifié (ou signature), livreur ; contenu
+	remis ; « Tout est conforme ? » pendant 48 h ; la note de la livraison.
+#}
+{% set lecture = lecture ?? false %}
+{% block title %}Livrée · {{ commande.numero }}{% endblock %}
+{% block page_classe %} ec-page-large db-page{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}
+	<a class="ec-retour" href="{{ path('app_espace_livraisons') }}"><span class="fl">‹</span>Livrée · {{ commande.numero }}</a>
+	<div class="cs-entete-actions ec-bureau"><a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: commande.publicId}) }}">Voir la commande</a></div>
+{% endblock %}
+
+{% block contenu %}
+	<div class="db-grille db-lv-preuve">
+		<section class="ec-carte">
+			<div class="db-lv-livree">
+				<span class="db-lv-ok" aria-hidden="true">✓</span>
+				<p><b>Livrée à {{ b.livreLe|date('H:i') }}</b><small>{{ jour_court(b.livreLe) }}{% if b.creneau %} · créneau {{ b.creneau }}{% endif %}</small></p>
+			</div>
+			{% if b.photoClient %}
+				<figure class="db-lv-photo">
+					<img src="{{ path('app_espace_livraison_photo', {id: b.publicId}) }}" alt="Photo de la remise">
+					<figcaption>📷 Photo de remise · {{ (b.photoClientLe ?? b.livreLe)|date('H:i') }}{{ b.adresseLivraison ? ' · ' ~ b.adresseLivraison|split(' · ')|first }}</figcaption>
+				</figure>
+			{% endif %}
+			<dl class="db-parti-chiffres">
+				<div><dt>Remis à</dt><dd>{{ b.signataire ?: b.nomReceptionnaire ?: '—' }}</dd></div>
+				<div><dt>{{ b.codeVerifieLe ? 'Code' : 'Preuve' }}</dt><dd>{{ b.codeVerifieLe ? b.codeReception ~ ' ✓ correct' : 'signature' }}</dd></div>
+				<div><dt>Livreur</dt><dd>{{ b.livreurNom ?: '—' }}</dd></div>
+			</dl>
+		</section>
+
+		<aside class="db-droite">
+			<section class="ec-carte db-lv-contenu">
+				<h2>Contenu remis</h2>
+				<ul>
+					{% for l in b.lignes %}
+						<li><span>{{ l.designation }}</span><b>× {{ l.quantiteLivree|number_format(0, ',', ' ') }}</b></li>
+					{% endfor %}
+				</ul>
+			</section>
+			{% if not lecture %}
+				<section class="ec-carte db-lv-conforme">
+					{% if b.conformeLe %}
+						<p class="db-lv-merci">👍 Vous avez confirmé que tout est conforme. Merci !</p>
+					{% elseif probleme %}
+						<h2>Tout est conforme ?</h2>
+						<small class="db-lv-gris">Vous avez 48 h pour signaler un problème</small>
+						<form method="post" action="{{ path('app_espace_livraison_avis', {id: b.publicId}) }}" class="db-deux-boutons">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<button class="ec-bouton vert" name="conforme" value="1">👍 Oui, merci</button>
+							<a class="ec-bouton-blanc db-rouge" href="{{ path('app_espace_reclamation_nouvelle', {commande: commande.publicId, objet: 'Livraison ' ~ b.numero ~ ' : problème à la réception'}) }}">Signaler un problème</a>
+						</form>
+					{% else %}
+						<p class="db-lv-gris">Le délai de 48 h pour signaler un problème est passé. Une question ? Écrivez-nous depuis la commande.</p>
+					{% endif %}
+				</section>
+				<section class="ec-carte db-lv-note">
+					<h2>Notez la livraison</h2>
+					<form method="post" action="{{ path('app_espace_livraison_avis', {id: b.publicId}) }}" data-lv-note>
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<div class="db-lv-etoiles" role="radiogroup" aria-label="Note sur 5">
+							{% for n in 5..1 %}<label><input type="radio" name="note" value="{{ n }}"{{ b.noteLivraison == n ? ' checked' }}><span aria-hidden="true">★</span><span class="cd-masque">{{ n }} sur 5</span></label>{% endfor %}
+						</div>
+						<div class="db-lv-tags">
+							{% for k, v in constant('App\\Entity\\BonLivraison::NOTE_TAGS') %}
+								<label><input type="checkbox" name="tags[]" value="{{ k }}"{{ k in b.noteTags ? ' checked' }}><span>{{ v }}</span></label>
+							{% endfor %}
+						</div>
+						<button class="ec-bouton bleu db-petit-bouton" data-lv-envoyer-note{{ b.noteLivraison ? '' : ' hidden' }}>{{ b.noteLivraison ? 'Changer ma note' : 'Envoyer ma note' }}</button>
+						<p class="db-lv-gris db-lv-note-aide">Contente ou content de la livraison ? Un avis Google nous aide beaucoup.</p>
+					</form>
+				</section>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-livraison.js') }}" defer></script>{% endblock %}

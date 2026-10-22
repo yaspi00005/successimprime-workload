@@ -9,6 +9,7 @@ use App\Entity\RegleRappelPaiement;
 use App\Repository\CommandesRepository;
 use App\Repository\RappelPaiementEnvoyeRepository;
 use App\Repository\RegleRappelPaiementRepository;
+use App\Service\Messagerie\JournalEnvois;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
@@ -45,7 +46,11 @@ class RappelPaiementService
     {
         $reference = $reference ?? new \DateTimeImmutable('today');
 
-        $regles = $this->regleRepository->findActives();
+        // Les règles « commande prête à retirer » sont traitées par RelanceRetraitService.
+        $regles = array_values(array_filter(
+            $this->regleRepository->findActives(),
+            static fn (RegleRappelPaiement $regle) => !$regle->isRetrait()
+        ));
 
         if ($regles === []) {
             return ['envoyes' => 0, 'echecs' => 0, 'details' => []];
@@ -223,7 +228,7 @@ class RappelPaiementService
             return ['succes' => false, 'erreur' => 'Le client n’a pas de numéro de téléphone.'];
         }
 
-        return $this->orangeSmsService->envoyerSms($telephone, $message);
+        return $this->orangeSmsService->envoyerSms($telephone, $message, type: 'rappel_paiement');
     }
 
     /**
@@ -275,7 +280,7 @@ class RappelPaiementService
                 ->subject($sujet ?? 'Rappel de paiement')
                 ->text($message);
 
-            $this->mailer->send($courriel);
+            $this->mailer->send(JournalEnvois::typer($courriel, 'rappel_paiement'));
 
             return ['succes' => true, 'erreur' => null];
         } catch (\Throwable $exception) {

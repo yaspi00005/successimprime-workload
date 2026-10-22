@@ -1,0 +1,48 @@
+{% extends 'controle_pre_presse/_base.html.twig' %}
+
+{#
+	Lignes sans fichier retirées de la liste de la prépresse (bouton
+	« Retirer de la liste », docs/prepresse.md). La commande n'est ni
+	clôturée ni supprimée : « Remettre dans la liste » la ramène.
+#}
+
+{% block title %}Prépresse · lignes retirées{% endblock %}
+
+{% block body %}
+	<div class="pq-page" data-sans-filtres>
+		{% include 'controle_pre_presse/_entete.html.twig' with {titre: 'Prépresse', vue: 'retirees'} %}
+
+		<section class="pq-carte">
+			<p class="pq-muet mb-3">Ces lignes n'avaient pas de fichier et ont été retirées de la liste. Les commandes restent ouvertes : rien n'est clôturé ni supprimé.</p>
+			{% if lignes is empty %}
+				<p class="pq-vide">Aucune ligne retirée.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="pq-retirees">
+						<thead>
+							<tr><th>Commande</th><th>Client</th><th>Format</th><th class="text-end">Qté</th><th>Retirée le</th><th></th></tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								<tr>
+									<td><a class="fw-bold" href="{{ path('app_commandes_show', {id: l.commandeId}) }}">{{ l.numero }}</a></td>
+									<td>{{ l.client ?? '—' }}</td>
+									<td>{{ l.format }}</td>
+									<td class="text-end">{{ l.quantite|number_format(0, ',', ' ') }}</td>
+									<td>{{ l.retireLe|date('d/m/Y H:i') }}{% if l.retirePar %} <span class="pq-muet">par {{ l.retirePar }}</span>{% endif %}</td>
+									<td class="text-end">
+										<form method="post" action="{{ path('app_controle_pre_presse_remettre', {id: l.id}) }}" class="d-inline">
+											<input type="hidden" name="_token" value="{{ csrf_token('prepresse-retirer') }}">
+											<button type="submit" class="pq-btn petit"><i class="fas fa-undo"></i>Remettre dans la liste</button>
+										</form>
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			{% endif %}
+			<p class="mt-3 mb-0"><a href="{{ path('app_controle_pre_presse_index', {onglet: 'sans_fichier'}) }}">‹ Retour à la liste sans fichier</a></p>
+		</section>
+	</div>
+{% endblock %}

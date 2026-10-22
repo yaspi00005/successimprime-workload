@@ -1,142 +1,50 @@
-{% extends 'base.html.twig' %}
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
 
-{% block title %}
-	Achats
+{% block title %}Commandes d'achat{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_achat_new') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Commande d'achat</a>
+	</li>
 {% endblock %}
 
 {% block body %}
+	<div class="ac-page">
 
-	{% include "alert.html.twig" %}
+		<nav class="ac-onglets" aria-label="Statut des commandes">
+			{% for cle, f in filtres %}
+				<a href="{{ path('app_achat_index', {statut: cle}) }}" class="{{ cle == filtre ? 'actif' }}">{{ f.libelle }}{% if f.nombre > 0 and cle != 'toutes' %} · {{ f.nombre }}{% endif %}</a>
+			{% endfor %}
+		</nav>
 
-	<div class="side-app">
-
-		<div class="page-header">
-
-			<div>
-				<h1 class="page-title">
-					{{ statut == 'recu' ? 'Achats reçus' : (statut == 'annule' ? 'Achats annulés' : 'Demandes d’achat') }}
-				</h1>
-
-				<ol class="breadcrumb">
-					<li class="breadcrumb-item">
-						Achats
-					</li>
-					<li class="breadcrumb-item active">
-						{{ statut == 'recu' ? 'Reçus' : (statut == 'annule' ? 'Annulés' : 'Demandes') }}
-					</li>
-				</ol>
-			</div>
-
-			<div class="ml-auto">
-				<a href="{{ path('app_achat_new') }}" class="btn btn-primary-light">
-					<i class="fa fa-plus mr-1"></i>
-					Nouvelle demande d’achat
-				</a>
-			</div>
-
-		</div>
-
-
-		<ul class="nav nav-tabs mb-3">
-			<li class="nav-item">
-				<a class="nav-link {{ statut == 'demande' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'demande'}) }}">
-					<i class="fa fa-clock-o mr-1"></i>
-					Demandes d’achat
-				</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link {{ statut == 'recu' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'recu'}) }}">
-					<i class="fa fa-check mr-1"></i>
-					Achats reçus
-				</a>
-			</li>
-			<li class="nav-item">
-				<a class="nav-link {{ statut == 'annule' ? 'active' : '' }}" href="{{ path('app_achat_index', {statut: 'annule'}) }}">
-					<i class="fa fa-ban mr-1"></i>
-					Annulés
-				</a>
-			</li>
-		</ul>
-
-
-		<div class="row row-cards">
-
-			<div class="col-lg-12">
-
-				<div class="card">
-
-					<div class="table-responsive">
-
-						<table class="table table-bordered table-hover mb-0">
-
-							<thead>
+		<section class="ac-carte">
+			{% if lignes is empty %}
+				<p class="ac-muet mb-0">Aucune commande d'achat ici.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table">
+						<thead>
+							<tr><th>N°</th><th>Fournisseur</th><th>Date</th><th class="num">Montant rendu</th><th>Promis</th><th>Arrivée</th><th>Statut</th><th></th></tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set a = l.achat %}
 								<tr>
-									<th>Numéro</th>
-									<th>Fournisseur</th>
-									<th>Date</th>
-									<th class="text-right">Total TTC</th>
-									<th class="text-center">Actions</th>
+									<td><a class="ac-lien" href="{{ path(a.estBrouillon ? 'app_achat_edit' : 'app_achat_show', {id: a.id}) }}">{{ a.numero ?? 'Brouillon' }}</a></td>
+									<td><a class="ac-nom ac-lien" href="{{ path('app_fournisseur_show', {id: a.fournisseur.id}) }}">{{ m.avatar(a.fournisseur) }}<span>{{ a.fournisseur.nomCourt }}</span></a></td>
+									<td class="ac-muet">{{ (a.dateCommande ?? a.dateDemande)|date('d/m/y') }}</td>
+									<td class="num"><b>{{ m.f(a.totalRendu) }}</b></td>
+									<td class="ac-muet">{{ a.datePromise ? a.datePromise|date('d/m') : '—' }}</td>
+									<td class="ac-muet">{{ a.dateReception ? a.dateReception|date('d/m') : (l.prevue ? 'prévue ' ~ l.prevue|date('d/m') : '—') }}</td>
+									<td>{{ m.statut(a) }}{% if a.paiementBloque and is_granted('ROLE_TRESORERIE_VOIR') %} <span class="ac-badge retard">paiement bloqué</span>{% endif %}</td>
+									<td>{% if a.estEnCours %}<a class="ac-bouton" href="{{ path('app_reception_show', {id: a.id}) }}">Réceptionner</a>{% elseif a.estRecu %}<a class="ac-lien ac-muet" href="{{ path('app_reception_show', {id: a.id}) }}">Réception</a>{% endif %}</td>
 								</tr>
-							</thead>
-
-							<tbody>
-
-								{% for achat in achats %}
-
-									<tr>
-										<td>
-											<a href="{{ path('app_achat_show', {id: achat.id}) }}">
-												<strong>{{ achat.numero|default('Brouillon #' ~ achat.id) }}</strong>
-											</a>
-										</td>
-
-										<td>
-											{% if achat.fournisseur %}
-												<a href="{{ path('app_fournisseur_show', {id: achat.fournisseur.id}) }}">
-													{{ achat.fournisseur.nom }}
-												</a>
-											{% else %}
-												—
-											{% endif %}
-										</td>
-
-										<td class="nowrap">
-											{{ achat.dateDemande|date('d/m/Y') }}
-										</td>
-
-										<td class="text-right nowrap">
-											{{ achat.totalTtc|number_format(0, ',', ' ') }} FCFA
-										</td>
-
-										<td class="text-center nowrap">
-											<a href="{{ path('app_achat_show', {id: achat.id}) }}" class="btn btn-sm btn-primary-light">
-												<i class="fa fa-eye"></i>
-											</a>
-										</td>
-									</tr>
-
-								{% else %}
-
-									<tr>
-										<td colspan="5" class="text-center text-muted py-5">
-											Aucun achat dans cette catégorie.
-										</td>
-									</tr>
-
-								{% endfor %}
-
-							</tbody>
-
-						</table>
-
-					</div>
-
+							{% endfor %}
+						</tbody>
+					</table>
 				</div>
-
-			</div>
-
-		</div>
-
+			{% endif %}
+		</section>
 	</div>
-
 {% endblock %}

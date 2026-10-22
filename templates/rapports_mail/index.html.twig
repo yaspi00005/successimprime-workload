@@ -1,0 +1,192 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Accueil › Rapports par e-mail (docs/rapports-mail.md) : quand partent
+	les trois rapports, l'état de la messagerie, qui les reçoit (la
+	direction choisit), et l'historique des envois. Hors direction : ses
+	propres envois seulement.
+#}
+
+{% block title %}Rapports par e-mail{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/rapports-mail.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_rapports_mail_apercu', {type: 'jour'}) }}" class="btn btn-primary btn-sm si-btn-entete"><i class="far fa-eye me-1"></i>Aperçu<span class="si-masque-mobile"> de mon rapport</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set declencheurs = {auto: 'tâche planifiée', commande: 'à la main', essai: 'essai'} %}
+	{% set pastilles = {envoye: 'si-pastille-vert', partiel: 'si-pastille-orange', echec: 'si-pastille-rouge', en_cours: 'si-pastille-bleu'} %}
+	{% set lignes_pastilles = {envoye: 'si-pastille-vert', echec: 'si-pastille-rouge', sans_adresse: 'si-pastille-orange', a_envoyer: 'si-pastille-gris'} %}
+	<div class="si-rm">
+		{% if not configure %}
+			<div class="alert alert-warning si-rm-alerte">
+				<i class="fas fa-exclamation-triangle me-2"></i><strong>Aucun rapport ne part :</strong> l’envoi d’e-mails n’est pas réglé sur cette machine.
+				{% if direction %}Il faut <code>MAILER_DSN</code> et <code>MAILER_FROM_ADDRESS</code> dans le fichier <code>.env.local</code> de l’ERP (voir le guide d’installation, « Rapports par e-mail »).{% else %}La direction doit le régler.{% endif %}
+			</div>
+		{% elseif factice %}
+			<div class="alert alert-info si-rm-alerte"><i class="fas fa-flask me-2"></i>Transport de test (<code>null://</code>) : les e-mails « partent » mais n’arrivent nulle part.</div>
+		{% endif %}
+
+		<div class="si-rm-rapports">
+			{% for type, rp in rapports %}
+				<section class="card si-rm-rapport {{ rp.actif ? '' : 'si-rm-inactif' }}" aria-labelledby="rm-{{ type }}">
+					<header>
+						<h2 id="rm-{{ type }}">{{ rp.titre }}</h2>
+						{% if rp.actif %}<span class="si-pastille si-pastille-vert">actif</span>{% else %}<span class="si-pastille si-pastille-gris">arrêté</span>{% endif %}
+					</header>
+					<p class="si-rm-quand">{{ rp.libelle }}</p>
+					<dl>
+						<dt>Prochain envoi</dt>
+						<dd>{{ rp.prochain ? rp.prochain|date('d/m/Y à H:i') : '—' }}</dd>
+						<dt>Dernier envoi</dt>
+						<dd>
+							{% if rp.dernier %}
+								{{ rp.dernier.demarreLe|date('d/m à H:i') }}
+								<span class="si-pastille {{ pastilles[rp.dernier.statut] ?? 'si-pastille-gris' }}">{{ rp.dernier.libelleStatut|lower }}</span>
+							{% else %}pas encore{% endif %}
+						</dd>
+					</dl>
+					<a class="btn btn-outline-primary btn-sm" href="{{ path('app_rapports_mail_apercu', {type: type}) }}"><i class="far fa-eye me-1"></i>Aperçu</a>
+				</section>
+			{% endfor %}
+		</div>
+
+		<div class="row">
+			<div class="col-xl-8">
+				{% if direction %}
+					<section class="card si-bloc" id="destinataires">
+						<div class="si-bloc-tete"><h4>Destinataires</h4></div>
+						<p class="si-rm-aide">
+							{% if choisis %}Seuls les comptes cochés reçoivent les rapports.{% else %}Pas encore de choix : la direction reçoit les rapports (comptes avec une adresse e-mail).{% endif %}
+							Les rapports vont à la direction seulement ; l’adresse est celle de la fiche employé.
+						</p>
+						<form method="post" action="{{ path('app_rapports_mail_destinataires') }}">
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							{% set permis = candidats|filter(c => c.droit) %}
+							{% set exclus = candidats|filter(c => not c.droit) %}
+							<ul class="si-rm-candidats">
+								{% for c in permis %}
+									{% set id = 'rm-c-' ~ c.utilisateur.id %}
+									<li>
+										<input class="form-check-input" type="checkbox" name="destinataires[]" value="{{ c.utilisateur.id }}" id="{{ id }}" {{ c.choisi ? 'checked' }}>
+										<label for="{{ id }}">
+											<strong>{{ c.nom }}</strong>{% if c.profil %} <span class="si-rm-profil">{{ c.profil }}</span>{% endif %}
+											<span class="si-rm-detail">
+												{% if c.adresse %}{{ c.adresse }}{% else %}<span class="text-danger">pas d’adresse e-mail sur sa fiche</span>{% endif %}
+												· {{ c.version }}
+											</span>
+										</label>
+									</li>
+								{% else %}
+									<li class="si-rm-sans-droit">Aucun compte actif de la direction.</li>
+								{% endfor %}
+							</ul>
+							{% if exclus is not empty %}
+								<details class="si-rm-exclus">
+									<summary>{{ exclus|length }} compte{{ exclus|length > 1 ? 's' }} hors de la direction : ne peu{{ exclus|length > 1 ? 'vent' : 't' }} pas recevoir les rapports</summary>
+									<p>{% for c in exclus %}{{ c.nom }}{% if c.profil %} ({{ c.profil }}){% endif %}{{ not loop.last ? ' · ' }}{% endfor %}</p>
+									<p class="si-rm-aide mb-0">Les rapports par e-mail vont à la direction seulement. Chacun peut voir l’aperçu de sa version ici, selon ses droits.</p>
+								</details>
+							{% endif %}
+							<div class="si-rm-actions">
+								<button class="btn btn-primary btn-sm" name="mode" value="choisis"><i class="fas fa-check me-1"></i>Enregistrer les destinataires cochés</button>
+								{% if choisis %}<button class="btn btn-outline-secondary btn-sm" name="mode" value="defaut">Revenir à la direction</button>{% endif %}
+							</div>
+						</form>
+					</section>
+				{% endif %}
+
+				<section class="card si-bloc" id="historique">
+					<div class="si-bloc-tete"><h4>{{ direction ? 'Historique des envois' : 'Vos derniers rapports' }}</h4></div>
+					{% if historique is empty %}
+						<p class="text-muted py-4 text-center mb-0">Aucun rapport envoyé pour le moment.</p>
+					{% else %}
+						<ul class="si-rm-historique">
+							{% for e in historique %}
+								{% set mes_lignes = direction ? e.lignes : e.lignes|filter(l => l.utilisateur == app.user.id) %}
+								<li>
+									<details>
+										<summary>
+											<span class="si-rm-h-date">{{ e.demarreLe|date('d/m/Y H:i') }}</span>
+											<span class="si-rm-h-quoi">
+												<strong>{{ e.type == 'jour' ? 'Du jour' : (e.type == 'semaine' ? 'De la semaine' : 'Du mois') }}</strong> · {{ e.periode }}
+												<small>{{ declencheurs[e.declencheur] ?? e.declencheur }}{% if e.demandePar %} · {{ e.demandePar.username }}{% endif %}{% if e.tentatives > 1 %} · {{ e.tentatives }} tentatives{% endif %}</small>
+											</span>
+											<span class="si-rm-h-etat">
+												{% if direction %}
+													<span class="si-pastille {{ pastilles[e.statut] ?? 'si-pastille-gris' }}">{{ e.libelleStatut|lower }}</span>
+													<small>{{ e.nombre('envoye') }} / {{ e.lignes|length }}</small>
+												{% else %}
+													{% for l in mes_lignes %}<span class="si-pastille {{ lignes_pastilles[l.statut] ?? 'si-pastille-gris' }}">{{ constant('App\\Entity\\EnvoiRapport::LIGNES')[l.statut]|lower }}</span>{% endfor %}
+												{% endif %}
+											</span>
+										</summary>
+										{% if mes_lignes is empty %}
+											<p class="si-rm-aide mb-2">Aucun destinataire : personne n’avait le droit et une adresse au moment de l’envoi.</p>
+										{% else %}
+											<table class="table si-table si-rm-lignes mb-2">
+												<thead><tr><th>Personne</th><th class="si-masque-mobile">Version</th><th>Résultat</th></tr></thead>
+												<tbody>
+													{% for l in mes_lignes %}
+														<tr>
+															<td><strong>{{ l.nom }}</strong><br><small class="text-muted">{{ l.adresse ?? 'pas d’adresse' }}</small></td>
+															<td class="si-masque-mobile"><small>{{ l.version }}</small></td>
+															<td>
+																<span class="si-pastille {{ lignes_pastilles[l.statut] ?? 'si-pastille-gris' }}">{{ constant('App\\Entity\\EnvoiRapport::LIGNES')[l.statut]|lower }}</span>
+																{% if l.le %}<small class="text-muted">{{ l.le|date('H:i') }}</small>{% endif %}
+																{% if l.erreur %}<br><small class="text-danger">{{ l.erreur }}</small>{% endif %}
+															</td>
+														</tr>
+													{% endfor %}
+												</tbody>
+											</table>
+										{% endif %}
+										{% if direction and not e.essai and e.aReprendre is not empty and e.statut != 'en_cours' %}
+											<form method="post" action="{{ path('app_rapports_mail_reprendre', {id: e.id}) }}" class="mb-2">
+												<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+												<button class="btn btn-outline-primary btn-sm"><i class="fas fa-redo me-1"></i>Renvoyer aux destinataires en échec</button>
+											</form>
+										{% endif %}
+									</details>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</section>
+			</div>
+
+			<div class="col-xl-4">
+				<section class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Vous</h4></div>
+					{% if moi.recoit %}
+						<p class="mb-1"><span class="si-pastille si-pastille-vert">vous recevez les rapports</span></p>
+						<p class="si-rm-aide">À {{ moi.adresse }} · {{ moi.version }}.</p>
+					{% else %}
+						<p class="mb-1"><span class="si-pastille si-pastille-gris">vous ne les recevez pas</span></p>
+						<p class="si-rm-aide">{% if moi.adresse is null %}Votre fiche employé n’a pas d’adresse e-mail.{% else %}La direction choisit les destinataires.{% endif %} Votre version : {{ moi.version|lower }}.</p>
+					{% endif %}
+					<a class="btn btn-outline-primary btn-sm" href="{{ path('app_rapports_mail_apercu', {type: 'jour'}) }}">Voir mon rapport du jour</a>
+				</section>
+
+				<section class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Fonctionnement</h4></div>
+					<ul class="si-rm-liste">
+						<li>Chaque rapport part <strong>une seule fois</strong> par jour, semaine ou mois. Un ordinateur éteint à l’heure prévue l’envoie à son redémarrage, s’il n’est pas trop vieux.</li>
+						<li>Contenu : activité (devis, commandes, livraisons, BAT, nouveaux clients, réclamations, retards, stock) et argent (CA, encaissé par moyen de paiement, dépenses, créances, trésorerie), comparés à la période d’avant et aux objectifs.</li>
+						<li>Chaque partie suit les droits du destinataire : sans le droit Paiements, pas d’encaissements ; sans le droit Clients, des nombres sans noms.</li>
+						<li>{{ piece_jointe ? 'PDF de la même version joint.' : 'Sans PDF joint.' }}{% if expediteur %} Expéditeur : {{ expediteur }}.{% endif %}</li>
+						<li>{% if adresse_erp %}Le bouton « Ouvrir dans l’ERP » mène à {{ adresse_erp }} (réseau de l’atelier seulement).{% else %}Pas de bouton « Ouvrir dans l’ERP » : l’adresse de l’ERP dans l’atelier n’est pas réglée.{% endif %}</li>
+					</ul>
+					{% if direction %}<a href="{{ path('app_reglages_parametres_index', {tuile: 'rapports_mail'}) }}" class="btn btn-outline-primary btn-sm">Changer les jours et heures</a>{% endif %}
+				</section>
+			</div>
+		</div>
+	</div>
+{% endblock %}

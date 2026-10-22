@@ -12,6 +12,15 @@
 			</div>
 		</div>
 
+		<div class="col-md-12">
+			<div class="form-group">
+				{{ form_label(form.type) }}
+				{{ form_widget(form.type) }}
+				<small class="form-text text-muted">{{ form.type.vars.help }}</small>
+				{{ form_errors(form.type) }}
+			</div>
+		</div>
+
 		<div class="col-md-6">
 			<div class="form-group">
 				{{ form_label(form.delaiJours) }}

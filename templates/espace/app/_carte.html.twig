@@ -1,0 +1,6 @@
+{# Carte d'une commande dans les listes (maquette 15). #}
+<a class="ec-carte" href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}">
+	<div class="ec-ligne"><span class="ec-petit">Commande n° {{ carte.commande.numero }}</span>{% include 'espace/app/_statut.html.twig' %}</div>
+	<div style="font-weight:800;font-size:1.05rem;margin-top:.3rem">{{ carte.titre }}</div>
+	<div class="ec-barre{{ carte.terminee or carte.courante.cle == 'livree' ? ' verte' }}"><span style="width: {{ carte.avancement }}%"></span></div>
+</a>

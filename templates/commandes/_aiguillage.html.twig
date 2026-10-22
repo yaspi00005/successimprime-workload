@@ -1,0 +1,78 @@
+{#
+	Aiguillage automatique des lignes venues de « Mes produits » (maquette
+	MP06, docs/mes-produits.md) : une ligne avec un fichier lié et une taille
+	validée part dans la file d'impression ; les autres au prépresse (BAT).
+	Données : Aiguillage::pourCommande, réutilisables par les autres écrans.
+#}
+{% set aig = aiguillage_commande(commande) %}
+{% if aig %}
+	<link href="{{ asset('css/produits-clients-prepresse.css') }}" rel="stylesheet">
+	{% set machines = aig.lignes|filter(l => l.aiguillage.mode == 'direct' and l.aiguillage.machine)|map(l => l.aiguillage.machine)|reduce((liste, m) => m in liste ? liste : liste|merge([m]), []) %}
+	<div class="card si-bloc si-aig">
+		<div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2">
+			<div>
+				<h4 class="mb-0">Aiguillage automatique des lignes {% if aig.depuisMesProduits %}<span class="si-pcl-nouveaux">Depuis « Mes produits »</span>{% endif %}</h4>
+				<small class="text-muted">Une ligne avec un fichier lié et une taille validée saute le prépresse.{% if aig.depuisMesProduits %} {{ aig.acompteRegle ? 'Acompte réglé ou client dispensé.' : 'Acompte pas encore réglé.' }}{% endif %}</small>
+			</div>
+			{% if not aig.lancee and is_granted('ROLE_COMMANDE') and not commande.deleted and not commande.attendValidationEntreprise and not commande.estRefuseeParEntreprise %}
+				<form method="post" action="{{ path('app_commandes_aiguillage_lancer', {id: commande.id}) }}" data-confirmer="{{ commande.statut ? 'Envoyer les lignes directes dans la file d\'impression ?' : 'Confirmer la commande ' ~ commande.numero ~ ' et envoyer les lignes directes dans la file d\'impression ?' }}{{ aig.depuisMesProduits and not aig.acompteRegle ? ' L\'acompte n\'est pas encore réglé.' }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('aiguillage-' ~ commande.id) }}">
+					<button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-play me-1"></i>{{ commande.statut ? 'Lancer l\'impression' : 'Confirmer et lancer' }}</button>
+				</form>
+			{% endif %}
+		</div>
+		{% for l in aig.lignes %}
+			{% set a = l.aiguillage %}
+			{% set d = l.detail|default(l.ligne) %}
+			{% set p = d.produitClient %}
+			{% set image = p ? (p.image ?? p.fichier) : null %}
+			<div class="si-aig-ligne">
+				<span class="si-pcl-image">{% if image %}<img src="{{ path('app_fichier_visualiser', {id: image.id}) }}" alt="" loading="lazy">{% else %}{{ (p ? p.nom : d.designation)|default('?')|slice(0, 2)|upper }}{% endif %}</span>
+				<span class="si-aig-produit"><b>{{ p ? p.nom : d.designation }}</b>{% if a.taille %} · {{ a.taille }}{% endif %} · {{ d.quantite|number_format(0, ',', ' ') }} ex.</span>
+				<span class="si-aig-fichier{{ a.alerte ? ' alerte' : (a.mode == 'prepresse' ? ' prep') }}">
+					{% if a.fichier %}<span class="si-aig-nom"><i class="fas fa-paperclip me-1"></i>{{ a.fichier.nom }}</span>{% endif %}
+					<small>{{ a.motif }}{% if a.mode == 'direct' and a.fichier %} ✓{% endif %}</small>
+				</span>
+				<span class="si-aig-fleche {{ a.mode }}{{ a.alerte ? ' alerte' }}" aria-hidden="true">→</span>
+				<span class="si-aig-dest {{ a.mode }}{{ a.alerte ? ' alerte' }}">
+					<b>{{ a.destination }}</b>
+					<small>{% if a.ordre %}{{ a.ordre.numero }} · {{ {'a_produire': 'nouveau', 'en_cours': 'en cours', 'en_pause': 'en pause', 'termine': 'terminé', 'annule': 'annulé'}[a.ordre.statut]|default(a.ordre.statut) }}{% if a.operateur %} · {{ a.operateur }}{% endif %}{% elseif a.mode == 'direct' %}pas encore lancée{% elseif a.mode == 'prepresse' %}puis BAT au client{% endif %}</small>
+				</span>
+			</div>
+		{% endfor %}
+	</div>
+
+	<div class="row g-3 mb-3">
+		{% for m in machines %}
+			<div class="col-lg-6">
+				<div class="card si-bloc h-100 mb-0">
+					<h5 class="mb-1">File d'impression · {{ m }}</h5>
+					<small class="text-muted d-block mb-2">Ordres en attente ou en cours sur cette machine.</small>
+					{% for o in file_impression(m) %}
+						{% set od = o.commandeDetail %}
+						<div class="si-aig-file">
+							<b>{{ od.commande.numero }}</b>
+							<span><b>{{ od.produitClient ? od.produitClient.nom : od.designation }}</b> · {{ o.quantite|number_format(0, ',', ' ') }} ex.<small class="d-block text-muted">{{ od.fichierLie ? 'fichier lié · prêt' : 'BAT validé' }}</small></span>
+							{% if o.statut == 'a_produire' %}<span class="si-pcl-badge prix">Nouveau</span>{% endif %}
+							{% if od.fichierLie and (is_granted('ROLE_PREPRESSE') or is_granted('ROLE_PRODUCTION_VOIR')) %}<a href="{{ path('app_commande_fichier_lie', {id: od.id}) }}" target="_blank" rel="noopener">Ouvrir le PDF</a>{% endif %}
+						</div>
+					{% else %}
+						<p class="text-muted small mb-0">Rien en attente.</p>
+					{% endfor %}
+				</div>
+			</div>
+		{% endfor %}
+		<div class="col-lg-6">
+			<div class="card si-bloc h-100 mb-0">
+				<h5 class="mb-2">Règles</h5>
+				<dl class="si-aig-regles mb-0">
+					<dt>Fichier lié + taille validée</dt><dd>impression directe, pas de BAT</dd>
+					<dt>Nouvelle taille ou nouvelle matière</dt><dd>prépresse, puis BAT au client</dd>
+					<dt>Client remplace l'image du produit</dt><dd>lien suspendu, retour au prépresse</dd>
+					<dt>Fichier modifié ou déplacé dans le dossier</dt><dd>alerte : l'empreinte ne correspond plus</dd>
+					<dt>Nouvelle taille validée par l'atelier</dt><dd>ajoutée au produit pour la prochaine fois</dd>
+				</dl>
+			</div>
+		</div>
+	</div>
+{% endif %}

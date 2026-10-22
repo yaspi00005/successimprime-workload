@@ -1,0 +1,44 @@
+{#
+	Réglages › Site vitrine › Nous soutenir (SoutienSite) : lien de l'avis
+	Google et QR code. Variables : soutien (lien, qr).
+#}
+{% set apercu = site_soutien() %}
+<div class="row g-4">
+	<div class="col-lg-6">
+		<form method="post" action="{{ path('app_site_contenu_soutien') }}" class="si-sv-soutien-form">
+			<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-soutien') }}">
+			<label class="si-libelle-champ" for="soutien-lien">Lien « Laisser un avis » de la fiche Google</label>
+			<input type="url" name="lien" id="soutien-lien" value="{{ soutien.lien }}" maxlength="500" class="form-control form-control-sm" placeholder="{{ constant('App\\Service\\Site\\SoutienSite::LIEN_DEFAUT') }}" aria-describedby="aide-soutien-lien">
+			<div id="aide-soutien-lien" class="form-text">Fiche Google de l'imprimerie › « Demander des avis » › copier le lien. Laissez vide pour cacher « Nous soutenir » partout.</div>
+			<div class="si-sv-ligne-interrupteur mt-3">
+				<label class="si-interrupteur">
+					<input type="checkbox" name="qr" value="1" id="soutien-qr" {{ soutien.qr ? 'checked' }} aria-describedby="aide-soutien-qr">
+					<span></span>
+				</label>
+				<div>
+					<label for="soutien-qr" class="mb-0"><strong>Montrer le QR code</strong></label>
+					<small id="aide-soutien-qr" class="d-block text-muted">Sur ordinateur, à côté du bouton : le client le scanne avec son téléphone. Fait par le serveur, sans site extérieur.</small>
+				</div>
+			</div>
+			<button type="submit" class="btn btn-danger btn-sm mt-3">Enregistrer</button>
+		</form>
+	</div>
+	<div class="col-lg-6">
+		<h2 class="si-sv-sous-titre">Où le client le voit</h2>
+		<ul class="si-sv-manques">
+			<li>Site : bloc « Nous soutenir » en bas de l'accueil et lien dans le pied de page de chaque page.</li>
+			<li>Espace client : carte du tableau de bord (chaque personne peut la fermer, elle ne revient plus pour elle) et invitation sur chaque commande livrée ou retirée.</li>
+			<li>Le bouton ouvre la fiche Google dans un nouvel onglet. Aucune mesure ni script de suivi.</li>
+			<li>Proposé à tous les clients, quelle que soit leur note : Google interdit de ne demander l'avis que des clients contents.</li>
+		</ul>
+		{% if apercu and apercu.qr %}
+			<h2 class="si-sv-sous-titre mt-3">QR code</h2>
+			<div class="si-sv-soutien-qr">
+				<img src="{{ apercu.qr }}" width="140" height="140" alt="QR code vers le lien de l'avis Google">
+				<p class="form-text mb-0">À imprimer pour le comptoir : ouvrez <a href="{{ apercu.qr }}" target="_blank" rel="noopener">le QR code</a> dans un onglet, puis imprimez-le.</p>
+			</div>
+		{% elseif not apercu %}
+			<p class="mb-0"><span class="si-pastille si-pastille-gris">Caché</span> Sans lien, « Nous soutenir » n'apparaît nulle part.</p>
+		{% endif %}
+	</div>
+</div>

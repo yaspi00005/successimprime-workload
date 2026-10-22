@@ -1,0 +1,21 @@
+{# Fiche du guide « a-valider » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu Finances › « À valider ». Le chiffre rouge compte les opérations en attente.</li>
+	<li>Lisez chaque ligne : saisie, type, client ou objet, montant, « Contrôles auto », justificatif, auteur.</li>
+	<li>✓ veut dire contrôle bon. ⚠ veut dire à vérifier, par exemple « Référence manquante » ou une attente de plus de 24 h.</li>
+	<li>Cochez les lignes justes, puis « Valider la sélection ».</li>
+	<li>Pour une ligne fausse : cochez-la, touchez « Rejeter » et écrivez le motif.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Tant qu'elle n'est pas validée, une opération ne compte ni dans les soldes, ni dans la caisse du jour, ni dans les statistiques.</li>
+	<li>Validée : soldes, commande et facture sont à jour et l'opération est verrouillée.</li>
+	<li>Rejetée : le motif est obligatoire et l'auteur est prévenu.</li>
+	<li>Les paiements Orange Money faits sur le site arrivent ici : vérifiez la référence sur le relevé avant de valider.</li>
+	<li>Un client qui paie plusieurs factures d'un coup sur le site fait un seul paiement chez Orange Money, mais ici il y a une ligne par commande : « OM » suivi du numéro de transaction, puis « 1/3 », « 2/3 »… Le relevé Orange Money montre le total des lignes, frais compris.</li>
+	<li>« Solde client » avec la référence « AV … » : le client a utilisé son avoir sur le site. Validez-la pour que l'avoir baisse ; rien n'entre en caisse.</li>
+</ul>
+{% endblock %}

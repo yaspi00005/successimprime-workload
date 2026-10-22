@@ -1,0 +1,193 @@
+{% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
+
+{% macro fleche(valeur, suffixe) %}
+	{% if valeur is not null %}
+		<span class="{{ valeur >= 0 ? 'si-s-hausse' : 'si-s-baisse' }}"><i class="fas fa-caret-{{ valeur >= 0 ? 'up' : 'down' }}"></i> {{ valeur >= 0 ? '+' : '−' }}{{ valeur|abs }}{{ suffixe }}</span>
+	{% else %}
+		<span class="si-s-neutre">pas de comparaison</span>
+	{% endif %}
+{% endmacro %}
+
+{% macro millions(montant) %}{% if montant >= 1000000 %}{{ (montant / 1000000)|number_format(1, ',', ' ') }} M F{% else %}{{ montant|number_format(0, ',', ' ') }} F{% endif %}{% endmacro %}
+
+{% block title %}Statistiques et rapports{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<form method="get" class="si-stats-periode">
+			{% if comparer %}<input type="hidden" name="comparer" value="1">{% endif %}
+			<label class="visually-hidden" for="si-periode">Période</label>
+			<select id="si-periode" name="periode" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for m, libelle in constant('App\\Service\\Statistiques\\StatistiquesRapports::PERIODES') %}
+					<option value="{{ m }}" {{ m == periode ? 'selected' }}>Période : {{ libelle }}</option>
+				{% endfor %}
+			</select>
+			{# Activité comptée (docs/hors-imprimerie.md) : l'imprimerie par défaut. #}
+			<label class="visually-hidden" for="si-activite">Activité</label>
+			<select id="si-activite" name="activite" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for valeur, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', tout: 'Tout'} %}
+					<option value="{{ valeur }}" {{ valeur == activite ? 'selected' }}>Activité : {{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+	{% if voir_ventes %}
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_statistiques_index', {periode: periode, activite: activite, comparer: comparer ? 0 : 1}) }}" class="btn btn-light btn-sm si-btn-entete {{ comparer ? 'active' }}" {{ comparer ? 'aria-pressed="true"' }}>Comparer N−1</a>
+		</li>
+	{% endif %}
+	{% if local %}
+		{{ st.exporter('app_statistiques_export', {periode: periode, activite: activite, comparer: comparer ? 1 : 0}) }}
+	{% else %}
+		<li class="nav-item si-masque-mobile">
+			<button type="button" class="btn btn-primary btn-sm si-btn-entete" onclick="window.print()"><i class="fas fa-download me-1"></i>PDF</button>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set libelle_periode = constant('App\\Service\\Statistiques\\StatistiquesRapports::PERIODES')[periode] %}
+	<div class="si-stats">
+		{% set libelle_activite = {imprimerie: 'imprimerie', hors: 'hors imprimerie', tout: 'imprimerie et hors imprimerie'}[activite] %}
+		<p class="si-stats-imprime">Statistiques Succès Imprim · {{ libelle_periode }} depuis le {{ debut|date('d/m/Y') }} · {{ libelle_activite }} · édité le {{ 'now'|date('d/m/Y') }}</p>
+		<div class="si-stats-kpis">
+			{% if voir_ventes %}
+				<article class="card si-stats-kpi">
+					<h2>CA facturé {{ libelle_periode }} · {{ libelle_activite }}</h2>
+					<strong>{{ _self.millions(kpi.ca) }}</strong>
+					{{ _self.fleche(kpi.ca_evolution, ' % vs N−1') }}
+				</article>
+			{% endif %}
+			{% if voir_marge %}
+				<article class="card si-stats-kpi">
+					<h2>Marge brute</h2>
+					<strong>{{ kpi.marge.taux is null ? '—' : kpi.marge.taux ~ ' %' }}</strong>
+					{% if kpi.marge.taux is null %}
+						<span class="si-s-neutre">coûts de revient à compléter</span>
+					{% else %}
+						{{ _self.fleche(kpi.marge_evolution, ' pts') }}
+						{% if kpi.marge.part_chiffree < 100 %}<small>sur {{ kpi.marge.part_chiffree }} % du CA chiffré</small>{% endif %}
+					{% endif %}
+				</article>
+			{% endif %}
+			<article class="card si-stats-kpi">
+				<h2>m² imprimés</h2>
+				<strong>{{ kpi.surface|number_format(0, ',', ' ') }}</strong>
+				{{ _self.fleche(kpi.surface_evolution, ' %') }}
+			</article>
+			<article class="card si-stats-kpi">
+				<h2>Nouveaux clients</h2>
+				<strong>{{ kpi.nouveaux }}</strong>
+				{{ _self.fleche(kpi.nouveaux_evolution, ' %') }}
+			</article>
+			{% if not voir_ventes %}
+				<article class="card si-stats-kpi">
+					<h2>Commandes</h2>
+					<strong>{{ kpi.commandes }}</strong>
+					<span class="si-s-neutre">{{ libelle_periode }}</span>
+				</article>
+			{% endif %}
+		</div>
+
+		{{ st.repartition(repartition, 'Imprimerie et hors imprimerie · ' ~ libelle_periode, 'Factures émises (TTC) et commandes de la période') }}
+
+		{% if objectifs is not empty %}
+			<section class="si-st-objectifs" aria-label="Objectifs du mois">
+				<header>
+					<h2>Objectifs du mois</h2>
+					<a href="{{ path('app_statistiques_objectifs') }}">Détail{{ droits.admin ? ' et réglage' }} des objectifs <i class="fas fa-chevron-right"></i></a>
+				</header>
+				<div class="si-st-objectifs-cartes">
+					{% for l in objectifs %}{{ st.carte(l) }}{% endfor %}
+				</div>
+			</section>
+		{% endif %}
+
+		<div class="si-stats-milieu {{ voir_marge ? '' : 'si-stats-plein' }}">
+			{% if voir_ventes %}
+				{% set objectif_de = objectifs_mois ?? {} %}
+				{% set max = max(mois|map(m => max(m.montant, comparer ? m.avant : 0, objectif_de[m.mois|date('Y-m')] ?? 0))|merge([1])) %}
+				<section class="card si-stats-graphe">
+					<header>
+						<h2>CA facturé par mois</h2>
+						<span>
+							{% if comparer %}<i class="si-s-pastille si-s-pastille-avant"></i> N−1 <i class="si-s-pastille"></i> période{% endif %}
+							{% if objectif_de is not empty %}<i class="si-st-pastille-objectif"></i> <a href="{{ path('app_statistiques_objectifs') }}" class="si-st-vs-objectif">vs objectif</a>{% endif %}
+						</span>
+					</header>
+					<div class="si-stats-barres" role="img" aria-label="CA par mois : {% for m in mois %}{{ m.mois|date('m/Y') }} {{ m.montant|number_format(0, ',', ' ') }} F{{ not loop.last ? ', ' }}{% endfor %}">
+						{% for m in mois %}
+							{% set objectif_mois = objectif_de[m.mois|date('Y-m')] ?? null %}
+							<div class="si-stats-mois" title="{{ m.mois|date('m/Y') }} : {{ m.montant|number_format(0, ',', ' ') }} F{% if comparer %} (N−1 : {{ m.avant|number_format(0, ',', ' ') }} F){% endif %}{% if objectif_mois %} · objectif {{ objectif_mois|number_format(0, ',', ' ') }} F ({{ (m.montant * 100 / objectif_mois)|round }} %){% endif %}">
+								<div class="si-stats-colonnes si-st-colonnes">
+									{% if objectif_mois %}<span class="si-st-repere-objectif" style="bottom: {{ (objectif_mois / max * 100)|round }}%" aria-hidden="true"></span>{% endif %}
+									{% if comparer %}<span class="si-stats-barre si-stats-avant" style="height: {{ (m.avant / max * 100)|round }}%"></span>{% endif %}
+									<span class="si-stats-barre {{ m.courant ? 'si-stats-courant' }}" style="height: {{ m.montant > 0 ? max(2, (m.montant / max * 100)|round) : 0 }}%"></span>
+								</div>
+								<span class="si-stats-lettre">{{ m.libelle }}</span>
+							</div>
+						{% endfor %}
+					</div>
+				</section>
+			{% endif %}
+
+			{% if voir_marge %}
+				<section class="card si-stats-categories">
+					<h2>Marge par produit</h2>
+					{% set couleurs = ['#EC4899', '#0F172A', '#0F4590', '#DC2626', '#F97316', '#16A34A'] %}
+					<ul>
+						{% for c in categories %}
+							<li>
+								<span>{{ c.categorie }}</span>
+								<span class="si-t-jauge" aria-hidden="true"><span style="width: {{ max(0, min(100, c.taux)) }}%; background: {{ couleurs[loop.index0 % 6] }}"></span></span>
+								<strong>{{ c.taux }} %</strong>
+							</li>
+						{% else %}
+							<li class="si-s-neutre">Aucune ligne avec un coût de revient complet sur la période.</li>
+						{% endfor %}
+					</ul>
+					<a href="{{ path('app_couts_revient_index') }}" class="si-stats-lien">Coûts de revient</a>
+				</section>
+			{% endif %}
+		</div>
+
+		<div class="si-stats-bas si-st-bas">
+			{% if voir_ventes %}
+				<article class="card si-stats-carte">
+					<span>Top client</span>
+					<strong>{{ top_client ? top_client.nom ~ ' · ' ~ _self.millions(top_client.montant) : '—' }}</strong>
+				</article>
+				<article class="card si-stats-carte">
+					<span>Top agent</span>
+					<strong>{{ top_agent ? top_agent.nom ~ ' · ' ~ top_agent.part ~ ' % des ventes' : '—' }}</strong>
+				</article>
+				<article class="card si-stats-carte">
+					<span>Panier moyen</span>
+					<strong>{{ kpi.panier|number_format(0, ',', ' ') }} F · {{ kpi.factures }} facture{{ kpi.factures > 1 ? 's' }}</strong>
+				</article>
+			{% endif %}
+			{% if local %}
+				<a class="card si-stats-carte si-st-carte-lien" href="{{ path('app_rapport_semaine') }}">
+					<span>Rapport hebdo</span>
+					<strong>{{ rapport_envoi }}</strong>
+				</a>
+			{% endif %}
+		</div>
+
+		<nav class="si-stats-rapports" aria-label="Rapports détaillés">
+			<span>Rapports détaillés :</span>
+			<a href="{{ path('app_statistiques_globales_index') }}">Agents, caisse et production</a>
+			<a href="{{ path('app_statistiques_commandes_index') }}">Commandes</a>
+			<a href="{{ path('app_statistiques_clients_index') }}">Clients</a>
+			{% if droits.tresorerie %}<a href="{{ path('app_statistiques_tresorerie_index') }}">Trésorerie</a>{% endif %}
+			{% if local %}<a href="{{ path('app_statistiques_objectifs') }}">Objectifs</a>{% endif %}
+		</nav>
+		<p class="si-stats-note">Objectifs : ceux du mois en cours, projection au rythme actuel. CA : factures émises, hors proformas. Marge, m² et nouveaux clients : commandes confirmées. Tout est comparé à la même durée un an plus tôt. La marge ne compte que les lignes dont le coût de revient est complet.</p>
+	</div>
+{% endblock %}

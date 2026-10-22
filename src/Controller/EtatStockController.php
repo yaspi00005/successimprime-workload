@@ -60,7 +60,7 @@ final class EtatStockController extends AbstractController
         if ($recherche !== '') {
             $qb
                 ->andWhere(
-                    'LOWER(article.designation) LIKE LOWER(:recherche)'
+                    'LOWER(article.designation) LIKE LOWER(:recherche) OR LOWER(article.nomCommercial) LIKE LOWER(:recherche)'
                 )
                 ->setParameter(
                     'recherche',

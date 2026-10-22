@@ -1,0 +1,27 @@
+{# Petits morceaux communs aux écrans Performance et primes. #}
+
+{# Couleur du palier d'un score (classe si-pr-…) : 90+ vert, 80+ bleu, 70+ orange, 60+ rouge, sinon gris. #}
+{% macro couleur(score) -%}
+	{%- set c = 'gris' -%}
+	{%- if score is not null -%}
+		{%- for borne in constant('App\\Service\\SuiviMetiers\\Bareme::PALIERS')|keys|sort|reverse -%}
+			{%- if c == 'gris' and score >= borne -%}{%- set c = ['vert', 'bleu', 'orange', 'rouge'][loop.index0] ?? 'rouge' -%}{%- endif -%}
+		{%- endfor -%}
+	{%- endif -%}
+	si-pr-{{ c }}
+{%- endmacro %}
+
+{# Pastille ronde aux initiales, couleur stable par personne. #}
+{% macro avatar(user, nom) -%}
+	{%- set mots = nom|default('?')|trim|split(' ')|filter(m => m is not empty) -%}
+	<span class="si-pr-avatar" style="background: {{ ['#E11D48', '#2563EB', '#111827', '#DB2777', '#EA580C', '#0F766E', '#7C3AED', '#0EA5E9', '#CA8A04'][user.id % 9] }}" aria-hidden="true">{{ (mots|first|slice(0, 1) ~ (mots|length > 1 ? mots[1]|slice(0, 1) : ''))|upper }}</span>
+{%- endmacro %}
+
+{# « octobre » #}
+{% macro mois(d) %}{{ ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d|date('n') - 1] }}{% endmacro %}
+
+{# « d'octobre », « de septembre » #}
+{% macro de_mois(d) %}{{ d|date('n') in [4, 8, 10] ? 'd’' : 'de ' }}{{ ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d|date('n') - 1] }}{% endmacro %}
+
+{# Montant « 50 000 F » ou « 50 000 » (sans unité). #}
+{% macro f(montant, unite = true) %}<span class="si-fin-f">{{ montant|number_format(0, ',', ' ') }}{{ unite ? ' F' }}</span>{% endmacro %}

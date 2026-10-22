@@ -39,10 +39,35 @@ class Campagne
     #[Assert\NotBlank(message: 'Le nom de la campagne est obligatoire.')]
     private string $nom = '';
 
+    /*
+     * Modèle de message des anciennes campagnes. Les campagnes créées
+     * depuis la maquette 35 portent leur canal et leur texte.
+     */
     #[ORM\ManyToOne(targetEntity: ModeleMessage::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
-    #[Assert\NotNull(message: 'Le modèle de message est obligatoire.')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     private ?ModeleMessage $modeleMessage = null;
+
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $canal = null;
+
+    /*
+     * Texte libre avec {prénom}, {nom} et {entreprise}.
+     */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $message = null;
+
+    /*
+     * Segment choisi (SegmentsClients::SEGMENTS), ou null pour une
+     * liste choisie à la main.
+     */
+    #[ORM\Column(length: 30, nullable: true)]
+    private ?string $segment = null;
+
+    /*
+     * Rien ne part avant cette date ; null = dès la création.
+     */
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $envoiPrevuLe = null;
 
     #[ORM\Column(length: 20)]
     private string $statut = self::STATUT_EN_COURS;
@@ -117,6 +142,87 @@ class Campagne
         $this->modeleMessage = $modeleMessage;
 
         return $this;
+    }
+
+    public function getCanal(): ?string
+    {
+        return $this->canal ?? $this->modeleMessage?->getCanal();
+    }
+
+    public function setCanal(?string $canal): static
+    {
+        $this->canal = null !== $canal && isset(ModeleMessage::CANAUX_LABELS[$canal]) ? $canal : null;
+
+        return $this;
+    }
+
+    public function getMessage(): ?string
+    {
+        return $this->message;
+    }
+
+    public function setMessage(?string $message): static
+    {
+        $message = trim((string) $message);
+        $this->message = '' === $message ? null : $message;
+
+        return $this;
+    }
+
+    /**
+     * Texte envoyé à un client : le message libre de la campagne, ou à
+     * défaut celui de son modèle.
+     */
+    public function rendreMessage(Clients $client): string
+    {
+        if (null === $this->message) {
+            return (string) $this->modeleMessage?->rendreContenu(['nom' => $client->getNomComplet()]);
+        }
+
+        return self::personnaliser($this->message, $client->getPrenom(), $client->getNom(), $client->getRaisonSociale());
+    }
+
+    public static function personnaliser(string $message, ?string $prenom, ?string $nom, ?string $entreprise): string
+    {
+        $prenom = trim((string) $prenom);
+        $nom = trim((string) $nom);
+        $entreprise = trim((string) $entreprise);
+
+        return strtr($message, [
+            '{prénom}' => '' !== $prenom ? $prenom : ('' !== $nom ? $nom : 'cher client'),
+            '{prenom}' => '' !== $prenom ? $prenom : ('' !== $nom ? $nom : 'cher client'),
+            '{nom}' => '' !== $nom ? $nom : $prenom,
+            '{entreprise}' => '' !== $entreprise ? $entreprise : trim($prenom.' '.$nom),
+        ]);
+    }
+
+    public function getSegment(): ?string
+    {
+        return $this->segment;
+    }
+
+    public function setSegment(?string $segment): static
+    {
+        $this->segment = $segment;
+
+        return $this;
+    }
+
+    public function getEnvoiPrevuLe(): ?\DateTimeImmutable
+    {
+        return $this->envoiPrevuLe;
+    }
+
+    public function setEnvoiPrevuLe(?\DateTimeImmutable $envoiPrevuLe): static
+    {
+        $this->envoiPrevuLe = $envoiPrevuLe;
+
+        return $this;
+    }
+
+    public function estProgrammee(\DateTimeInterface $maintenant): bool
+    {
+        return self::STATUT_EN_COURS === $this->statut && null !== $this->envoiPrevuLe && $this->envoiPrevuLe > $maintenant;
     }
 
     public function getStatut(): string

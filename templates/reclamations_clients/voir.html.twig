@@ -1,0 +1,59 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Réclamation {{ r.numero }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_reclamations_clients_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-list me-1"></i>Toutes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-rc">
+		<section class="card si-ac-bloc">
+			<header class="si-rc-tete">
+				<div>
+					<h2>{{ r.objet }}</h2>
+					<p class="si-pg-note">{{ r.libelleMotif }} · reçue le {{ r.creeLe|date('d/m/Y à H:i') }}{{ r.auteur ? ' · écrite par ' ~ r.auteur }}</p>
+				</div>
+				<span class="si-rc-statut si-rc-{{ r.statut }}">{{ r.libelleStatut }}</span>
+			</header>
+			<p class="si-rc-description">{{ r.description|nl2br }}</p>
+			{% if r.photos|length %}
+				<div class="si-rc-galerie">
+					{% for p in r.photos %}
+						<a href="{{ path('app_reclamations_clients_photo', {id: p.id}) }}" target="_blank" rel="noopener"><img src="{{ path('app_reclamations_clients_photo', {id: p.id}) }}" alt="Photo {{ loop.index }} de la réclamation" loading="lazy"></a>
+					{% endfor %}
+				</div>
+			{% endif %}
+
+			{% if r.reponse %}
+				<div class="si-rc-reponse"><b>Réponse de {{ r.reponduPar ?? 'l\'atelier' }}</b> · {{ r.reponduLe|date('d/m H:i') }}<p>{{ r.reponse|nl2br }}</p></div>
+			{% endif %}
+
+			{% if not r.estClose %}
+				<form method="post" action="{{ path('app_reclamations_clients_repondre', {id: r.id}) }}" class="si-rc-form">
+					<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+					<label for="reponse">{{ r.reponse ? 'Nouvelle réponse' : 'Réponse au client' }}</label>
+					<textarea id="reponse" name="reponse" class="form-control" rows="3" maxlength="1000" required placeholder="Ex. : Nous réimprimons les 3 roll-up gratuitement, prêts vendredi."></textarea>
+					<div class="si-rc-choix">
+						{% for cle, libelle in statuts %}
+							<label class="si-pg-case"><input type="radio" name="statut" value="{{ cle }}"{{ loop.first ? ' checked' }}> {{ libelle }}</label>
+						{% endfor %}
+						<button class="btn btn-primary btn-sm">Envoyer la réponse</button>
+					</div>
+					<p class="si-pg-note">« En cours » : le client voit votre réponse et la réclamation reste ouverte. « Résolue » ou « Non retenue » la clôt.</p>
+				</form>
+			{% endif %}
+		</section>
+
+		<aside class="card si-ac-bloc si-rc-cote">
+			<h2>Client</h2>
+			{% if r.client %}
+				<p><a href="{{ path('app_clients_show', {publicId: r.client.publicId}) }}"><b>{{ r.client.nomComplet }}</b></a><br><small>{{ r.client.telephone }}</small></p>
+			{% endif %}
+			{% if r.commande %}
+				<h2>Commande</h2>
+				<p><a href="{{ path('app_commandes_show', {id: r.commande.id}) }}"><b>{{ r.commande.numero }}</b></a><br><small>du {{ r.commande.dateCommande ? r.commande.dateCommande|date('d/m/Y') }}</small></p>
+			{% endif %}
+		</aside>
+	</div>
+{% endblock %}

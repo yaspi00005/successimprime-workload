@@ -1,0 +1,14 @@
+{# Fichier de découpe (docs/prepresse.md) : à part du fichier à imprimer, pour la découpe (plotter).
+   Variables : ligne, fichierDecoupe (CommandeDetailFichier ou null). #}
+{% set decoupeLiee = ligne.fichierLie.decoupe ?? null %}
+{% if fichierDecoupe %}
+	<p class="si-pm-decoupe-ligne"><span class="si-pm-decoupe"><i class="fas fa-cut"></i>Fichier de découpe</span>
+		<a href="{{ path('app_controle_pre_presse_telecharger_fichier', {id: fichierDecoupe.id}) }}"><i class="fas fa-download me-1"></i>{{ fichierDecoupe.nomOriginal }}</a></p>
+{% elseif decoupeLiee %}
+	<p class="si-pm-decoupe-ligne"><span class="si-pm-decoupe"><i class="fas fa-cut"></i>Fichier de découpe</span>
+		<a href="{{ path('app_commande_fichier_lie', {id: ligne.id, role: 'decoupe'}) }}" target="_blank" rel="noopener"><i class="fas fa-download me-1"></i>{{ decoupeLiee.nom }}</a></p>
+{% elseif ligne.etatDecoupe == 'sans_fichier' %}
+	<p class="si-pm-decoupe-ligne"><span class="si-pm-decoupe"><i class="fas fa-cut"></i>Découpe sans fichier séparé</span> le contour est dans le fichier à imprimer.</p>
+{% elseif ligne.etatDecoupe == 'manquant' %}
+	<p class="si-pm-decoupe-ligne"><span class="si-pm-decoupe"><i class="fas fa-cut"></i>Fichier de découpe manquant</span> demandez-le au prépresse.</p>
+{% endif %}

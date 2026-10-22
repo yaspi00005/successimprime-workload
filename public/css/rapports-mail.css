@@ -1,0 +1,98 @@
+/*
+ * Accueil › Rapports par e-mail (docs/rapports-mail.md) : les trois
+ * rapports, les destinataires, l'historique et l'aperçu de l'e-mail.
+ * L'e-mail lui-même n'a que des styles en ligne (templates/rapports_mail).
+ */
+
+.si-rm-alerte { border-radius: 12px; }
+.si-rm-aide { font-size: 13px; color: #5B6575; margin: 0 0 12px; }
+
+/* ---------- Les trois rapports ---------- */
+.si-rm-rapports { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin-bottom: 20px; }
+.si-rm-rapport { margin: 0; padding: 16px 18px; border: 0; border-radius: 16px; box-shadow: var(--si-carte-ombre); display: flex; flex-direction: column; gap: 6px; }
+.si-rm-rapport header { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.si-rm-rapport h2 { font-size: 16px; font-weight: 700; color: #12213A; margin: 0; }
+.si-rm-quand { font-size: 13px; color: #475569; margin: 0; }
+.si-rm-rapport dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 13px; margin: 4px 0 8px; }
+.si-rm-rapport dt { font-weight: 500; color: #6B7A90; }
+.si-rm-rapport dd { margin: 0; color: #12213A; font-weight: 600; }
+.si-rm-rapport .btn { align-self: flex-start; margin-top: auto; }
+.si-rm-inactif { opacity: .7; }
+
+/* ---------- Destinataires ---------- */
+.si-rm-candidats { list-style: none; margin: 0 0 12px; padding: 0; }
+.si-rm-candidats li { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-bottom: 1px solid #EEF0F3; }
+.si-rm-candidats li:last-child { border-bottom: 0; }
+.si-rm-candidats input { margin-top: 4px; flex: none; }
+.si-rm-candidats label { flex: 1; min-width: 0; cursor: pointer; font-size: 14px; color: #12213A; }
+.si-rm-profil { font-size: 12px; color: #5B6575; background: #EEF0F3; border-radius: 6px; padding: 1px 6px; margin-left: 4px; }
+.si-rm-detail { display: block; font-size: 12.5px; color: #5B6575; overflow-wrap: anywhere; }
+.si-rm-sans-droit label { cursor: default; color: #8A94A3; }
+.si-rm-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+
+/* ---------- Historique ---------- */
+.si-rm-historique { list-style: none; margin: 0; padding: 0; }
+.si-rm-historique > li { border-bottom: 1px solid #EEF0F3; }
+.si-rm-historique > li:last-child { border-bottom: 0; }
+.si-rm-historique summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; padding: 10px 0; cursor: pointer; list-style: none; }
+.si-rm-historique summary::-webkit-details-marker { display: none; }
+.si-rm-historique summary::before { content: "\203A"; font-size: 18px; line-height: 1; color: #8A94A3; transition: transform .15s; width: 10px; }
+.si-rm-historique details[open] summary::before { transform: rotate(90deg); }
+.si-rm-h-date { font-size: 13px; color: #5B6575; min-width: 110px; font-variant-numeric: tabular-nums; }
+.si-rm-h-quoi { flex: 1; min-width: 160px; font-size: 14px; color: #12213A; }
+.si-rm-h-quoi small { display: block; color: #6B7A90; font-size: 12px; }
+.si-rm-h-etat { display: flex; align-items: center; gap: 6px; }
+.si-rm-h-etat small { color: #5B6575; font-weight: 600; }
+.si-rm-lignes td, .si-rm-lignes th { font-size: 13px; vertical-align: top; }
+.si-rm-lignes td { overflow-wrap: anywhere; }
+
+.si-rm-liste { padding-left: 18px; font-size: 13px; color: #475569; }
+.si-rm-liste li { margin-bottom: 6px; }
+
+/* ---------- Aperçu ---------- */
+.si-rm-types { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
+.si-rm-types a { padding: 6px 14px; border-radius: 999px; font-size: 14px; font-weight: 600; color: #475569; background: #EEF0F3; text-decoration: none; }
+.si-rm-types a.actif { background: var(--primary); color: #fff; }
+.si-rm-types a.si-rm-retour { margin-left: auto; background: transparent; color: var(--primary); padding: 6px 4px; }
+.si-rm-barre { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 8px; }
+.si-rm-periode { display: flex; align-items: center; gap: 10px; font-size: 16px; color: #12213A; }
+.si-rm-pour { display: flex; gap: 6px; align-items: center; }
+.si-rm-pour select { max-width: 260px; }
+.si-rm-etat { font-size: 13px; color: #5B6575; margin: 0 0 12px; }
+
+.si-rm-courriel { max-width: 640px; margin: 0 auto; border-radius: 14px; overflow: hidden; box-shadow: var(--si-carte-ombre); background: #F3F4F6; }
+.si-rm-entete-mail { background: #fff; padding: 10px 16px; font-size: 13px; color: #12213A; border-bottom: 1px solid #E5E7EB; }
+.si-rm-entete-mail div { overflow-wrap: anywhere; }
+.si-rm-entete-mail span { display: inline-block; min-width: 48px; color: #6B7A90; }
+.si-rm-fond { padding: 16px 8px; }
+/* Le corps de l'e-mail garde ses propres styles, pas ceux de l'administration. */
+.si-rm-fond h2 { font-family: Arial, Helvetica, sans-serif; letter-spacing: normal; text-transform: none; }
+.si-rm-fond table { border-collapse: collapse; }
+.si-rm-fond .si-rm-carte { border-collapse: separate; }
+.si-rm-fond a { text-decoration: none; }
+
+.si-rm-sous { max-width: 640px; margin: 16px auto 0; }
+.si-rm-sous form { margin-bottom: 6px; }
+.si-rm-texte { margin-top: 12px; }
+.si-rm-texte summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--primary); }
+.si-rm-texte pre { white-space: pre-wrap; font-size: 12.5px; background: #fff; border-radius: 10px; padding: 12px 14px; margin-top: 8px; color: #12213A; max-height: 480px; overflow: auto; }
+
+@media (max-width: 575.98px) {
+	.si-rm-types a.si-rm-retour { margin-left: 0; }
+	.si-rm-fond { padding: 10px 0; }
+	.si-rm-courriel { border-radius: 10px; }
+	.si-rm-pour select { max-width: 200px; }
+}
+
+@media (max-width: 380px) {
+	.si-rm-fond .si-rm-kpi { display: block !important; width: 100% !important; }
+}
+
+/* Comptes qui ne peuvent pas recevoir les rapports : repliés sous la liste. */
+.si-rm-exclus { margin: 0 0 14px; font-size: 13px; color: #5B6575; }
+.si-rm-exclus summary { cursor: pointer; font-weight: 600; color: #475569; }
+.si-rm-exclus p { margin: 6px 0 0; overflow-wrap: anywhere; }
+
+@media (prefers-reduced-motion: reduce) {
+	.si-rm-historique summary::before { transition: none; }
+}

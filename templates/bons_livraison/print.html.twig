@@ -174,6 +174,9 @@
 					padding: 0;
 				}
 			}
+
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.nc-technique { font-size: 0.85em; color: #6B7280; }
 		</style>
 	</head>
 	<body>
@@ -237,7 +240,7 @@
 				<div>
 					<span class="field-label">Adresse de livraison</span>
 					<span class="field-value">
-						{{ bon.adresseLivraison|default(client ? client.adresse : '—') }}
+						{{ bon.adresseLivraison|default(client ? client.adresse : '—')|nl2br }}
 					</span>
 				</div>
 
@@ -275,7 +278,7 @@
 					{% for ligne in bon.lignes %}
 						<tr>
 							<td class="text-center">{{ loop.index }}</td>
-							<td>{{ ligne.designation }}</td>
+							<td>{{ ligne|ligne_client('') }}</td>
 							<td class="text-center">{{ ligne.quantiteCommandee }}</td>
 							<td class="text-center">{{ ligne.quantiteLivree }}</td>
 						</tr>

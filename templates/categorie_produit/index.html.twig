@@ -12,7 +12,7 @@
 
 			<ol class="breadcrumb">
 				<li class="breadcrumb-item">
-					<a href="#">Paramétrage</a>
+					<a href="{{ path('app_reglages_parametres_index') }}">Paramètres</a>
 				</li>
 
 				<li class="breadcrumb-item active" aria-current="page">
@@ -37,7 +37,7 @@
 					Dépublier
 				</button>
 
-				<button type="button" id="categorieProduitMassDeleteButton" class="btn btn-danger">
+				<button type="button" id="categorieProduitMassDeleteButton" class="btn btn-danger" {{ confirmer_suppression('les catégories cochées') }}>
 					<i class="fa fa-trash mr-1"></i>
 					Supprimer
 				</button>
@@ -256,7 +256,7 @@
 
 													</button>
 
-													<button type="button" class="btn btn-sm btn-danger-light btn-delete-categorie-produit" data-url="{{ path( 'app_categorie_produit_delete_ajax', {id: categorieProduit.id} ) }}" data-token="{{ csrf_token( 'delete_categorie_produit_' ~ categorieProduit.id ) }}" data-nom="{{ categorieProduit.nom }}" data-produits-count="{{ categorieProduit.produits|length }}" title="Supprimer">
+													<button type="button" class="btn btn-sm btn-danger-light btn-delete-categorie-produit" {{ confirmer_suppression('la catégorie « ' ~ categorieProduit.nom ~ ' »') }} data-url="{{ path( 'app_categorie_produit_delete_ajax', {id: categorieProduit.id} ) }}" data-token="{{ csrf_token( 'delete_categorie_produit_' ~ categorieProduit.id ) }}" data-nom="{{ categorieProduit.nom }}" data-produits-count="{{ categorieProduit.produits|length }}" title="Supprimer">
 														<i class="fa fa-trash"></i>
 													</button>
 
@@ -466,9 +466,9 @@
 
 {% block javascripts %}
 
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
-	<script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+	<script src="{{ asset('vendor/sortablejs-1.15.6/Sortable.min.js') }}"></script>
 
 	<script src="{{ asset('assets/js/traitement_categorie_produit.js') }}?v=2026080901"></script>
 

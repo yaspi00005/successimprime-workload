@@ -126,7 +126,7 @@
 											</div>
 										</div>
 
-										<form method="post" action="{{ path('app_consommables_supprimer', {sortie: consommable.id}) }}" class="js-confirm-form" data-message="Retirer ce consommable et recréditer le stock ?">
+										<form method="post" action="{{ path('app_consommables_supprimer', {sortie: consommable.id}) }}" {{ confirmer_suppression('le consommable « ' ~ consommable.article ~ ' »', {verbe: 'Retirer', detail: 'Le stock est recrédité.', corbeille: false}) }}>
 
 											<input type="hidden" name="_token" value="{{ csrf_token('consommables_supprimer_' ~ consommable.id) }}">
 

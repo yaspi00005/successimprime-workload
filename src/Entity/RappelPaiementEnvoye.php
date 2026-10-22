@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\RappelPaiementEnvoyeRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -21,6 +22,10 @@ use Doctrine\ORM\Mapping as ORM;
  * volontairement AUCUNE ligne ici : comme pour les décaissements
  * automatiques (voir DecaissementRecurrentService), un échec ne doit
  * pas empêcher la tentative suivante, seulement notifier les admins.
+ *
+ * Le site en ligne en reçoit la date, le canal, la commande et la règle
+ * (synchronisation) : le client voit ses rappels dans le détail d'une
+ * facture. Sa règle peut y manquer tant qu'elle n'est pas arrivée.
  */
 #[ORM\Entity(repositoryClass: RappelPaiementEnvoyeRepository::class)]
 #[ORM\Table(name: 'rappel_paiement_envoye')]
@@ -28,6 +33,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\HasLifecycleCallbacks]
 class RappelPaiementEnvoye
 {
+    use PublicIdTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -38,7 +45,7 @@ class RappelPaiementEnvoye
     private ?Commandes $commande = null;
 
     #[ORM\ManyToOne(targetEntity: RegleRappelPaiement::class)]
-    #[ORM\JoinColumn(name: 'regle_id', nullable: false, onDelete: 'CASCADE')]
+    #[ORM\JoinColumn(name: 'regle_id', nullable: true, onDelete: 'CASCADE')]
     private ?RegleRappelPaiement $regle = null;
 
     #[ORM\Column(length: 20)]
@@ -46,6 +53,11 @@ class RappelPaiementEnvoye
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $dateEnvoi = null;
+
+    public function __construct()
+    {
+        $this->initialiserPublicId();
+    }
 
     #[ORM\PrePersist]
     public function initialiser(): void

@@ -1,0 +1,22 @@
+{# Fiche du guide « impression-rouleau » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Après « Démarrer », la page « Impression en cours » montre la pièce qui s'imprime, la vitesse, l'encre et la fin prévue. Sur le téléphone : « Mon travail », puis « Suivre l'impression en cours ».</li>
+	<li>À chaque pièce sortie de la machine, touchez « Pièce imprimée » : la pièce suivante commence.</li>
+	<li>Pour arrêter un moment : « Pause », puis « Reprendre ».</li>
+	<li>Un souci : « Signaler un problème » (pièce ratée, bourrage, tête bouchée, couleur hors BAT, encre vide…), quelques mots, puis « Prévenir le chef d'atelier ». Cochez « La machine est à l'arrêt » si elle ne tourne plus.</li>
+	<li>À la fin du rouleau, tapez les pièces ratées et réimprimées de chaque travail (0 sinon), puis « Impression terminée ».</li>
+	<li>Quand un travail est sec, touchez « Commencer la finition » (aussi sur la page des étiquettes).</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>La machine ne parle pas à l'ERP : l'avancement vient de vos appuis sur « Pièce imprimée ». Entre deux appuis, il est estimé, et la page l'écrit « estimé » ou « ≈ ».</li>
+	<li>La pause ne compte ni dans la vitesse ni dans le temps du travail.</li>
+	<li>« Pièce ratée » compte la pièce en gâche de son travail : réimprimez-la.</li>
+	<li>« Impression terminée » libère la machine tout de suite : le séchage se fait à côté. La chute du rouleau et l'encre sortent du stock.</li>
+	<li>« Ensuite sur cette machine » dit le travail suivant et s'il faut changer de rouleau.</li>
+	<li>Seuls les opérateurs de la machine, le chef d'atelier ou le poste de la machine voient les boutons. Les autres suivent l'impression sans pouvoir agir.</li>
+</ul>
+{% endblock %}

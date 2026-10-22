@@ -1,0 +1,158 @@
+{% extends 'sondages/_base.html.twig' %}
+
+{% set libre = saisie.type == 'libre' %}
+{% block title %}{{ sondage ? 'Modifier le sondage' : (libre ? 'Nouveau sondage libre' : 'Nouveau sondage des clients') }}{% endblock %}
+{% block page_title %}Sondages · {{ block('title')|lower }}{% endblock %}
+{% block sous_ecran %}ensemble{% endblock %}
+
+{% block contenu %}
+	{% import _self as f %}
+	{% set TYPES = constant('App\\Service\\Sondages\\Questions::TYPES') %}
+	<section class="card">
+		<form class="si-so-form" method="post" id="si-so-form">
+			<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+			<p class="si-so-gris" style="margin:0">
+				{{ libre
+					? 'Un sondage libre se partage par un lien ou un QR code (affiche à l\'imprimerie, réseaux sociaux) : n’importe qui peut répondre.'
+					: 'Un sondage des clients est proposé dans l’espace client, à tous ou à un groupe de clients.' }}
+				{% if not sondage %}Il reste en brouillon jusqu’à ce que vous le lanciez.{% endif %}
+			</p>
+			<div>
+				<label class="form-label" for="titre">Titre</label>
+				<input id="titre" name="titre" class="form-control" maxlength="120" required value="{{ saisie.titre }}" placeholder="{{ libre ? 'Votre avis sur notre imprimerie' : 'Votre satisfaction ce trimestre' }}">
+			</div>
+			<div>
+				<label class="form-label" for="introduction">Mot d’introduction <span class="si-so-gris">(facultatif)</span></label>
+				<textarea id="introduction" name="introduction" class="form-control" rows="2" maxlength="500">{{ saisie.introduction }}</textarea>
+			</div>
+			{% if libre %}
+				<div class="form-check">
+					<input type="hidden" name="anonyme" value="0">
+					<input class="form-check-input" type="checkbox" id="anonyme" name="anonyme" value="1" {{ saisie.anonyme ? 'checked' }}>
+					<label class="form-check-label" for="anonyme" style="font-weight:500">Réponse anonyme possible (sinon, nom et téléphone demandés)</label>
+				</div>
+			{% else %}
+				<input type="hidden" name="anonyme" value="0">
+				<div>
+					<label class="form-label" for="segment">Clients visés</label>
+					<select id="segment" name="segment" class="form-select" style="max-width:420px">
+						{% for cle, libelle in constant('App\\Entity\\Sondage::SEGMENTS') %}<option value="{{ cle }}" {{ saisie.segment == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+					</select>
+				</div>
+			{% endif %}
+
+			<h2 style="margin:10px 0 0">Questions</h2>
+			{% if verrouille %}
+				<p class="si-so-verrou">Des clients ont déjà répondu : les questions ne changent plus. Pour poser d’autres questions, créez un autre sondage.</p>
+			{% endif %}
+			<div class="si-so-questions" id="si-so-questions">
+				{% for q in saisie.questions %}
+					{{ f.question(q, loop.index0, TYPES, verrouille) }}
+				{% endfor %}
+			</div>
+			{% if not verrouille %}
+				<template id="si-so-modele">{{ f.question({type: 'etoiles', libelle: '', choix: [], obligatoire: false}, '__n__', TYPES, false) }}</template>
+				<div><button type="button" class="btn btn-sm btn-outline-primary" id="si-so-ajouter"><i class="fas fa-plus me-1"></i>Ajouter une question</button></div>
+				<p class="si-so-note-bas" style="margin:0">La première note en étoiles sert de note globale, la première recommandation de 0 à 10 sert au NPS, et le premier texte libre est rangé dans les propositions. {{ constant('App\\Service\\Sondages\\Questions::QUESTIONS_MAX') }} questions au plus.</p>
+			{% endif %}
+
+			<div class="si-so-actions" style="margin-top:6px">
+				<button class="btn btn-danger" type="submit">Enregistrer</button>
+				<a class="btn btn-light" href="{{ sondage ? path('app_sondages_voir', {id: sondage.id}) : path('app_sondages_index') }}">Annuler</a>
+			</div>
+		</form>
+	</section>
+{% endblock %}
+
+{% macro question(q, n, TYPES, verrouille) %}
+	{% set choixMultiples = q.type in ['choix_unique', 'choix_multiple'] %}
+	{% set choix = q.choix is iterable ? q.choix|join("\n") : q.choix %}
+	{% if verrouille %}
+		{# Questions figées : affichées, et renvoyées telles quelles pour garder le titre modifiable. #}
+		<div class="si-so-q">
+			<div class="si-so-q-tete"><span class="numero">{{ n + 1 }}</span><b>{{ q.libelle }}</b></div>
+			<small class="si-so-gris">{{ TYPES[q.type] ?? q.type }}{{ q.obligatoire ? ' · obligatoire' }}{{ choixMultiples ? ' · ' ~ q.choix|join(', ') }}</small>
+			<input type="hidden" name="questions[{{ n }}][type]" value="{{ q.type }}">
+			<input type="hidden" name="questions[{{ n }}][libelle]" value="{{ q.libelle }}">
+			{% for c in q.choix is iterable ? q.choix : [] %}<input type="hidden" name="questions[{{ n }}][choix][]" value="{{ c }}">{% endfor %}
+			{% if q.obligatoire %}<input type="hidden" name="questions[{{ n }}][obligatoire]" value="1">{% endif %}
+		</div>
+	{% else %}
+	<fieldset class="si-so-q" data-question>
+		<div class="si-so-q-tete">
+			<span class="numero" data-numero>{{ n is same as('__n__') ? '' : n + 1 }}</span>
+			<select class="form-select form-select-sm" name="questions[{{ n }}][type]" data-type aria-label="Type de question">
+				{% for cle, libelle in TYPES %}<option value="{{ cle }}" {{ q.type == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+			</select>
+			<span class="outils">
+				<button type="button" data-monter title="Monter"><i class="fas fa-arrow-up"></i></button>
+				<button type="button" data-descendre title="Descendre"><i class="fas fa-arrow-down"></i></button>
+				<button type="button" data-retirer title="Retirer"><i class="fas fa-times"></i></button>
+			</span>
+		</div>
+		<input class="form-control" name="questions[{{ n }}][libelle]" maxlength="200" value="{{ q.libelle }}" placeholder="La question posée" aria-label="Question">
+		<div class="si-so-q-choix" data-choix {{ choixMultiples ? '' : 'hidden' }}>
+			<textarea class="form-control" name="questions[{{ n }}][choix]" rows="3" placeholder="Un choix par ligne (2 à 10)" aria-label="Choix possibles">{{ choix }}</textarea>
+		</div>
+		<div class="form-check">
+			<input class="form-check-input" type="checkbox" name="questions[{{ n }}][obligatoire]" value="1" id="obl-{{ n }}" {{ q.obligatoire ? 'checked' }}>
+			<label class="form-check-label" for="obl-{{ n }}" style="font-weight:500">Réponse obligatoire</label>
+		</div>
+	</fieldset>
+	{% endif %}
+{% endmacro %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			const liste = document.getElementById('si-so-questions');
+			const modele = document.getElementById('si-so-modele');
+			if (!liste || !modele) {
+				return;
+			}
+			// Les noms suivent l'ordre affiché : questions[0], questions[1]…
+			function renumeroter() {
+				liste.querySelectorAll('[data-question]').forEach(function (q, i) {
+					q.querySelector('[data-numero]').textContent = i + 1;
+					q.querySelectorAll('[name]').forEach(function (champ) {
+						champ.name = champ.name.replace(/^questions\[[^\]]*\]/, 'questions[' + i + ']');
+					});
+					const coche = q.querySelector('input[type=checkbox]');
+					const etiquette = q.querySelector('.form-check-label');
+					coche.id = 'obl-' + i;
+					etiquette.htmlFor = 'obl-' + i;
+				});
+			}
+			document.getElementById('si-so-ajouter').addEventListener('click', function () {
+				if (liste.querySelectorAll('[data-question]').length >= {{ constant('App\\Service\\Sondages\\Questions::QUESTIONS_MAX') }}) {
+					return;
+				}
+				liste.appendChild(modele.content.cloneNode(true));
+				renumeroter();
+				liste.lastElementChild.querySelector('input.form-control').focus();
+			});
+			liste.addEventListener('change', function (e) {
+				if (e.target.matches('[data-type]')) {
+					const choix = e.target.closest('[data-question]').querySelector('[data-choix]');
+					choix.hidden = !['choix_unique', 'choix_multiple'].includes(e.target.value);
+				}
+			});
+			liste.addEventListener('click', function (e) {
+				const bouton = e.target.closest('button');
+				if (!bouton) {
+					return;
+				}
+				const q = bouton.closest('[data-question]');
+				if (bouton.hasAttribute('data-retirer')) {
+					q.remove();
+				} else if (bouton.hasAttribute('data-monter') && q.previousElementSibling) {
+					liste.insertBefore(q, q.previousElementSibling);
+				} else if (bouton.hasAttribute('data-descendre') && q.nextElementSibling) {
+					liste.insertBefore(q.nextElementSibling, q);
+				}
+				renumeroter();
+			});
+		})();
+	</script>
+{% endblock %}

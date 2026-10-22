@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Affiche {{ point.code }} · {{ point.nom }}</title>
+	<style>
+		@page { size: A4; margin: 0; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: #e9e4da; font-family: "Segoe UI", Roboto, Arial, sans-serif; color: #12285a; }
+		.feuille { width: 210mm; min-height: 297mm; margin: 10mm auto; background: #fff; position: relative; padding: 18mm 16mm 12mm; display: flex; flex-direction: column; align-items: center; box-shadow: 0 10px 30px rgba(0,0,0,.15); }
+		.bande { position: absolute; top: 0; left: 0; right: 0; height: 4mm; background: linear-gradient(90deg, #0d3a8a 0 33%, #2a8fd8 33% 50%, #e85d2a 50% 66%, #f4c22b 66% 80%, #e8358f 80%); }
+		.logo { height: 26mm; }
+		h1 { font-size: 64pt; font-weight: 900; margin: 8mm 0 0; letter-spacing: 1px; color: #0d3a8a; }
+		.sous { font-size: 18pt; margin: 2mm 0 10mm; color: #34466e; font-weight: 600; }
+		.cadre { border: 2.2mm solid #0d3a8a; border-radius: 9mm; padding: 9mm; position: relative; }
+		.cadre img { width: 105mm; height: 105mm; display: block; image-rendering: pixelated; }
+		.lieu { position: absolute; left: 50%; bottom: -6mm; transform: translateX(-50%); background: #e3101f; color: #fff; font-weight: 800; text-transform: uppercase; font-size: 12pt; padding: 2mm 6mm; border-radius: 6mm; white-space: nowrap; }
+		.etapes { display: flex; gap: 10mm; margin: 16mm 0 9mm; text-align: center; font-size: 13pt; color: #34466e; }
+		.etapes div { width: 50mm; }
+		.etapes b.n { display: block; width: 13mm; height: 13mm; line-height: 13mm; margin: 0 auto 3mm; border-radius: 50%; background: #0d3a8a; color: #fff; font-size: 16pt; }
+		.regle { background: #eef3fb; border-radius: 4mm; padding: 5mm 7mm; font-size: 12pt; text-align: center; line-height: 1.5; }
+		.pied { margin-top: auto; padding-top: 8mm; display: flex; align-items: center; gap: 3mm; font-size: 8.5pt; color: #7a879f; align-self: flex-start; }
+		.pied img { height: 7mm; }
+		.boutons { text-align: center; margin: 6mm; }
+		.boutons button { font-size: 14px; padding: 8px 18px; border: 0; border-radius: 6px; background: #0d3a8a; color: #fff; cursor: pointer; }
+		@media print { body { background: #fff; } .feuille { margin: 0; box-shadow: none; } .boutons { display: none; } }
+	</style>
+</head>
+<body>
+	<div class="boutons"><button onclick="window.print()">Imprimer l'affiche</button></div>
+	<div class="feuille">
+		<div class="bande"></div>
+		<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="logo">
+		<h1>POINTAGE</h1>
+		<p class="sous">Arrivée et départ du personnel</p>
+		<div class="cadre">
+			<img src="{{ qr }}" alt="QR de pointage {{ point.code }}">
+			<span class="lieu">{{ point.nom }}</span>
+		</div>
+		<div class="etapes">
+			<div><b class="n">1</b>Ouvrez l'application et touchez <b>Pointer</b></div>
+			<div><b class="n">2</b>Scannez ce code</div>
+			<div><b class="n">3</b>Prenez la photo : c'est enregistré</div>
+		</div>
+		<p class="regle">Le <b>premier</b> pointage de la journée enregistre votre <b>arrivée</b>, le <b>dernier</b> votre <b>départ</b>.<br>L'heure est celle du serveur : elle ne peut pas être modifiée sur le téléphone.</p>
+		<div class="pied">
+			<img src="{{ asset('images/logo-mdg.png') }}" alt="MDG">
+			Madial Groupe (MDG SARL) · Point de pointage {{ point.code }} · Code du {{ point.renouveleLe|date('d/m/Y') }}, réimprimable depuis Réglages › Pointage
+		</div>
+	</div>
+</body>
+</html>

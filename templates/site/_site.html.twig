@@ -1,0 +1,186 @@
+{#
+	Site vitrine (maquettes 01 à 12) : en-tête avec le menu, « Espace client »
+	et « Demander un devis », pied de page avec l'entreprise, bouton WhatsApp.
+	Une page définit les blocs title, description et contenu, et la variable
+	menu_actif (route du menu à souligner) ; les pages intérieures incluent
+	site/_bandeau.html.twig. Référencement (docs/referencement.md) :
+	image_partage (image de la page pour les réseaux), og_type,
+	donnees_entreprise (fiche de l'imprimerie pour Google, sur l'accueil,
+	le contact et « Qui sommes-nous ? ») et le bloc canonique. Mesure
+	d'audience Google : seulement sur les pages que MesureAudience retient
+	(site en ligne, pages publiques sans code secret), docs/securite.md.
+#}
+{% set entreprise = site_entreprise() %}
+{% set devis = site_lien('app_site_devis') ?? site_lien('app_site_contact') %}
+{% set whatsapp = site_whatsapp() %}
+{# Image de partage : celle de la page (image_partage : chemin, largeur, hauteur), sinon la façade de l'imprimerie (le logo sur fond blanc si la photo manque). #}
+{% set partage = image_partage ?? site_image_partage() %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>{% block title %}Imprimerie à Bamako : bâches, roll-up, t-shirts · Succès Imprim{% endblock %}</title>
+	<meta name="description" content="{% block description %}Imprimerie à Bamako : bâches et banderoles, roll-up, kakémonos, t-shirts personnalisés, cartes de visite et signalétique. BAT avant impression, sans surprise.{% endblock %}">
+	<meta name="theme-color" content="#0F4590">
+	{% if not site_en_ligne() %}<meta name="robots" content="noindex, nofollow">{% endif %}
+	{% for nom, code in site_verifications() %}<meta name="{{ nom }}" content="{{ code }}">{% endfor %}
+	{% set mesure_audience = site_mesure_audience() %}
+	{% if mesure_audience %}<script src="{{ asset('js/mesure-audience.js') }}" data-mesure="{{ mesure_audience }}" defer></script>{% endif %}
+	{% block canonique %}
+		{% set canonique = site_canonique() %}
+		<link rel="canonical" href="{{ canonique }}">
+		<meta property="og:url" content="{{ canonique }}">
+	{% endblock %}
+	<meta property="og:type" content="{{ og_type ?? 'website' }}">
+	<meta property="og:locale" content="fr_FR">
+	<meta property="og:site_name" content="{{ entreprise.nomAffiche ?? 'Succès Imprim' }}">
+	<meta property="og:title" content="{{ block('title')|site_sans_balises }}">
+	<meta property="og:description" content="{{ block('description')|site_sans_balises }}">
+	<meta property="og:image" content="{{ site_adresse(partage.chemin) }}">
+	<meta property="og:image:width" content="{{ partage.largeur }}">
+	<meta property="og:image:height" content="{{ partage.hauteur }}">
+	<meta name="twitter:card" content="summary_large_image">
+	<link rel="icon" href="{{ asset('images/icone-32.png') }}" sizes="32x32" type="image/png">
+	<link rel="apple-touch-icon" href="{{ asset('images/icone-192.png') }}">
+	{# Feuilles écrites dans la page : le premier affichage n'attend pas un aller-retour de plus (docs/referencement.md). #}
+	{{ site_styles('css/site.css') }}
+	{% if donnees_entreprise ?? false %}{{ site_donnees_entreprise() }}{% endif %}
+	{% block entete %}{% endblock %}
+</head>
+<body class="si-site">
+	{% set visite = site_visite() %}
+	{% set catalogue_site = site_catalogue() %}
+	{% set suivi = site_lien('app_site_suivi') %}
+	<a class="si-evitement" href="#contenu">Aller au contenu</a>
+	{% include 'site/_annonces.html.twig' with {cible: 'site'} only %}
+	{# Bandeau du haut (maquette SW01) : adresse et repère, horaires du réglage Horaires, téléphone, ouvert ou fermé en ce moment. #}
+	<div class="si-haut">
+		<div class="si-cadre si-haut-cadre">
+			<p class="si-haut-lieu">{{ include('site/_icone.svg.twig', {nom: 'lieu', taille: 15}) }}<span>{{ visite.ville }}{% if visite.repere %}<span class="si-haut-repere"> · {{ visite.repere }}</span>{% endif %}</span></p>
+			<p class="si-haut-horaires">{{ include('site/_icone.svg.twig', {nom: 'date', taille: 15}) }}<span>{{ visite.horaires.court }}</span></p>
+			<p class="si-haut-droite">
+				{% if suivi %}<a href="{{ suivi }}" class="si-haut-suivi">Suivre ma commande</a>{% endif %}
+				{% if visite.tel %}<a href="{{ visite.tel }}" class="si-haut-tel">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 15}) }}<span>{{ visite.telephone }}</span></a>{% endif %}
+				<span class="si-pastille-etat{{ visite.horaires.ouvert ? ' si-ouvert-maintenant' }}" title="{{ visite.horaires.etat }}"><span class="si-point" aria-hidden="true"></span>{{ visite.horaires.ouvert ? 'Ouvert' : 'Fermé' }}<span class="si-invisible"> : {{ visite.horaires.etat }}</span></span>
+			</p>
+		</div>
+	</div>
+	<header class="si-entete">
+		<div class="si-cadre si-entete-cadre">
+			<a href="{{ site_lien('app_site_accueil') }}" class="si-logo"><img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim, accueil" width="128" height="71"></a>
+			{% if visite.tel %}<a href="{{ visite.tel }}" class="si-entete-appel" aria-label="Appeler l'imprimerie au {{ visite.telephone }}">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 18}) }}<span>Appeler</span></a>{% endif %}
+			<input type="checkbox" id="si-menu-ouvert" class="si-menu-case" aria-hidden="true">
+			<label for="si-menu-ouvert" class="si-burger" aria-label="Ouvrir le menu"><span></span></label>
+			<nav class="si-menu" aria-label="Menu principal">
+				{% set produits = site_lien('app_site_produits') %}
+				{% set calculateur_menu = catalogue_site.calculateur ? site_lien('app_site_calculateur') : null %}
+				<ul>
+					<li class="si-menu-deroulant">
+						<details>
+							<summary{% if (menu_actif ?? '') in ['app_site_produits', 'app_site_calculateur'] %} class="actif"{% endif %}>Produits</summary>
+							<ul>
+								{% if catalogue_site.produits and produits %}<li><a href="{{ produits }}">Tous nos produits et prix</a></li>{% endif %}
+								{% if calculateur_menu %}<li><a href="{{ calculateur_menu }}">Calculer mon prix</a></li>{% endif %}
+								{% for lien in site_pied_produits() %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+								{% if devis %}<li><a href="{{ devis }}">Devis gratuit</a></li>{% endif %}
+								{% if site_lien('app_site_guide') %}<li><a href="{{ site_lien('app_site_guide') }}">Préparer son fichier</a></li>{% endif %}
+							</ul>
+						</details>
+					</li>
+					{% set liens_menu = {app_site_atelier: 'Studio textile', app_site_realisations: 'Réalisations'} %}
+					{% for route, libelle in liens_menu %}
+						{% set url = site_lien(route) %}
+						{% if url %}<li><a href="{{ url }}"{% if route == (menu_actif ?? '') %} class="actif" aria-current="page"{% endif %}>{{ libelle }}</a></li>{% endif %}
+					{% endfor %}
+					<li><a href="{{ site_lien('app_site_accueil') }}#comment-ca-marche">Comment ça marche</a></li>
+					{% for route, libelle in {app_site_engagements: 'Nos engagements', app_site_contact: 'Contact'} %}
+						{% set url = site_lien(route) %}
+						{% if url %}<li><a href="{{ url }}"{% if route == (menu_actif ?? '') %} class="actif" aria-current="page"{% endif %}>{{ libelle }}</a></li>{% endif %}
+					{% endfor %}
+				</ul>
+				<div class="si-menu-actions">
+					<a href="{{ path('app_espace_connexion') }}" class="si-bouton si-bouton-lien">{{ include('site/_icone.svg.twig', {nom: 'utilisateur', taille: 18}) }}Espace client</a>
+					{% if devis %}<a href="{{ devis }}" class="si-bouton si-bouton-rouge">Devis gratuit</a>{% endif %}
+				</div>
+			</nav>
+		</div>
+	</header>
+
+	<main id="contenu">
+		{% block contenu %}{% endblock %}
+	</main>
+
+	{# Pied de page bleu (maquette SW03) : colonnes Produits, Aide, L'imprimerie ; mentions légales tirées de l'entité. #}
+	<footer class="si-pied">
+		<div class="si-cadre">
+			<div class="si-pied-colonnes">
+				<div class="si-pied-marque">
+					<img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim" width="96" height="53" loading="lazy">
+					<p>Imprimerie à Bamako&nbsp;: grand format, textile et petit format. BAT avant chaque impression.</p>
+					<p class="si-pied-slogan">Nous imprimons vos succès&nbsp;!</p>
+					{{ include('site/_reseaux.html.twig', {variante: 'pied'}) }}
+				</div>
+				<div class="si-pied-colonne">
+					<h2>Produits</h2>
+					<ul>
+						{% for lien in site_pied_produits() %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+						{% if catalogue_site.calculateur and site_lien('app_site_calculateur') %}<li><a href="{{ site_lien('app_site_calculateur') }}">Calculer mon prix</a></li>{% endif %}
+						{% if site_lien('app_site_atelier') %}<li><a href="{{ site_lien('app_site_atelier') }}">Studio textile</a></li>{% endif %}
+						{% if devis %}<li><a href="{{ devis }}">Devis gratuit</a></li>{% endif %}
+					</ul>
+				</div>
+				<div class="si-pied-colonne">
+					<h2>Aide</h2>
+					<ul>
+						{% for route, libelle in {app_site_guide: 'Préparer son fichier', app_site_faq: 'Questions fréquentes', app_site_suivi: 'Suivre ma commande', app_site_reclamation_suivi: 'Suivre une réclamation', app_site_conseils: 'Conseils'} %}
+							{% set url = site_lien(route) %}
+							{% if url %}<li><a href="{{ url }}">{{ libelle }}</a></li>{% endif %}
+						{% endfor %}
+					</ul>
+				</div>
+				<div class="si-pied-colonne">
+					<h2>L'imprimerie</h2>
+					<ul>
+						{% for route, libelle in {app_site_a_propos: 'Qui sommes-nous ?', app_site_equipements: 'Nos équipements', app_site_realisations: 'Réalisations', app_site_engagements: 'Nos engagements', app_site_venir: 'Comment venir', app_site_contact: 'Contact'} %}
+							{% set url = site_lien(route) %}
+							{% if url %}<li><a href="{{ url }}">{{ libelle }}</a></li>{% endif %}
+						{% endfor %}
+						{% for lien in site_pied()|filter(l => l.route not in ['app_site_equipements', 'app_site_guide', 'app_site_a_propos', 'app_site_faq', 'app_site_suivi', 'app_site_conseils']) %}<li><a href="{{ lien.url }}">{{ lien.libelle }}</a></li>{% endfor %}
+						{% set soutien_pied = site_soutien() %}
+						{% if soutien_pied %}<li><a href="{{ soutien_pied.lien }}" class="si-pied-avis" target="_blank" rel="noopener">Laisser un avis Google</a></li>{% endif %}
+					</ul>
+				</div>
+			</div>
+			<div class="si-pied-bas">
+				<p>
+					{% if entreprise %}
+						{{ entreprise.nomAffiche }}{% if entreprise.nomCommercial and entreprise.raisonSociale %} est un nom commercial de {{ entreprise.raisonSociale }}{% endif %}
+						{%- if entreprise.rccm %} · RCCM {{ entreprise.rccm }}{% endif %}
+						{%- if entreprise.nif %} · NIF {{ entreprise.nif }}{% endif %}
+					{% else %}
+						Succès Imprim
+					{% endif %}
+				</p>
+				<p>© {{ 'now'|date('Y') }}</p>
+			</div>
+		</div>
+	</footer>
+
+	{# Téléphone : barre fixe Appeler · WhatsApp (textes du gérant) ; ordinateur : bouton WhatsApp flottant. #}
+	{% if visite.tel or whatsapp %}
+		<nav class="si-barre-mobile" aria-label="Joindre l'imprimerie">
+			{% if visite.tel %}<a href="{{ visite.tel }}" class="si-barre-appel">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 20}) }}Appeler</a>{% endif %}
+			{% if whatsapp %}<a href="{{ whatsapp }}" class="si-barre-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }}WhatsApp</a>{% endif %}
+		</nav>
+	{% endif %}
+	{% if whatsapp %}
+		<a href="{{ whatsapp }}" class="si-whatsapp" target="_blank" rel="noopener" aria-label="Écrire à l'atelier sur WhatsApp">
+			<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 3.5A12.4 12.4 0 0 0 5.3 22.2L3.5 28.5l6.5-1.7A12.4 12.4 0 1 0 16 3.5Zm0 22.7a10.3 10.3 0 0 1-5.2-1.4l-.4-.2-3.9 1 1-3.8-.2-.4A10.3 10.3 0 1 1 16 26.2Zm5.7-7.7c-.3-.2-1.8-.9-2.1-1s-.5-.2-.7.2-.8 1-1 1.2-.4.2-.7 0a8.4 8.4 0 0 1-4.2-3.6c-.3-.5.3-.5.9-1.6.1-.2 0-.4 0-.5l-1-2.3c-.2-.6-.5-.5-.7-.5h-.6a1.1 1.1 0 0 0-.8.4 3.3 3.3 0 0 0-1 2.5 5.8 5.8 0 0 0 1.2 3.1 13.3 13.3 0 0 0 5.1 4.5c1.9.8 2.6.9 3.6.7a3 3 0 0 0 2-1.4 2.4 2.4 0 0 0 .2-1.4c-.1-.1-.3-.2-.6-.4Z"/></svg>
+		</a>
+	{% endif %}
+	{% include 'assistant/_widget.html.twig' with {contexte: 'site'} %}
+	{% block scripts %}{% endblock %}
+	<script src="{{ asset('js/montants-saisie.js') }}"></script>
+</body>
+</html>

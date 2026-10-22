@@ -1,0 +1,102 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set t = tableau %}
+{% set voirMontants = is_granted('ROLE_PAIEMENT_VOIR') %}
+
+{% block title %}Mes actions · {{ maintenant|date_fr('EEEE dd/MM') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile"><a href="#si-ac-faites" class="btn btn-light btn-sm si-btn-entete">Mes points</a></li>
+	{% if is_granted('ROLE_CLIENT') %}
+		<li class="nav-item"><a href="{{ path('app_prospects_index') }}" class="btn btn-danger btn-sm"><i class="fas fa-plus me-1"></i>Prospect</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-ac">
+		<div class="si-ac-kpis">
+			<article class="card">
+				<h2>À faire</h2>
+				<strong>{{ t.lignes|length }}</strong>
+				<span class="si-p-neutre">{{ t.bientot > 0 ? 'dont ' ~ t.bientot ~ ' à moins de 2 h' : 'rien d\'urgent' }}</span>
+			</article>
+			<article class="card">
+				<h2>En retard</h2>
+				<strong class="{{ t.retards is not empty ? 'si-p-alerte' }}">{{ t.retards|length }}</strong>
+				<span class="{{ t.retards is empty ? 'si-p-ok' : 'si-p-alerte' }}">{{ t.retards is empty ? 'aucune' : t.retards|map(l => l.action.libelle ~ (l.action.penalite ? ' · −' ~ l.action.penalite : ''))|join(', ') }}</span>
+			</article>
+			<article class="card">
+				<h2>Faites aujourd'hui</h2>
+				<strong class="si-p-ok">{{ t.faites|length }}</strong>
+				<span class="si-p-neutre">{{ t.faites is empty ? '—' : (t.faitesATemps == t.faites|length ? 'toutes dans le délai' : t.faitesATemps ~ ' dans le délai') }}</span>
+			</article>
+			<article class="card">
+				<h2>Points aujourd'hui</h2>
+				{% set jour = t.gagnes - t.penalitesJour %}
+				<strong class="{{ jour < 0 ? 'si-p-alerte' : 'si-p-ok' }}">{{ jour > 0 ? '+' }}{{ jour }}</strong>
+				<span class="si-p-neutre">+{{ t.gagnes }} − {{ t.penalitesJour }} · mois : {{ t.mois.points }} pts</span>
+			</article>
+		</div>
+
+		<section class="card si-ac-liste">
+			<header>
+				<h2>À faire</h2>
+				<span>délai : {{ t.regles.delai_heures }} heures de travail après la création de la ligne</span>
+			</header>
+			{% if t.lignes is empty %}
+				<p class="si-ac-vide">Aucune action à faire. Les nouvelles lignes arrivent ici dès leur création.</p>
+			{% else %}
+				<table class="table">
+					<thead><tr><th></th><th>Client et action</th><th>Créée</th><th>À faire avant</th><th>Compte à rebours</th><th></th></tr></thead>
+					<tbody>
+						{% for l in t.lignes %}
+							{% set a = l.action %}
+							{% set liens = liens_action(a) %}
+							<tr class="{{ l.etat == 'retard' ? 'si-ac-ligne-retard' }}">
+								<td class="si-ac-col-pastille">{% include 'actions_caisse/_pastille.html.twig' with {action: a} %}</td>
+								<td class="si-ac-col-client">
+									<a href="{{ path('app_actions_voir', {id: a.id}) }}"><b>{{ a.libelle }}</b></a>
+									<small>{{ a.libelleType }}{% if a.detail %} · {{ a.detail }}{% endif %}{% if voirMontants and a.montant %} · {{ a.montant|number_format(0, ',', ' ') }} F{% endif %}{% if a.assigneA is null %} · <em>sans personne</em>{% endif %}</small>
+								</td>
+								<td class="si-ac-col-creee" data-libelle="Créée">{{ a.creeLe|date('Y-m-d') == maintenant|date('Y-m-d') ? a.creeLe|date('H:i') : a.creeLe|date_fr('EEE dd/MM HH:mm') }}</td>
+								<td class="si-ac-col-avant" data-libelle="Avant"><b>{{ a.echeance|date('Y-m-d') == maintenant|date('Y-m-d') ? a.echeance|date('H:i') : a.echeance|date_fr('EEE HH:mm') }}</b></td>
+								<td class="si-ac-col-compteur">{% include 'actions_caisse/_compteur.html.twig' with {action: a, etat: l.etat, reste: l.reste} %}</td>
+								<td class="si-ac-boutons">
+									{% if liens.tel %}
+										<a href="{{ liens.tel }}" class="btn btn-light btn-sm si-btn-entete" data-si-contact="appel" data-url="{{ path('app_actions_contact', {id: a.id}) }}" title="Appeler"><i class="fas fa-phone"></i></a>
+										<a href="{{ liens.whatsapp }}" target="_blank" rel="noopener" class="btn btn-light btn-sm si-btn-entete" data-si-contact="whatsapp" data-url="{{ path('app_actions_contact', {id: a.id}) }}">WhatsApp</a>
+									{% endif %}
+									<a href="{{ path('app_actions_voir', {id: a.id}) }}" class="btn btn-success btn-sm">Fait</a>
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+
+		<section class="card si-ac-faites" id="si-ac-faites">
+			<h2>Faites aujourd'hui</h2>
+			{% if t.faites is empty %}
+				<p class="si-ac-vide">Rien encore aujourd'hui.</p>
+			{% else %}
+				<div class="si-ac-faites-grille">
+					{% for f in t.faites %}
+						{% set a = f.action %}
+						<a href="{{ path('app_actions_voir', {id: a.id}) }}" class="si-ac-faite">
+							{% include 'actions_caisse/_pastille.html.twig' with {action: a} %}
+							<span>
+								<b>{{ a.libelle }}</b>
+								<small>{{ a.libelleType }} · {{ a.libelleResultat }}</small>
+								<small>fait à {{ a.faiteLe|date('H:i') }} · en {{ f.ecoule|duree_pointage }}</small>
+							</span>
+							<i class="{{ a.total > 0 ? 'si-ac-plus' : 'si-ac-zero' }}">{{ a.total > 0 ? '+' }}{{ a.total }} pts</i>
+						</a>
+					{% endfor %}
+				</div>
+			{% endif %}
+		</section>
+	</div>
+	{% include 'actions_caisse/_contact.html.twig' %}
+{% endblock %}

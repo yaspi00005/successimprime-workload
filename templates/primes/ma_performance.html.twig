@@ -1,0 +1,56 @@
+{#
+	Mon espace › Ma performance (maquette N04, écran de gauche) : le
+	score de l'agent connecté, critère par critère. Rien sur les autres.
+#}
+{% extends 'primes/_base.html.twig' %}
+{% import 'primes/_macros.html.twig' as p %}
+
+{% block title %}Ma performance{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_mon_espace_prime') }}" class="btn btn-light btn-sm si-btn-entete">Ma prime</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-pr si-pr-mobile">
+		<a href="{{ path('app_mon_espace_index') }}" class="si-pr-retour"><i class="fas fa-chevron-left" aria-hidden="true"></i>Mon espace</a>
+
+		{% if fiche is null %}
+			<section class="card">
+				<p class="mb-0">{{ not a_un_role ? 'Votre poste n’a pas de prime de performance.' : (voit_note ? 'Pas encore de score ce mois-ci.' : 'Votre score s’affiche ici une fois l’évaluation du mois validée par votre responsable.') }}</p>
+			</section>
+		{% else %}
+			{% set r = fiche.resultat %}
+			<section class="card si-pr-carte-score {{ p.couleur(r.score) }}" aria-label="Mon score">
+				<h2>{{ p.mois(fiche.mois)|capitalize }} · {{ fiche.enCours ? 'en cours' : (fiche.fige ? 'validé' : 'à valider') }}</h2>
+				<span class="si-pr-gros">{{ r.score ?? '—' }}</span>
+				<span class="si-pr-sous mb-0">/ 100 · palier {{ palier }}</span>
+			</section>
+
+			<section class="card" aria-label="Mes critères">
+				<ul class="si-pr-barres-criteres">
+					{% for c in r.criteres %}
+						<li class="{{ p.couleur(c.note) }}">
+							<div><span>{{ c.court }}</span><b>{{ c.note ?? '—' }}</b></div>
+							{% if c.note is null %}
+								<small class="text-muted">{{ c.manuel ? 'appréciation pas encore saisie' : 'pas encore de données ce mois-ci' }}</small>
+							{% else %}
+								<span class="si-pr-jauge"><span style="width: {{ c.note }}%"></span></span>
+							{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+				{% if r.manquants is not empty %}
+					<p class="si-fin-note">Un critère sans données ne compte pas pour 0 : son poids est réparti sur les autres.</p>
+				{% endif %}
+				{% if fiche.evaluation and fiche.evaluation.appreciationTexte %}
+					<p class="si-pr-info">Votre responsable : « {{ fiche.evaluation.appreciationTexte }} »</p>
+				{% endif %}
+			</section>
+
+			{% if conseil %}
+				<p class="si-pr-conseil mb-0">{{ conseil }}</p>
+			{% endif %}
+		{% endif %}
+	</div>
+{% endblock %}

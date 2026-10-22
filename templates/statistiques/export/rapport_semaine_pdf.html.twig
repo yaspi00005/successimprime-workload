@@ -1,0 +1,127 @@
+{% extends 'statistiques/export/_page_pdf.html.twig' %}
+
+{#
+	PDF du rapport de la semaine : la même version que la page (mêmes
+	sections, mêmes droits), pour l'archiver ou l'imprimer.
+#}
+
+{% macro f(v, format) %}{{ v is null ? '—' : valeur_export(v, format) }}{% endmacro %}
+{% macro ecart(valeur, avant) %}{% if avant is not null and avant > 0 %}{% set pct = ((valeur - avant) * 100 / avant)|round %}<span class="{{ pct >= 0 ? 'vert' : 'rouge' }}">{{ pct >= 0 ? '+' : '−' }}{{ pct|abs }} %</span> vs semaine précédente{% else %}semaine précédente : {{ avant ?? 0 }}{% endif %}{% endmacro %}
+{% macro carte(libelle, valeur, sous) %}<div class="carte"><div class="lib">{{ libelle }}</div><div class="val">{{ valeur }}</div><div class="sous">{{ sous }}</div></div>{% endmacro %}
+{% macro mois(m, titre) %}
+	{% import _self as x %}
+	{% set etat = etat_objectif(m.etat) %}
+	<div class="carte">
+		<div class="lib">{{ titre }} <span class="{{ etat.couleur }}">· {{ etat.libelle }}</span></div>
+		<div class="val">{{ x.f(m.realise, 'fcfa') }} <span class="sous">/ {{ m.objectif is null ? 'pas d’objectif' : x.f(m.objectif, 'fcfa') }}</span></div>
+		{% if m.objectif is not null %}
+			<div class="jauge"><div style="width: {{ min(100, max(0, m.part)) }}%"></div></div>
+			<div class="sous">{{ m.part }} % de l’objectif{% if m.projection is not null and m.ecoule < 100 %} · projection fin de mois {{ x.f(m.projection, 'fcfa') }} ({{ m.part_projetee }} %){% endif %}</div>
+		{% endif %}
+	</div>
+{% endmacro %}
+{% import _self as x %}
+
+{% block titre %}Rapport de la semaine {{ semaine.numero }}{% endblock %}
+{% block periode %}Semaine {{ semaine.libelle }}{% endblock %}
+
+{% block contenu %}
+	{% set e = r.entreprise %}
+	{% set p = r.perso %}
+	{% set s = r.sections %}
+	<p class="note">
+		{% if s.montants %}Version Direction : chiffres de l’entreprise.{% elseif s.entreprise %}Chiffres de l’entreprise, sans les montants de vente.{% else %}Version personnelle.{% endif %}
+		Chiffres calculés selon les droits de la personne qui édite ce document.
+	</p>
+
+	{% if r.alertes is not empty %}
+		<h2>À surveiller</h2>
+		{% for a in r.alertes %}<div class="alerte {{ a.niveau == 'danger' ? 'danger' }}">{{ a.texte }}</div>{% endfor %}
+	{% endif %}
+
+	{% if e is not null %}
+		<h2>Entreprise</h2>
+		{% set cartes = [] %}
+		{% if s.montants %}
+			{% set cartes = cartes|merge([x.carte('CA facturé imprimerie', x.f(e.ca, 'fcfa'), e.objectif_semaine is not null ? 'objectif ' ~ x.f(e.objectif_semaine, 'fcfa') ~ ' (' ~ (e.ca * 100 / e.objectif_semaine)|round ~ ' %)' : x.ecart(e.ca, e.ca_avant ?? null))]) %}
+		{% endif %}
+		{% set cartes = cartes|merge([
+			x.carte('Commandes', e.commandes, x.ecart(e.commandes, e.commandes_avant)),
+			x.carte('m² imprimés', x.f(e.surface, 'm2'), x.ecart(e.surface, e.surface_avant)),
+			x.carte('Nouveaux clients', e.nouveaux_clients, 'première commande'),
+			x.carte('Devis signés', e.devis_signes, e.devis_emis ~ ' devis émis'),
+		]) %}
+		{% if s.encaissement %}
+			{% set cartes = cartes|merge([
+				x.carte('Encaissé', x.f(e.encaisse, 'fcfa'), e.taux_encaissement is not null ? 'taux d’encaissement ' ~ e.taux_encaissement|round ~ ' %' : 'aucune facture émise'),
+				x.carte('Créances', x.f(e.creances, 'fcfa'), e.factures_echues ~ ' facture(s) échue(s)'),
+			]) %}
+		{% endif %}
+		<table class="cartes">
+			{% for rangee in cartes|batch(4, '') %}
+				<tr>{% for c in rangee %}<td>{{ c }}</td>{% endfor %}</tr>
+				<tr><td colspan="4" style="height: 6px"></td></tr>
+			{% endfor %}
+		</table>
+
+		{# Imprimerie / hors imprimerie / total (docs/hors-imprimerie.md). #}
+		{% set rep = e.repartition %}
+		<table class="donnees">
+			<thead><tr><th>Activité</th>{% if s.montants %}<th class="droite">CA facturé</th><th class="droite">Part</th>{% endif %}<th class="droite">Commandes</th></tr></thead>
+			<tbody>
+				{% for cle, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', total: 'Total'} %}
+					<tr class="{{ loop.index is even ? 'paire' }}"><td>{% if cle == 'total' %}<strong>Total</strong>{% else %}{{ libelle }}{% endif %}</td>{% if s.montants %}<td class="droite">{{ x.f(rep[cle].ca, 'fcfa') }}</td><td class="droite">{{ cle == 'total' ? '100 %' : (rep[cle].part is not null ? rep[cle].part ~ ' %' : '—') }}</td>{% endif %}<td class="droite">{{ rep[cle].commandes }}</td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+
+		{% if s.montants and e.mois is not null %}
+			<table class="cartes"><tr><td style="width: 50%">{{ x.mois(e.mois, 'CA du mois au dimanche ' ~ semaine.dimanche|date('d/m')) }}</td><td></td></tr></table>
+		{% endif %}
+
+		<h2>Par agent</h2>
+		<table class="donnees">
+			<thead><tr><th>Agent</th><th class="droite">Commandes</th>{% if s.montants %}<th class="droite">CA facturé</th>{% endif %}</tr></thead>
+			<tbody>
+				{% for a in e.agents %}
+					<tr class="{{ loop.index is even ? 'paire' }}"><td>{{ a.nom }}</td><td class="droite">{{ a.commandes }}</td>{% if s.montants %}<td class="droite">{{ x.f(a.ca, 'fcfa') }}</td>{% endif %}</tr>
+				{% else %}
+					<tr><td colspan="3" class="vide">Aucune commande ni facture cette semaine.</td></tr>
+				{% endfor %}
+			</tbody>
+		</table>
+
+		{% if s.montants %}
+			<h2>Top catégories</h2>
+			<table class="donnees">
+				<thead><tr><th>Catégorie</th><th class="droite">CA facturé</th><th class="droite">Part</th></tr></thead>
+				<tbody>
+					{% for c in e.categories %}
+						<tr class="{{ loop.index is even ? 'paire' }}"><td>{{ c.nom }}</td><td class="droite">{{ x.f(c.montant, 'fcfa') }}</td><td class="droite">{{ c.part }} %</td></tr>
+					{% else %}
+						<tr><td colspan="3" class="vide">Aucune facture cette semaine.</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		{% endif %}
+	{% endif %}
+
+	{% if s.perso and (p is not null or e is null) %}
+		<h2>Mes chiffres</h2>
+		{% if p is null %}
+			<p class="vide">Aucune activité enregistrée à votre nom cette semaine.</p>
+		{% else %}
+			<table class="cartes"><tr>
+				<td>{{ x.carte('Mes ventes facturées', x.f(p.ca, 'fcfa'), p.objectif_semaine is not null ? 'objectif ' ~ x.f(p.objectif_semaine, 'fcfa') ~ ' (' ~ (p.ca * 100 / p.objectif_semaine)|round ~ ' %)' : x.ecart(p.ca, p.ca_avant)) }}</td>
+				<td>{{ x.carte('Mes commandes', p.commandes, p.devis_emis ~ ' devis émis · ' ~ p.devis_signes ~ ' signé(s)') }}</td>
+				<td>{{ x.carte('Encaissé par moi', x.f(p.encaisse, 'fcfa'), 'paiements validés') }}</td>
+				<td>{{ x.carte('Mes travaux terminés', p.travaux, x.f(p.surface, 'm2') ~ ' en production') }}</td>
+			</tr></table>
+			{% if p.mois is not null %}
+				<table class="cartes" style="margin-top: 6px"><tr><td style="width: 50%">{{ x.mois(p.mois, 'Mes ventes du mois au dimanche ' ~ semaine.dimanche|date('d/m')) }}</td><td></td></tr></table>
+			{% endif %}
+		{% endif %}
+	{% endif %}
+
+	<p class="note">Semaine du lundi 0 h au dimanche 24 h. CA facturé : factures émises (TTC) ; objectif de la semaine : objectif du mois au prorata des jours. Devis signés : transformés en commande dans la semaine, ou acceptés et datés de la semaine. Créances, factures échues et commandes en retard : situation au moment de l’édition.</p>
+{% endblock %}

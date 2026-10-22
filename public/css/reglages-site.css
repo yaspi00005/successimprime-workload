@@ -1,0 +1,127 @@
+/*
+ * Réglages › Site vitrine (templates/site_contenu) : listes, fiches et
+ * aide du Markdown. Chargée par le bloc stylesheets, avant admin.css :
+ * les sélecteurs commencent par .si-sv pour ne rien reprendre ailleurs.
+ */
+.si-sv .si-sv-intro { margin: 0 0 14px; color: #475569; font-size: 14px; }
+.si-sv .si-sv-intro strong { color: #0F172A; }
+
+.si-sv .si-sv-onglets { display: flex; gap: 4px; overflow-x: auto; margin-bottom: 16px; border-bottom: 1px solid #E2E8F0; scrollbar-width: thin; }
+.si-sv .si-sv-onglets a { padding: 10px 16px; font-weight: 600; color: #475569; border-bottom: 3px solid transparent; white-space: nowrap; text-decoration: none; }
+.si-sv .si-sv-onglets a:hover { color: #0F4590; }
+.si-sv .si-sv-onglets a.active { color: #0F4590; border-bottom-color: #0F4590; }
+.si-sv .si-sv-onglets small { display: inline-block; min-width: 20px; margin-left: 4px; padding: 0 6px; border-radius: 999px; background: #E5EEFA; color: #0F4590; font-size: 12px; text-align: center; }
+
+.si-sv .si-sv-carte { padding: 0; overflow: hidden; }
+.si-sv .si-sv-carte > .si-sv-aide, .si-sv .si-sv-carte > .row { padding: 14px 18px 0; }
+.si-sv .si-sv-carte > .row { padding-bottom: 18px; }
+.si-sv .si-sv-carte .table-responsive { padding: 4px 6px 6px; }
+.si-sv .si-sv-aide { font-size: 13px; color: #64748B; margin-bottom: 10px; }
+.si-sv .si-sv-vide { color: #64748B; text-align: center; padding: 32px 18px; margin: 0; }
+.si-sv .si-sv-extrait { max-width: 34em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-sv .si-sv-etoiles { color: #F5A400; letter-spacing: 1px; }
+.si-sv .si-sv-etoiles span { color: #D5DBE5; }
+
+.si-sv .si-sv-col-vignette { width: 72px; }
+.si-sv .si-sv-vignette { display: block; width: 64px; height: 48px; object-fit: cover; border-radius: 8px; background: #F1F5F9; }
+.si-sv .si-sv-vignette-logo { object-fit: contain; padding: 4px; background: #fff; border: 1px solid #E2E8F0; }
+.si-sv .si-sv-vignette-vide { display: flex; align-items: center; justify-content: center; color: #94A3B8; }
+
+.si-sv .si-sv-ferme { display: flex; gap: 16px; align-items: flex-start; max-width: 760px; }
+.si-sv .si-sv-ferme > i { font-size: 22px; color: #0F4590; margin-top: 4px; }
+.si-sv .si-sv-ferme h2 { font-size: 17px; margin-bottom: 6px; }
+
+/* Chiffres */
+.si-sv .si-sv-ligne-interrupteur { display: flex; gap: 12px; align-items: flex-start; }
+.si-sv .si-sv-ligne-interrupteur .si-interrupteur { flex: 0 0 auto; margin-top: 2px; }
+.si-sv .si-sv-ligne-interrupteur + .si-sv-ligne-interrupteur { margin-top: 14px; }
+.si-sv .si-sv-seuil { max-width: 140px; }
+.si-sv .si-sv-sous-titre { font-size: 15px; font-weight: 700; color: #12213A; margin: 0 0 12px; }
+.si-sv .si-sv-sous-titre small { font-weight: 500; font-size: 12px; }
+.si-sv .si-sv-chiffres { list-style: none; padding: 0; margin: 0 0 12px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.si-sv .si-sv-chiffres li { background: #F8FAFC; border-radius: 12px; padding: 14px; text-align: center; }
+.si-sv .si-sv-chiffres strong { display: block; font-size: 26px; color: #0F4590; font-variant-numeric: tabular-nums; }
+.si-sv .si-sv-chiffres span { font-size: 13px; color: #475569; }
+.si-sv .si-sv-chiffres small { display: block; color: #C46A00; font-size: 11px; margin-top: 2px; }
+/* Onglet Référencement */
+.si-sv .si-sv-referencement-form { padding-bottom: 18px; }
+.si-sv .si-sv-adresses { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin: 0 0 8px; font-size: 13px; }
+.si-sv .si-sv-adresses dt { font-weight: 600; color: #475569; }
+.si-sv .si-sv-adresses dd { margin: 0; overflow-wrap: anywhere; }
+.si-sv .si-sv-manques { padding-left: 18px; margin: 0 0 10px; font-size: 13px; color: #475569; }
+.si-sv .si-sv-manques li { margin-bottom: 6px; }
+.si-sv .si-sv-chiffre-masque strong { color: #94A3B8; }
+
+/* Fiche */
+.si-sv .si-sv-retour { display: inline-block; margin-bottom: 12px; font-size: 14px; font-weight: 600; color: #475569; text-decoration: none; }
+.si-sv .si-sv-retour:hover { color: #0F4590; }
+.si-sv .si-sv-encadre { margin-bottom: 16px; }
+.si-sv .si-sv-adresse { font-size: 13px; color: #64748B; }
+.si-sv .si-sv-markdown { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 13.5px; line-height: 1.55; min-height: 380px; }
+.si-sv .si-sv-apercu { display: block; width: 100%; height: auto; max-height: 220px; object-fit: cover; border-radius: 10px; background: #F1F5F9; }
+.si-sv .si-sv-apercu-logo { object-fit: contain; max-height: 120px; padding: 10px; border: 1px solid #E2E8F0; background: #fff; }
+.si-sv .si-sv-supprimer { margin-top: 4px; }
+
+.si-sv .si-sv-photos { list-style: none; padding: 0; margin: 0 0 10px; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.si-sv .si-sv-photos li { display: flex; flex-direction: column; gap: 6px; padding: 8px; border: 1px solid #E2E8F0; border-radius: 12px; }
+.si-sv .si-sv-photos img, .si-sv .si-sv-photos .si-sv-vignette { width: 100%; height: 110px; object-fit: cover; border-radius: 8px; }
+.si-sv .si-sv-photo-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: #475569; }
+.si-sv .si-sv-photo-actions label:first-child { display: flex; align-items: center; gap: 6px; margin: 0; }
+.si-sv .si-sv-photo-actions input[type="number"] { width: 64px; }
+
+.si-sv .si-sv-note { display: inline-flex; flex-direction: row-reverse; gap: 2px; margin-top: 4px; }
+.si-sv .si-sv-note input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.si-sv .si-sv-note label { font-size: 28px; line-height: 1; color: #D5DBE5; cursor: pointer; }
+.si-sv .si-sv-note input:checked ~ label, .si-sv .si-sv-note label:hover, .si-sv .si-sv-note label:hover ~ label { color: #F5A400; }
+.si-sv .si-sv-note input:focus-visible + label { outline: 2px solid #0F4590; outline-offset: 2px; border-radius: 4px; }
+
+.si-sv .si-sv-machines { list-style: none; padding: 0; margin: 0; }
+.si-sv .si-sv-machines li { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 0; border-top: 1px solid #EEF2F7; font-size: 14px; }
+
+.si-sv .si-sv-aide-markdown summary { cursor: pointer; margin-bottom: 8px; }
+.si-sv .si-sv-aide-markdown dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 12px; font-size: 13px; margin: 0 0 10px; }
+.si-sv .si-sv-aide-markdown dt { font-weight: 400; white-space: nowrap; }
+.si-sv .si-sv-aide-markdown dd { margin: 0; color: #475569; }
+.si-sv .si-sv-aide-markdown code { color: #0F4590; background: #EEF3FB; padding: 1px 5px; border-radius: 4px; }
+.si-sv .si-sv-rangement { background: #FFF8E6; color: #5B4A1A; border-radius: 10px; padding: 10px 12px; }
+
+@media (max-width: 575.98px) {
+  .si-sv .si-sv-chiffres { grid-template-columns: 1fr; }
+  .si-sv .si-sv-col-vignette { width: 56px; }
+  .si-sv .si-sv-vignette { width: 48px; height: 40px; }
+}
+
+/* Annonces (bandes du site public et de l'espace client) */
+.si-sv-annonce-style { display: inline-block; width: 12px; height: 12px; border-radius: 4px; margin-right: 6px; vertical-align: -1px; background: #0F4590; }
+.si-sv-annonce-promotion { background: #FDC82A; }
+.si-sv-annonce-alerte { background: #C40D22; }
+.si-sv-annonce-styles { display: flex; flex-wrap: wrap; gap: 8px; }
+.si-sv-annonce-choix { display: inline-flex; align-items: center; gap: 2px; padding: 6px 12px; border: 1px solid #E3E7EF; border-radius: 10px; cursor: pointer; font-size: 14px; }
+.si-sv-annonce-choix input { margin-right: 6px; }
+.si-sv-annonce-choix:has(input:checked) { border-color: #0F4590; background: #EEF3FB; font-weight: 600; }
+.si-sv-annonce-apercu { border-radius: 10px; overflow: hidden; }
+
+/* Équipe (« Notre équipe » de « Qui sommes-nous ? ») : photos rondes, initiales sans photo. */
+.si-sv .si-sv-vignette-rond { width: 48px; height: 48px; border-radius: 50%; }
+.si-sv .si-sv-initiales { display: flex; align-items: center; justify-content: center; background: #0F4590; color: #fff; font-weight: 700; font-size: 16px; letter-spacing: .5px; }
+.si-sv .si-sv-portrait { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+.si-sv .si-sv-portrait img, .si-sv .si-sv-portrait .si-sv-initiales { flex: 0 0 auto; width: 96px; height: 96px; border-radius: 50%; object-fit: cover; box-shadow: 0 0 0 3px #fff, 0 0 0 5px #E5EEFA; }
+.si-sv .si-sv-portrait .si-sv-initiales { font-size: 32px; }
+.si-sv .si-sv-portrait p { margin: 0; font-size: 13px; color: #475569; }
+.si-sv .si-sv-accord { padding: 12px; border-radius: 10px; background: #FFF8E6; }
+.si-sv .si-sv-accord.si-sv-accord-ok { background: #ECFDF3; }
+/* Le mot du gérant (onglet Équipe) : encart au-dessus de la liste. */
+.si-sv .si-sv-gerant { display: flex; align-items: center; gap: 14px; padding: 14px 16px; margin: 0 0 16px; border: 1px dashed #B9C6DB; border-radius: 12px; background: #F7F9FD; }
+.si-sv .si-sv-gerant.si-sv-gerant-ok { border-style: solid; border-color: #CFE9DA; background: #F3FBF6; }
+.si-sv .si-sv-gerant > .si-sv-vignette, .si-sv .si-sv-gerant-icone { flex: 0 0 auto; width: 56px; height: 56px; }
+.si-sv .si-sv-gerant-icone { display: flex; align-items: center; justify-content: center; border-radius: 50%; background: #E5EEFA; color: #0F4590; font-size: 20px; }
+.si-sv .si-sv-gerant-texte { flex: 1 1 auto; min-width: 0; }
+.si-sv .si-sv-gerant-texte small { color: #475569; margin-top: 2px; }
+.si-sv .si-sv-gerant-extrait { display: block; margin-top: 4px; font-style: italic; color: #334155; overflow-wrap: anywhere; }
+.si-sv .si-sv-gerant > .btn { flex: 0 0 auto; }
+@media (max-width: 575.98px) {
+  .si-sv .si-sv-gerant { flex-wrap: wrap; }
+  .si-sv .si-sv-gerant-texte { flex-basis: calc(100% - 70px); }
+}
+/* Fiche : encart du mot du gérant. */
+.si-sv .si-sv-mot { border-left: 4px solid #0F4590; }

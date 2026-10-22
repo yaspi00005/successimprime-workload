@@ -1,0 +1,44 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{# « Mes demandes » de conception : celles en préparation, puis celles à l'atelier. #}
+
+{% block title %}Mes demandes de conception{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path(conceptionPeutPreparer ? 'app_espace_conception' : 'app_espace_commandes') }}"><span class="fl">‹</span>Mes demandes</a>{% endblock %}
+
+{% macro pastille(d) %}
+	{% set couleur = {brouillon: 'gris', a_payer: 'ambre', en_ia: 'rouge', recue: '', en_cours: '', bat_envoye: 'ambre', commandee: 'vert', terminee: 'vert', annulee: 'gris'} %}
+	<span class="ec-pastille {{ couleur[d.statut] ?? '' }}">{{ d.libelleStatut }}</span>
+{% endmacro %}
+
+{% block contenu %}
+	<div class="dc-titre">
+		<span class="ec-petit">{{ enCours }} en cours</span>
+		{% if conceptionPeutPreparer %}<a class="ec-bouton-petit" href="{{ path('app_espace_conception') }}">+ Nouvelle demande</a>{% endif %}
+	</div>
+
+	<div class="ec-carte">
+		<ul class="ec-liste">
+			{% for d in liste %}
+				<li>
+					<a class="dc-demande" href="{{ path('app_espace_conception_demande', {id: d.publicId}) }}" style="color:inherit">
+						<span class="dc-carre" style="--couleur: {{ d.support.couleur ?? '#9CA3AF' }}"></span>
+						<span>
+							<b>{{ d.titre ?? d.titreSupport }}</b>
+							<span class="ec-petit">{{ d.numero }} · {{ d.supportNom }} · {{ d.choix == 'ia' ? 'IA' : (d.choix == 'graphiste' ? 'graphiste' : 'à choisir') }} · {{ (d.envoyeeLe ?? d.modifieLe ?? d.creeLe)|date('d/m/Y') }}</span>
+						</span>
+						{{ _self.pastille(d) }}
+					</a>
+				</li>
+			{% else %}
+				<li class="ec-vide">
+					Aucune demande pour l'instant.
+					{% if conceptionPeutPreparer %}<div style="margin-top:.8rem"><a class="ec-bouton-petit" href="{{ path('app_espace_conception') }}">Faire concevoir un visuel</a></div>{% endif %}
+				</li>
+			{% endfor %}
+		</ul>
+	</div>
+	{% if conceptionPeutPayer %}
+		<a class="ec-carte ec-rangee" href="{{ path('app_espace_conception_credit') }}"><span><b>Crédit IA</b><span class="ec-petit">{{ credit|francs_conception }} · relevé et recharge</span></span><span class="fl">›</span></a>
+	{% endif %}
+{% endblock %}

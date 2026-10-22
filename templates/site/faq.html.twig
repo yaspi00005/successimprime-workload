@@ -1,0 +1,87 @@
+{#
+	Questions fréquentes (maquette 09), page « faq » : une catégorie par
+	« ## » (menu à gauche), une question par « ### » dépliable
+	(details/summary, sans JavaScript). Données FAQPage pour Google.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set whatsapp_faq = site_whatsapp('Bonjour Succès Imprim, j\'ai une question : ') %}
+{% set categories = contenu.sections|filter(s => s.titre) %}
+
+{# Image de la page (Réglages › Site vitrine) pour le partage sur les réseaux. #}
+{% set image_partage = site_image(page.image) %}
+
+{% block title %}{{ page.titre|site_titre }}{% endblock %}
+{% block description %}{{ (page.description ?? page.accroche ?? 'Délais, paiement Orange Money, fichiers et BAT, livraison et pose : les réponses de Succès Imprim aux questions fréquentes.')|site_description }}{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-contenu.css') }}
+	{% if donneesFaq %}{{ site_json_ld(donneesFaq) }}{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: page.titre, accroche: page.accroche, ariane: 'FAQ'}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre sc-faq{{ categories|length > 1 ? ' sc-faq-avec-menu' }}">
+			{% if categories|length > 1 %}
+				<nav class="sc-faq-menu" aria-label="Catégories de questions">
+					<ul>
+						{% for s in categories %}
+							<li><a href="#{{ s.ancre }}" class="{{ loop.first ? 'actif' }}">{{ s.titre }}</a></li>
+						{% endfor %}
+					</ul>
+				</nav>
+			{% endif %}
+
+			<div class="sc-faq-questions">
+				{% if contenu.intro %}<div class="sc-prose sc-intro">{{ site_blocs(contenu.intro) }}</div>{% endif %}
+				{% for s in contenu.sections %}
+					{% set niveau = s.titre ? 'h3' : 'h2' %}
+					<section class="sc-faq-categorie"{% if s.titre %} id="{{ s.ancre }}" aria-labelledby="{{ s.ancre }}-titre"{% endif %}>
+						{% if s.titre %}<h2 id="{{ s.ancre }}-titre">{{ s.html|raw }}</h2>{% endif %}
+						{% if s.blocs %}<div class="sc-prose">{{ site_blocs(s.blocs) }}</div>{% endif %}
+						{% for c in s.cartes %}
+							<details class="sc-question" id="{{ c.ancre }}" {{ loop.parent.loop.first and loop.first ? 'open' }}>
+								<summary><{{ niveau }}>{{ c.html|raw }}</{{ niveau }}></summary>
+								<div class="sc-prose sc-reponse">{{ site_blocs(c.blocs) }}</div>
+							</details>
+						{% endfor %}
+					</section>
+				{% endfor %}
+
+				{% if whatsapp_faq %}
+					<aside class="sc-faq-contact">
+						<p><strong>Vous ne trouvez pas votre réponse ?</strong> Posez votre question à l'atelier, nous répondons sur WhatsApp.</p>
+						<a href="{{ whatsapp_faq }}" class="si-bouton si-bouton-rouge" target="_blank" rel="noopener">Écrire sur WhatsApp</a>
+					</aside>
+				{% endif %}
+			</div>
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	{% if categories|length > 1 %}
+		<script>
+			(function () {
+				// Le menu suit la catégorie lue ; un lien ouvre aussi la première question de sa catégorie.
+				var liens = document.querySelectorAll('.sc-faq-menu a');
+				var actif = function (id) { liens.forEach(function (l) { l.classList.toggle('actif', l.getAttribute('href') === '#' + id); }); };
+				liens.forEach(function (l) {
+					l.addEventListener('click', function () {
+						var cible = document.getElementById(l.getAttribute('href').slice(1));
+						var question = cible && cible.querySelector('details');
+						if (question) { question.open = true; }
+						actif(l.getAttribute('href').slice(1));
+					});
+				});
+				if (!('IntersectionObserver' in window)) { return; }
+				var observateur = new IntersectionObserver(function (entrees) {
+					entrees.forEach(function (e) { if (e.isIntersecting) { actif(e.target.id); } });
+				}, {rootMargin: '-30% 0px -60% 0px'});
+				document.querySelectorAll('.sc-faq-categorie[id]').forEach(function (s) { observateur.observe(s); });
+			})();
+		</script>
+	{% endif %}
+{% endblock %}

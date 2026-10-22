@@ -1,0 +1,109 @@
+{# Morceaux communs aux écrans de statistiques : menu Exporter, objectifs. #}
+
+{# Menu « Exporter » de l'en-tête : même adresse que la page, mêmes filtres. #}
+{% macro exporter(route, parametres) %}
+	<li class="nav-item dropdown si-masque-mobile">
+		<button type="button" class="btn btn-primary btn-sm si-btn-entete dropdown-toggle si-st-exporter-bouton" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-download me-1"></i>Exporter</button>
+		<div class="dropdown-menu dropdown-menu-end si-st-exporter">
+			<a class="dropdown-item" href="{{ path(route, parametres|default({})|merge({format: 'xlsx'})) }}"><i class="far fa-file-excel text-success"></i><span>Excel (.xlsx)<small>une feuille par tableau</small></span></a>
+			<a class="dropdown-item" href="{{ path(route, parametres|default({})|merge({format: 'pdf'})) }}"><i class="far fa-file-pdf text-danger"></i><span>PDF<small>A4, en-tête de l'entreprise</small></span></a>
+			<div class="dropdown-divider"></div>
+			<span class="dropdown-item-text si-st-exporter-note">Seulement les chiffres que vos droits vous laissent voir.</span>
+		</div>
+	</li>
+{% endmacro %}
+
+{# Valeur d'un objectif selon son format : « 5,6 M F », « 142 », « 218 m² », « 82 % ». #}
+{% macro valeur(v, format) %}
+	{%- if v is null -%}—
+	{%- elseif format == 'fcfa' -%}{% if v|abs >= 1000000 %}{{ (v / 1000000)|number_format(v|abs >= 10000000 ? 1 : 2, ',', ' ') }}&nbsp;M&nbsp;F{% else %}{{ v|number_format(0, ',', ' ') }}&nbsp;F{% endif %}
+	{%- elseif format == 'm2' -%}{{ v|number_format(0, ',', ' ') }}&nbsp;m²
+	{%- elseif format == 'pourcent' -%}{{ v|number_format(v == v|round ? 0 : 1, ',', ' ') }}&nbsp;%
+	{%- else -%}{{ v|number_format(0, ',', ' ') }}
+	{%- endif -%}
+{% endmacro %}
+
+{# Carte d'avancement d'un objectif : réalisé / objectif, jauge avec le repère du jour, projection. #}
+{% macro carte(l, titre) %}
+	{% import _self as m %}
+	{% set etat = etat_objectif(l.etat) %}
+	<article class="card si-st-obj si-st-obj-{{ etat.couleur }}">
+		<header>
+			<h3>{{ titre|default(l.libelle) }}</h3>
+			<span class="si-st-etat si-st-etat-{{ etat.couleur }}">{{ etat.libelle }}</span>
+		</header>
+		<strong>{{ m.valeur(l.realise, l.format) }}<small> / {{ l.objectif is null ? 'pas d’objectif' : m.valeur(l.objectif, l.format) }}</small></strong>
+		{% if l.objectif is not null %}
+			<div class="si-st-jauge" role="progressbar" aria-valuenow="{{ l.part }}" aria-valuemin="0" aria-valuemax="100" aria-label="{{ l.libelle }} : {{ l.part }} % de l'objectif">
+				<span style="width: {{ min(100, max(0, l.part)) }}%"></span>
+				{% if l.cumul and l.ecoule > 0 and l.ecoule < 100 %}<i style="left: {{ l.ecoule }}%" title="Rythme attendu aujourd’hui : {{ m.valeur(l.attendu, l.format)|trim|replace({'&nbsp;': ' '}) }}"></i>{% endif %}
+			</div>
+			<p>
+				<b>{{ l.part }} %</b>
+				{% if l.cumul and l.projection is not null and l.ecoule < 100 %}
+					· projection fin de mois <span class="si-st-insecable">{{ m.valeur(l.projection, l.format) }} ({{ l.part_projetee }}&nbsp;%)</span>
+				{% elseif not l.cumul %}
+					· objectif {{ m.valeur(l.objectif, l.format) }}
+				{% endif %}
+			</p>
+		{% else %}
+			<p class="si-st-gris">Réalisé ce mois, sans objectif fixé.</p>
+		{% endif %}
+	</article>
+{% endmacro %}
+
+{#
+	Carte « Imprimerie / Hors imprimerie / Total » d'une période
+	(Activite::repartition, docs/hors-imprimerie.md). Une colonne n'existe
+	que si le chiffre a été calculé : le CA et la marge ne sont dans les
+	données qu'avec leur droit.
+#}
+{% macro repartition(rep, titre, note) %}
+	{% import _self as m %}
+	{% set avecCa = rep.total.ca is defined %}
+	{% set avecMarge = rep.total.marge is defined %}
+	<section class="card si-st-activite" aria-label="{{ titre|default('Imprimerie et hors imprimerie') }}">
+		<header>
+			<h3><i class="fas fa-layer-group me-1"></i>{{ titre|default('Imprimerie et hors imprimerie') }}</h3>
+			{% if note|default('') %}<small>{{ note }}</small>{% endif %}
+		</header>
+		<div class="table-responsive">
+			<table class="table table-sm mb-0" data-sans-filtres>
+				<thead>
+					<tr>
+						<th scope="col">Activité</th>
+						{% if avecCa %}<th scope="col" class="text-end">CA facturé</th><th scope="col" class="text-end">Part</th>{% endif %}
+						{% if avecMarge %}<th scope="col" class="text-end">Marge brute</th>{% endif %}
+						<th scope="col" class="text-end">Commandes</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for cle, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', total: 'Total'} %}
+						{% set l = rep[cle] %}
+						<tr class="si-st-activite-{{ cle }}">
+							<th scope="row">{% if cle == 'hors' %}<span class="si-badge-hors">Hors imprimerie</span>{% else %}{{ libelle }}{% endif %}</th>
+							{% if avecCa %}
+								<td class="text-end">{{ m.valeur(l.ca, 'fcfa') }}</td>
+								<td class="text-end">{{ cle == 'total' ? '100 %' : (l.part is not null ? l.part ~ ' %' : '—') }}</td>
+							{% endif %}
+							{% if avecMarge %}<td class="text-end">{{ l.marge is null ? '—' : m.valeur(l.marge, 'pourcent') }}</td>{% endif %}
+							<td class="text-end">{{ l.commandes|number_format(0, ',', ' ') }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{% endmacro %}
+
+{# Choix de l'activité comptée par les tableaux de ventes (filtre « activite »). #}
+{% macro filtre_activite(activite, classe) %}
+	<div class="{{ classe|default('') }}">
+		<label class="form-label" for="filtre-activite">Activité</label>
+		<select id="filtre-activite" name="activite" class="form-select form-control">
+			{% for valeur, libelle in {imprimerie: 'Imprimerie', hors: 'Hors imprimerie', tout: 'Tout (imprimerie et hors imprimerie)'} %}
+				<option value="{{ valeur }}" {{ activite == valeur ? 'selected' }}>{{ libelle }}</option>
+			{% endfor %}
+		</select>
+	</div>
+{% endmacro %}

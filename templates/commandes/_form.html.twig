@@ -135,14 +135,7 @@
                 detail.typeLigne
             ) }}
 
-			<small class="form-text text-muted">
-				Produit / prestation :
-																																																																																																																																                travail provenant du catalogue.
-																																																																																																																																                Article en stock :
-																																																																																																																																                vente directe d’un article physique.
-																																																																																																																																                Saisie libre :
-																																																																																																																																                désignation, quantité et prix libres.
-			</small>
+
 
 		</div>
 
@@ -399,71 +392,6 @@
 
 
 		{# ====================================================
-																																																																           CIRCUIT
-																																																																           ==================================================== #}
-
-		<div class="travail-section js-zone-circuit">
-
-			<div class="travail-section-title">
-				<i class="fa fa-random"></i>
-				Circuit de traitement
-			</div>
-
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
-					{{ form_row(
-                        detail.prePresseNecessaire,
-                        {
-                            label:
-                                'Passage en prépresse',
-
-                            attr: {
-                                class:
-                                    'js-prepresse-necessaire'
-                            }
-                        }
-                    ) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(
-                        detail.productionNecessaire,
-                        {
-                            label:
-                                'Passage en production',
-
-                            attr: {
-                                class:
-                                    'js-production-necessaire'
-                            }
-                        }
-                    ) }}
-
-				</div>
-
-			</div>
-
-
-			<div class="alert alert-info mb-0">
-
-				<i class="fa fa-info-circle mr-1"></i>
-
-				<span class="js-message-circuit-texte">
-					Circuit de traitement de cette ligne.
-				</span>
-
-			</div>
-
-		</div>
-
-
-		{# ====================================================
 																																																																           QUANTITÉ / DIMENSIONS / PRIX
 																																																																           ==================================================== #}
 
@@ -512,7 +440,7 @@
 				</div>
 
 
-				<div class="col-lg-3 js-zone-surface">
+				<div class="d-none js-zone-surface">
 
 					{{ form_row(detail.surface, {
                         attr: {
@@ -621,6 +549,7 @@
 					<small class="form-text text-muted js-remise-totale-detail">
 						Remise totale : —
 					</small>
+					<small class="form-text text-success d-block js-palier-info" hidden></small>
 
 				</div>
 
@@ -642,7 +571,7 @@
 				</div>
 
 
-				<div class="col-lg-3">
+				<div class="d-none">
 
 					{{ form_row(detail.totalHt, {
                         attr: {
@@ -656,7 +585,7 @@
 				</div>
 
 
-				<div class="col-lg-3">
+				<div class="d-none">
 
 					{{ form_row(detail.totalTtc, {
                         attr: {
@@ -670,6 +599,22 @@
 				</div>
 
 			</div>
+
+			{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+			{{ include('partials/_pieces_m2_ligne.html.twig', {detail: detail}) }}
+
+			{#
+				Promotion de la ligne (docs/promotions.md) : affichée par
+				public/js/promotions-saisie.js, recalculée par le serveur à
+				l'enregistrement. La case cachée garde le choix de l'agent de
+				la retirer ; la classe js-calcul-detail relance le calcul.
+			#}
+			{% set ligneEnregistree = detail.vars.data %}
+			<div hidden>{{ form_widget(detail.promotionRetiree) }}</div>
+			<div class="si-pr-ligne js-promo-ligne js-calcul-detail" data-ligne="{{ ligneEnregistree ? ligneEnregistree.id }}" data-remise-promotion="{{ ligneEnregistree ? ligneEnregistree.remisePromotion : 0 }}" data-libelle="{{ ligneEnregistree ? ligneEnregistree.libellePromotion }}"></div>
+
+			<div class="si-resume-ligne js-resume-ligne"></div>
+			{% if ligneEnregistree and ligneEnregistree.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas. L'aperçu ci-dessus refait le calcul ; le total enregistré, lui, ne bouge pas.">Total d'origine conservé : recalculé seulement si la quantité, le prix, la remise, les dimensions ou les finitions changent.</small>{% endif %}
 
 		</div>
 
@@ -732,6 +677,75 @@
 					</button>
 
 				{% endif %}
+
+			</div>
+
+		</div>
+
+
+				{# Réglages moins courants, repliés (maquette C01 : la ligne reste courte). #}
+		<details class="si-plus-options">
+			<summary>Plus d'options : circuit, caractéristiques techniques, observation</summary>
+
+{# ====================================================
+																																																																           CIRCUIT
+																																																																           ==================================================== #}
+
+		<div class="travail-section js-zone-circuit">
+
+			<div class="travail-section-title">
+				<i class="fa fa-random"></i>
+				Circuit de traitement
+			</div>
+
+
+			<div class="row">
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.prePresseNecessaire,
+                        {
+                            label:
+                                'Passage en prépresse',
+
+                            attr: {
+                                class:
+                                    'js-prepresse-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+
+				<div class="col-lg-6">
+
+					{{ form_row(
+                        detail.productionNecessaire,
+                        {
+                            label:
+                                'Passage en production',
+
+                            attr: {
+                                class:
+                                    'js-production-necessaire'
+                            }
+                        }
+                    ) }}
+
+				</div>
+
+			</div>
+
+
+			<div class="alert alert-info mb-0">
+
+				<i class="fa fa-info-circle mr-1"></i>
+
+				<span class="js-message-circuit-texte">
+					Circuit de traitement de cette ligne.
+				</span>
 
 			</div>
 
@@ -822,7 +836,10 @@
 		</div>
 
 
-		{# ====================================================
+				</details>
+
+
+{# ====================================================
 																																																																           FICHIERS
 																																																																           ==================================================== #}
 
@@ -848,6 +865,10 @@
 			<small class="form-text text-muted">
 				Les fichiers volumineux sont envoyés automatiquement.
 			</small>
+
+			{# Fichier de découpe (docs/prepresse.md) : le contour pour la découpe, à part du fichier à imprimer. #}
+			<label class="form-label small mt-2 mb-1">Fichier de découpe <span class="text-muted">(facultatif, pour une finition de découpe)</span></label>
+			<input type="file" class="form-control js-fichiers-client js-fichier-decoupe" accept=".pdf,.png,.jpg,.jpeg,.svg,.ai,.eps,.dxf,.cdr" aria-label="Fichier de découpe">
 
 			<div class="js-liste-uploads mt-3">
 
@@ -878,7 +899,7 @@
 						<div class="flex-grow-1">
 
 							<div class="small font-weight-bold">
-								{{ fichierExistant.nomOriginal }}
+								{% if fichierExistant.estDecoupe %}<span class="badge si-pp-badge-decoupe mr-1">Découpe</span>{% endif %}{{ fichierExistant.nomOriginal }}
 							</div>
 
 							<div class="small text-muted">
@@ -1018,496 +1039,262 @@
 }) }}
 
 
-<div
-	class="side-app">
+{#
+	Saisie d'une commande (maquettes C01 web, C03 et C04 mobile).
+	À gauche : client, lignes, configuration de la ligne choisie.
+	À droite : livraison et délai, récapitulatif, acompte.
+	Sur téléphone, les mêmes blocs passent en 3 étapes (data-etape).
+#}
+{% set estNouvelle = commande.id is null %}
+{% set dejaConfirmee = not estNouvelle and commande.statut %}
+{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
 
-	{# ========================================================
-																																       HEADER
-																																       ======================================================== #}
+<div class="si-saisie" data-etape="lignes" data-delai-possible="{{ delaiPossible is defined ? delaiPossible|date('Y-m-d') : '' }}" data-delai-libelle="{{ delaiPossible is defined ? jours[delaiPossible|date('w')] ~ ' ' ~ delaiPossible|date('d/m') : '' }}">
 
-	<div class="page-header">
-
-		<ol class="breadcrumb">
-
-			<li class="breadcrumb-item">
-
-				<a href="{{ path( 'app_commandes_index' ) }}">
-					Commandes
-				</a>
-
-			</li>
-
-			<li class="breadcrumb-item active">
-
-				{{
-                    form.vars.data.id
-                        ? 'Modifier la commande'
-                        : 'Nouvelle commande'
-                }}
-
-			</li>
-
-		</ol>
-
-
-		<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-sm btn-primary-light">
-			<i class="fa fa-list mr-1"></i>
-			Liste des commandes
-		</a>
-
+	<div class="si-saisie-tete">
+		<div class="si-saisie-retour d-md-none">
+			<button type="button" class="si-rond js-etape-retour" aria-label="Retour"><i class="fas fa-chevron-left"></i></button>
+			<div>
+				<strong class="js-titre-etape">{{ estNouvelle ? 'Nouvelle commande' : commande.numero }}</strong>
+				<small class="text-muted js-sous-titre-etape">Étape 1/3 · client et lignes</small>
+			</div>
+		</div>
+		<div class="si-saisie-boutons">
+			{% if estNouvelle %}
+				<a href="{{ path('app_commandes_index') }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+			{% else %}
+				<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="btn btn-light btn-sm si-btn-entete">Annuler</a>
+			{% endif %}
+			{% if not dejaConfirmee %}
+				<button type="submit" name="action_saisie" value="brouillon" class="btn btn-light btn-sm si-btn-entete js-action-saisie">Enregistrer en brouillon</button>
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger btn-sm si-btn-entete js-action-saisie">Confirmer la commande</button>
+			{% else %}
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger btn-sm si-btn-entete js-action-saisie">Enregistrer les modifications</button>
+			{% endif %}
+		</div>
 	</div>
-
 
 	{% if not form.vars.valid %}
-
+		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
 		<div class="alert alert-danger">
-			{{ form_errors(form) }}
+			<ul class="mb-0 ps-3">
+				{% for erreur in form.vars.errors.form.getErrors(true) %}
+					<li>{{ erreur.message }}</li>
+				{% endfor %}
+			</ul>
 		</div>
-
 	{% endif %}
-
 
 	{% if commandeVerrouillee %}
-
-		<div class="alert alert-warning">
-
-			<i class="fa fa-lock mr-2"></i>
-
-			<strong>
-				Commande engagée dans son circuit.
-			</strong>
-
-			La structure des lignes ne peut plus être modifiée.
-
-		</div>
-
+		<div class="alert alert-warning"><i class="fas fa-lock me-2"></i><strong>Commande engagée dans son circuit.</strong> Les lignes ne peuvent plus être modifiées.</div>
 	{% endif %}
 
+	<div class="si-saisie-grille">
+		<div class="si-saisie-gauche">
 
-	{# ========================================================
-																																       CLIENT
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-user-circle mr-2"></i>
-				Client
-			</div>
-
-		</div>
-
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
+			{# ---------- Client ---------- #}
+			<div class="card si-bloc si-saisie-client js-zone-client">
+				<div class="si-client-carte js-client-carte" hidden>
+					<span class="si-client-initiales js-client-initiales"></span>
+					<div class="min-w-0 flex-grow-1">
+						<small class="text-muted">Client</small>
+						<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
+						<small class="text-muted js-client-contact"></small>
+					</div>
+					{% if not commandeVerrouillee %}
+						<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
+					{% endif %}
+				</div>
+				<div class="js-client-choix">
 					{{ form_row(form.clients, {
-                        label:
-                            'Client',
-
-                        attr: {
-                            class:
-                                'form-control js-select-search js-client-commande',
-
-                            'data-placeholder':
-                                'Rechercher un client...'
-                        }
-                    }) }}
-
+						label: 'Client',
+						attr: {
+							class: 'form-control js-select-search js-client-commande js-client-saisie',
+							'data-placeholder': 'Téléphone, prénom ou nom…'
+						}
+					}) }}
+					{# Repris par le script existant (tarif B2B ou B2C). #}
+					<small class="text-muted"><span class="js-profil-client">Sélectionnez un client</span> · <span class="js-profil-client-aide">Le tarif B2B ou B2C sera appliqué automatiquement.</span></small>
 				</div>
+				{# Objet de la commande, imprimé sur la facture (« Objet : … ») ; suggestions des Réglages. #}
+				<div class="mt-2">
+					{{ form_row(form.objet, {label: 'Objet (facultatif)'}) }}
+					<datalist id="objets-suggeres">
+						{% for objet in objets_suggeres() %}<option value="{{ objet }}"></option>{% endfor %}
+					</datalist>
+				</div>
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part de l'imprimerie dans les statistiques ; ses lignes sautent la prépresse et l'atelier. #}
+				<div class="form-check mt-2 si-hors-imprimerie">
+					{{ form_widget(form.horsImprimerie, {attr: {class: 'form-check-input'}}) }}
+					<label class="form-check-label fw-semibold" for="{{ form.horsImprimerie.vars.id }}">Hors imprimerie</label>
+					<small class="d-block text-muted">{{ form.horsImprimerie.vars.help }} (pas de prépresse ni d'atelier).</small>
+					{{ form_errors(form.horsImprimerie) }}
+				</div>
+				{% include 'partials/_interlocuteur.html.twig' with {champ: form.demandeePar, libelle: 'Commandé par'} %}
+			</div>
 
+			{# ---------- Lignes ---------- #}
+			<div class="card si-bloc si-saisie-lignes">
+				<div class="si-bloc-tete">
+					<h4>Lignes de commande <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
+					{% if not commandeVerrouillee %}
+						<button type="button" id="add-detail" class="btn btn-link btn-sm si-lien-ajout d-none d-md-inline-block">+ Ajouter une ligne</button>
+					{% endif %}
+				</div>
+				{{ form_errors(form.commandesDetails) }}
+				<div class="table-responsive">
+					<table class="table si-table si-table-lignes align-middle mb-0">
+						<thead>
+							<tr>
+								<th class="si-col-vignette"></th>
+								<th>Produit et caractéristiques</th>
+								<th>Machine</th>
+								<th class="text-end">Qté</th>
+								<th class="text-end">PU TTC</th>
+								<th class="text-end">Total</th>
+								<th>Fichier</th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody class="js-lignes-resume"></tbody>
+					</table>
+				</div>
+				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez le premier produit de la commande.</div>
+				{% if not commandeVerrouillee %}
+					<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne d-md-none">+ Ajouter une ligne</button>
+				{% endif %}
+			</div>
 
-				<div class="col-lg-6">
-
-					<div class="form-group">
-
-						<label>
-							Profil tarifaire
-						</label>
-
-						<div class="alert alert-light border mb-0">
-
-							<strong class="js-profil-client">
-								Sélectionnez un client
-							</strong>
-
-							<div class="small text-muted js-profil-client-aide">
-								Le tarif B2B ou B2C sera appliqué automatiquement.
+			{# ---------- Configuration de la ligne choisie ---------- #}
+			<div class="card si-bloc si-saisie-config js-zone-config">
+				<div id="collection-details" data-index="{{ form.commandesDetails|length }}" data-prototype="{{ _self.champs_detail(form.commandesDetails.vars.prototype, false)|e('html_attr') }}">
+					{% for detail in form.commandesDetails %}
+						<div class="detail-commande{{ commandeVerrouillee ? ' detail-commande-verrouille' : '' }}">
+							<div class="si-bloc-tete">
+								<h4 class="detail-title">Ligne {{ loop.index }}</h4>
+								{% if not commandeVerrouillee %}
+									<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
+								{% endif %}
 							</div>
-
+							{{ _self.champs_detail(detail, commandeVerrouillee) }}
 						</div>
-
-					</div>
-
+					{% endfor %}
 				</div>
-
+				<div class="si-barre-ligne d-md-none">
+					<div><small class="text-muted">Prix de la ligne</small><strong class="js-prix-ligne-active">0 F</strong></div>
+					<button type="button" class="btn btn-primary js-valider-ligne">Valider la ligne</button>
+				</div>
 			</div>
 
+			<div class="si-barre-total d-md-none">
+				<div><small class="text-muted">Total TTC</small><strong class="js-total-affiche">0 F</strong></div>
+				<button type="button" class="btn btn-danger js-etape-suivante">Continuer <i class="fas fa-arrow-right ms-1"></i></button>
+			</div>
 		</div>
 
+		<div class="si-saisie-droite">
+
+			{# ---------- Livraison et délai ---------- #}
+			<div class="card si-bloc si-saisie-livraison">
+				<h4>Livraison et délai</h4>
+				<div class="si-choix-pilules js-mode-livraison">
+					{% for choix in form.modeLivraison %}
+						<label class="si-pilule">{{ form_widget(choix) }}<span>{{ choix.vars.label }}</span></label>
+					{% endfor %}
+				</div>
+				<div class="js-zone-adresse">
+					{{ form_row(form.adresseLivraison, {label: 'Adresse'}) }}
+				</div>
+				{# Frais de livraison : un des paliers des Réglages (Ventes › Livraison et objet), jamais un montant tapé. #}
+				<div class="js-zone-frais-livraison">
+					<span class="form-label d-block">Frais de livraison</span>
+					<div class="si-choix-pilules js-frais-livraison" role="radiogroup" aria-label="Frais de livraison">
+						{% for choix in form.fraisLivraison %}
+							<label class="si-pilule">{{ form_widget(choix) }}<span class="text-nowrap">{{ choix.vars.label }}</span></label>
+						{% endfor %}
+					</div>
+					{{ form_errors(form.fraisLivraison) }}
+					{% if commande.canal == 'en_ligne' and not dejaConfirmee %}
+						<small class="text-muted d-block mb-2">Commande passée en ligne : le client ne choisit pas les frais, choisissez-les avant de confirmer.</small>
+					{% endif %}
+				</div>
+				<div class="row g-2">
+					<div class="col-7">
+						{{ form_row(form.dateLivraison, {label: 'Date souhaitée', attr: {class: 'form-control js-date-souhaitee'}}) }}
+					</div>
+					<div class="col-5">
+						<label class="form-label">Délai calculé</label>
+						<div class="si-delai js-delai"></div>
+					</div>
+				</div>
+			</div>
+
+			{# ---------- Récapitulatif ---------- #}
+			<div class="card si-bloc si-saisie-recap">
+				<h4>Récapitulatif</h4>
+				<dl class="si-recap">
+					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
+					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt class="js-recap-livraison" hidden>Livraison</dt><dd class="js-recap-livraison js-recap-livraison-montant" hidden>0</dd>
+					<dt>Remise</dt>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-commande js-remise-saisie'}}) }}</dd>
+					<dt>Code promo</dt>
+					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
+				</dl>
+				<div class="si-recap-total"><span>Total TTC</span><strong class="js-total-affiche">0 F</strong></div>
+
+				{% if peutEncaisser and not dejaConfirmee %}
+					<div class="si-acompte">
+						<div class="d-flex justify-content-between"><strong>Acompte <span class="js-acompte-pourcentage">{{ reglage('paiements', 'acompte') }}</span> %</strong><strong class="js-acompte" data-pourcentage="{{ reglage('paiements', 'acompte') }}" data-reglage="{{ reglage('paiements', 'acompte') }}">0 F</strong></div>
+						{# Client dispensé d'acompte (fiche client) : rien à encaisser d'avance, la commande part en production. #}
+						<p class="text-success small mt-2 mb-0 js-sans-acompte" hidden><i class="fas fa-check" aria-hidden="true"></i> Client dispensé d'acompte : la commande part en production sans paiement.</p>
+						<div class="si-choix-pilules mt-2 js-acompte-choix">
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="orange_money"><span>Orange Money</span></label>
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="especes"><span>Espèces</span></label>
+							<label class="si-pilule"><input type="radio" name="acompte_mode" value="plus_tard" checked><span>Plus tard</span></label>
+						</div>
+						<small class="text-muted d-block mt-2">L'acompte s'encaisse à la confirmation, sur l'écran de caisse.</small>
+					</div>
+				{% endif %}
+
+				{% if commande.id is null %}
+					{# Pas de fichier à la caisse : le client reçoit tout de suite le lien d'envoi (docs/prepresse.md). #}
+					<label class="form-check mt-2 mb-0 small">
+						<input type="checkbox" class="form-check-input" name="fichier_a_venir" value="1">
+						<span class="form-check-label">Fichier à venir : envoyer au client le lien d'envoi sur WhatsApp</span>
+					</label>
+				{% endif %}
+
+				{% if not dejaConfirmee %}
+					<p class="si-note-confirmation">À la confirmation : numéro de commande, fiches de travail et lignes envoyées à la file de production.</p>
+				{% endif %}
+
+				<details class="si-plus-options">
+					<summary>Observation</summary>
+					{{ form_widget(form.observation, {attr: {rows: 3}}) }}
+				</details>
+
+				<button type="submit" name="action_saisie" value="confirmer" class="btn btn-danger w-100 d-md-none js-action-saisie">{{ dejaConfirmee ? 'Enregistrer les modifications' : 'Confirmer la commande' }}</button>
+				{% if not dejaConfirmee %}
+					<button type="submit" name="action_saisie" value="brouillon" class="btn btn-light w-100 mt-2 d-md-none js-action-saisie">Enregistrer en brouillon</button>
+				{% endif %}
+			</div>
+
+			{# Promotions des lignes : aperçu demandé au serveur pendant la saisie. #}
+			<div hidden class="js-promotions-saisie" data-url="{{ path('app_promotions_apercu') }}" data-csrf="{{ csrf_token('promotions-saisie') }}" data-type="commande" data-id="{{ commande.id }}" data-verrouille="{{ commandeVerrouillee ? '1' : '0' }}"></div>
+
+			{# Champs calculés par le script, envoyés tels quels. #}
+			<div hidden>
+				{{ form_widget(form.totalHt) }}
+				{{ form_widget(form.totalTtc) }}
+				{{ form_widget(form.montantApayer) }}
+				{{ form_widget(form.tva) }}
+				{{ form_widget(form.statut) }}
+				{{ form_widget(form.etat) }}
+			</div>
+		</div>
 	</div>
-
-
-	{# ========================================================
-																																       INFORMATIONS COMMANDE
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-file-text-o mr-2"></i>
-				Informations de la commande
-			</div>
-
-		</div>
-
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-3">
-
-					<div class="form-group">
-
-						<label>
-							Numéro
-						</label>
-
-						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
-
-					</div>
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.statut, {
-                        label: 'Statut'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.etat, {
-                        label: 'État'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-3">
-
-					{{ form_row(form.tva, {
-                        label: 'TVA (%)'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.dateLivraison, {
-                        label:
-                            'Date de livraison'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.observation, {
-                        label:
-                            'Observation'
-                    }) }}
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-																																       DÉTAILS
-																																       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header
-																																																																																																																																            d-flex
-																																																																																																																																            justify-content-between
-																																																																																																																																            align-items-center">
-
-			<div>
-
-				<div class="card-title mb-0">
-
-					<i class="fa fa-shopping-cart mr-2"></i>
-
-					Produits, articles et prestations
-
-				</div>
-
-				<small class="text-muted">
-					Produit catalogue,
-																																																																																																																																																																                    article en stock ou saisie libre.
-				</small>
-
-			</div>
-
-
-			{% if not commandeVerrouillee %}
-
-				<button type="button" id="add-detail" class="btn btn-success-light">
-					<i class="fa fa-plus mr-1"></i>
-					Ajouter un détail
-				</button>
-
-			{% else %}
-
-				<span class="badge badge-warning p-2">
-
-					<i class="fa fa-lock mr-1"></i>
-
-					Lignes verrouillées
-
-				</span>
-
-			{% endif %}
-
-		</div>
-
-
-		<div class="card-body">
-
-			{{ form_errors(
-                form.commandesDetails
-            ) }}
-
-
-			<div id="collection-details" data-index="{{ form.commandesDetails|length }}" data-prototype="{{ _self.champs_detail( form.commandesDetails.vars.prototype, false )|e('html_attr') }}">
-
-				{% for detail in form.commandesDetails %}
-
-					<div class="
-																																																																																																																																																																																																																																                            detail-commande
-																																																																																																																																																																																																																																                            card
-																																																																																																																																																																																																																																                            border
-																																																																																																																																																																																																																																                            mb-4
-																																																																																																																																																																																																																																                            {{
-																																																																																																																																																																																																																																                                commandeVerrouillee
-																																																																																																																																																																																																																																                                    ? 'detail-commande-verrouille'
-																																																																																																																																																																																																																																                                    : ''
-																																																																																																																																																																																																																																                            }}
-																																																																																																																																																																																																																																                        ">
-
-						<div class="
-																																																																																																																																																																																																																																																																                                card-header
-																																																																																																																																																																																																																																																																                                bg-light
-																																																																																																																																																																																																																																																																                                d-flex
-																																																																																																																																																																																																																																																																                                justify-content-between
-																																																																																																																																																																																																																																																																                                align-items-center
-																																																																																																																																																																																																																																																																                            ">
-
-							<div class="card-title detail-title mb-0">
-								Travail
-								{{ loop.index }}
-							</div>
-
-
-							{% if not commandeVerrouillee %}
-
-								<button type="button" class="btn btn-danger-light btn-sm supprimer-detail">
-									<i class="fa fa-trash mr-1"></i>
-									Supprimer
-								</button>
-
-							{% else %}
-
-								<span class="text-muted">
-									<i class="fa fa-lock mr-1"></i>
-									Verrouillé
-								</span>
-
-							{% endif %}
-
-						</div>
-
-
-						<div class="card-body p-0">
-
-							{{ _self.champs_detail(
-                                detail,
-                                commandeVerrouillee
-                            ) }}
-
-						</div>
-
-					</div>
-
-				{% else %}
-
-					<div id="aucun-detail" class="alert alert-info">
-						Aucun travail ajouté.
-					</div>
-
-				{% endfor %}
-
-			</div>
-
-			{% if not commandeVerrouillee %}
-
-				<div class="text-center mt-2">
-					<button type="button" id="add-detail-bottom" class="btn btn-success-light">
-						<i class="fa fa-plus mr-1"></i>
-						Ajouter un détail
-					</button>
-				</div>
-
-			{% endif %}
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-																																       RÉCAP
-																																       ======================================================== #}
-
-	<div class="row">
-
-		<div class="col-xl-5 ml-auto">
-
-			<div class="card">
-
-				<div class="card-header">
-
-					<div class="card-title">
-						<i class="fa fa-calculator mr-2"></i>
-						Récapitulatif
-					</div>
-
-				</div>
-
-
-				<div class="card-body">
-
-					<div class="row">
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalHt, {
-                                label:
-                                    'Total HT',
-
-                                attr: {
-                                    class:
-                                        'form-control js-total-ht-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.remise, {
-                                label:
-                                    'Remise globale'
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalTtc, {
-                                label:
-                                    'Total TTC',
-
-                                attr: {
-                                    class:
-                                        'form-control js-total-ttc-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.montantApayer, {
-                                label:
-                                    'Montant à payer',
-
-                                attr: {
-                                    class:
-                                        'form-control js-montant-a-payer-commande',
-
-                                    readonly:
-                                        true
-                                }
-                            }) }}
-
-						</div>
-
-					</div>
-
-				</div>
-
-
-				<div class="
-																																																																																																																																																																																																                        card-footer
-																																																																																																																																																																																																                        d-flex
-																																																																																																																																																																																																                        justify-content-between
-																																																																																																																																																																																																                    ">
-
-					<a href="{{ path( 'app_commandes_index' ) }}" class="btn btn-primary-light">
-						Annuler
-					</a>
-
-
-					<button type="submit" class="btn btn-success-light">
-						<i class="fa fa-save mr-1"></i>
-
-						{{
-                            button_label
-                            |default(
-                                'Enregistrer la commande'
-                            )
-                        }}
-
-					</button>
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
 </div>
 
 
@@ -1524,402 +1311,27 @@
 ) }}
 
 
-<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+<script src="{{ asset('js/promotions-saisie.js') }}"></script>
+{# Pièces au m² des lignes (docs/saisie-devis-commandes.md). #}
+{{ site_styles('css/pieces-m2.css') }}
+<script src="{{ asset('js/pieces-m2.js') }}"></script>
+{# Paliers de prix, grille du client et prix négocié (docs/produits.md) : aperçu, le serveur refait le calcul. #}
+<script src="{{ asset('js/paliers-prix.js') }}"></script>
 
 
+{# Mise en page de la saisie : section « Saisie d'une commande » de public/css/admin.css. #}
 <style>
-
-	#commande-form input.form-control,
-	#commande-form select.form-control,
-	#commande-form textarea.form-control {
-		color: #1f2937 !important;
-		background-color: #fff !important;
-	}
-
 	#commande-form .select2-container {
 		width: 100% !important;
 	}
 
-	#commande-form .select2-selection--single {
-		min-height: 40px;
-	}
-
-	.detail-commande {
-		border: 1px solid #dce4f0 !important;
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.travail-form {
-		padding: 20px;
-		background: #fff;
-	}
-
-	.travail-section {
-		padding: 18px 18px 4px;
-		margin-bottom: 18px;
-		border: 1px solid #e5eaf2;
-		border-radius: 7px;
-		background: #fbfcfe;
-	}
-
-	.travail-section-title {
-		margin: -18px -18px 18px;
-		padding: 11px 16px;
-		color: #ffffff;
-		font-size: 14px;
-		font-weight: 600;
-		background: #f1f5fb;
-		border-bottom: 1px solid #e1e7f0;
-	}
-
-	.travail-section-title i {
-		width: 22px;
-		color: #6259ca;
-	}
-
-	.finitions-box {
-		padding: 14px;
-		border: 1px dashed #cbd4e1;
-		border-radius: 6px;
-	}
-
-	.detail-commande-verrouille {
-		opacity: .95;
-	}
-
-	.detail-commande-verrouille > .card-header {
-		background: #fff8e5 !important;
-	}
-
-	.detail-commande-verrouille .select2-container {
-		pointer-events: none;
-	}
-
-	@media(max-width: 767px) {
-
-		.travail-form {
-			padding: 10px;
-		}
-
-	}
-	/* ============================================================
-   TABLEAUX DU FORMULAIRE COMMANDE
-   ============================================================ */
-
-	#commande-form table {
-		width: 100%;
-		background-color: #ffffff !important;
-	}
-
-	#commande-form table tr {
-		background-color: #ffffff !important;
-	}
-
-	#commande-form table td {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		border-color: #dce4f0 !important;
-	}
-
-	#commande-form table th {
-		background-color: #eef3fb !important;
-		color: #17366f !important;
-		border-color: #dce4f0 !important;
-		font-weight: 600;
-	}
-
-	/* Une ligne sur deux légèrement différente */
-	#commande-form table tbody tr:nth-child(even) td {
-		background-color: #f8fafc !important;
-	}
-
-	/* Survol */
-	#commande-form table tbody tr:hover td {
-		background-color: #eef4ff !important;
-	}
-
-	/* Champs contenus dans les cellules */
-	#commande-form table td input,
-	#commande-form table td select,
-	#commande-form table td textarea {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-	}
-
-	/* Libellés */
-	#commande-form table td label {
-		color: #334155 !important;
-	}
-	#commande-form table tbody tr td {
-		background-color: #f7f9fd !important;
-	}
-
-	#commande-form table tbody tr:nth-child(even) td {
-		background-color: #eef3fb !important;
-	}
-	#commande-form .form-check-label,
-	#commande-form .form-group label,
-	#commande-form td,
-	#commande-form th {
-		color: #1f2937 !important;
-	}
-	/* ============================================================
-   CORRECTION FORCÉE DES COULEURS - FORMULAIRE COMMANDE
-   À PLACER TOUT À LA FIN DU <style>
-   ============================================================ */
-
-	/* ------------------------------------------------------------
-   TEXTE GÉNÉRAL DES BLOCS
-   ------------------------------------------------------------ */
-
-	body #commande-form,
-	body #commande-form .travail-form,
-	body #commande-form .travail-section,
-	body #commande-form .card-body {
-		color: #ffffff !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   LABELS
-   ------------------------------------------------------------ */
-
-	body #commande-form label,
-	body #commande-form .form-label,
-	body #commande-form .col-form-label,
-	body #commande-form .form-check-label,
-	body #commande-form legend,
-	body #commande-form .control-label {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-		opacity: 1 !important;
-	}
-
-	.text-white {
-		color: #ffffff !important;
-		-webkit-text-fill-color: #feffff !important;
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   INPUT / SELECT / TEXTAREA
-   ------------------------------------------------------------ */
-
-	body #commande-form input:not([type="checkbox"]):not([type="radio"]),
-	body #commande-form select,
-	body #commande-form textarea,
-	body #commande-form .form-control {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background: #ffffff !important;
-		background-color: #ffffff !important;
-
-		border: 1px solid #cbd5e1 !important;
-
-		opacity: 1 !important;
-
-		caret-color: #1f2937 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   CHAMPS READONLY
-   ------------------------------------------------------------ */
-
-	body #commande-form input[readonly],
-	body #commande-form textarea[readonly],
-	body #commande-form .form-control[readonly] {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-
-		background-color: #f1f5f9 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   CHAMPS DISABLED
-   ------------------------------------------------------------ */
-
-	body #commande-form input:disabled,
-	body #commande-form select:disabled,
-	body #commande-form textarea:disabled {
-		color: #475569 !important;
-		-webkit-text-fill-color: #475569 !important;
-
-		background-color: #e9eef5 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   PLACEHOLDER
-   ------------------------------------------------------------ */
-
-	body #commande-form input::placeholder,
-	body #commande-form textarea::placeholder {
-		color: #94a3b8 !important;
-		-webkit-text-fill-color: #94a3b8 !important;
-
-		opacity: 1 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   OPTIONS DES SELECTS NATIFS
-   ------------------------------------------------------------ */
-
-	body #commande-form select option {
-		color: #1f2937 !important;
-		background-color: #ffffff !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   SELECT2
-   ------------------------------------------------------------ */
-
-	body #commande-form .select2-container .select2-selection,
-	body #commande-form .select2-container .select2-selection--single,
-	body #commande-form .select2-container .select2-selection--multiple {
-		background-color: #ffffff !important;
-		border: 1px solid #cbd5e1 !important;
-	}
-
-
-	body #commande-form .select2-container .select2-selection--single .select2-selection__rendered {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	body #commande-form .select2-container .select2-selection--single .select2-selection__placeholder {
-		color: #94a3b8 !important;
-		-webkit-text-fill-color: #94a3b8 !important;
-	}
-
-
-	body .select2-dropdown {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-	}
-
-
-	body .select2-results__option {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	body .select2-results__option--highlighted {
-		background-color: #6259ca !important;
-		color: #ffffff !important;
-		-webkit-text-fill-color: #ffffff !important;
-	}
-
-
-	body .select2-search__field {
-		background-color: #ffffff !important;
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   RADIOS ET CHECKBOX
-   ------------------------------------------------------------ */
-
-	body #commande-form input[type="radio"],
-	body #commande-form input[type="checkbox"] {
-		opacity: 1 !important;
-	}
-
-
-	/* texte à côté des radios / checkbox */
-	body #commande-form input[type="radio"] + label,
-	body #commande-form input[type="checkbox"] + label {
-		color: #26364a !important;
-		-webkit-text-fill-color: #26364a !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   PETITS TEXTES / AIDES
-   ------------------------------------------------------------ */
-
-	body #commande-form small,
-	body #commande-form .form-text,
-	body #commande-form .text-muted {
-		color: #64748b !important;
-		-webkit-text-fill-color: #64748b !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   TITRES DES BLOCS
-   ------------------------------------------------------------ */
-
-	body #commande-form .travail-section-title {
-		color: #17366f !important;
-		-webkit-text-fill-color: #17366f !important;
-
-		background-color: #eef3fb !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   TABLEAUX
-   ------------------------------------------------------------ */
-
-	body #commande-form table,
-	body #commande-form tbody,
-	body #commande-form tr {
-		background-color: #ffffff !important;
-	}
-
-
-	body #commande-form td {
-		background-color: #ffffff !important;
-
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		border-color: #dce4f0 !important;
-	}
-
-
-	body #commande-form th {
-		background-color: #eef3fb !important;
-
-		color: #17366f !important;
-		-webkit-text-fill-color: #17366f !important;
-
-		border-color: #dce4f0 !important;
-	}
-
-
-	/* ------------------------------------------------------------
-   AUTOFILL CHROME / SAFARI
-   ------------------------------------------------------------ */
-
-	body #commande-form input:-webkit-autofill,
-	body #commande-form input:-webkit-autofill:hover,
-	body #commande-form input:-webkit-autofill:focus,
-	body #commande-form textarea:-webkit-autofill,
-	body #commande-form select:-webkit-autofill {
-		-webkit-text-fill-color: #1f2937 !important;
-
-		-webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-
-		box-shadow: 0 0 0 1000px #ffffff inset !important;
-
-		opacity: 1 !important;
+	#commande-form .select2-container .select2-selection--single {
+		min-height: 2.6rem;
+		border-radius: 0.6rem;
+		border-color: #D5DCE8;
+		display: flex;
+		align-items: center;
 	}
 </style>
 
@@ -1953,6 +1365,12 @@ const commandeVerrouillee = form.dataset.circuitVerrouille === '1';
          */
 
 const clientSelect = form.querySelector('.js-client-commande');
+// Remise de chaque grille de prix, en % (Paramètres › Grille tarifaire, docs/produits.md).
+const remisesGrilles = {{ remises_grilles()|json_encode|raw }};
+function remiseGrilleClient() {
+const option = clientSelect && clientSelect.value ? clientSelect.options[clientSelect.selectedIndex] : null;
+return option ? (Number(remisesGrilles[String(option.dataset.grille || 'B2C')]) || 0) : 0;
+}
 
 const profilClient = form.querySelector('.js-profil-client');
 
@@ -2102,6 +1520,13 @@ function construireUrl(modele, id) { /*
 return modele.replace(/\/0(\/|$)/, '/' + encodeURIComponent(id) + '$1');
 }
 
+/* Le code chiffré (data-code) du choix « id » de la liste, pour l'URL : pas de numéro lisible (docs/ids-chiffres.md). */
+function codeUrl(select, id) {
+const valeur = String(id ?? '');
+const option = select && select.options ? Array.from(select.options).find(function (o) { return o.value === valeur; }) : null;
+return option && option.dataset.code ? option.dataset.code : valeur;
+}
+
 
 /*
          * ====================================================
@@ -2221,7 +1646,7 @@ const valeurs = champ.value
 ? champ.value.split(',').map(function (v) { return v.trim(); }).filter(Boolean)
 : [];
 
-champ.value = valeurs.filter(function (v) { return v !== jeton; }).join(',');
+champ.value = valeurs.filter(function (v) { return v !== jeton && v !== 'd:' + jeton; }).join(',');
 }
 
 async function supprimerFichierTeleverse(detail, ligne) {
@@ -2239,7 +1664,8 @@ ligne.remove();
 return;
 }
 
-if (! window.confirm('Supprimer ce fichier ?')) {
+// Fenêtre de confirmation de l'application (public/js/confirmation.js) : le fichier n'est rattaché à rien encore, il part pour de bon.
+if (! (await window.SiConfirmation.demander({message: 'Supprimer ce fichier ?', detail: 'Il vient d’être envoyé et n’est encore dans aucune commande : il est effacé pour de bon.', bouton: 'Supprimer', danger: true}))) {
 return;
 }
 
@@ -2351,7 +1777,7 @@ statutTexte.textContent = progression + ' %';
 }
 }
 
-ajouterJetonFichier(detail, jeton);
+ajouterJetonFichier(detail, (ligneUpload.dataset.decoupe ? 'd:' : '') + jeton);
 
 if (statutTexte) {
 statutTexte.textContent = 'Envoyé';
@@ -2372,13 +1798,15 @@ ligneUpload.classList.add('text-danger');
 }
 
 function initialiserUploadFichiers(detail) {
-const champFichier = detail.querySelector('.js-fichiers-client');
-
 const zoneListe = detail.querySelector('.js-liste-uploads');
 
-if (! champFichier || ! zoneListe || ! uploadInitialiserUrl) {
+if (! zoneListe || ! uploadInitialiserUrl) {
 return;
 }
+
+/* Fichier à imprimer, et fichier de découpe (jeton noté « d:… », docs/prepresse.md). */
+detail.querySelectorAll('.js-fichiers-client').forEach(function (champFichier) {
+const decoupe = champFichier.classList.contains('js-fichier-decoupe');
 
 champFichier.addEventListener('change', async function () {
 
@@ -2400,6 +1828,14 @@ for (const fichier of fichiers) {
 
 const ligne = creerLigneUpload(fichier);
 
+if (decoupe) {
+ligne.dataset.decoupe = '1';
+const nom = ligne.querySelector('.font-weight-bold');
+if (nom) {
+nom.insertAdjacentHTML('afterbegin', '<span class="badge si-pp-badge-decoupe mr-1">Découpe</span>');
+}
+}
+
 zoneListe.appendChild(ligne);
 
 const boutonSupprimer = ligne.querySelector('.js-upload-supprimer');
@@ -2412,6 +1848,7 @@ supprimerFichierTeleverse(detail, ligne);
 
 await televerserFichier(detail, fichier, ligne);
 }
+});
 });
 }
 
@@ -2636,13 +2073,18 @@ if (data.element && data.element.disabled) {
 return null;
 }
 
-const terme = (params.term || '').trim().toUpperCase();
+// Sans accents, majuscules ni pluriel : « autocollants » trouve « Vinyle adhésif (Autocollant) » (docs/noms-commerciaux.md).
+const sansAccents = function (t) {
+return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/([A-Z]{3})[SX](?=[^A-Z0-9]|$)/g, '$1');
+};
+
+const terme = sansAccents((params.term || '').trim());
 
 if (terme === '') {
 return data;
 }
 
-const texte = (data.text || '').toUpperCase();
+const texte = sansAccents(data.text);
 
 return texte.indexOf(terme) > -1 ? data : null;
 }
@@ -2718,11 +2160,14 @@ const surface = largeur * longueur;
 
 const prix = Math.max(0, nombreDepuisChamp(champDetail(detail, 'prixUnitaire')));
 
-const remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+let remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
 
 const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
 
 const mode = String(champDetail(detail, 'modeCalcul') ?. value || 'unite');
+
+// Pièces au m² (public/js/pieces-m2.js) : surface facturée selon les pièces qui tiennent sur 1 m², ou null.
+const surfacePieces = window.SiPiecesM2 ? window.SiPiecesM2.ligne(detail, {mode: mode, typeLigne: valeurTypeLigne(detail), largeur: largeur, longueur: longueur, quantite: quantite}) : null;
 
 let montant = 0;
 let facteur = 0;
@@ -2739,7 +2184,7 @@ case 'metre': facteur = longueur * quantite; montant = prix * facteur;
 break;
 
 
-case 'metre_carre': facteur = surface * quantite; montant = prix * facteur;
+case 'metre_carre': facteur = surfacePieces !== null ? surfacePieces : surface * quantite; montant = prix * facteur;
 
 break;
 
@@ -2750,11 +2195,32 @@ break;
 }
 
 
+// Palier de volume, grille du client, prix négocié (public/js/paliers-prix.js) : la remise due, tant que l'agent ne l'a pas changée.
+if (window.SiPaliers && valeurTypeLigne(detail) === 'produit' && champDetail(detail, 'produit') && champDetail(detail, 'produit').value) {
+window.SiPaliers.ligneComptoir({
+detail: detail,
+champRemise: champDetail(detail, 'remise'),
+info: detail.querySelector('.js-palier-info'),
+prix: prix,
+pieces: quantite,
+surfaceTotale: mode === 'metre_carre' ? facteur : 0,
+b2b: clientEstB2B(),
+grille: remiseGrilleClient(),
+type: champDetail(detail, 'typeImpression') ? champDetail(detail, 'typeImpression').value : '',
+support: champDetail(detail, 'support') ? champDetail(detail, 'support').value : '',
+format: champDetail(detail, 'format') ? champDetail(detail, 'format').value : ''
+});
+remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+}
+
 montant += montantFinitions(detail);
 
 
+// Promotion de la ligne (docs/promotions.md) : remise par unité donnée par le serveur, ajoutée à la remise saisie.
+const remisePromotion = window.SiPromotions ? window.SiPromotions.remise(detail) : 0;
+
 // La remise est un montant par unité (ex. 500 FCFA par m²), pas un montant fixe sur toute la ligne.
-const remiseTotale = Math.min(montant, remise * Math.max(0, facteur));
+const remiseTotale = Math.min(montant, (remise + remisePromotion) * Math.max(0, facteur));
 
 const ht = Math.max(0, montant - remiseTotale);
 
@@ -2776,6 +2242,10 @@ definirValeur(detail, 'totalHt', Math.round(ht));
 
 definirValeur(detail, 'totalTtc', Math.round(ttc));
 
+if (window.SiPromotions) {
+window.SiPromotions.calculee(detail, montant, facteur);
+}
+
 
 calculerCommande();
 }
@@ -2792,6 +2262,14 @@ ht += nombreDepuisChamp(champDetail(detail, 'totalHt'));
 ttc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
 });
 
+// Frais de livraison choisis (rien en retrait à l'imprimerie), sans TVA. Le serveur refait ces totaux.
+const modeLivraison = form.querySelector('.js-mode-livraison input:checked');
+const fraisLivraison = form.querySelector('.js-frais-livraison input:checked');
+if (fraisLivraison && modeLivraison && modeLivraison.value === 'livraison') {
+ht += Number(fraisLivraison.value) || 0;
+ttc += Number(fraisLivraison.value) || 0;
+}
+
 
 const totalHt = document.getElementById('{{ form.totalHt.vars.id }}');
 
@@ -2802,17 +2280,22 @@ const remise = document.getElementById('{{ form.remise.vars.id }}');
 const payer = document.getElementById('{{ form.montantApayer.vars.id }}');
 
 
+// Remise globale déduite du sous-total HT, TVA au prorata (TotauxDocument) : le total TTC est ce que le client doit.
+const remiseRetenue = Math.min(Math.max(0, nombreDepuisChamp(remise)), Math.max(0, ht));
+const tvaNette = ht > 0 ? Math.round(Math.max(0, ttc - ht) * (ht - remiseRetenue) / ht) : 0;
+const net = Math.max(0, Math.round(ht - remiseRetenue + tvaNette));
+
 if (totalHt) {
 totalHt.value = Math.round(ht);
 }
 
 if (totalTtc) {
-totalTtc.value = Math.round(ttc);
+totalTtc.value = net;
 }
 
 if (payer) {
 
-payer.value = Math.max(0, Math.round(ttc - nombreDepuisChamp(remise)));
+payer.value = net;
 }
 }
 
@@ -2982,7 +2465,7 @@ production.checked = true;
 }
 }
 
-appliquerModeConfiguration(detail);
+appliquerModeConfiguration(detail, viaChangementUtilisateur);
 
 appliquerCircuit(detail);
 
@@ -3076,7 +2559,7 @@ calculerDetail(detail);
          * ====================================================
          */
 
-function appliquerModeConfiguration(detail) {
+function appliquerModeConfiguration(detail, viaChangementUtilisateur) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -3112,7 +2595,7 @@ if (produitChamp && produitChamp.value) {
 if (auto) {
 chargerConfigurationsProduit(detail);
 } else {
-chargerOptionsManuelles(detail);
+chargerOptionsManuelles(detail, ! viaChangementUtilisateur);
 }
 }
 }
@@ -3150,7 +2633,7 @@ message.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
 
 try {
 
-const response = await fetch(construireUrl(articleCommandeUrl, select.value), {
+const response = await fetch(construireUrl(articleCommandeUrl, codeUrl(select, select.value)), {
 headers: {
 Accept: 'application/json'
 }
@@ -3256,7 +2739,7 @@ return;
 
 try {
 
-const url = construireUrl(configurationsProduitUrl, produit.value);
+const url = construireUrl(configurationsProduitUrl, codeUrl(produit, produit.value));
 console.log('[DEBUG] chargerConfigurationsProduit() : fetch vers', url);
 
 const response = await fetch(url);
@@ -3276,6 +2759,9 @@ configs.forEach(function (config) {
 const option = document.createElement('option');
 
 option.value = config.id;
+if (config.code) {
+option.dataset.code = config.code;
+}
 
 option.textContent = config.libelle || config.nom || ('Configuration ' + config.id);
 
@@ -3329,7 +2815,12 @@ valeurEncoreValide = true;
 });
 
 if (! valeurEncoreValide) {
-select.value = '';
+/* Un seul choix possible (ex. une seule machine pour ce produit) : il est pris. */
+const possibles = Array.from(select.options).filter(function (option) {
+return option.value && ! option.disabled;
+});
+
+select.value = possibles.length === 1 ? possibles[0].value : '';
 }
 
 if (window.jQuery && window.jQuery.fn.select2 && window.jQuery(select).hasClass('select2-hidden-accessible')) {
@@ -3368,7 +2859,7 @@ filtrerOptions(select, ids);
  * - Produit avec surface/longueur mais aucun format lié :
  *   largeur/longueur à saisir directement.
  */
-function appliquerZoneFormatDimensions(detail, infosProduit, formats) {
+function appliquerZoneFormatDimensions(detail, infosProduit, formats, conserverValeurs = false) {
 const besoinDimensions = Boolean(infosProduit.utiliseSurface) || Boolean(infosProduit.utiliseLongueur);
 
 const aDesFormats = besoinDimensions && formats.length > 0;
@@ -3390,7 +2881,7 @@ unite: f.unite
 })
 );
 
-if (! besoinDimensions) {
+if (! besoinDimensions && ! conserverValeurs) {
 definirValeur(detail, 'format', '');
 definirValeur(detail, 'largeur', '');
 definirValeur(detail, 'longueur', '');
@@ -3471,7 +2962,16 @@ calculerDetail(detail);
 }
 
 
-async function chargerOptionsManuelles(detail) {
+/*
+ * chargementInitial : ligne deja enregistree qu'on affiche. Sa
+ * designation, son prix, sa remise, son mode de calcul, son format, sa
+ * largeur et sa longueur restent tels qu'enregistres, meme si le
+ * catalogue a change : un simple « Enregistrer » ne doit jamais effacer
+ * une dimension ni changer le prix d'une ligne (remise convertie a la
+ * bascule, total d'origine conserve). Le catalogue ne s'applique que
+ * quand on choisit un autre produit ou un autre client.
+ */
+async function chargerOptionsManuelles(detail, chargementInitial = false) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -3485,7 +2985,8 @@ return;
 
 try {
 
-const response = await fetch(construireUrl(optionsManuellesUrl, produit.value));
+// Le client choisi : paliers et prix négocié des configurations (docs/produits.md).
+const response = await fetch(construireUrl(optionsManuellesUrl, codeUrl(produit, produit.value)) + (clientSelect && clientSelect.value ? '?client=' + encodeURIComponent(codeUrl(clientSelect, clientSelect.value)) : ''));
 
 const json = await response.json();
 
@@ -3495,7 +2996,10 @@ throw new Error(json.message || 'Impossible de charger le produit.');
 
 const infosProduit = json.produit || {};
 
+detail.dataset.paliers = JSON.stringify(json.paliers || []);
 
+
+if (! chargementInitial) {
 definirValeur(detail, 'designation', infosProduit.nom || '');
 
 definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
@@ -3503,6 +3007,11 @@ definirValeur(detail, 'prixUnitaire', infosProduit.prixBase || 0);
 definirValeur(detail, 'remise', clientEstB2B() ? Math.round((infosProduit.prixBase || 0) * (infosProduit.remiseB2B || 0) / 100) : 0);
 
 definirValeur(detail, 'modeCalcul', infosProduit.modeCalcul || 'unite');
+
+if (window.SiPaliers) {
+window.SiPaliers.oublier(detail);
+}
+}
 
 
 filtrerOptions(champDetail(detail, 'typeImpression'), (json.typesImpression || []).map(function (t) {
@@ -3517,7 +3026,7 @@ filtrerOptions(champDetail(detail, 'format'), (json.formats || []).map(function 
 return f.id;
 }));
 
-appliquerZoneFormatDimensions(detail, infosProduit, json.formats || []);
+appliquerZoneFormatDimensions(detail, infosProduit, json.formats || [], chargementInitial);
 
 /*
  * Finitions compatibles avec le produit : memorisees sur le
@@ -3556,7 +3065,12 @@ return;
 
 try {
 
-const url = construireUrl(configurationUrl, configuration.value);
+let url = construireUrl(configurationUrl, codeUrl(configuration, configuration.value));
+
+// Prix négocié du client choisi (docs/produits.md) : le serveur le renvoie dans prixSpecial.
+if (clientSelect && clientSelect.value) {
+url += (url.indexOf('?') === -1 ? '?' : '&') + 'client=' + encodeURIComponent(codeUrl(clientSelect, clientSelect.value));
+}
 console.log('[DEBUG] chargerConfiguration() : fetch vers', url);
 
 const response = await fetch(url);
@@ -3581,6 +3095,11 @@ definirValeur(detail, 'format', config.format);
 definirValeur(detail, 'prixUnitaire', config.prixBase || 0);
 
 definirValeur(detail, 'remise', clientEstB2B() ? Math.round((config.prixBase || 0) * (config.remiseB2B || 0) / 100) : 0);
+
+// Le prix négocié remplace la grille : remise = prix public − prix négocié, par unité.
+if (config.prixSpecial !== null && config.prixSpecial !== undefined) {
+definirValeur(detail, 'remise', Math.max(0, (config.prixBase || 0) - config.prixSpecial));
+}
 
 definirValeur(detail, 'modeCalcul', config.modeCalcul || 'unite');
 
@@ -3705,10 +3224,22 @@ appliquerTypeLigne(travail, true);
 
 /*
              * MODE CONFIG
+             *
+             * Ancienne ligne « automatique » : le serveur l'enregistre en
+             * « manuel » (ModeConfigurationLigne). La page fait de même, pour
+             * ne pas réappliquer la configuration du catalogue à l'ouverture
+             * (prix, remise, désignation, dimensions, finitions).
              */
+const radioAutomatique = travail.querySelector('[name$="[modeConfiguration]"][value="automatique"]');
+const radioManuel = travail.querySelector('[name$="[modeConfiguration]"][value="manuel"]');
+
+if (radioAutomatique && radioAutomatique.checked && radioManuel) {
+radioManuel.checked = true;
+}
+
 travail.querySelectorAll('[name$="[modeConfiguration]"]').forEach(function (input) {
 input.addEventListener('change', function () {
-appliquerModeConfiguration(travail);
+appliquerModeConfiguration(travail, true);
 });
 });
 
@@ -3916,29 +3447,15 @@ collection.dataset.index = String(index + 1);
 
 const wrapper = document.createElement('div');
 
-wrapper.className = 'detail-commande card border mb-4';
+wrapper.className = 'detail-commande';
 
 
 wrapper.innerHTML = `
-                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-
-                    <div class="card-title detail-title mb-0">
-                        Nouveau travail
-                    </div>
-
-                    <button
-                        type="button"
-                        class="btn btn-danger-light btn-sm supprimer-detail"
-                    >
-                        <i class="fa fa-trash mr-1"></i>
-                        Supprimer
-                    </button>
-
+                <div class="si-bloc-tete">
+                    <h4 class="detail-title">Nouvelle ligne</h4>
+                    <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
                 </div>
-
-                <div class="card-body p-0">
-                    ${html}
-                </div>
+                ${html}
                 `;
 
 
@@ -3960,7 +3477,7 @@ details.forEach(function (detail, index) {
 const titre = detail.querySelector('.detail-title');
 
 if (titre) {
-titre.textContent = 'Travail ' + (
+titre.textContent = 'Ligne ' + (
 index + 1
 );
 }
@@ -4036,6 +3553,8 @@ initialiserBrouillon();
  * page se ferme ou plante avant l'enregistrement definitif.
  */
 function initialiserBrouillon() {
+
+const form = document.getElementById('commande-form');
 
 if (form.dataset.brouillonNouvelle !== '1') {
 return;
@@ -4171,7 +3690,7 @@ if (! formulaire) {
 return;
 }
 
-const bouton = formulaire.querySelector('button[type="submit"]');
+const boutons = formulaire.querySelectorAll('button[type="submit"]');
 
 formulaire.addEventListener('submit', function (event) {
 
@@ -4184,12 +3703,15 @@ return;
 
 formulaire.dataset.envoiEnCours = '1';
 
-if (bouton) {
-
+/*
+ * Désactivés juste après l'envoi : le bouton cliqué (brouillon
+ * ou confirmer) fait encore partie des données envoyées.
+ */
+setTimeout(function () {
+boutons.forEach(function (bouton) {
 bouton.disabled = true;
-
-bouton.innerHTML = '<i class="fa fa-spinner fa-spin mr-1"></i> Enregistrement en cours...';
-}
+});
+}, 0);
 
 if (typeof window.Swal !== 'undefined') {
 

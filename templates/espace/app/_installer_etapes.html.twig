@@ -1,0 +1,32 @@
+{#
+	Gestes pour mettre l'espace sur l'écran d'accueil d'un iPhone ou d'un
+	iPad : Safari n'a pas de bouton d'installation. Montrés par
+	public/js/espace-installer.js dans la carte du tableau de bord et dans
+	Mon compte. Icônes dessinées ici, aucune image d'un autre site.
+	Variable : id (unique dans la page).
+#}
+<div class="ec-ios" id="{{ id }}" data-installer-etapes hidden tabindex="-1" aria-label="Ajouter à l'écran d'accueil sur iPhone ou iPad">
+	<div class="ec-ios-safari" data-installer-safari hidden>
+		<p><b>Ouvrez d'abord cette page dans Safari</b> (pas dans WhatsApp ni Chrome) : copiez l'adresse, puis collez-la dans la barre d'adresse de Safari.</p>
+		<div class="ec-ios-adresse">
+			<label class="ec-sr" for="{{ id }}-adresse">Adresse de votre espace</label>
+			<input class="ec-saisie ec-saisie-sobre" id="{{ id }}-adresse" type="text" value="{{ url('app_espace_accueil') }}" readonly data-installer-adresse>
+			<button type="button" class="ec-bouton-petit bleu" data-installer-copier>Copier l'adresse</button>
+		</div>
+		<p class="ec-petit" role="status" data-installer-copie></p>
+	</div>
+	<ol class="ec-ios-liste">
+		<li>
+			<span class="ec-ios-icone"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 9H7a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-1.5M12 14.5V3M8.5 6.5 12 3l3.5 3.5"/></svg></span>
+			<span>Touchez <b>Partager</b>, en bas de l'écran (en haut sur iPad). Vous ne le voyez pas ? Touchez d'abord <b>⋯</b>.</span>
+		</li>
+		<li>
+			<span class="ec-ios-icone"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg></span>
+			<span>Faites défiler, puis touchez <b>Sur l'écran d'accueil</b>.</span>
+		</li>
+		<li>
+			<span class="ec-ios-icone"><img src="{{ asset('images/icone-180.png') }}" alt="" width="32" height="32"></span>
+			<span>Touchez <b>Ajouter</b>, en haut à droite : l'icône Succès Imprim arrive sur votre écran d'accueil.</span>
+		</li>
+	</ol>
+</div>

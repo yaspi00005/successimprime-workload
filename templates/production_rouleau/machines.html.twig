@@ -1,0 +1,133 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Machines et dossiers{% endblock %}
+{% block fab_actif %}machines{% endblock %}
+
+{% set couleurs_machines = ['#1E4FA3', '#2F9BE0', '#13787A', '#E95B35', '#7C3AED', '#CA8A04', '#475569'] %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production</p>
+			<h1 class="si-fab-titre">Machines et dossiers</h1>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production_nommage') }}" class="si-fab-bouton"><i class="fas fa-font" aria-hidden="true"></i>Règles de nommage</a>
+			{% if is_granted('ROLE_ADMIN') %}
+				<a href="{{ path('app_reglages_parametres_panneau', {tuile: 'production'}) }}" class="si-fab-bouton"><i class="fas fa-sliders-h" aria-hidden="true"></i>Réglages</a>
+			{% endif %}
+		</div>
+	</header>
+
+	<section class="si-fab-carte" aria-labelledby="si-fr-racine-titre">
+		<h2 id="si-fr-racine-titre">Le dossier de production</h2>
+		<p class="mb-1" style="font-size:13px">Chaque machine a son dossier de dépôt, par exemple <span class="si-fr-code">{{ racineAffichee }}</span> : le RIP de la machine le surveille. L'ERP y copie un exemplaire du fichier sous son nom de production quand on envoie un rouleau au RIP (ou avec « Copier dans le dossier de la machine » sur le parcours d'un fichier). Le fichier du client n'est jamais déplacé ni renommé.</p>
+		{% if racine %}
+			<p class="si-fab-pastille vert mb-0">Dossier du serveur réglé et accessible</p>
+		{% elseif racineSaisie %}
+			<p class="si-fr-alerte rouge mb-0">Le dossier saisi dans les réglages n'est pas accessible depuis le serveur (ou il est dans l'application) : rien n'est copié, les fichiers restent dans l'ERP.</p>
+		{% else %}
+			<p class="si-fr-alerte mb-0">Dossier du serveur pas encore réglé : rien n'est copié, chaque fichier se télécharge sous son nom de production.{% if is_granted('ROLE_ADMIN') %} Réglez-le dans « Réglages ».{% endif %}</p>
+		{% endif %}
+	</section>
+
+	{% if not peutModifier %}
+		<p class="si-fab-muet">Seul le chef d'atelier (ou la Direction) modifie les dossiers et les profils.</p>
+	{% endif %}
+
+	<div class="si-fr-cartes">
+		{% for l in machines %}
+			{% set m = l.machine %}
+			{% set a = l.atelier %}
+			<section class="si-fab-carte" id="machine-{{ m.id }}" style="--fr-couleur: {{ couleurs_machines[loop.index0 % couleurs_machines|length] }}" aria-labelledby="si-fr-m-{{ m.id }}">
+				<div class="si-fr-carte-entete">
+					<h2 id="si-fr-m-{{ m.id }}">{{ m.nom }}</h2>
+					{% if l.rouleau %}
+						<span class="si-fab-pastille bleu">rouleau · laize {{ m.laizeMetres|number_format(2, ',', ' ') }} m</span>
+					{% elseif a and a.codeDossier == 'DECOUPE' %}
+						<span class="si-fab-pastille">découpe</span>
+					{% else %}
+						<span class="si-fab-pastille">{{ m.modeFacturationLabel|default(m.typeMachine)|lower }}</span>
+					{% endif %}
+				</div>
+				<dl class="si-fr-chiffres si-fr-proprietes">
+					<div><dt>Dossier</dt><dd>{% if l.dossier %}<span class="si-fr-code">{{ l.dossier }}</span>{% else %}<span class="si-fab-pastille orange">à régler</span>{% endif %}</dd></div>
+					<div><dt>Tête</dt><dd>{{ a and a.teteImpression ? a.teteImpression : '—' }}</dd></div>
+					<div><dt>Usages</dt><dd>{{ a and a.usages ? a.usages : '—' }}</dd></div>
+					<div><dt>Miroir</dt><dd>{{ a and a.miroir ? 'oui (transfert)' : 'non' }}</dd></div>
+				</dl>
+				{% set profils = a ? a.profils : [] %}
+				{% if profils is not empty %}
+					<div class="si-fr-profil-saisie-boite">
+						<table class="si-fr-profils">
+							<caption class="visually-hidden">Profils d'impression de {{ m.nom }}</caption>
+							<thead><tr><th>Support</th><th>Profil</th><th>Mode</th><th>m²/h</th><th>ml/m²</th><th>Chauffe · séchage</th></tr></thead>
+							<tbody>
+								{% for p in profils %}
+									<tr>
+										<td>{{ p.support }}</td>
+										<td>{{ p.profilIcc }}</td>
+										<td>{{ p.mode }}{% if p.miroir %} · miroir{% endif %}</td>
+										<td>{{ p.vitesseM2h is not null ? p.vitesseM2h|number_format(1, ',', ' ')|replace({',0': ''}) : '—' }}</td>
+										<td>{{ p.encreMlM2 is not null ? p.encreMlM2|number_format(1, ',', ' ')|replace({',0': ''}) : '—' }}</td>
+										<td>{{ p.chauffeC is not null ? p.chauffeC ~ ' °C' : '—' }} · {{ p.sechageMin is not null ? p.sechageMin ~ ' min' : '—' }}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% elseif l.rouleau %}
+					<p class="si-fab-note">Aucun profil : la fiche de production bloque « Démarrer » tant qu'il n'y en a pas.</p>
+				{% endif %}
+
+				{% if peutModifier %}
+					<details class="si-fr-modifier">
+						<summary>Modifier</summary>
+						<form method="post" action="{{ path('app_atelier_production_machine', {id: m.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+							<div class="si-fr-formulaire">
+								<label>Code du dossier
+									<input type="text" name="codeDossier" value="{{ a ? a.codeDossier }}" maxlength="40" placeholder="SOLVANT-320" autocomplete="off">
+								</label>
+								<label>Tête d'impression
+									<input type="text" name="teteImpression" value="{{ a ? a.teteImpression }}" maxlength="80" placeholder="2 têtes i3200">
+								</label>
+								<label class="large">Usages
+									<input type="text" name="usages" value="{{ a ? a.usages }}" maxlength="160" placeholder="bâches, kakémonos, vinyle">
+								</label>
+								<label class="large" style="flex-direction:row;align-items:center;gap:8px">
+									<input type="checkbox" name="miroir" value="1" {{ a and a.miroir ? 'checked' }} style="width:auto;min-height:0"> Impression en miroir par défaut (film de transfert)
+								</label>
+							</div>
+							<p class="si-fab-muet mt-3 mb-1">Profils d'impression ({{ profilsMax }} au plus) : support = identifiant ou code de l'article, ou un mot du nom (« 440 »). Une ligne vide est ignorée.</p>
+							<div class="si-fr-profil-saisie-boite">
+								<table class="si-fr-profil-saisie">
+									<thead><tr><th>Support</th><th>Profil ICC</th><th>Mode</th><th>m²/h</th><th>ml/m²</th><th>°C</th><th>Séchage min</th><th>Miroir</th><th>Retirer</th></tr></thead>
+									<tbody>
+										{% for i in 0..(min(profils|length + 1, profilsMax) - 1) %}
+											{% set p = profils[i] ?? null %}
+											<tr>
+												<td><input type="text" name="profils[{{ i }}][support]" value="{{ p ? p.support }}" maxlength="60" aria-label="Support du profil {{ i + 1 }}" style="min-width:110px"></td>
+												<td><input type="text" name="profils[{{ i }}][profilIcc]" value="{{ p ? p.profilIcc }}" maxlength="120" aria-label="Profil ICC {{ i + 1 }}" style="min-width:150px"></td>
+												<td><input type="text" name="profils[{{ i }}][mode]" value="{{ p ? p.mode }}" maxlength="80" aria-label="Mode {{ i + 1 }}" style="min-width:120px"></td>
+												<td><input type="text" inputmode="decimal" name="profils[{{ i }}][vitesseM2h]" value="{{ p and p.vitesseM2h is not null ? p.vitesseM2h }}" aria-label="Vitesse en m² par heure {{ i + 1 }}" style="width:64px"></td>
+												<td><input type="text" inputmode="decimal" name="profils[{{ i }}][encreMlM2]" value="{{ p and p.encreMlM2 is not null ? p.encreMlM2 }}" aria-label="Encre en ml par m² {{ i + 1 }}" style="width:64px"></td>
+												<td><input type="text" inputmode="numeric" name="profils[{{ i }}][chauffeC]" value="{{ p and p.chauffeC is not null ? p.chauffeC }}" aria-label="Chauffe en degrés {{ i + 1 }}" style="width:56px"></td>
+												<td><input type="text" inputmode="numeric" name="profils[{{ i }}][sechageMin]" value="{{ p and p.sechageMin is not null ? p.sechageMin }}" aria-label="Séchage en minutes {{ i + 1 }}" style="width:56px"></td>
+												<td><input type="checkbox" name="profils[{{ i }}][miroir]" value="1" {{ p and p.miroir ? 'checked' }} aria-label="Miroir {{ i + 1 }}" style="width:auto;min-height:0"></td>
+												<td>{% if p %}<input type="checkbox" name="profils[{{ i }}][retirer]" value="1" aria-label="Retirer le profil {{ i + 1 }}" style="width:auto;min-height:0">{% endif %}</td>
+											</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+							</div>
+							<button type="submit" class="si-fab-bouton sombre si-fr-petit-bouton mt-2">Enregistrer {{ m.nom }}</button>
+						</form>
+					</details>
+				{% endif %}
+			</section>
+		{% else %}
+			<p class="si-fab-carte si-fab-muet">Aucune machine active.</p>
+		{% endfor %}
+	</div>
+{% endblock %}

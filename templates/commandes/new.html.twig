@@ -1,8 +1,8 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	{{ form.vars.data.id ? 'Modifier la commande' : 'Nouvelle commande' }}
-{% endblock %}
+{% block title %}Nouvelle commande{% endblock %}
+
+{% block page_title %}Nouvelle commande{% endblock %}
 
 {% block body %}
 	{{ include('commandes/_form.html.twig') }}
@@ -10,6 +10,5 @@
 
 {% block javascripts %}
 	{{ parent() }}
-
-
+	<script src="{{ asset('js/saisie-commande.js') }}"></script>
 {% endblock %}

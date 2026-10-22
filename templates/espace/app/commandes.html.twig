@@ -1,0 +1,113 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mes commandes (maquette CD01, téléphone CD05) : les six étapes de chaque
+	commande, payé et reste, le bouton du moment (MesCommandesClient).
+	Montants seulement pour qui les voit, paiement pour le payeur.
+#}
+
+{% block title %}Mes commandes{% endblock %}
+{% block page_classe %} ec-page-large cd-page{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Mes commandes</a>{% endblock %}
+
+{% block contenu %}
+	{% set filtres = {annee: annee ?? 'toutes', tri: tri} %}
+	<div class="cd-tete ec-bureau">
+		<h1>Mes commandes</h1>
+		<div class="cd-tete-actions">
+			<a class="ec-bouton-blanc" href="{{ path('app_espace_commandes_export', filtres|merge({onglet: ongletChoisi})) }}">⬇ Exporter</a>
+		</div>
+	</div>
+	<nav class="ec-filtres cd-autres">
+		<a href="{{ path('app_espace_conception') }}">Conception</a>
+		{% if coque.ecrit %}<a href="{{ path('app_espace_creations') }}">Mes créations</a>{% endif %}
+		<a href="{{ path('app_espace_produits') }}">Mes produits{% if mesProduits %} · {{ mesProduits }}{% endif %}</a>
+		<a href="{{ path('app_espace_devis') }}">Mes devis{% if devisAAccepter %} · {{ devisAAccepter }} à accepter{% endif %}</a>
+	</nav>
+	{% include 'espace/app/_a_valider.html.twig' %}
+
+	<div class="cd-chiffres">
+		<div class="ec-carte cd-chiffre">
+			<span>En cours</span>
+			<b class="bleu">{{ resume.enCours }}</b>
+			<small>{{ [resume.enImpression ? resume.enImpression ~ ' en impression' : null, resume.batAValider ? resume.batAValider ~ ' BAT à valider' : null, resume.aConfirmer ? resume.aConfirmer ~ ' à confirmer par l\'atelier' : null]|filter(t => t)|join(' · ')|default(resume.enCours ? 'en préparation à l\'atelier' : 'aucune commande en cours') }}</small>
+		</div>
+		<div class="ec-carte cd-chiffre">
+			<span>Votre action</span>
+			<b class="{{ resume.action ? 'orange' : 'vert' }}">{{ resume.action }}</b>
+			<small>{{ [resume.batAValider ? resume.batAValider ~ ' BAT' : null, resume.acomptes ? resume.acomptes ~ ' acompte' ~ (resume.acomptes > 1 ? 's') : null]|filter(t => t)|join(' · ')|default(resume.action ? 'à faire' : 'rien à faire, merci') }}</small>
+		</div>
+		{% if resume.reste is not null and peutPayer %}
+			<div class="ec-carte cd-chiffre">
+				<span>Reste à payer</span>
+				<b class="{{ resume.reste > 0 ? 'rouge' : 'vert' }}">{{ resume.reste|number_format(0, ',', ' ') }} F</b>
+				<small>{{ resume.echu > 0 ? 'dont ' ~ resume.echu|number_format(0, ',', ' ') ~ ' F échus' : (resume.reste > 0 ? 'rien d\'échu' : 'tout est réglé') }}</small>
+			</div>
+		{% endif %}
+		{# Yaya 19/10 : le nombre de commandes seulement, jamais le total dépensé à l'imprimerie. #}
+		<div class="ec-carte cd-chiffre">
+			<span>Commandes {{ annee ? 'en ' ~ annee : 'au total' }}</span>
+			<b>{{ resume.commandees }}</b>
+			<small>commande{{ resume.commandees > 1 ? 's' }} passée{{ resume.commandees > 1 ? 's' }}</small>
+		</div>
+	</div>
+
+	<section class="ec-carte cd-liste">
+		<div class="cd-barre">
+			<nav class="cd-onglets" aria-label="Regrouper les commandes">
+				{% for cle, libelle in onglets %}
+					{% if cle != 'a_payer' or peutPayer %}
+						<a href="{{ path('app_espace_commandes', filtres|merge({onglet: cle})) }}" class="cd-onglet{{ cle == ongletChoisi ? ' actif' }}"{{ cle == ongletChoisi ? ' aria-current="page"' }}>{{ libelle }} · {{ resume.onglets[cle] }}</a>
+					{% endif %}
+				{% endfor %}
+			</nav>
+			<form class="cd-choix" method="get">
+				<input type="hidden" name="onglet" value="{{ ongletChoisi }}">
+				<select name="annee" aria-label="Année" onchange="this.form.submit()">
+					{% for a in annees %}<option value="{{ a }}"{{ a == annee ? ' selected' }}>{{ a }}</option>{% endfor %}
+					<option value="toutes"{{ annee is null ? ' selected' }}>Toutes les années</option>
+				</select>
+				<select name="tri" aria-label="Ordre" onchange="this.form.submit()">
+					<option value="recentes"{{ tri == 'recentes' ? ' selected' }}>Plus récentes</option>
+					<option value="anciennes"{{ tri == 'anciennes' ? ' selected' }}>Plus anciennes</option>
+					{% if coque.montants %}<option value="montant"{{ tri == 'montant' ? ' selected' }}>Montant</option>{% endif %}
+				</select>
+				<noscript><button class="ec-bouton-blanc" type="submit">Voir</button></noscript>
+			</form>
+		</div>
+
+		{% if lignes is empty %}
+			<p class="ec-vide cd-vide">{{ ongletChoisi == 'action' ? 'Rien à faire de votre côté pour l\'instant.' : (ongletChoisi == 'a_payer' ? 'Rien à payer, merci !' : 'Aucune commande ici.') }}{% if ongletChoisi == 'toutes' %} <a href="{{ path('app_espace_nouvelle_commande') }}">Passer une commande</a>{% endif %}</p>
+		{% endif %}
+		<ul class="cd-commandes">
+			{% for l in lignes %}
+				{% set c = l.commande %}
+				<li class="cd-commande">
+					<a class="cd-produit" href="{{ path('app_espace_commande', {id: c.publicId}) }}">
+						<span class="cd-vignette" aria-hidden="true"><svg focusable="false"><use href="#si-dessin-{{ l.illustration }}"/></svg></span>
+						<span class="cd-nom"><b title="{{ l.titreComplet }}">{{ l.titre }}</b><small>{{ c.numero }}{% if c.dateCommande %} · commandée le {{ c.dateCommande|date('d/m') }}{% endif %}{% if l.montants %}<span class="ec-telephone"> · <span class="cd-masque">Total </span>{{ l.montants.total|number_format(0, ',', ' ') }} F</span>{% endif %}</small></span>
+					</a>
+					<div class="cd-suivi">
+						<p class="cd-etat {{ l.etat.ton }}"><b>{{ l.etat.titre }}</b>{% if l.etat.detail %} <span>{{ l.etat.detail }}</span>{% endif %}</p>
+						<ol class="cd-etapes" aria-label="Étapes">
+							{% for e in l.etapes %}
+								<li class="{{ e.etat }}"><span class="cd-trait"></span><small>{{ e.libelle }}</small>{% if e.etat == 'faite' %}<span class="cd-masque"> (faite)</span>{% elseif e.etat == 'en_cours' %}<span class="cd-masque"> (en cours)</span>{% endif %}</li>
+							{% endfor %}
+						</ol>
+					</div>
+					{% if l.montants %}
+						<div class="cd-montants">
+							<b><span class="cd-masque">Total </span>{{ l.montants.total|number_format(0, ',', ' ') }} F</b>
+							{% if l.montants.aConfirmer %}<small>prix à confirmer par l'atelier</small>{% elseif l.montants.reste is not null %}<small>payé {{ l.montants.paye|number_format(0, ',', ' ') }} F · reste <em class="{{ l.montants.reste > 0 ? 'rouge' : '' }}">{{ l.montants.reste|number_format(0, ',', ' ') }} F</em>{% if l.montants.enValidation > 0 %}<br>{{ l.montants.enValidation|number_format(0, ',', ' ') }} F en validation{% endif %}</small>{% endif %}
+						</div>
+					{% endif %}
+					<a class="cd-action {{ l.action.ton }}" href="{{ path(l.action.route, l.action.params) }}">{{ l.action.libelle }}</a>
+				</li>
+			{% endfor %}
+		</ul>
+	</section>
+
+	<a class="ec-bouton cd-nouvelle ec-telephone" href="{{ path('app_espace_nouvelle_commande') }}">+ Nouvelle commande</a>
+	{{ include("site/_illustrations_produits.svg.twig") }}
+{% endblock %}

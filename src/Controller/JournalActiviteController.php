@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Repository\JournalActiviteRepository;
+use App\Service\Http\Entree;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +25,7 @@ final class JournalActiviteController extends AbstractController
             'date_fin' => $request->query->get('date_fin', ''),
         ];
 
-        $page = max(1, $request->query->getInt('page', 1));
+        $page = max(1, Entree::entier($request->query, 'page', 1));
 
         $resultat = $repository->rechercher($filtres, $page, self::PAR_PAGE);
         $pageCount = (int) max(1, ceil($resultat['total'] / self::PAR_PAGE));

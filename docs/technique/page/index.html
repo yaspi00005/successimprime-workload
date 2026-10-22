@@ -1,0 +1,1236 @@
+<title>Guide technique Succès Imprim</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+Condensed:wght@500;600;700&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+/* Layout : bandeau collant (marque, recherche, onglets), puis une colonne de travail ; les listes longues se chargent par tranches. */
+:root {
+  --bg: #f3f6f7;
+  --surface: #ffffff;
+  --sunken: #e9eef0;
+  --ink: #13212a;
+  --muted: #566871;
+  --line: #d5dee2;
+  --line-strong: #b7c5cb;
+  --accent: #0a6a86;
+  --accent-ink: #ffffff;
+  --accent-soft: #dcedf2;
+  --ok: #1d7646;
+  --ok-soft: #dcf0e4;
+  --bad: #b02a20;
+  --bad-soft: #f8e0dd;
+  --ask: #8a5a00;
+  --ask-soft: #f8ebcf;
+  --warn: #9a4f00;
+  --code-bg: #eef3f5;
+  --shadow: 0 1px 2px rgba(19, 33, 42, .06), 0 4px 14px rgba(19, 33, 42, .05);
+  --f-sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --f-cond: "IBM Plex Sans Condensed", "Arial Narrow", "Roboto Condensed", "IBM Plex Sans", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+  --r: 6px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e161b; --surface: #152129; --sunken: #1b2a33; --ink: #e2ebee; --muted: #93a6af;
+    --line: #253740; --line-strong: #35505c; --accent: #5cbcd8; --accent-ink: #062530; --accent-soft: #163946;
+    --ok: #5ccf93; --ok-soft: #173a29; --bad: #f2877c; --bad-soft: #43201d; --ask: #f0b955; --ask-soft: #3d2f12;
+    --warn: #f0a050; --code-bg: #1a2a33; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e161b; --surface: #152129; --sunken: #1b2a33; --ink: #e2ebee; --muted: #93a6af;
+  --line: #253740; --line-strong: #35505c; --accent: #5cbcd8; --accent-ink: #062530; --accent-soft: #163946;
+  --ok: #5ccf93; --ok-soft: #173a29; --bad: #f2877c; --bad-soft: #43201d; --ask: #f0b955; --ask-soft: #3d2f12;
+  --warn: #f0a050; --code-bg: #1a2a33; --shadow: 0 1px 2px rgba(0,0,0,.3), 0 4px 14px rgba(0,0,0,.25);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--f-sans); margin: 0; overflow-x: hidden; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+a { color: var(--accent); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:hover { text-decoration-thickness: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+code, .mono { font-family: var(--f-mono); font-size: .86em; overflow-wrap: anywhere; }
+code { background: var(--code-bg); padding: .08em .35em; border-radius: 4px; overflow-wrap: anywhere; }
+h1, h2, h3, h4 { font-family: var(--f-cond); line-height: 1.2; text-wrap: balance; margin: 0; }
+h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -.01em; }
+h2 { font-size: 1.35rem; font-weight: 600; }
+h3 { font-size: 1.08rem; font-weight: 600; }
+p { margin: 0; overflow-wrap: anywhere; }
+.row .d, .small { overflow-wrap: anywhere; }
+.gut { padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.inner { max-width: 1240px; margin: 0 auto; }
+
+/* Bandeau */
+.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar { display: flex; align-items: center; gap: 12px; padding-block: 10px 8px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); min-width: 0; }
+.brand svg { flex: none; color: var(--accent); }
+.brand b { font-family: var(--f-cond); font-size: 1.05rem; font-weight: 700; white-space: nowrap; }
+.brand span { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+.search { flex: 1; min-width: 0; max-width: 520px; margin-left: auto; position: relative; }
+.search input { width: 100%; font: inherit; font-size: .95rem; padding: 7px 12px 7px 34px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg); color: var(--ink); }
+.search svg { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.iconbtn { flex: none; font: inherit; font-size: .8rem; display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--muted); cursor: pointer; }
+.iconbtn:hover { color: var(--ink); border-color: var(--line-strong); }
+.tabs { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: thin; padding-bottom: 0; margin-bottom: -1px; }
+.tabs a { flex: none; padding: 7px 10px 8px; font-size: .86rem; font-weight: 500; color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; white-space: nowrap; }
+.tabs a:hover { color: var(--ink); }
+.tabs a[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs a .n { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); margin-left: 4px; font-variant-numeric: tabular-nums; }
+.dbstate { font-size: .75rem; color: var(--muted); white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.dbstate i { width: 8px; height: 8px; border-radius: 50%; background: var(--line-strong); display: inline-block; }
+.dbstate[data-s="on"] i { background: var(--ok); }
+.dbstate[data-s="ro"] i { background: var(--ask); }
+
+/* Corps */
+main { padding-block: 22px 64px; }
+.view { display: grid; gap: 22px; grid-template-columns: minmax(0, 1fr); }
+.view > *, .head > *, .panel > * { min-width: 0; }
+.head { display: grid; gap: 6px; grid-template-columns: minmax(0, 1fr); }
+.eyebrow { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+.lead { color: var(--muted); max-width: 72ch; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 16px; min-width: 0; }
+.panel > h2, .panel > h3 { margin-bottom: 10px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.cols > * { min-width: 0; }
+.kv { margin: 0; display: grid; grid-template-columns: minmax(0, max-content) minmax(0, 1fr); gap: 6px 16px; font-size: .9rem; }
+.kv dt { color: var(--muted); overflow-wrap: anywhere; min-width: 0; }
+.kv dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.dim { color: var(--muted); }
+.small { font-size: .82rem; }
+.tags { display: flex; flex-wrap: wrap; gap: 4px; }
+.tag { display: inline-block; font-family: var(--f-mono); font-size: .74rem; padding: 1px 6px; border-radius: 4px; background: var(--sunken); color: var(--ink); white-space: nowrap; }
+.tag.m { background: var(--accent-soft); }
+.tag.w { background: var(--bad-soft); color: var(--bad); }
+.tag.a { background: var(--ask-soft); color: var(--ask); }
+.tag.g { background: var(--ok-soft); color: var(--ok); }
+a.tag { text-decoration: none; }
+
+/* Tuiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px; }
+.tile { display: grid; gap: 2px; align-content: start; padding: 12px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); text-decoration: none; color: var(--ink); }
+a.tile:hover { border-color: var(--accent); }
+.tile .v { font-family: var(--f-cond); font-size: 1.7rem; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.tile .l { font-size: .84rem; font-weight: 500; }
+.tile .s { font-size: .75rem; color: var(--muted); }
+
+/* Tableaux */
+.tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: .86rem; }
+th, td { text-align: left; vertical-align: top; padding: 7px 10px; border-bottom: 1px solid var(--line); }
+th { font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); font-weight: 600; background: var(--sunken); position: sticky; top: 0; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td .mono { overflow-wrap: anywhere; }
+td.nw { white-space: nowrap; }
+.yes { color: var(--ok); font-weight: 600; }
+.no { color: var(--muted); }
+.warn { color: var(--bad); font-weight: 600; }
+
+/* Filtres */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input[type="search"], .filters select { font: inherit; font-size: .88rem; padding: 6px 10px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); color: var(--ink); min-width: 0; }
+.filters input[type="search"] { flex: 1 1 220px; }
+.filters label { font-size: .85rem; display: inline-flex; gap: 5px; align-items: center; color: var(--muted); }
+.count { font-size: .82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.more { font: inherit; font-size: .85rem; margin: 10px auto 0; display: block; padding: 7px 14px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pill { font: inherit; font-size: .84rem; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; font-variant-numeric: tabular-nums; }
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* Listes de liens */
+.list { display: grid; gap: 0; }
+.list a.row, .list div.row { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 9px 12px; border-bottom: 1px solid var(--line); text-decoration: none; color: var(--ink); min-width: 0; }
+.list a.row:hover { background: var(--sunken); }
+.list .row:last-child { border-bottom: 0; }
+.row .t { font-family: var(--f-mono); font-size: .86rem; font-weight: 500; overflow-wrap: anywhere; min-width: 0; }
+.row .d { grid-column: 1 / -1; font-size: .83rem; color: var(--muted); }
+
+/* Chapitres */
+.chap { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; align-items: start; }
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 100px); display: grid; gap: 2px; }
+.toc a { padding: 6px 10px; border-radius: var(--r); text-decoration: none; color: var(--ink); font-size: .9rem; }
+.toc a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.toc .sub { padding-left: 20px; font-size: .8rem; color: var(--muted); }
+.md { max-width: 80ch; min-width: 0; }
+.md h1 { font-size: 1.9rem; margin: 0 0 14px; }
+.md h2 { margin: 30px 0 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.md h3 { margin: 22px 0 8px; }
+.md p, .md ul, .md ol { margin: 0 0 12px; }
+.md li { margin: 3px 0; }
+.md .tbl { margin: 0 0 16px; max-width: none; }
+.md table { font-size: .82rem; }
+.md table code { font-size: .8rem; }
+.md pre { background: var(--code-bg); padding: 12px; border-radius: var(--r); overflow-x: auto; }
+.md blockquote { margin: 0 0 12px; padding: 4px 14px; border-left: 3px solid var(--line-strong); color: var(--muted); }
+.md a code { color: var(--accent); }
+
+/* Modules */
+.mods { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.mod { display: grid; gap: 8px; padding: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); text-decoration: none; color: var(--ink); }
+.mod:hover { border-color: var(--accent); }
+.mod h3 { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; }
+.mod .nums { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mod .nums b { color: var(--ink); font-weight: 600; }
+
+/* Relations */
+.rel { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 12px; align-items: center; }
+.rel .col { display: grid; gap: 6px; min-width: 0; }
+.rel .center { font-family: var(--f-mono); font-weight: 600; padding: 10px 14px; border: 2px solid var(--accent); border-radius: var(--r); background: var(--accent-soft); text-align: center; overflow-wrap: anywhere; }
+.rel .node { display: flex; gap: 6px; align-items: center; justify-content: space-between; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); font-size: .83rem; min-width: 0; }
+.rel .node a { font-family: var(--f-mono); overflow-wrap: anywhere; min-width: 0; }
+.rel .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+
+/* Audit */
+.aw { border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--surface); padding: 12px; display: grid; gap: 9px; }
+.aw[data-st="confirme"] { border-color: var(--ok); }
+.aw[data-st="a_corriger"] { border-color: var(--bad); }
+.aw[data-st="question"] { border-color: var(--ask); }
+.aw-top { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.aw-top .eyebrow { color: var(--accent); }
+.aw-q { font-size: .9rem; }
+.seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: inherit; font-size: .85rem; font-weight: 500; padding: 6px 12px; border-radius: var(--r); border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.seg button::before { content: ""; width: 9px; height: 9px; border-radius: 50%; border: 1.5px solid currentColor; }
+.seg button[data-v="confirme"] { color: var(--ok); }
+.seg button[data-v="a_corriger"] { color: var(--bad); }
+.seg button[data-v="question"] { color: var(--ask); }
+.seg button[aria-pressed="true"][data-v="confirme"] { background: var(--ok); border-color: var(--ok); color: var(--surface); }
+.seg button[aria-pressed="true"][data-v="a_corriger"] { background: var(--bad); border-color: var(--bad); color: var(--surface); }
+.seg button[aria-pressed="true"][data-v="question"] { background: var(--ask); border-color: var(--ask); color: var(--surface); }
+.seg button[aria-pressed="true"]::before { background: currentColor; }
+.seg button:disabled { cursor: not-allowed; opacity: .6; }
+.aw textarea { font: inherit; font-size: .88rem; width: 100%; min-height: 54px; resize: vertical; padding: 7px 10px; border: 1px solid var(--line-strong); border-radius: var(--r); background: var(--bg); color: var(--ink); }
+.aw textarea[readonly] { background: var(--sunken); }
+.aw-foot { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 12px; font-size: .78rem; color: var(--muted); }
+.aw-save[data-s="ok"] { color: var(--ok); }
+.aw-save[data-s="err"] { color: var(--bad); font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 5px; font-size: .74rem; font-weight: 600; padding: 2px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-decoration: none; white-space: nowrap; background: var(--surface); }
+.chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; border: 1.5px solid currentColor; }
+.chip[data-st="confirme"] { color: var(--ok); background: var(--ok-soft); border-color: transparent; }
+.chip[data-st="a_corriger"] { color: var(--bad); background: var(--bad-soft); border-color: transparent; }
+.chip[data-st="question"] { color: var(--ask); background: var(--ask-soft); border-color: transparent; }
+.chip[data-st]:not([data-st=""])::before { background: currentColor; }
+.prog { display: flex; height: 10px; border-radius: 999px; overflow: hidden; background: var(--sunken); }
+.prog i { display: block; height: 100%; }
+.prog .p-ok { background: var(--ok); } .prog .p-bad { background: var(--bad); } .prog .p-ask { background: var(--ask); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; background: var(--sunken); border: 1px solid var(--line-strong); }
+.legend .l-ok { background: var(--ok); border-color: var(--ok); } .legend .l-bad { background: var(--bad); border-color: var(--bad); } .legend .l-ask { background: var(--ask); border-color: var(--ask); }
+.note { padding: 12px 14px; border-radius: var(--r); background: var(--accent-soft); font-size: .88rem; display: grid; gap: 4px; }
+.note.w { background: var(--ask-soft); }
+.note.e { background: var(--bad-soft); color: var(--ink); }
+.aitem > *, .aw > *, .rel .node > * { min-width: 0; }
+.aitem { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--line); }
+.aitem:last-child { border-bottom: 0; }
+.aitem .h { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; }
+.aitem .h a { font-family: var(--f-mono); font-weight: 600; font-size: .9rem; overflow-wrap: anywhere; }
+.agroup { font-family: var(--f-cond); font-size: 1.05rem; font-weight: 600; padding: 14px 0 4px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.agroup span { font-family: var(--f-sans); font-size: .8rem; color: var(--muted); font-weight: 400; font-variant-numeric: tabular-nums; }
+.modprog td:first-child { min-width: 130px; }
+.modprog tr { cursor: pointer; }
+.modprog tr:hover td { background: var(--sunken); }
+.modprog .bar-cell { min-width: 120px; }
+
+/* Chargement */
+.loading { min-height: 60vh; display: grid; place-items: center; text-align: center; }
+.loading .box { display: grid; gap: 14px; justify-items: center; max-width: 340px; }
+.loading svg { color: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .loading svg { animation: spin 3s linear infinite; } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loadbar { width: 240px; height: 4px; background: var(--sunken); border-radius: 4px; overflow: hidden; }
+.loadbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .15s; }
+.hits h3 { margin: 6px 0 6px; display: flex; justify-content: space-between; gap: 8px; }
+.hits mark { background: var(--ask-soft); color: inherit; border-radius: 2px; }
+.mt { margin-top: 10px; }
+
+@media (max-width: 860px) {
+  .chap { grid-template-columns: 1fr; }
+  .toc { position: static; display: flex; overflow-x: auto; gap: 4px; padding-bottom: 4px; }
+  .toc a { flex: none; white-space: nowrap; border: 1px solid var(--line); }
+  .toc .sub { display: none; }
+  .rel { grid-template-columns: 1fr; }
+  .brand span, .dbstate b { display: none; }
+  .bar { flex-wrap: wrap; }
+  .search { order: 3; flex-basis: 100%; max-width: none; }
+  .dbstate { margin-left: auto; }
+}
+@media (max-width: 520px) {
+  h1 { font-size: 1.5rem; }
+  .brand b { font-size: .95rem; }
+  .kv { grid-template-columns: minmax(0, 1fr); gap: 0 0; }
+  .kv dd { margin-bottom: 6px; }
+  .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+</style>
+
+<header class="top">
+  <div class="gut"><div class="inner">
+    <div class="bar">
+      <a class="brand" href="#vue" aria-label="Guide technique, vue d'ensemble">
+        <svg width="26" height="26" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="13" cy="13" r="7.5"/><circle cx="13" cy="13" r="3.2"/><path d="M13 1v24M1 13h24"/></svg>
+        <b>Guide technique</b><span>Succès Imprim</span>
+      </a>
+      <div class="search">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="m11 11 4 4"/></svg>
+        <input id="q" type="search" placeholder="Chercher une classe, une table, une route, un chapitre…" autocomplete="off" aria-label="Chercher dans le guide">
+      </div>
+      <span class="dbstate" id="dbstate" data-s="off" title="État de l'enregistrement de l'audit"><i></i><b>Audit : chargement</b></span>
+      <button class="iconbtn" id="theme" type="button" aria-label="Changer de thème">Thème : auto</button>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections du guide"></nav>
+  </div></div>
+</header>
+<main class="gut"><div class="inner" id="app">
+  <div class="loading" id="loading"><div class="box">
+    <svg width="54" height="54" viewBox="0 0 26 26" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true"><circle cx="13" cy="13" r="7.5"/><circle cx="13" cy="13" r="3.2"/><path d="M13 1v24M1 13h24"/></svg>
+    <h2>Chargement du guide</h2>
+    <p class="dim small" id="loadtxt">Lecture de guide.json : tables, routes, contrôleurs, droits et points d'audit.</p>
+    <div class="loadbar"><i id="loadbar"></i></div>
+  </div></div>
+</div></main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script>
+(() => {
+'use strict';
+/* ---------- Outils ---------- */
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const nf = new Intl.NumberFormat('fr-FR');
+const n = x => nf.format(x || 0);
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const short = c => String(c || '').split('\\').pop();
+const plural = (k, one, many) => `${n(k)} ${k > 1 ? many : one}`;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('gt:' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem('gt:' + k, JSON.stringify(v)); } catch (e) { /* stockage indisponible */ } }
+};
+const dateFr = iso => { try { return new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
+const dateCourte = iso => { try { return new Date(iso).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }); } catch (e) { return iso; } };
+
+/* ---------- Thème ---------- */
+const themes = ['auto', 'light', 'dark'];
+const themeLbl = { auto: 'Thème : auto', light: 'Thème : clair', dark: 'Thème : sombre' };
+function applyTheme(t) {
+  if (t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+  $('#theme').textContent = themeLbl[t];
+}
+let theme = store.get('theme', 'auto'); if (!themes.includes(theme)) theme = 'auto';
+applyTheme(theme);
+$('#theme').addEventListener('click', () => { theme = themes[(themes.indexOf(theme) + 1) % 3]; applyTheme(theme); store.set('theme', theme); });
+
+/* ---------- Données ---------- */
+let G = null;
+const I = {};
+const STATUTS = { confirme: 'Confirmé', a_corriger: 'À corriger', question: 'Question' };
+const TYPES = { controleur: 'Contrôleurs', entite: 'Tables', route: 'Routes', securite: 'Sécurité', commande: 'Commandes' };
+const TYPE1 = { controleur: 'Contrôleur', entite: 'Table', route: 'Route', securite: 'Sécurité', commande: 'Commande' };
+
+function anchors(list, key, label) {
+  const byKey = new Map(), byA = new Map();
+  for (const it of list) {
+    let a = String(label(it)).replace(/[^A-Za-z0-9._-]+/g, '~').replace(/^~+|~+$/g, '') || 'x';
+    let b = a, i = 2;
+    while (byA.has(b)) b = a + '-' + (i++);
+    byA.set(b, it); byKey.set(key(it), b);
+  }
+  return { byKey, byA };
+}
+
+function index() {
+  I.mod = new Map(G.modules.map(m => [m.cle, m]));
+  I.modOrder = new Map(G.modules.map((m, i) => [m.cle, i]));
+  I.ent = new Map(G.entites.map(e => [e.classe, e]));
+  I.tbl = new Map(G.entites.map(e => [e.table, e]));
+  I.entA = anchors(G.entites, e => e.classe, e => short(e.classe));
+  I.route = new Map(G.routes.map(r => [r.nom, r]));
+  I.routeA = anchors(G.routes, r => r.nom, r => r.nom);
+  I.ctrl = new Map(G.controleurs.map(c => [c.classe, c]));
+  I.ctrlA = anchors(G.controleurs, c => c.classe, c => short(c.classe));
+  I.svc = new Map(G.services.map(s => [s.classe, s]));
+  I.svcA = anchors(G.services, s => s.classe, s => short(s.classe));
+  I.cmd = new Map(G.commandes.map(c => [c.nom, c]));
+  I.cmdA = anchors(G.commandes, c => c.nom, c => c.nom.replace(/^app:/, ''));
+  I.mec = new Map(G.securite.mecanismes.map(m => [m.cle, m]));
+  I.mecA = anchors(G.securite.mecanismes, m => m.cle, m => m.cle);
+  I.audit = new Map(G.audit.map(a => [a.id, a]));
+  I.shortName = new Map();
+  for (const [map, A, pre] of [[I.ent, I.entA, 'table'], [I.ctrl, I.ctrlA, 'controleur'], [I.svc, I.svcA, 'service']]) {
+    for (const k of map.keys()) { const s = short(k); if (!I.shortName.has(s)) I.shortName.set(s, '#' + pre + '-' + A.byKey.get(k)); }
+  }
+  I.incoming = new Map();
+  for (const e of G.entites) for (const r of e.relations || []) {
+    if (!I.incoming.has(r.cible)) I.incoming.set(r.cible, []);
+    I.incoming.get(r.cible).push({ from: e, rel: r });
+  }
+  I.chargee = new Map();
+  for (const c of G.controleurs) for (const e of c.entites_chargees || []) {
+    if (!I.chargee.has(e)) I.chargee.set(e, []); I.chargee.get(e).push(c);
+  }
+  I.syncType = new Map(G.synchro.types.map(t => [t.classe, t]));
+}
+const hEnt = c => I.entA.byKey.has(c) ? '#table-' + I.entA.byKey.get(c) : null;
+const hRoute = nm => I.routeA.byKey.has(nm) ? '#route-' + I.routeA.byKey.get(nm) : null;
+const hCtrl = c => I.ctrlA.byKey.has(c) ? '#controleur-' + I.ctrlA.byKey.get(c) : null;
+const hSvc = c => I.svcA.byKey.has(c) ? '#service-' + I.svcA.byKey.get(c) : null;
+const hCmd = c => I.cmdA.byKey.has(c) ? '#commande-' + I.cmdA.byKey.get(c) : null;
+const hMec = c => I.mecA.byKey.has(c) ? '#mecanisme-' + I.mecA.byKey.get(c) : '#securite';
+const lnk = (href, txt, cls = 'mono') => href ? `<a class="${cls}" href="${href}">${esc(txt)}</a>` : `<span class="${cls}">${esc(txt)}</span>`;
+const entLink = c => lnk(hEnt(c), short(c));
+const ctrlAction = ca => { const [c, m] = String(ca).split('::'); return I.ctrl.has(c) ? `<a class="mono" href="${hCtrl(c)}">${esc(short(c))}</a><span class="mono dim">${m ? '::' + esc(m) : ''}</span>` : `<span class="mono">${esc(ca)}</span>`; };
+const anyClass = c => hEnt(c) ? entLink(c) : hCtrl(c) ? lnk(hCtrl(c), short(c)) : hSvc(c) ? lnk(hSvc(c), short(c)) : `<span class="mono" title="${esc(c)}">${esc(short(c))}</span>`;
+const modTag = k => k ? `<a class="tag m" href="#module-${esc(k)}">${esc(I.mod.get(k)?.libelle || k)}</a>` : '';
+function auditHref(a) {
+  const k = a.id.slice(a.id.indexOf(':') + 1);
+  if (a.type === 'route') return hRoute(k) || '#routes';
+  if (a.type === 'controleur') return hCtrl(k) || '#controleurs';
+  if (a.type === 'entite') return hEnt(k) || '#tables';
+  if (a.type === 'commande') return hCmd(k) || '#commandes';
+  if (a.type === 'securite') return I.mec.has(k) ? hMec(k) : '#securite';
+  return '#audit';
+}
+
+/* ---------- Audit : état partagé ---------- */
+const A = {
+  db: null, user: null, uid: null, col: null, unsub: null,
+  phase: 'wait',           // wait | on | off (pas de base) | ro (lecture seule)
+  roMsg: '', err: '',
+  server: new Map(),       // item -> doc
+  local: new Map(),        // item -> doc en cours d'écriture (null = suppression)
+  saveSt: new Map(),       // item -> {s, msg}
+  q: new Map(),            // item -> {busy, next}
+  drafts: new Map(), timers: new Map()
+};
+const cur = id => A.local.has(id) ? A.local.get(id) : (A.server.get(id) || null);
+const statutOf = id => cur(id)?.statut || '';
+const canWrite = () => A.phase === 'on';
+function docIdOf(item) {
+  const bytes = new TextEncoder().encode(item);
+  let bin = ''; for (const b of bytes) bin += String.fromCharCode(b);
+  return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function setDbState() {
+  const el = $('#dbstate');
+  const t = { wait: 'Audit : connexion…', on: 'Audit : enregistré en ligne', off: 'Audit : lecture seule', ro: 'Audit : lecture seule' }[A.phase];
+  el.dataset.s = A.phase === 'on' ? 'on' : A.phase === 'wait' ? 'off' : 'ro';
+  el.querySelector('b').textContent = t;
+  el.title = A.phase === 'off' ? "Connectez-vous à claude.ai pour enregistrer l'audit" : (A.roMsg || t);
+}
+
+function counts(items) {
+  const c = { total: items.length, confirme: 0, a_corriger: 0, question: 0, vus: 0 };
+  for (const a of items) { const s = statutOf(a.id); if (s && c[s] != null) { c[s]++; c.vus++; } }
+  return c;
+}
+function progHtml(c) {
+  const p = k => c.total ? (100 * c[k] / c.total).toFixed(2) : 0;
+  return `<div class="prog" role="img" aria-label="${n(c.vus)} sur ${n(c.total)} points vus"><i class="p-ok" style="width:${p('confirme')}%"></i><i class="p-bad" style="width:${p('a_corriger')}%"></i><i class="p-ask" style="width:${p('question')}%"></i></div>`;
+}
+const pct = c => c.total ? Math.round(100 * c.vus / c.total) : 0;
+function legendHtml(c) {
+  return `<div class="legend"><span><i class="l-ok"></i>Confirmés <b>${n(c.confirme)}</b></span><span><i class="l-bad"></i>À corriger <b>${n(c.a_corriger)}</b></span><span><i class="l-ask"></i>Questions <b>${n(c.question)}</b></span><span><i></i>Non vus <b>${n(c.total - c.vus)}</b></span><span>Fait <b>${pct(c)} %</b></span></div>`;
+}
+
+function chipHtml(id) {
+  if (!I.audit.has(id)) return '';
+  const s = statutOf(id);
+  return `<a class="chip" data-aid="${esc(id)}" data-st="${s}" href="${auditHref(I.audit.get(id))}" title="Point d'audit">${s ? STATUTS[s] : 'Non vu'}</a>`;
+}
+function awHtml(id, opts = {}) {
+  const a = I.audit.get(id);
+  if (!a) return '';
+  const did = docIdOf(id);
+  const head = opts.compact ? '' : `<div class="aw-top"><span class="eyebrow">Point d'audit</span><span class="mono small dim">${esc(id)}</span></div><p class="aw-q">${esc(a.quoi_verifier)}</p>`;
+  return `<div class="aw" data-aid="${esc(id)}" data-st="">${head}
+    <div class="seg" role="group" aria-label="Réponse">${Object.entries(STATUTS).map(([v, l]) => `<button type="button" data-v="${v}" aria-pressed="false">${l}</button>`).join('')}</div>
+    <textarea id="com-${did}" rows="2" placeholder="Commentaire (ce qui a été vérifié, ce qu'il faut corriger, la question)" aria-label="Commentaire"></textarea>
+    <div class="aw-foot"><span class="aw-who"></span><span class="aw-save" aria-live="polite"></span></div>
+  </div>`;
+}
+function paintAudit(root) {
+  const els = $$('[data-aid]', root);
+  for (const el of els) paintOne(el);
+  fillWho(root);
+}
+function paintOne(el) {
+  const id = el.dataset.aid, d = cur(id), s = d?.statut || '';
+  el.dataset.st = s;
+  if (el.classList.contains('chip')) { el.textContent = s ? STATUTS[s] : 'Non vu'; return; }
+  const ro = !canWrite();
+  for (const b of $$('.seg button', el)) { b.setAttribute('aria-pressed', String(b.dataset.v === s)); b.disabled = ro; b.title = ro ? (A.phase === 'off' ? "Connectez-vous à claude.ai pour enregistrer l'audit" : A.phase === 'wait' ? 'Connexion à la base de l’audit…' : A.roMsg) : ''; }
+  const ta = $('textarea', el);
+  ta.readOnly = ro;
+  if (document.activeElement !== ta && !A.drafts.has(id)) ta.value = d?.commentaire || '';
+  const who = $('.aw-who', el);
+  if (d && d.par) who.innerHTML = `${s ? esc(STATUTS[s]) : 'Commentaire'} · <span data-who="${esc(d.par)}">…</span> · ${esc(dateCourte(d.le))}`;
+  else if (d) who.textContent = `${s ? STATUTS[s] : 'Commentaire'} · ${dateCourte(d.le)}`;
+  else who.textContent = A.phase === 'wait' ? 'Chargement des réponses…' : 'Pas encore de réponse';
+  const sv = $('.aw-save', el), st = A.saveSt.get(id);
+  sv.dataset.s = st ? st.s : '';
+  sv.textContent = st ? st.msg : (A.phase === 'off' ? "Connectez-vous à claude.ai pour enregistrer l'audit" : A.phase === 'ro' ? 'Lecture seule' : '');
+}
+async function fillWho(root) {
+  const els = $$('[data-who]', root);
+  if (!els.length) return;
+  const ids = [...new Set(els.map(e => e.dataset.who))];
+  let ps = {};
+  try { if (A.user) ps = await A.user.profiles(ids); } catch (e) { ps = {}; }
+  for (const e of els) { const p = ps[e.dataset.who]; e.textContent = p ? (p.isMe ? 'vous' : (p.name || 'Quelqu\'un')) : 'Quelqu\'un'; }
+}
+let progTimer = 0;
+function refreshItem(id) {
+  for (const el of $$(`[data-aid="${CSS.escape(id)}"]`)) paintOne(el);
+  fillWho($('#app'));
+  if (!progTimer) progTimer = requestAnimationFrame(() => { progTimer = 0; refreshProgress(); });
+}
+function refreshProgress() {
+  for (const el of $$('[data-prog]')) {
+    const key = el.dataset.prog;
+    const items = key === 'all' ? G.audit : key.startsWith('mod:') ? G.audit.filter(a => a.module === key.slice(4)) : [];
+    const c = counts(items);
+    el.innerHTML = progHtml(c) + (el.dataset.legend ? legendHtml(c) : `<div class="small dim">${n(c.vus)} / ${n(c.total)} vus · ${pct(c)} %</div>`);
+  }
+  const t = $('#modprog'); if (t) t.innerHTML = modProgRows();
+  const r = $('#retires'); if (r) { r.innerHTML = retiresHtml(); fillWho(r); }
+  const pc = $('#pillcounts'); if (pc) pc.innerHTML = statPills();
+}
+
+/* écriture : une à la fois par document, seulement sur changement */
+function commit(id, statut, commentaire) {
+  if (!canWrite()) return;
+  const before = cur(id);
+  if ((before?.statut || '') === (statut || '') && (before?.commentaire || '') === commentaire) return;
+  const body = (statut || commentaire.trim()) ? { item: id, statut: statut || null, commentaire, par: A.uid, le: new Date().toISOString() } : null;
+  A.local.set(id, body);
+  A.saveSt.set(id, { s: '', msg: 'Enregistrement…' });
+  refreshItem(id);
+  const q = A.q.get(id) || { busy: false, next: undefined };
+  q.next = body; A.q.set(id, q);
+  if (!q.busy) pump(id, q);
+}
+async function pump(id, q) {
+  q.busy = true;
+  const ref = A.col.doc(docIdOf(id));
+  while (q.next !== undefined) {
+    const body = q.next; q.next = undefined;
+    try {
+      await writeOnce(ref, body);
+      if (body) A.server.set(id, body); else A.server.delete(id);
+      if (q.next === undefined) { A.local.delete(id); A.saveSt.set(id, { s: 'ok', msg: 'Enregistré' }); }
+    } catch (e) {
+      q.next = undefined; A.local.delete(id);
+      A.saveSt.set(id, { s: 'err', msg: writeError(e) });
+    }
+    refreshItem(id);
+  }
+  q.busy = false;
+}
+async function writeOnce(ref, body) {
+  try { return body ? await ref.set(body) : await ref.delete(); }
+  catch (e) {
+    if (e && e.code && !['unavailable', 'resource_exhausted'].includes(e.code) && ['invalid_argument', 'quota_exceeded', 'revoked', 'not_granted', 'capability_disabled', 'capability_removed', 'transform_error'].includes(e.code)) throw e;
+    await new Promise(r => setTimeout(r, 400 + Math.random() * 900));
+    return body ? await ref.set(body) : await ref.delete();
+  }
+}
+function writeError(e) {
+  const c = e && e.code;
+  if (c === 'invalid_argument' || c === 'transform_error') { goReadOnly("Votre accès à cette page ne permet pas d'enregistrer l'audit : réponses en lecture seule."); return "Non enregistré : votre accès est en lecture seule."; }
+  if (c === 'revoked' || c === 'not_granted' || c === 'capability_disabled' || c === 'capability_removed') { goReadOnly("L'enregistrement de l'audit n'est plus disponible sur cette page."); return 'Non enregistré : enregistrement indisponible.'; }
+  if (c === 'quota_exceeded') return "Non enregistré : la base de l'audit est pleine. Prévenez la personne qui a publié le guide.";
+  if (c === 'resource_exhausted') return 'Non enregistré : trop d’enregistrements d’un coup. Réessayez dans un instant.';
+  return 'Non enregistré : connexion perdue. Réessayez.';
+}
+function goReadOnly(msg) {
+  if (A.phase === 'ro') return;
+  A.phase = 'ro'; A.roMsg = msg; setDbState();
+  for (const el of $$('.aw[data-aid]')) paintOne(el);
+  const b = $('#aud-banner'); if (b) b.innerHTML = bannerHtml();
+}
+function bannerHtml() {
+  if (A.phase === 'off') return `<div class="note w"><b>Connectez-vous à claude.ai pour enregistrer l'audit.</b><span>Les points restent consultables ; les réponses déjà données s'affichent dès que la base est disponible.</span></div>`;
+  if (A.phase === 'ro') return `<div class="note w"><b>Lecture seule.</b><span>${esc(A.roMsg)}</span></div>`;
+  if (A.err) return `<div class="note e"><b>Réponses non synchronisées.</b><span>${esc(A.err)}</span></div>`;
+  if (A.phase === 'wait') return `<div class="note"><span>Connexion à la base de l'audit…</span></div>`;
+  return '';
+}
+
+document.addEventListener('click', e => {
+  const b = e.target.closest('.aw .seg button');
+  if (!b || b.disabled) return;
+  const id = b.closest('.aw').dataset.aid;
+  const d = cur(id), v = b.dataset.v;
+  const com = A.drafts.has(id) ? A.drafts.get(id) : (d?.commentaire || '');
+  A.drafts.delete(id); clearTimeout(A.timers.get(id));
+  commit(id, d?.statut === v ? null : v, com);
+});
+document.addEventListener('input', e => {
+  const ta = e.target.closest('.aw textarea');
+  if (!ta) return;
+  const id = ta.closest('.aw').dataset.aid;
+  A.drafts.set(id, ta.value);
+  clearTimeout(A.timers.get(id));
+  A.timers.set(id, setTimeout(() => flushComment(id), 800));
+  A.saveSt.set(id, { s: '', msg: 'Modifié…' });
+  const sv = $('.aw-save', ta.closest('.aw')); sv.dataset.s = ''; sv.textContent = 'Modifié…';
+});
+document.addEventListener('focusout', e => {
+  const ta = e.target.closest && e.target.closest('.aw textarea');
+  if (ta) flushComment(ta.closest('.aw').dataset.aid);
+});
+function flushComment(id) {
+  clearTimeout(A.timers.get(id)); A.timers.delete(id);
+  if (!A.drafts.has(id)) return;
+  const v = A.drafts.get(id); A.drafts.delete(id);
+  const d = cur(id);
+  if ((d?.commentaire || '') === v) { A.saveSt.delete(id); refreshItem(id); return; }
+  commit(id, d?.statut || null, v);
+}
+
+async function startAudit() {
+  let db = null, user = null;
+  try { db = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('db') : null; } catch (e) { db = null; }
+  try { user = window.claude && typeof window.claude.use === 'function' ? await window.claude.use('user') : null; } catch (e) { user = null; }
+  A.user = user;
+  if (user) { try { A.uid = await user.id(); } catch (e) { A.uid = null; } }
+  if (!db) { A.phase = 'off'; setDbState(); afterPhase(); return; }
+  A.db = db; A.col = db.collection('audit');
+  let w = null;
+  if (user) { try { w = await user.can('data.write'); } catch (e) { w = null; } }
+  if (w === false) { A.phase = 'ro'; A.roMsg = "Votre accès à cette page permet de lire l'audit, pas d'y répondre."; }
+  else A.phase = 'on';
+  setDbState();
+  subscribe(0);
+  afterPhase();
+}
+function subscribe(tries) {
+  if (A.unsub) { try { A.unsub(); } catch (e) { } }
+  A.unsub = A.col.onSnapshot(snap => {
+    A.err = '';
+    const changed = new Set();
+    for (const ch of snap.docChanges()) {
+      const d = ch.doc.data();
+      const item = d && typeof d.item === 'string' ? d.item : null;
+      if (!item) continue;
+      if (ch.type === 'removed') A.server.delete(item); else A.server.set(item, d);
+      changed.add(item);
+    }
+    if (changed.size > 60) { paintAudit($('#app')); refreshProgress(); }
+    else for (const id of changed) refreshItem(id);
+    const b = $('#aud-banner'); if (b) b.innerHTML = bannerHtml();
+  }, err => {
+    const c = err && err.code;
+    if (c === 'revoked') { goReadOnly("L'accès à l'audit a été retiré pour cette page."); return; }
+    A.err = c === 'resource_exhausted' ? 'Trop de lectures en même temps ; nouvel essai dans quelques secondes.' : 'La liaison avec la base a été coupée ; nouvel essai dans quelques secondes.';
+    const b = $('#aud-banner'); if (b) b.innerHTML = bannerHtml();
+    if (tries < 5) setTimeout(() => subscribe(tries + 1), 3000 * (tries + 1));
+  });
+}
+function afterPhase() {
+  paintAudit($('#app'));
+  const b = $('#aud-banner'); if (b) b.innerHTML = bannerHtml();
+  refreshProgress();
+}
+
+/* ---------- Navigation ---------- */
+const TABS = [
+  ['vue', "Vue d'ensemble"], ['chapitres', 'Chapitres'], ['modules', 'Modules'], ['tables', 'Tables', () => G.entites.length],
+  ['routes', 'Routes', () => G.routes.length], ['controleurs', 'Contrôleurs', () => G.controleurs.length], ['services', 'Services', () => G.services.length],
+  ['commandes', 'Commandes', () => G.commandes.length], ['droits', 'Droits'], ['securite', 'Sécurité'], ['synchro', 'Synchro'], ['reglages', 'Réglages'],
+  ['audit', 'Audit', () => G.audit.length]
+];
+const SECTION_OF = { chapitre: 'chapitres', module: 'modules', table: 'tables', route: 'routes', controleur: 'controleurs', service: 'services', commande: 'commandes', mecanisme: 'securite' };
+function renderTabs(active) {
+  $('#tabs').innerHTML = TABS.map(([k, l, c]) => `<a href="#${k}"${k === active ? ' aria-current="page"' : ''}>${l}${c ? `<span class="n">${n(c())}</span>` : ''}</a>`).join('');
+  const a = $('#tabs a[aria-current]'); if (a && a.scrollIntoView) { const t = $('#tabs'); t.scrollLeft = Math.max(0, a.offsetLeft - 40); }
+}
+let searchMode = false;
+function route() {
+  if (!G) return;
+  const h = decodeURIComponent((location.hash || '#vue').slice(1)) || 'vue';
+  const m = h.match(/^([a-z]+)-(.+)$/);
+  const kind = m && SECTION_OF[m[1]] ? m[1] : null;
+  const sec = kind ? SECTION_OF[kind] : h;
+  searchMode = false;
+  renderTabs(sec);
+  const app = $('#app');
+  let html;
+  try {
+    if (kind === 'chapitre') html = viewChapitre(m[2]);
+    else if (kind === 'module') html = viewModule(m[2]);
+    else if (kind === 'table') html = viewEntite(m[2]);
+    else if (kind === 'route') html = viewRoute(m[2]);
+    else if (kind === 'controleur') html = viewCtrl(m[2]);
+    else if (kind === 'service') html = viewSvc(m[2]);
+    else if (kind === 'commande') html = viewCmd(m[2]);
+    else if (kind === 'mecanisme') html = viewSecurite();
+    else html = (VIEWS[h] || VIEWS.vue)();
+  } catch (e) { console.error(e); html = `<div class="note e">Cette partie du guide n'a pas pu s'afficher (${esc(e.message)}).</div>`; }
+  app.innerHTML = `<div class="view">${html}</div>`;
+  if (afterRender) { const f = afterRender; afterRender = null; f(app); }
+  paintAudit(app); refreshProgress();
+  if (kind === 'mecanisme') { const el = document.getElementById('mec-' + m[2]); if (el) el.scrollIntoView({ block: 'start' }); else scrollTo(0, 0); }
+  else scrollTo(0, 0);
+}
+let afterRender = null;
+window.addEventListener('hashchange', route);
+const notFound = what => `<div class="note e"><b>${esc(what)} introuvable.</b><span>Le guide a peut-être été régénéré depuis ce lien. <a href="#vue">Retour à la vue d'ensemble</a>.</span></div>`;
+
+/* ---------- Listes paresseuses ---------- */
+function lazy(container, items, rowFn, opts = {}) {
+  const chunk = opts.chunk || 100;
+  let i = 0;
+  const target = opts.tbody ? $('tbody', container) : container;
+  const btn = document.createElement('button'); btn.className = 'more'; btn.type = 'button';
+  container.after(btn);
+  let io = null;
+  const more = () => {
+    const part = items.slice(i, i + chunk);
+    target.insertAdjacentHTML('beforeend', part.map(rowFn).join(''));
+    i += part.length;
+    const left = items.length - i;
+    btn.hidden = left <= 0;
+    btn.textContent = `Afficher la suite (${n(left)} restant${left > 1 ? 's' : ''})`;
+    paintAudit(target);
+    if (left <= 0 && io) io.disconnect();
+  };
+  btn.addEventListener('click', more);
+  more();
+  if ('IntersectionObserver' in window && items.length > chunk) {
+    io = new IntersectionObserver(es => { if (es.some(x => x.isIntersecting) && btn.isConnected && !btn.hidden) more(); }, { rootMargin: '600px' });
+    io.observe(btn);
+  }
+  return btn;
+}
+
+/* ---------- Filtres communs ---------- */
+const F = store.get('filtres', {});
+const saveF = () => store.set('filtres', F);
+function modSelect(id, val, list) {
+  const keys = list ? [...new Set(list.map(x => x.module))] : G.modules.map(m => m.cle);
+  keys.sort((a, b) => (I.modOrder.get(a) ?? 99) - (I.modOrder.get(b) ?? 99));
+  return `<select id="${id}" aria-label="Module"><option value="">Tous les modules</option>${keys.map(k => `<option value="${esc(k)}"${k === val ? ' selected' : ''}>${esc(I.mod.get(k)?.libelle || k)}</option>`).join('')}</select>`;
+}
+const matchAll = (hay, q) => { const t = norm(q).split(/\s+/).filter(Boolean); if (!t.length) return true; const h = norm(hay); return t.every(x => h.includes(x)); };
+
+/* ---------- Vue d'ensemble ---------- */
+const VIEWS = {};
+VIEWS.vue = () => {
+  const s = G.stats, g = G.genere_le;
+  const tile = (v, l, sub, href) => `<a class="tile" href="${href}"><span class="v">${n(v)}</span><span class="l">${l}</span>${sub ? `<span class="s">${sub}</span>` : ''}</a>`;
+  return `
+  <div class="head"><span class="eyebrow">Succès Imprim · application Symfony</span><h1>Guide technique</h1>
+  <p class="lead">Architecture, tables et relations, routes et leurs droits, tâches planifiées, sécurité et synchronisation, tirés du code au moment de la génération. Chaque contrôleur, table, route sensible, tâche planifiée et mécanisme de sécurité porte un point d'audit : Confirmé, À corriger ou Question, avec un commentaire.</p></div>
+  <div class="panel"><dl class="kv">
+    <dt>Généré le</dt><dd>${esc(dateFr(g.date))}</dd>
+    <dt>Commit</dt><dd><span class="mono" title="${esc(g.commit)}">${esc(String(g.commit).slice(0, 12))}</span></dd>
+    <dt>Branche</dt><dd class="mono">${esc(g.branche)}</dd>
+  </dl></div>
+  <div class="tiles">
+    ${tile(s.entites, 'Tables', 'entités Doctrine', '#tables')}
+    ${tile(s.routes, 'Routes', `${n(s.routes_modifiant_des_donnees)} modifient, ${n(s.routes_publiques)} publiques`, '#routes')}
+    ${tile(s.routes_sans_csrf_signalees, 'Sans jeton CSRF', 'routes qui modifient, signalées', '#securite')}
+    ${tile(s.controleurs, 'Contrôleurs', '', '#controleurs')}
+    ${tile(s.services, 'Services', '', '#services')}
+    ${tile(s.commandes, 'Commandes', `${n(s.commandes_planifiees)} planifiées`, '#commandes')}
+    ${tile(s.droits, 'Droits', `${n(s.voteurs)} voteurs`, '#droits')}
+    ${tile(s.types_synchronises, 'Types synchronisés', 'ERP local ↔ site', '#synchro')}
+    ${tile(s.tuiles_parametres, 'Tuiles de réglages', '', '#reglages')}
+    ${tile(s.migrations, 'Migrations', 'Doctrine', '#vue')}
+    ${tile(s.tests_unitaires, 'Tests unitaires', '', '#vue')}
+    ${tile(s.audit, "Points d'audit", Object.entries(s.audit_par_type || {}).map(([k, v]) => `${n(v)} ${(TYPES[k] || k).toLowerCase()}`).join(', '), '#audit')}
+  </div>
+  <div class="panel"><h2>Avancement de l'audit</h2><div data-prog="all" data-legend="1"></div><p class="mt small"><a href="#audit">Ouvrir la grille d'audit</a></p></div>
+  <div class="cols">
+    <div class="panel"><h2>Chapitres</h2><div class="list">${G.chapitres.map((c, i) => `<a class="row" href="#chapitre-${esc(c.id)}"><span>${i + 1}. ${esc(c.titre)}</span></a>`).join('')}</div></div>
+    <div class="panel"><h2>Modules</h2><div class="list">${G.modules.map(m => `<a class="row" href="#module-${esc(m.cle)}"><span>${esc(m.libelle)} <span class="dim small">${m.sorte === 'menu' ? 'menu' : 'technique'}</span></span><span class="small dim">${plural(m.routes.length, 'route', 'routes')}</span></a>`).join('')}</div></div>
+  </div>`;
+};
+
+/* ---------- Chapitres ---------- */
+const mdCache = new Map();
+function renderMd(md) {
+  if (mdCache.has(md)) return mdCache.get(md);
+  let html;
+  if (window.marked && window.DOMPurify) {
+    html = DOMPurify.sanitize(marked.parse(md, { gfm: true }));
+  } else {
+    html = `<div class="note w">Mise en forme indisponible (bibliothèque non chargée) : texte brut.</div><pre style="white-space:pre-wrap">${esc(md)}</pre>`;
+  }
+  const box = document.createElement('div'); box.innerHTML = html;
+  for (const pre of $$('pre > code.language-mermaid', box)) { const p = document.createElement('pre'); p.className = 'mermaid'; p.textContent = pre.textContent; pre.parentNode.replaceWith(p); }
+  for (const t of $$('table', box)) { const w = document.createElement('div'); w.className = 'tbl'; t.replaceWith(w); w.appendChild(t); }
+  for (const c of $$('code', box)) {
+    if (c.closest('a') || c.closest('pre')) continue;
+    const href = codeHref(c.textContent.trim());
+    if (href) { const a = document.createElement('a'); a.href = href; c.replaceWith(a); a.appendChild(c); }
+  }
+  let k = 0; for (const h of $$('h2, h3', box)) h.id = 'h' + (k++);
+  html = box.innerHTML; mdCache.set(md, html); return html;
+}
+function codeHref(t) {
+  if (!t || t.length > 120) return null;
+  if (I.route.has(t)) return hRoute(t);
+  const first = t.split(/\s+/)[0];
+  if (I.route.has(first)) return hRoute(first);
+  if (I.cmd.has(t)) return hCmd(t);
+  const cls = t.split('::')[0].replace(/\(\)$/, '');
+  if (I.shortName.has(short(cls))) return I.shortName.get(short(cls));
+  if (I.tbl.has(t)) return hEnt(I.tbl.get(t).classe);
+  return null;
+}
+VIEWS.chapitres = () => viewChapitre(G.chapitres[0].id);
+function viewChapitre(id) {
+  const c = G.chapitres.find(x => x.id === id);
+  if (!c) return notFound('Chapitre');
+  const body = renderMd(c.markdown);
+  const subs = (c.markdown.match(/^## .+$/gm) || []).map((t, i) => [i, t.slice(3)]);
+  const i = G.chapitres.indexOf(c), prev = G.chapitres[i - 1], next = G.chapitres[i + 1];
+  afterRender = app => {
+    let k = 0; const h2 = $$('.md h2, .md h3', app).filter(h => h.tagName === 'H2');
+    $$('.toc .sub', app).forEach((a, j) => a.addEventListener('click', ev => { ev.preventDefault(); h2[j]?.scrollIntoView({ block: 'start' }); }));
+  };
+  return `<div class="chap">
+    <nav class="toc" aria-label="Chapitres">${G.chapitres.map(x => `<a href="#chapitre-${esc(x.id)}"${x.id === id ? ' aria-current="page"' : ''}>${esc(x.titre)}</a>${x.id === id ? subs.map(([j, t]) => `<a class="sub" href="#chapitre-${esc(x.id)}">${esc(t)}</a>`).join('') : ''}`).join('')}</nav>
+    <article class="md">${body}
+      <p class="mt small dim" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap">${prev ? `<a href="#chapitre-${esc(prev.id)}">← ${esc(prev.titre)}</a>` : '<span></span>'}${next ? `<a href="#chapitre-${esc(next.id)}">${esc(next.titre)} →</a>` : ''}</p>
+    </article></div>`;
+}
+
+/* ---------- Modules ---------- */
+VIEWS.modules = () => `<div class="head"><span class="eyebrow">${n(G.modules.length)} modules</span><h1>Modules</h1><p class="lead">Les sept modules du menu, puis les modules techniques. Chaque module regroupe ses tables, routes, contrôleurs, services et commandes.</p></div>
+  <div class="mods">${G.modules.map(m => `<a class="mod" href="#module-${esc(m.cle)}"><h3>${esc(m.libelle)} <span class="tag">${m.sorte === 'menu' ? 'menu' : 'technique'}</span></h3>
+    <div class="nums"><span><b>${n(m.entites.length)}</b> tables</span><span><b>${n(m.routes.length)}</b> routes</span><span><b>${n(m.controleurs.length)}</b> contrôleurs</span><span><b>${n(m.services.length)}</b> services</span><span><b>${n(m.commandes.length)}</b> commandes</span></div>
+    <div data-prog="mod:${esc(m.cle)}"></div></a>`).join('')}</div>`;
+function viewModule(k) {
+  const m = I.mod.get(k); if (!m) return notFound('Module');
+  const routes = m.routes.map(r => I.route.get(r)).filter(Boolean);
+  afterRender = app => { const t = $('#mod-routes', app); if (t) lazy(t, routes, routeRow, { tbody: true, chunk: 80 }); };
+  return `<div class="head"><span class="eyebrow">Module ${m.sorte === 'menu' ? 'du menu' : 'technique'}</span><h1>${esc(m.libelle)}</h1></div>
+  <div class="panel"><h3>Audit du module</h3><div data-prog="mod:${esc(k)}" data-legend="1"></div><p class="mt small"><a href="#audit" data-audit-mod="${esc(k)}">Auditer ce module</a></p></div>
+  <div class="cols">
+    <div class="panel"><h3>Tables (${n(m.entites.length)})</h3><div class="list">${m.entites.map(c => { const e = I.ent.get(c); return `<a class="row" href="${hEnt(c)}"><span class="t">${esc(short(c))}</span>${chipHtml('entite:' + c)}<span class="d mono">${esc(e?.table || '')}</span></a>`; }).join('') || '<p class="dim small">Aucune.</p>'}</div></div>
+    <div class="panel"><h3>Contrôleurs (${n(m.controleurs.length)})</h3><div class="list">${m.controleurs.map(c => `<a class="row" href="${hCtrl(c)}"><span class="t">${esc(short(c))}</span>${chipHtml('controleur:' + c)}</a>`).join('') || '<p class="dim small">Aucun.</p>'}</div></div>
+    <div class="panel"><h3>Services (${n(m.services.length)})</h3><div class="list">${m.services.map(c => `<a class="row" href="${hSvc(c) || '#services'}"><span class="t">${esc(short(c))}</span><span class="d mono">${esc(c)}</span></a>`).join('') || '<p class="dim small">Aucun.</p>'}</div></div>
+    <div class="panel"><h3>Commandes (${n(m.commandes.length)})</h3><div class="list">${m.commandes.map(c => { const x = I.cmd.get(c); return `<a class="row" href="${hCmd(c)}"><span class="t">${esc(c)}</span>${chipHtml('commande:' + c)}<span class="d">${esc(x?.planification?.[0]?.frequence || x?.description || '')}</span></a>`; }).join('') || '<p class="dim small">Aucune.</p>'}</div></div>
+  </div>
+  <div><h2 style="margin-bottom:10px">Routes (${n(routes.length)})</h2>${routeTable('mod-routes')}</div>`;
+}
+document.addEventListener('click', e => {
+  const a = e.target.closest('[data-audit-mod]');
+  if (a) { AF.module = a.dataset.auditMod; AF.statut = 'tous'; AF.type = ''; AF.q = ''; store.set('audit', AF); }
+});
+
+/* ---------- Tables ---------- */
+VIEWS.tables = () => {
+  const f = F.tables || (F.tables = { q: '', m: '' });
+  afterRender = app => {
+    const draw = () => {
+      const list = G.entites.filter(e => (!f.m || e.module === f.m) && matchAll([e.classe, e.table, e.role, ...(e.champs || []).map(c => c.colonne)].join(' '), f.q));
+      $('#ent-count', app).textContent = plural(list.length, 'table', 'tables');
+      const t = $('#ent-list', app); $('tbody', t).innerHTML = ''; t.nextElementSibling?.classList.contains('more') && t.nextElementSibling.remove();
+      lazy(t, list, e => `<tr><td><a class="mono" href="${hEnt(e.classe)}">${esc(short(e.classe))}</a><div class="small dim">${esc(e.role || '')}</div></td><td class="mono">${esc(e.table)}</td><td>${modTag(e.module)}</td><td class="num">${n(e.champs.length)}</td><td class="num">${n(e.relations.length)}</td><td>${e.synchronisee ? `<span class="tag g">${esc(e.synchronisee.sens)}</span>` : ''}</td><td>${chipHtml('entite:' + e.classe)}</td></tr>`, { tbody: true, chunk: 60 });
+    };
+    bindFilters(app, f, draw, { q: '#ent-q', m: '#ent-m' }); draw();
+  };
+  return `<div class="head"><span class="eyebrow">${n(G.entites.length)} entités Doctrine</span><h1>Tables</h1><p class="lead">Chaque table avec ses colonnes, ses relations (sortantes et entrantes), ses index et ses écouteurs.</p></div>
+  <div class="filters"><input id="ent-q" type="search" placeholder="Filtrer par classe, table, colonne…" value="${esc(f.q)}" aria-label="Filtrer les tables">${modSelect('ent-m', f.m)}<span class="count" id="ent-count"></span></div>
+  <div class="tbl" id="ent-list"><table><thead><tr><th>Entité</th><th>Table</th><th>Module</th><th class="num">Champs</th><th class="num">Relations</th><th>Synchro</th><th>Audit</th></tr></thead><tbody></tbody></table></div>`;
+};
+function bindFilters(app, f, draw, sel) {
+  let t = 0;
+  for (const [k, s] of Object.entries(sel)) {
+    const el = $(s, app); if (!el) continue;
+    const ev = el.type === 'checkbox' ? 'change' : el.tagName === 'SELECT' ? 'change' : 'input';
+    el.addEventListener(ev, () => { f[k] = el.type === 'checkbox' ? el.checked : el.value; saveF(); clearTimeout(t); t = setTimeout(draw, ev === 'input' ? 160 : 0); });
+  }
+}
+function viewEntite(a) {
+  const e = I.entA.byA.get(a); if (!e) return notFound('Table');
+  const yes = v => v ? '<span class="yes">oui</span>' : '<span class="no">non</span>';
+  const champs = e.champs.map(c => `<tr><td class="mono">${esc(c.nom)}${c.identifiant ? ' <span class="tag m">id</span>' : ''}</td><td class="mono">${esc(c.colonne)}</td><td class="mono">${esc(c.type)}</td><td class="num">${c.longueur ?? (c.precision != null ? `${c.precision},${c.echelle ?? 0}` : '')}</td><td>${c.nullable ? '<span class="dim">oui</span>' : '<b>non</b>'}</td><td>${c.unique ? '<span class="yes">oui</span>' : ''}</td><td class="mono small">${esc(c.defaut_base ?? c.defaut_php ?? '')}</td></tr>`).join('');
+  const rels = e.relations.map(r => `<tr><td class="mono">${esc(r.nom)}</td><td><span class="tag">${esc(r.type)}</span></td><td>${entLink(r.cible)}</td><td class="mono small">${esc(r.mappedBy ? 'mappedBy ' + r.mappedBy : r.inversedBy ? 'inversedBy ' + r.inversedBy : '')}</td><td>${yes(r.proprietaire)}</td><td class="small">${(r.colonnes_jointure || []).map(j => `<span class="mono">${esc(j.colonne)}</span> → ${esc(j.reference)}${j.onDelete ? ` <span class="tag ${j.onDelete === 'CASCADE' ? 'a' : ''}">ON DELETE ${esc(j.onDelete)}</span>` : ''}`).join('<br>')}${r.table_jointure ? `<span class="mono">${esc(typeof r.table_jointure === 'string' ? r.table_jointure : r.table_jointure.nom || JSON.stringify(r.table_jointure))}</span>` : ''}</td><td class="small">${esc((r.cascade || []).join(', '))}${r.orphanRemoval ? ' <span class="tag a">orphanRemoval</span>' : ''}</td></tr>`).join('');
+  const inc = I.incoming.get(e.classe) || [];
+  const outN = e.relations.map(r => `<div class="node">${entLink(r.cible)}<span class="tag">${esc(r.type)} · ${esc(r.nom)}</span></div>`).join('') || '<span class="dim small">aucune</span>';
+  const inN = inc.map(x => `<div class="node">${entLink(x.from.classe)}<span class="tag">${esc(x.rel.type)} · ${esc(x.rel.nom)}</span></div>`).join('') || '<span class="dim small">aucune</span>';
+  const ctrls = I.chargee.get(e.classe) || [];
+  const st = I.syncType.get(e.classe);
+  return `<div class="head"><span class="eyebrow">Table · ${modTag(e.module)}</span><h1 class="mono" style="font-family:var(--f-mono);font-size:1.5rem;overflow-wrap:anywhere">${esc(short(e.classe))}</h1><p class="lead">${esc(e.role || '')}</p></div>
+  <div class="cols">
+    <div class="panel"><dl class="kv"><dt>Table</dt><dd class="mono">${esc(e.table)}</dd><dt>Classe</dt><dd class="mono">${esc(e.classe)}</dd><dt>Fichier</dt><dd class="mono">${esc(e.fichier)}</dd>
+      <dt>Synchronisée</dt><dd>${e.synchronisee ? `<span class="tag g">${esc(e.synchronisee.type)}</span> ${esc(e.synchronisee.sens)}, ${n(e.synchronisee.champs)} champs (<a href="#synchro">Synchro</a>)` : 'non'}</dd>
+      ${e.rappels_cycle_de_vie?.length ? `<dt>Rappels</dt><dd class="mono small">${e.rappels_cycle_de_vie.map(x => esc(Object.entries(x).map(([k, v]) => k + ' : ' + [].concat(v).join(', ')).join('; '))).join('<br>')}</dd>` : ''}
+      ${e.ecouteurs?.length ? `<dt>Écouteurs</dt><dd class="mono small">${e.ecouteurs.map(esc).join('<br>')}</dd>` : ''}
+      ${e.index?.length ? `<dt>Index</dt><dd class="small">${e.index.map(x => `<span class="mono">${esc(x.nom)}</span> (${esc(x.colonnes.join(', '))})`).join('<br>')}</dd>` : ''}
+      ${e.contraintes_uniques?.length ? `<dt>Uniques</dt><dd class="small">${e.contraintes_uniques.map(x => `<span class="mono">${esc(x.nom)}</span> (${esc(x.colonnes.join(', '))})`).join('<br>')}</dd>` : ''}
+      ${ctrls.length ? `<dt>Chargée par</dt><dd><div class="tags">${ctrls.map(c => `<a class="tag" href="${hCtrl(c.classe)}">${esc(short(c.classe))}</a>`).join('')}</div></dd>` : ''}
+    </dl></div>
+    ${awHtml('entite:' + e.classe)}
+  </div>
+  <div><h2 style="margin-bottom:10px">Champs (${n(e.champs.length)})</h2><div class="tbl"><table><thead><tr><th>Propriété</th><th>Colonne</th><th>Type</th><th class="num">Long.</th><th>Nullable</th><th>Unique</th><th>Défaut</th></tr></thead><tbody>${champs}</tbody></table></div></div>
+  <div class="panel"><h2>Relations</h2>
+    <div class="rel"><div class="col"><span class="lbl">Pointée par (${n(inc.length)})</span>${inN}</div><div class="center">${esc(short(e.classe))}<div class="small dim">${esc(e.table)}</div></div><div class="col"><span class="lbl">Pointe vers (${n(e.relations.length)})</span>${outN}</div></div>
+  </div>
+  ${e.relations.length ? `<div class="tbl"><table><thead><tr><th>Relation</th><th>Type</th><th>Cible</th><th>Côté</th><th>Propriétaire</th><th>Jointure</th><th>Cascade</th></tr></thead><tbody>${rels}</tbody></table></div>` : ''}
+  ${st ? `<div class="panel"><h3>Champs synchronisés (${esc(st.sens)})</h3><div class="tags">${st.champs.map(c => `<span class="tag">${esc(c)}</span>`).join('')}</div></div>` : ''}`;
+}
+
+/* ---------- Routes ---------- */
+function rolesOf(r) {
+  const c = I.ctrl.get(String(r.controleur).split('::')[0]);
+  return [...new Set([...(r.acces?.access_control?.roles || []), ...(c?.is_granted_classe || []), ...(r.acces?.is_granted || [])])];
+}
+function routeTable(id) {
+  return `<div class="tbl" id="${id}"><table><thead><tr><th>Route</th><th>Méthodes</th><th>Contrôleur</th><th>Accès</th><th>CSRF</th><th>Modifie</th><th>Public</th><th>Sensibles</th><th>Audit</th></tr></thead><tbody></tbody></table></div>`;
+}
+function csrfCell(r) {
+  if (r.sans_csrf) return '<span class="tag w">sans jeton</span>';
+  if (r.csrf) return `<span class="tag g" title="${esc(r.csrf_detail || '')}">jeton</span>`;
+  if (r.csrf_detail) return `<span class="small dim" title="${esc(r.csrf_detail)}">sans objet</span>`;
+  return '<span class="dim">—</span>';
+}
+function routeRow(r) {
+  return `<tr><td><a class="mono" href="${hRoute(r.nom)}">${esc(r.nom)}</a><div class="mono small dim">${esc(r.chemin)}</div></td><td class="nw">${(r.methodes.length ? r.methodes : ['tous']).map(m => `<span class="tag">${esc(m)}</span>`).join(' ')}</td><td class="small">${ctrlAction(r.controleur)}</td><td><div class="tags">${rolesOf(r).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div><div class="small dim">${esc(r.acces?.pare_feu || '')}</div></td><td>${csrfCell(r)}</td><td>${r.modifie_donnees ? '<span class="tag a">oui</span>' : '<span class="dim">non</span>'}</td><td>${r.public ? '<span class="tag w">public</span>' : ''}</td><td><div class="tags">${(r.sensibles || []).map(x => `<span class="tag">${esc(x.replace('_', ' '))}</span>`).join('')}</div></td><td>${chipHtml('route:' + r.nom)}</td></tr>`;
+}
+VIEWS.routes = () => {
+  const f = F.routes || (F.routes = { q: '', m: '', mod: false, pub: false, sc: false, sens: false });
+  afterRender = app => {
+    const draw = () => {
+      const list = G.routes.filter(r => (!f.m || r.module === f.m) && (!f.mod || r.modifie_donnees) && (!f.pub || r.public) && (!f.sc || r.sans_csrf) && (!f.sens || (r.sensibles || []).length) && matchAll([r.nom, r.chemin, r.controleur, r.methodes.join(' '), rolesOf(r).join(' ')].join(' '), f.q));
+      $('#rt-count', app).textContent = plural(list.length, 'route', 'routes');
+      const t = $('#rt-list', app); $('tbody', t).innerHTML = ''; if (t.nextElementSibling?.classList.contains('more')) t.nextElementSibling.remove();
+      lazy(t, list, routeRow, { tbody: true, chunk: 100 });
+    };
+    bindFilters(app, f, draw, { q: '#rt-q', m: '#rt-m', mod: '#rt-mod', pub: '#rt-pub', sc: '#rt-sc', sens: '#rt-sens' }); draw();
+  };
+  const cb = (id, k, l) => `<label><input type="checkbox" id="${id}"${f[k] ? ' checked' : ''}> ${l}</label>`;
+  return `<div class="head"><span class="eyebrow">${n(G.routes.length)} routes</span><h1>Routes</h1><p class="lead">Adresse, méthodes, contrôleur, accès (pare-feu, access_control, IsGranted), jeton CSRF, écriture de données, et données sensibles montrées.</p></div>
+  <div class="filters"><input id="rt-q" type="search" placeholder="Filtrer par nom, adresse, contrôleur, rôle…" value="${esc(f.q)}" aria-label="Filtrer les routes">${modSelect('rt-m', f.m)}
+  ${cb('rt-mod', 'mod', 'modifient')}${cb('rt-pub', 'pub', 'publiques')}${cb('rt-sc', 'sc', 'sans CSRF')}${cb('rt-sens', 'sens', 'sensibles')}<span class="count" id="rt-count"></span></div>
+  ${routeTable('rt-list')}`;
+};
+function viewRoute(a) {
+  const r = I.routeA.byA.get(a); if (!r) return notFound('Route');
+  const ac = r.acces || {};
+  const id = 'route:' + r.nom;
+  return `<div class="head"><span class="eyebrow">Route · ${modTag(r.module)}</span><h1 style="font-family:var(--f-mono);font-size:1.35rem;overflow-wrap:anywhere">${esc(r.nom)}</h1><p class="mono">${r.methodes.map(m => `<span class="tag">${esc(m)}</span>`).join(' ')} ${esc(r.chemin)}</p></div>
+  <div class="cols"><div class="panel"><dl class="kv">
+    <dt>Contrôleur</dt><dd>${ctrlAction(r.controleur)}</dd>
+    <dt>Pare-feu</dt><dd class="mono">${esc(ac.pare_feu || '—')}</dd>
+    <dt>access_control</dt><dd>${ac.access_control ? `<span class="mono">${esc(ac.access_control.chemin)}</span> (règle n° ${n(ac.access_control.rang)}) <div class="tags">${ac.access_control.roles.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div>` : '<span class="dim">aucune règle</span>'}</dd>
+    <dt>IsGranted</dt><dd><div class="tags">${[...(I.ctrl.get(String(r.controleur).split('::')[0])?.is_granted_classe || []).map(x => x + ' (classe)'), ...(ac.is_granted || [])].map(x => `<span class="tag">${esc(x)}</span>`).join('') || '<span class="dim">—</span>'}</div></dd>
+    ${ac.refus_dans_le_code?.length ? `<dt>Refus dans le code</dt><dd class="small">${ac.refus_dans_le_code.map(x => esc(typeof x === 'string' ? x : JSON.stringify(x))).join('<br>')}</dd>` : ''}
+    ${ac.verifications_dans_le_code?.length ? `<dt>Vérifications</dt><dd class="small">${ac.verifications_dans_le_code.map(x => esc(typeof x === 'string' ? x : JSON.stringify(x))).join('<br>')}</dd>` : ''}
+    ${ac.note ? `<dt>Note</dt><dd class="small">${esc(ac.note)}</dd>` : ''}
+    <dt>Publique</dt><dd>${r.public ? '<span class="tag w">oui</span>' : 'non'}</dd>
+    <dt>Modifie des données</dt><dd>${r.modifie_donnees ? '<span class="tag a">oui</span>' : 'non'}</dd>
+    <dt>Jeton CSRF</dt><dd>${csrfCell(r)} <span class="small dim">${esc(r.csrf_detail || '')}</span></dd>
+    <dt>Données sensibles</dt><dd><div class="tags">${(r.sensibles || []).map(x => `<span class="tag">${esc(x.replace('_', ' '))}</span>`).join('') || '<span class="dim">aucune</span>'}</div></dd>
+  </dl></div>
+  ${I.audit.has(id) ? awHtml(id) : `<div class="note"><span>Pas de point d'audit séparé pour cette route : elle est couverte par celui de son contrôleur${I.ctrl.has(String(r.controleur).split('::')[0]) ? ` (<a href="${hCtrl(String(r.controleur).split('::')[0])}">${esc(short(String(r.controleur).split('::')[0]))}</a>)` : ''}.</span></div>`}</div>`;
+}
+
+/* ---------- Contrôleurs ---------- */
+VIEWS.controleurs = () => {
+  const f = F.ctrl || (F.ctrl = { q: '', m: '' });
+  afterRender = app => {
+    const draw = () => {
+      const list = G.controleurs.filter(c => (!f.m || c.module === f.m) && matchAll([c.classe, c.resume, c.routes.join(' ')].join(' '), f.q));
+      $('#ct-count', app).textContent = plural(list.length, 'contrôleur', 'contrôleurs');
+      const t = $('#ct-list', app); $('tbody', t).innerHTML = ''; if (t.nextElementSibling?.classList.contains('more')) t.nextElementSibling.remove();
+      lazy(t, list, c => `<tr><td><a class="mono" href="${hCtrl(c.classe)}">${esc(short(c.classe))}</a><div class="small dim">${esc(c.resume || '')}</div></td><td>${modTag(c.module)}</td><td class="num">${n(c.routes.length)}</td><td class="num">${n(c.csrf?.routes_modifiant)}</td><td class="num">${c.csrf?.sans_jeton?.length ? `<span class="warn">${n(c.csrf.sans_jeton.length)}</span>` : '0'}</td><td><div class="tags">${(c.is_granted_classe || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></td><td>${chipHtml('controleur:' + c.classe)}</td></tr>`, { tbody: true, chunk: 80 });
+    };
+    bindFilters(app, f, draw, { q: '#ct-q', m: '#ct-m' }); draw();
+  };
+  return `<div class="head"><span class="eyebrow">${n(G.controleurs.length)} contrôleurs</span><h1>Contrôleurs</h1></div>
+  <div class="filters"><input id="ct-q" type="search" placeholder="Filtrer par classe, résumé, route…" value="${esc(f.q)}" aria-label="Filtrer les contrôleurs">${modSelect('ct-m', f.m)}<span class="count" id="ct-count"></span></div>
+  <div class="tbl" id="ct-list"><table><thead><tr><th>Contrôleur</th><th>Module</th><th class="num">Routes</th><th class="num">Modifient</th><th class="num">Sans jeton</th><th>IsGranted (classe)</th><th>Audit</th></tr></thead><tbody></tbody></table></div>`;
+};
+function viewCtrl(a) {
+  const c = I.ctrlA.byA.get(a); if (!c) return notFound('Contrôleur');
+  const routes = c.routes.map(r => I.route.get(r)).filter(Boolean);
+  afterRender = app => { const t = $('#c-routes', app); if (t) lazy(t, routes, routeRow, { tbody: true, chunk: 100 }); };
+  return `<div class="head"><span class="eyebrow">Contrôleur · ${modTag(c.module)}</span><h1 style="font-family:var(--f-mono);font-size:1.5rem;overflow-wrap:anywhere">${esc(short(c.classe))}</h1><p class="lead">${esc(c.resume || '')}</p></div>
+  <div class="cols"><div class="panel"><dl class="kv">
+    <dt>Classe</dt><dd class="mono">${esc(c.classe)}</dd><dt>Fichier</dt><dd class="mono">${esc(c.fichier)}</dd>
+    <dt>IsGranted (classe)</dt><dd><div class="tags">${(c.is_granted_classe || []).map(x => `<span class="tag">${esc(x)}</span>`).join('') || '<span class="dim">—</span>'}</div></dd>
+    <dt>Jeton CSRF</dt><dd>${n(c.csrf?.avec_jeton)} / ${n(c.csrf?.routes_modifiant)} routes qui modifient, ${n(c.csrf?.appels_isCsrfTokenValid)} appels à isCsrfTokenValid${c.csrf?.sans_jeton?.length ? `<div class="tags mt">${c.csrf.sans_jeton.map(x => `<span class="tag w">${esc(typeof x === 'string' ? x : x.nom || JSON.stringify(x))}</span>`).join('')}</div>` : ''}</dd>
+    <dt>Services (constructeur)</dt><dd class="small">${(c.services_constructeur || []).map(s => `<span class="mono dim">$${esc(s.nom)}</span> ${anyClass(s.type)}`).join('<br>') || '<span class="dim">—</span>'}</dd>
+    <dt>Services (actions)</dt><dd class="small">${(c.services_actions || []).map(anyClass).join(', ') || '<span class="dim">—</span>'}</dd>
+    <dt>Tables chargées</dt><dd><div class="tags">${(c.entites_chargees || []).map(x => `<a class="tag" href="${hEnt(x) || '#tables'}">${esc(short(x))}</a>`).join('') || '<span class="dim">—</span>'}</div></dd>
+  </dl></div>${awHtml('controleur:' + c.classe)}</div>
+  <div><h2 style="margin-bottom:10px">Routes (${n(routes.length)})</h2>${routeTable('c-routes')}</div>`;
+}
+
+/* ---------- Services ---------- */
+VIEWS.services = () => {
+  const f = F.svc || (F.svc = { q: '', m: '' });
+  afterRender = app => {
+    const draw = () => {
+      const list = G.services.filter(s => (!f.m || s.module === f.m) && matchAll([s.classe, s.resume, (s.methodes_publiques || []).map(x => x.nom).join(' ')].join(' '), f.q));
+      $('#sv-count', app).textContent = plural(list.length, 'service', 'services');
+      const t = $('#sv-list', app); t.innerHTML = ''; if (t.nextElementSibling?.classList.contains('more')) t.nextElementSibling.remove();
+      lazy(t, list, s => `<a class="row" href="${hSvc(s.classe)}"><span class="t">${esc(s.classe.replace(/^App\\Service\\/, ''))}</span><span class="small dim">${s.sorte === 'interface' ? 'interface · ' : ''}${plural((s.methodes_publiques || []).length, 'méthode', 'méthodes')}</span><span class="d">${esc(s.resume || '')}</span></a>`, { chunk: 80 });
+    };
+    bindFilters(app, f, draw, { q: '#sv-q', m: '#sv-m' }); draw();
+  };
+  return `<div class="head"><span class="eyebrow">${n(G.services.length)} services</span><h1>Services</h1><p class="lead">Les classes de <span class="mono">src/Service</span> et voisines, avec leurs méthodes publiques.</p></div>
+  <div class="filters"><input id="sv-q" type="search" placeholder="Filtrer par classe, résumé, méthode…" value="${esc(f.q)}" aria-label="Filtrer les services">${modSelect('sv-m', f.m)}<span class="count" id="sv-count"></span></div>
+  <div class="panel" style="padding:0"><div class="list" id="sv-list"></div></div>`;
+};
+function viewSvc(a) {
+  const s = I.svcA.byA.get(a); if (!s) return notFound('Service');
+  const users = G.controleurs.filter(c => (c.services_constructeur || []).some(x => x.type === s.classe) || (c.services_actions || []).includes(s.classe));
+  return `<div class="head"><span class="eyebrow">Service${s.sorte === 'interface' ? ' (interface)' : ''} · ${modTag(s.module)}</span><h1 style="font-family:var(--f-mono);font-size:1.5rem;overflow-wrap:anywhere">${esc(short(s.classe))}</h1><p class="lead">${esc(s.resume || '')}</p></div>
+  <div class="panel"><dl class="kv"><dt>Classe</dt><dd class="mono">${esc(s.classe)}</dd><dt>Fichier</dt><dd class="mono">${esc(s.fichier)}</dd>
+  ${users.length ? `<dt>Utilisé par</dt><dd><div class="tags">${users.map(c => `<a class="tag" href="${hCtrl(c.classe)}">${esc(short(c.classe))}</a>`).join('')}</div></dd>` : ''}</dl></div>
+  <div class="tbl"><table><thead><tr><th>Méthode publique</th><th>Résumé</th></tr></thead><tbody>${(s.methodes_publiques || []).map(m => `<tr><td class="mono nw">${m.statique ? 'static ' : ''}${esc(m.nom)}()</td><td class="small">${esc(m.resume || '')}</td></tr>`).join('') || '<tr><td colspan="2" class="dim">Aucune méthode publique.</td></tr>'}</tbody></table></div>`;
+}
+
+/* ---------- Commandes ---------- */
+VIEWS.commandes = () => {
+  const f = F.cmd || (F.cmd = { q: '', plan: false });
+  afterRender = app => {
+    const draw = () => {
+      const list = G.commandes.filter(c => (!f.plan || c.planifiee) && matchAll([c.nom, c.description, c.resume, c.classe].join(' '), f.q));
+      $('#cm-count', app).textContent = plural(list.length, 'commande', 'commandes');
+      $('#cm-list tbody', app).innerHTML = list.map(c => `<tr><td><a class="mono" href="${hCmd(c.nom)}">${esc(c.nom)}</a><div class="small dim">${esc(c.description || '')}</div></td><td>${modTag(c.module)}</td><td class="small">${(c.planification || []).map(p => `<b>${esc(p.frequence)}</b> <span class="dim">· ${esc(p.ou)}</span>`).join('<br>') || '<span class="dim">à la demande</span>'}</td><td>${chipHtml('commande:' + c.nom)}</td></tr>`).join('');
+      paintAudit($('#cm-list', app));
+    };
+    bindFilters(app, f, draw, { q: '#cm-q', plan: '#cm-plan' }); draw();
+  };
+  return `<div class="head"><span class="eyebrow">${n(G.commandes.length)} commandes · ${n(G.stats.commandes_planifiees)} planifiées</span><h1>Commandes</h1><p class="lead">Commandes <span class="mono">bin/console</span> et leur rythme quand elles sont planifiées (cron, planificateur de tâches).</p></div>
+  <div class="filters"><input id="cm-q" type="search" placeholder="Filtrer les commandes…" value="${esc(f.q)}" aria-label="Filtrer les commandes"><label><input type="checkbox" id="cm-plan"${f.plan ? ' checked' : ''}> planifiées seulement</label><span class="count" id="cm-count"></span></div>
+  <div class="tbl" id="cm-list"><table><thead><tr><th>Commande</th><th>Module</th><th>Planification</th><th>Audit</th></tr></thead><tbody></tbody></table></div>`;
+};
+function viewCmd(a) {
+  const c = I.cmdA.byA.get(a); if (!c) return notFound('Commande');
+  const id = 'commande:' + c.nom;
+  return `<div class="head"><span class="eyebrow">Commande · ${modTag(c.module)}</span><h1 style="font-family:var(--f-mono);font-size:1.5rem;overflow-wrap:anywhere">${esc(c.nom)}</h1><p class="lead">${esc(c.description || '')}</p></div>
+  <div class="cols"><div class="panel"><dl class="kv"><dt>Rôle</dt><dd>${esc(c.resume || '')}</dd><dt>Classe</dt><dd class="mono">${esc(c.classe)}</dd><dt>Fichier</dt><dd class="mono">${esc(c.fichier)}</dd>
+    <dt>Planification</dt><dd>${(c.planification || []).map(p => `<b>${esc(p.frequence)}</b><div class="small dim">${esc(p.ou)} · ${esc(p.source)}</div>`).join('') || 'à la demande'}</dd>
+    <dt>Lancer</dt><dd class="mono small">php bin/console ${esc(c.nom)}</dd></dl></div>
+    ${I.audit.has(id) ? awHtml(id) : '<div class="note"><span>Pas de point d\'audit pour cette commande (seules les commandes planifiées en ont un).</span></div>'}</div>
+  ${(c.options || []).length || (c.arguments || []).length ? `<div class="tbl"><table><thead><tr><th>Option ou argument</th><th>Description</th><th>Valeur</th><th>Défaut</th></tr></thead><tbody>${[...(c.arguments || []).map(x => ({ ...x, arg: 1 })), ...(c.options || [])].map(o => `<tr><td class="mono nw">${esc(o.nom)}${o.arg ? ' <span class="tag">argument</span>' : ''}</td><td class="small">${esc(o.description || '')}</td><td class="small">${esc(o.valeur ?? (o.obligatoire ? 'obligatoire' : ''))}</td><td class="mono small">${esc(o.defaut == null ? '' : typeof o.defaut === 'string' ? o.defaut : JSON.stringify(o.defaut))}</td></tr>`).join('')}</tbody></table></div>` : ''}`;
+}
+
+/* ---------- Droits ---------- */
+VIEWS.droits = () => {
+  const d = G.droits;
+  const roles = d.roles_par_defaut?.initiaux || [];
+  const groupes = d.groupes || [...new Set(d.catalogue.map(x => x.groupe))];
+  const mx = d.catalogue.map(x => `<tr><td class="mono nw">${esc(x.code)}</td><td>${esc(x.libelle)}</td>${roles.map(r => `<td class="num">${r.code === 'ROLE_ADMIN' || r.droits.includes(x.code) ? '<span class="yes">●</span>' : '<span class="no">·</span>'}</td>`).join('')}</tr>`).join('');
+  return `<div class="head"><span class="eyebrow">${n(d.catalogue.length)} droits · ${n(d.voteurs.length)} voteurs</span><h1>Rôles et droits</h1><p class="lead">Le catalogue des droits, les rôles posés par défaut, la matrice module par rôle et les voteurs. L'état réel d'une installation se lit dans Réglages › Rôles et droits.</p></div>
+  ${groupes.map(g => `<div><h2 style="margin-bottom:10px">${esc(g)}</h2><div class="tbl"><table><thead><tr><th>Code</th><th>Libellé</th><th>Ce qu'il permet</th></tr></thead><tbody>${d.catalogue.filter(x => x.groupe === g).map(x => `<tr><td class="mono nw">${esc(x.code)}</td><td>${esc(x.libelle)}</td><td class="small">${esc(x.description || '')}</td></tr>`).join('')}</tbody></table></div></div>`).join('')}
+  <div><h2 style="margin-bottom:6px">Rôles par défaut</h2><p class="small dim" style="margin-bottom:10px">${esc(d.roles_par_defaut?.note || '')} Source : <span class="mono">${esc(d.roles_par_defaut?.source || '')}</span></p>
+  <div class="tbl"><table><thead><tr><th>Droit</th><th></th>${roles.map(r => `<th class="num" title="${esc(r.code)}">${esc(r.nom)}</th>`).join('')}</tr></thead><tbody>${mx}</tbody></table></div>
+  ${(d.roles_par_defaut?.ajustements || []).length ? `<div class="panel mt"><h3>Ajustements par migration</h3><div class="list">${d.roles_par_defaut.ajustements.map(a => `<div class="row"><span class="t">${esc(a.migration)}</span><span class="d">${esc(a.description)}</span></div>`).join('')}</div></div>` : ''}</div>
+  <div><h2 style="margin-bottom:10px">Modules et rôles (menu)</h2><div class="tbl"><table><thead><tr><th>Module</th><th>Droits pour modifier</th><th>Lecture</th><th>Routes (préfixes)</th></tr></thead><tbody>${d.modules_roles.map(m => `<tr><td><b>${esc(m.libelle)}</b><div class="small dim">${esc(m.detail || '')}</div></td><td><div class="tags">${(m.droits || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></td><td class="mono small">${esc(m.lecture || '—')}</td><td class="small"><div class="tags">${(m.prefixes || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></td></tr>`).join('')}</tbody></table></div></div>
+  <div class="cols">
+    <div class="panel"><h3>Hiérarchie des rôles</h3><dl class="kv">${Object.entries(d.role_hierarchy || {}).map(([k, v]) => `<dt class="mono">${esc(k)}</dt><dd><div class="tags">${v.map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></dd>`).join('')}</dl></div>
+    <div class="panel"><h3>Montants masquables</h3><div class="tags">${(d.montants_masquables || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></div>
+  </div>
+  <div><h2 style="margin-bottom:10px">Voteurs</h2><div class="tbl"><table><thead><tr><th>Voteur</th><th>Attributs</th><th>Résumé</th></tr></thead><tbody>${d.voteurs.map(v => `<tr><td class="mono">${esc(short(v.classe))}<div class="small dim">${esc(v.fichier)}</div></td><td><div class="tags">${(v.attributs || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></td><td class="small">${esc(v.resume || '')}</td></tr>`).join('')}</tbody></table></div></div>`;
+};
+
+/* ---------- Sécurité ---------- */
+function viewSecurite() {
+  const S = G.securite;
+  const groupesMec = {};
+  for (const m of S.mecanismes) { const k = m.cle.split(':')[0]; (groupesMec[k] = groupesMec[k] || []).push(m); }
+  const lblMec = { config: 'Configuration', limiteur: 'Limiteurs de débit', fichier: 'Fichiers', classe: 'Classes de sécurité', souscripteur: 'Souscripteurs', ecouteur: 'Écouteurs' };
+  const kvObj = o => `<dl class="kv">${Object.entries(o || {}).map(([k, v]) => `<dt class="mono small">${esc(k)}</dt><dd class="mono small">${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('')}</dl>`;
+  return `<div class="head"><span class="eyebrow">${n(S.mecanismes.length)} mécanismes</span><h1>Sécurité</h1><p class="lead">Pare-feux, règles access_control, en-têtes, cookie de session, limiteurs, jetons CSRF par contrôleur, séparation ERP local et site en ligne. Chaque mécanisme porte un point d'audit.</p></div>
+  <div class="panel"><h2>Routes qui modifient sans jeton CSRF (${n(S.routes_modifiant_sans_csrf.length)})</h2>
+    <div class="tbl"><table><thead><tr><th>Route</th><th>Méthodes</th><th>Contrôleur</th></tr></thead><tbody>${S.routes_modifiant_sans_csrf.map(r => `<tr><td>${lnk(hRoute(r.nom), r.nom)}<div class="mono small dim">${esc(r.chemin)}</div></td><td>${r.methodes.map(m => `<span class="tag">${esc(m)}</span>`).join(' ')}</td><td class="small">${ctrlAction(r.controleur)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="mt">${awHtml('securite:routes-sans-csrf')}</div></div>
+  <div><h2 style="margin-bottom:10px">Pare-feux</h2><div class="tbl"><table><thead><tr><th>Nom</th><th>Motif</th><th>Sécurité</th><th>Sans état</th><th>Authentification</th><th>Limite de connexions</th></tr></thead><tbody>${S.pare_feux.map(p => `<tr><td class="mono">${esc(p.nom)}</td><td class="mono small">${esc(p.motif || '(tout le reste)')}</td><td>${p.securite ? '<span class="yes">oui</span>' : '<span class="warn">non</span>'}</td><td>${p.sans_etat ? 'oui' : 'non'}</td><td class="small">${p.authentificateur ? anyClass(p.authentificateur) : ''}${p.verificateur ? `<div class="dim">vérificateur ${esc(short(p.verificateur))}</div>` : ''}${p.rester_connecte ? `<div class="dim">rester connecté ${n(Math.round(p.rester_connecte.lifetime / 86400))} jours</div>` : ''}</td><td class="small">${p.limite_connexions ? `${n(p.limite_connexions.max_attempts)} essais / ${esc(p.limite_connexions.interval)}` : ''}</td></tr>`).join('')}</tbody></table></div></div>
+  <div><h2 style="margin-bottom:10px">access_control (${n(S.access_control.length)} règles, la première qui correspond gagne)</h2><div class="tbl"><table><thead><tr><th class="num">N°</th><th>Chemin</th><th>Rôles</th><th>Méthodes</th></tr></thead><tbody>${S.access_control.map((r, i) => `<tr><td class="num">${i + 1}</td><td class="mono small">${esc(r.chemin)}</td><td><div class="tags">${r.roles.map(x => `<span class="tag${x === 'PUBLIC_ACCESS' ? ' w' : ''}">${esc(x)}</span>`).join('')}</div></td><td class="small">${esc((r.methodes || []).join(', '))}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="cols">${Object.entries(S.en_tetes || {}).map(([k, v]) => `<div class="panel"><h3>En-têtes : ${esc(k.replace(/_/g, ' '))}</h3>${typeof v === 'object' ? kvObj(v) : `<p class="small">${esc(v)}</p>`}</div>`).join('')}
+    <div class="panel"><h3>Cookie de session</h3>${kvObj(S.cookie_session)}<h3 class="mt">Mots de passe</h3>${kvObj(S.mots_de_passe)}<h3 class="mt">CSRF sans état</h3><div class="tags">${(S.csrf_configuration?.stateless_token_ids || []).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></div></div>
+  <div><h2 style="margin-bottom:10px">Limiteurs de débit</h2><div class="tbl"><table><thead><tr><th>Nom</th><th class="num">Limite</th><th>Intervalle</th><th>Politique</th><th>Utilisé par</th></tr></thead><tbody>${S.limiteurs.map(l => `<tr><td class="mono">${esc(l.nom)}</td><td class="num">${n(l.limite)}</td><td>${esc(l.intervalle)}</td><td class="mono small">${esc(l.politique)}</td><td class="small">${(l.utilise_par || []).map(esc).join(', ')}</td></tr>`).join('')}</tbody></table></div></div>
+  <div><h2 style="margin-bottom:10px">Mécanismes et leur audit</h2>
+  ${Object.entries(groupesMec).map(([k, list]) => `<h3 style="margin:16px 0 8px">${esc(lblMec[k] || k)} (${n(list.length)})</h3><div class="cols">${list.map(m => `<div class="panel" id="mec-${esc(I.mecA.byKey.get(m.cle))}" style="display:grid;gap:8px;scroll-margin-top:110px"><div><b>${esc(m.titre)}</b><div class="mono small dim">${esc(m.fichier)}</div></div><p class="small">${esc(m.resume)}</p>${awHtml('securite:' + m.cle, { compact: false })}</div>`).join('')}</div>`).join('')}</div>
+  <div><h2 style="margin-bottom:10px">Jeton CSRF par contrôleur</h2><div class="tbl"><table><thead><tr><th>Contrôleur</th><th class="num">Modifient</th><th class="num">Avec jeton</th><th class="num">Appels</th><th>Sans jeton</th></tr></thead><tbody>${S.csrf_par_controleur.map(c => `<tr><td>${lnk(hCtrl(c.controleur), short(c.controleur))}</td><td class="num">${n(c.routes_modifiant)}</td><td class="num">${n(c.avec_jeton)}</td><td class="num">${n(c.appels_isCsrfTokenValid)}</td><td>${(c.sans_jeton || []).map(x => `<span class="tag w">${esc(typeof x === 'string' ? x : x.nom || JSON.stringify(x))}</span>`).join(' ')}</td></tr>`).join('')}</tbody></table></div></div>
+  <div class="cols"><div class="panel"><h3>Séparation ERP local / site en ligne</h3><div class="list">${(S.separation_en_ligne_local?.souscripteurs || []).map(s => `<div class="row"><span class="t">${esc(short(s.classe))}</span><span class="d">${esc(s.resume)}</span></div>`).join('')}</div>
+    <p class="small dim mt">Classes qui testent estEnLigne() : ${(S.separation_en_ligne_local?.classes_qui_testent_estEnLigne || []).map(c => `<span class="mono">${esc(short(c.classe))}</span>`).join(', ')}</p></div>
+  <div class="panel"><h3>Écouteurs Doctrine</h3><div class="list">${(S.ecouteurs_doctrine || []).map(s => `<div class="row"><span class="t">${esc(short(s.classe))}</span><span class="small dim">${esc((s.evenements || []).join(', '))}</span><span class="d">${esc(s.resume)}</span></div>`).join('')}</div></div></div>`;
+}
+VIEWS.securite = viewSecurite;
+
+/* ---------- Synchro ---------- */
+VIEWS.synchro = () => {
+  const Y = G.synchro;
+  const f = F.sync || (F.sync = { q: '' });
+  afterRender = app => {
+    const draw = () => {
+      const list = Y.types.filter(t => matchAll([t.type, t.libelle, t.classe, t.sens, (t.champs || []).join(' ')].join(' '), f.q));
+      $('#sy-list tbody', app).innerHTML = list.map(t => `<tr><td class="mono">${esc(t.type)}</td><td>${esc(t.libelle)}<div>${entLink(t.classe)}</div></td><td><span class="tag ${t.sens === 'ascendant' ? 'a' : t.sens === 'deux' ? 'm' : ''}">${esc(t.sens)}</span></td><td class="small"><details><summary>${plural((t.champs || []).length, 'champ', 'champs')}</summary><div class="tags mt">${(t.champs || []).map(c => `<span class="tag">${esc(c)}</span>`).join('')}</div></details></td><td class="small mono">${esc(Object.entries(Array.isArray(t.relations) ? {} : t.relations || {}).map(([k, v]) => k + ' → ' + v).join(', '))}${(t.listes || []).length ? '<br>listes : ' + esc(JSON.stringify(t.listes)) : ''}</td></tr>`).join('');
+      $('#sy-count', app).textContent = plural(list.length, 'type', 'types');
+    };
+    bindFilters(app, f, draw, { q: '#sy-q' }); draw();
+  };
+  return `<div class="head"><span class="eyebrow">${n(Y.types.length)} types synchronisés</span><h1>Synchronisation</h1><p class="lead">Ce qui passe entre l'ERP local et le site en ligne, dans quel sens, et avec quels champs. Source : <span class="mono">${esc(Y.source)}</span></p></div>
+  <div class="cols">${Object.entries(Y.sens || {}).map(([k, v]) => `<div class="panel"><h3><span class="tag ${k === 'ascendant' ? 'a' : k === 'deux' ? 'm' : ''}">${esc(k)}</span></h3><p class="small mt">${esc(v)}</p></div>`).join('')}</div>
+  <div class="filters"><input id="sy-q" type="search" placeholder="Filtrer les types…" value="${esc(f.q)}" aria-label="Filtrer les types synchronisés"><span class="count" id="sy-count"></span></div>
+  <div class="tbl" id="sy-list"><table><thead><tr><th>Type</th><th>Libellé, entité</th><th>Sens</th><th>Champs</th><th>Relations</th></tr></thead><tbody></tbody></table></div>
+  <div class="cols"><div class="panel"><h3>Réglages publics envoyés au site</h3><dl class="kv">${Object.entries(Y.reglages_publics || {}).map(([k, v]) => `<dt class="mono small">${esc(k)}</dt><dd><div class="tags">${[].concat(v).map(x => `<span class="tag">${esc(x)}</span>`).join('')}</div></dd>`).join('')}</dl></div>
+  <div class="panel"><h3>Gestes</h3><dl class="kv">${Object.entries(Y.gestes || {}).map(([k, v]) => `<dt>${esc(k)}</dt><dd class="mono">${esc(typeof v === 'string' ? v : JSON.stringify(v))}</dd>`).join('')}</dl></div></div>`;
+};
+
+/* ---------- Réglages ---------- */
+VIEWS.reglages = () => {
+  const P = G.parametres;
+  return `<div class="head"><span class="eyebrow">${n(P.tuiles.length)} tuiles</span><h1>Réglages</h1><p class="lead">L'écran Réglages, tuile par tuile : qui l'ouvre, la route, et les réglages qu'elle porte. Source : <span class="mono">${esc(P.source)}</span></p></div>
+  ${Object.entries(P.familles).map(([k, fam]) => { const ts = P.tuiles.filter(t => t.famille === k); return `<div><h2 style="margin-bottom:10px">${esc(fam.libelle)} <span class="dim small">(${n(ts.length)})</span></h2><div class="cols">${ts.map(t => `<div class="panel" style="display:grid;gap:8px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><b>${esc(t.libelle)}</b>${t.publique ? '<span class="tag g">envoyée au site</span>' : ''}</div><div class="small">${lnk(hRoute(t.route), t.route || '')}</div><div class="tags">${(t.roles || []).map(r => `<span class="tag">${esc(r)}</span>`).join('')}</div>${(t.champs || []).length ? `<div class="small">${t.champs.map(c => `<div>${esc(c.libelle)} <span class="mono dim">${esc(c.cle)} · ${esc(c.type)}${c.defaut != null ? ' · ' + esc(JSON.stringify(c.defaut)) : ''}</span></div>`).join('')}</div>` : ''}</div>`).join('')}</div></div>`; }).join('')}`;
+};
+
+/* ---------- Audit ---------- */
+const AF = Object.assign({ statut: 'tous', type: '', module: '', q: '' }, store.get('audit', {}));
+function auditFiltered() {
+  return G.audit.filter(a => {
+    if (AF.type && a.type !== AF.type) return false;
+    if (AF.module && a.module !== AF.module) return false;
+    const s = statutOf(a.id);
+    if (AF.statut === 'nonvus' && s) return false;
+    if (['confirme', 'a_corriger', 'question'].includes(AF.statut) && s !== AF.statut) return false;
+    if (AF.q && !matchAll([a.id, a.titre, a.quoi_verifier, a.fichier, cur(a.id)?.commentaire || ''].join(' '), AF.q)) return false;
+    return true;
+  }).sort((x, y) => (I.modOrder.get(x.module) ?? 99) - (I.modOrder.get(y.module) ?? 99) || Object.keys(TYPES).indexOf(x.type) - Object.keys(TYPES).indexOf(y.type));
+}
+function statPills() {
+  const scope = G.audit.filter(a => (!AF.type || a.type === AF.type) && (!AF.module || a.module === AF.module));
+  const c = counts(scope);
+  const opts = [['tous', 'Tous', c.total], ['nonvus', 'Non vus', c.total - c.vus], ['confirme', 'Confirmés', c.confirme], ['a_corriger', 'À corriger', c.a_corriger], ['question', 'Questions', c.question]];
+  return opts.map(([k, l, v]) => `<button type="button" class="pill" data-st="${k}" aria-pressed="${AF.statut === k}">${l} · ${n(v)}</button>`).join('');
+}
+function modProgRows() {
+  return G.modules.map(m => { const c = counts(G.audit.filter(a => a.module === m.cle)); return c.total ? `<tr data-mod="${esc(m.cle)}"${AF.module === m.cle ? ' style="font-weight:600"' : ''}><td>${esc(m.libelle)}</td><td class="num">${n(c.total)}</td><td class="num">${n(c.confirme)}</td><td class="num">${n(c.a_corriger)}</td><td class="num">${n(c.question)}</td><td class="num">${n(c.total - c.vus)}</td><td class="bar-cell">${progHtml(c)}</td><td class="num">${pct(c)} %</td></tr>` : ''; }).join('');
+}
+function retiresHtml() {
+  const gone = [...A.server.values()].filter(d => d && d.item && !I.audit.has(d.item));
+  if (!gone.length) return '';
+  return `<div class="panel"><h2>Points retirés du code (${n(gone.length)})</h2><p class="small dim" style="margin-bottom:8px">Ces réponses portent sur des identifiants absents de cette génération du guide (classe, route ou commande renommée ou supprimée).</p><div class="list">${gone.map(d => `<div class="row"><span class="t">${esc(d.item)}</span><span class="chip" data-st="${esc(d.statut || '')}">${d.statut ? esc(STATUTS[d.statut] || d.statut) : 'Commentaire'}</span><span class="d">${esc(d.commentaire || '')}${d.le ? ` · ${esc(dateCourte(d.le))}` : ''}${d.par ? ` · <span data-who="${esc(d.par)}">…</span>` : ''}</span></div>`).join('')}</div></div>`;
+}
+VIEWS.audit = () => {
+  afterRender = app => {
+    const draw = () => {
+      store.set('audit', AF);
+      const list = auditFiltered();
+      $('#au-count', app).textContent = plural(list.length, 'point', 'points');
+      $('#pillcounts', app).innerHTML = statPills();
+      $('#modprog', app).innerHTML = modProgRows();
+      const box = $('#au-list', app); box.innerHTML = ''; if (box.nextElementSibling?.classList.contains('more')) box.nextElementSibling.remove();
+      if (!list.length) { box.innerHTML = '<p class="dim" style="padding:16px 0">Aucun point avec ces filtres.</p>'; return; }
+      let last = '';
+      const grp = {}; for (const a of list) { const k = a.module + '|' + a.type; grp[k] = (grp[k] || 0) + 1; }
+      lazy(box, list, a => {
+        const k = a.module + '|' + a.type; let h = '';
+        if (k !== last) { last = k; h = `<div class="agroup">${esc(I.mod.get(a.module)?.libelle || a.module)} · ${esc(TYPES[a.type] || a.type)}<span>${plural(grp[k], 'point', 'points')}</span></div>`; }
+        return h + `<div class="aitem"><div class="h"><span class="tag">${esc(TYPE1[a.type] || a.type)}</span><a href="${auditHref(a)}">${esc(a.titre)}</a><span class="mono small dim">${esc(a.fichier)}</span></div><p class="small">${esc(a.quoi_verifier)}</p>${awHtml(a.id, { compact: true })}</div>`;
+      }, { chunk: 40 });
+    };
+    $('#pillcounts', app).addEventListener('click', e => { const b = e.target.closest('[data-st]'); if (b) { AF.statut = b.dataset.st; draw(); } });
+    $('#au-type', app).addEventListener('change', e => { AF.type = e.target.value; draw(); });
+    $('#au-mod', app).addEventListener('change', e => { AF.module = e.target.value; draw(); });
+    let t = 0; $('#au-q', app).addEventListener('input', e => { AF.q = e.target.value; clearTimeout(t); t = setTimeout(draw, 200); });
+    $('#modprog', app).addEventListener('click', e => { const tr = e.target.closest('tr[data-mod]'); if (tr) { AF.module = AF.module === tr.dataset.mod ? '' : tr.dataset.mod; $('#au-mod', app).value = AF.module; draw(); } });
+    draw();
+  };
+  return `<div class="head"><span class="eyebrow">Sondage interne · ${n(G.audit.length)} points</span><h1>Grille d'audit</h1>
+    <p class="lead">Pour chaque point : Confirmé, À corriger ou Question, et un commentaire. Les réponses sont partagées avec toutes les personnes qui ouvrent ce guide.</p></div>
+  <div class="note"><b>D'où viennent les points</b><span>Chaque point vient du code au moment de la génération (${esc(dateFr(G.genere_le.date))}, commit <span class="mono">${esc(String(G.genere_le.commit).slice(0, 8))}</span>). Quand le code change, le guide est régénéré et les réponses restent attachées aux mêmes identifiants (<span class="mono">controleur:…</span>, <span class="mono">entite:…</span>, <span class="mono">route:…</span>, <span class="mono">securite:…</span>, <span class="mono">commande:…</span>). Une réponse dont l'identifiant a disparu est rangée sous « Points retirés du code ».</span></div>
+  <div id="aud-banner">${bannerHtml()}</div>
+  <div class="panel"><h2>Avancement</h2><div data-prog="all" data-legend="1"></div>
+    <div class="tbl mt"><table class="modprog"><thead><tr><th>Module</th><th class="num">Points</th><th class="num">Confirmés</th><th class="num">À corriger</th><th class="num">Questions</th><th class="num">Non vus</th><th></th><th class="num">Fait</th></tr></thead><tbody id="modprog"></tbody></table></div></div>
+  <div class="filters"><div class="pills" id="pillcounts"></div></div>
+  <div class="filters"><input id="au-q" type="search" placeholder="Filtrer par titre, fichier, commentaire…" value="${esc(AF.q)}" aria-label="Filtrer les points d'audit">
+    <select id="au-type" aria-label="Type"><option value="">Tous les types</option>${Object.entries(TYPES).map(([k, l]) => `<option value="${k}"${AF.type === k ? ' selected' : ''}>${l}</option>`).join('')}</select>
+    ${modSelect('au-mod', AF.module)}<span class="count" id="au-count"></span></div>
+  <div id="au-list"></div>
+  <div id="retires">${retiresHtml()}</div>`;
+};
+
+/* ---------- Recherche globale ---------- */
+let SIDX = null;
+function buildSearch() {
+  SIDX = [];
+  const add = (kind, label, sub, href, text) => SIDX.push({ kind, label, sub, href, t: norm(text) });
+  for (const c of G.chapitres) {
+    const parts = c.markdown.split(/\n(?=## )/);
+    parts.forEach((p, i) => add('Chapitres', c.titre + (i ? ' › ' + p.split('\n')[0].replace(/^## /, '') : ''), '', '#chapitre-' + c.id, p));
+  }
+  for (const e of G.entites) add('Tables', short(e.classe), e.table + ' · ' + (e.role || ''), hEnt(e.classe), [e.classe, e.table, e.role, e.champs.map(c => c.nom + ' ' + c.colonne).join(' ')].join(' '));
+  for (const r of G.routes) add('Routes', r.nom, r.methodes.join(',') + ' ' + r.chemin, hRoute(r.nom), [r.nom, r.chemin, r.controleur].join(' '));
+  for (const c of G.controleurs) add('Contrôleurs', short(c.classe), c.resume, hCtrl(c.classe), [c.classe, c.resume].join(' '));
+  for (const s of G.services) add('Services', short(s.classe), s.resume, hSvc(s.classe), [s.classe, s.resume, (s.methodes_publiques || []).map(m => m.nom).join(' ')].join(' '));
+  for (const c of G.commandes) add('Commandes', c.nom, c.description, hCmd(c.nom), [c.nom, c.description, c.resume].join(' '));
+  for (const d of G.droits.catalogue) add('Droits', d.code, d.libelle + ' · ' + (d.description || ''), '#droits', [d.code, d.libelle, d.description].join(' '));
+  for (const m of G.securite.mecanismes) add('Sécurité', m.titre, m.resume, hMec(m.cle), [m.cle, m.titre, m.resume, m.fichier].join(' '));
+  for (const t of G.parametres.tuiles) add('Réglages', t.libelle, (t.champs || []).map(c => c.libelle).join(', '), '#reglages', [t.libelle, t.tuile, (t.champs || []).map(c => c.libelle + ' ' + c.cle).join(' ')].join(' '));
+}
+function snippet(text, q) {
+  const t = String(text || ''); if (!q) return esc(t.slice(0, 140));
+  const terms = norm(q).split(/\s+/).filter(Boolean);
+  const nt = norm(t); let i = nt.indexOf(terms[0]); if (i < 0) i = 0;
+  const s = Math.max(0, i - 50), part = t.slice(s, s + 170);
+  let h = esc(part);
+  for (const x of terms) { const re = new RegExp('(' + x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'gi'); h = h.replace(re, '<mark>$1</mark>'); }
+  return (s ? '…' : '') + h + (s + 170 < t.length ? '…' : '');
+}
+function runSearch(q) {
+  if (!G) return;
+  if (!q.trim()) { if (searchMode) route(); return; }
+  if (!SIDX) buildSearch();
+  searchMode = true; renderTabs('');
+  const terms = norm(q).split(/\s+/).filter(Boolean);
+  const hits = SIDX.filter(x => terms.every(t => x.t.includes(t)));
+  const by = {}; for (const h of hits) (by[h.kind] = by[h.kind] || []).push(h);
+  const chapText = id => G.chapitres.find(c => '#chapitre-' + c.id === id)?.markdown || '';
+  $('#app').innerHTML = `<div class="view"><div class="head"><span class="eyebrow">Recherche</span><h1>${plural(hits.length, 'résultat', 'résultats')} pour « ${esc(q)} »</h1></div>
+  ${hits.length ? Object.entries(by).map(([k, list]) => `<div class="panel hits"><h3>${esc(k)} <span class="count">${n(list.length)}</span></h3><div class="list">${list.slice(0, 30).map(h => `<a class="row" href="${h.href}"><span class="t">${esc(h.label)}</span><span class="d">${snippet(k === 'Chapitres' ? chapText(h.href) : h.sub, q)}</span></a>`).join('')}</div>${list.length > 30 ? `<p class="small dim mt">et ${n(list.length - 30)} autres : affinez la recherche.</p>` : ''}</div>`).join('') : '<p class="dim">Rien trouvé. Essayez un nom de classe, de table (ex. <span class="mono">commandes</span>), de route ou un mot du chapitre.</p>'}</div>`;
+  scrollTo(0, 0);
+}
+let qt = 0;
+$('#q').addEventListener('input', e => { clearTimeout(qt); qt = setTimeout(() => runSearch(e.target.value), 180); });
+$('#q').addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; runSearch(''); } });
+document.addEventListener('click', e => { const a = e.target.closest('a[href^="#"]'); if (a && searchMode) { $('#q').value = ''; if (a.getAttribute('href') === location.hash) route(); } });
+
+/* ---------- Démarrage ---------- */
+async function load() {
+  const bar = $('#loadbar'), txt = $('#loadtxt');
+  try {
+    const res = await fetch('guide.json');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const total = +res.headers.get('content-length') || 0;
+    let text;
+    if (res.body && res.body.getReader) {
+      const rd = res.body.getReader(), chunks = []; let got = 0;
+      for (;;) {
+        const { done, value } = await rd.read(); if (done) break;
+        chunks.push(value); got += value.length;
+        bar.style.width = total ? Math.min(100, 100 * got / total) + '%' : Math.min(95, got / 50000) + '%';
+        txt.textContent = `Lecture de guide.json : ${(got / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo${total ? ' sur ' + (total / 1048576).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) + ' Mo' : ''}`;
+      }
+      const all = new Uint8Array(got); let o = 0; for (const c of chunks) { all.set(c, o); o += c.length; }
+      text = new TextDecoder().decode(all);
+    } else text = await res.text();
+    G = JSON.parse(text);
+  } catch (e) {
+    $('#app').innerHTML = `<div class="loading"><div class="box"><h2>Le guide n'a pas pu être chargé</h2><p class="dim">guide.json est introuvable ou illisible (${esc(e.message)}). Il doit être publié à côté de cette page.</p></div></div>`;
+    return;
+  }
+  index();
+  route();
+  startAudit();
+}
+load();
+})();
+</script>

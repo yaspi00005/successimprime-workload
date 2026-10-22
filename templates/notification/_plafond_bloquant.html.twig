@@ -1,0 +1,27 @@
+{# Fenêtre bloquante (maquette NT02) : réservée aux cas qui coûtent de l'argent. La commande n'est pas confirmée tant qu'il n'y a ni acompte ni accord. #}
+{% if fenetre %}
+	<div class="si-bloquant" role="alertdialog" aria-modal="true" aria-labelledby="si-bloquant-titre" data-si-bloquant>
+		<div class="si-bloquant-boite">
+			<h2 id="si-bloquant-titre"><i class="fas fa-lock" aria-hidden="true"></i> Plafond de crédit dépassé</h2>
+			<p>{{ fenetre.texte.phrase }}</p>
+			{% if fenetre.texte.chiffres is not empty %}
+				<div class="si-bloquant-chiffres">
+					{% for ligne in fenetre.texte.chiffres %}<div><span>{{ ligne[0] }}</span><b>{{ ligne[1]|number_format(0, ',', ' ') }} F</b></div>{% endfor %}
+				</div>
+			{% endif %}
+			{% if fenetre.enCours %}<p><i class="far fa-clock" aria-hidden="true"></i> Accord déjà demandé à la direction : en attente de sa réponse.</p>{% endif %}
+			<div class="si-bloquant-boutons">
+				<a class="btn btn-link si-bloquant-annuler" href="{{ path('app_commandes_show', {id: fenetre.commande.id}) }}">Fermer</a>
+				{% if fenetre.peutEncaisser %}
+					<a class="btn si-bloquant-acompte" href="{{ path('app_caisse_index', {client: fenetre.commande.clients.id, commande: fenetre.commande.id}) }}">Demander un acompte</a>
+				{% endif %}
+				{% if not fenetre.enCours or fenetre.direction %}
+					<form method="post" action="{{ path('app_plafond_accord', {id: fenetre.commande.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('plafond-credit') }}">
+						<button type="submit" class="btn btn-primary">{{ fenetre.direction ? 'Donner l\'accord direction' : 'Accord direction' }}</button>
+					</form>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endif %}

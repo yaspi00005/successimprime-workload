@@ -1,0 +1,39 @@
+<!doctype html>
+{# Page d'impression des étiquettes de colis (PD05) : une étiquette 100 × 60 mm par page, sans gabarit de l'application. #}
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Étiquettes {{ commande.numero }}</title>
+	<link href="{{ asset('css/etiquette-colis.css') }}" rel="stylesheet">
+	<style>
+		@page { size: 100mm 60mm; margin: 0; }
+		html, body { margin: 0; }
+		body { background: #E2E8F0; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+		.consigne { max-width: 100mm; margin: 6mm auto 0; padding: 0 4mm; font-size: 13px; color: #334155; }
+		.consigne button { margin-top: 6px; min-height: 40px; padding: 8px 16px; border-radius: 10px; border: 0; background: #0B1220; color: #fff; font-weight: 700; font-size: 14px; cursor: pointer; }
+		.pages { display: flex; flex-direction: column; align-items: center; gap: 6mm; padding: 6mm 4mm; }
+		.si-etq { box-shadow: 0 4px 14px rgba(15, 23, 42, .12); }
+		@media print {
+			body { background: #fff; }
+			.consigne { display: none; }
+			.pages { padding: 0; gap: 0; display: block; }
+			.si-etq-cadre { width: 100mm; max-width: none; page-break-after: always; break-after: page; }
+			.si-etq-cadre:last-child { page-break-after: auto; break-after: auto; }
+			.si-etq { box-shadow: none; border-radius: 0; }
+		}
+	</style>
+</head>
+<body>
+	<div class="consigne">
+		<p><b>{{ etiquettes|length }} étiquette{{ etiquettes|length > 1 ? 's' }} · {{ commande.numero }}</b><br>Imprimante d'étiquettes réglée sur 100 × 60 mm, échelle 100 %, sans marges.</p>
+		<button type="button" onclick="window.print()">Imprimer</button>
+	</div>
+	<div class="pages">
+		{% for e in etiquettes %}
+			{% include 'production_colis/_etiquette.html.twig' with {e: e} only %}
+		{% endfor %}
+	</div>
+	<script>window.addEventListener('load', function () { window.print(); });</script>
+</body>
+</html>

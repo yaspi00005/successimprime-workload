@@ -1,212 +1,142 @@
-{% macro item(route_active, prefixes, url, icone, texte) %}
-	{% set actif = false %}
-	{% for p in prefixes %}{% if route_active starts with p %}{% set actif = true %}{% endif %}{% endfor %}
-	<li class="{{ actif ? 'mm-active' }}">
-		<a href="{{ url }}" class="{{ actif ? 'mm-active' }}" aria-expanded="false">
-			<i class="{{ icone }}"></i>
-			<span class="nav-text">{{ texte }}</span>
-		</a>
-	</li>
-{% endmacro %}
-{% import _self as m %}
-<div class="dlabnav">
+{#
+	Menu selon le role (maquettes R01 a R03) :
+	- volets : tous les modules (Direction), un seul volet ouvert a la fois ;
+	- court : les ecrans du quotidien a plat (caisse, livreur...) ;
+	- replie : le menu court en icones, pour laisser la place au travail.
+	Les pastilles jaunes signalent ce qui attend une decision. « Aller a… »
+	(Ctrl K) ouvre n'importe quelle page autorisee sans passer par le menu.
+#}
+{% set menu = menu_admin(routeCourante) %}
+{# Livreur seul : sa tournée et ses livraisons, sans « Aller à… » ni ses statistiques de vente (LivreurSeul). #}
+{% set livreurSeul = livreur_seul() %}
+{% set utilisateur = app.user %}
+{% set employe = utilisateur.employe is defined ? utilisateur.employe : null %}
+{% set nomComplet = employe and employe.prenom is not empty ? (employe.prenom ~ ' ' ~ employe.nom)|trim : utilisateur.userIdentifier %}
+{% set nomRole = is_granted('ROLE_ADMIN') ? 'Direction' : (utilisateur.profil ? utilisateur.profil.nom : '') %}
+<div class="dlabnav si-sidebar si-menu-{{ menu.style }}" data-style-menu="{{ menu.style }}">
 	<div class="dlabnav-scroll">
-		<ul class="metismenu" id="menu">
 
-			{{ m.item(routeCourante, ['app_home'], path('app_home'), 'fas fa-home', 'Accueil') }}
+		<a class="si-menu-personne" href="{{ employe ? path('app_mon_espace_index') : path('app_user_change_password') }}" title="{{ nomComplet }}">
+			<span class="si-menu-pastille-personne" aria-hidden="true">{{ nomComplet|slice(0, 1)|upper }}</span>
+			<span class="nav-text"><b>{{ nomComplet }}</b>{% if nomRole %}<small>{{ nomRole }}</small>{% endif %}</span>
+		</a>
 
-			{# ==========================================================
-			   VENTES : le parcours client du premier contact à la livraison
-			   ========================================================== #}
-			{% if peutVoirCommercial %}
-				<li class="{{ routeCourante starts with 'app_clients_' or routeCourante starts with 'app_devis_' or routeCourante starts with 'app_commandes_' or routeCourante starts with 'app_livraisons_' or routeCourante starts with 'app_bon_livraison_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-handshake"></i>
-						<span class="nav-text">Ventes</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirCommandes %}
-							<li><a href="{{ path('app_commandes_index') }}" class="{{ routeCourante starts with 'app_commandes_' ? 'mm-active' }}">Commandes</a></li>
+		{% if not livreurSeul %}
+		<button type="button" class="si-menu-aller" data-aller-a title="Aller à… (Ctrl K)">
+			<i class="fas fa-search" aria-hidden="true"></i><span class="nav-text">Aller à…</span><kbd class="nav-text">Ctrl K</kbd>
+		</button>
+		{% endif %}
+
+		<ul class="si-menu" id="si-menu">
+			{% if menu.style == 'volets' %}
+				{% for module in menu.entrees %}
+					{% set ouvert = module.actif and module.items is not empty %}
+					<li class="si-menu-module {{ module.actif ? 'actif' }} {{ ouvert ? 'ouvert' }}" data-module="{{ module.cle }}">
+						<a href="{{ path(module.route, module.parametres) }}" class="si-menu-lien" {% if module.items is not empty %}data-volet aria-expanded="{{ ouvert ? 'true' : 'false' }}"{% endif %} title="{{ module.libelle }}">
+							<i class="{{ module.icone }}" aria-hidden="true"></i>
+							<span class="nav-text">{{ module.libelle }}</span>
+							{% if module.pastille > 0 %}<span class="si-menu-compte">{{ module.pastille }}</span>{% endif %}
+							{% if module.items is not empty %}<span class="si-menu-fleche nav-text" aria-hidden="true"></span>{% endif %}
+						</a>
+						{% if module.items is not empty %}
+							<ul class="si-menu-ecrans">
+								{% for ecran in module.items %}
+									<li><a href="{{ path(ecran.route, ecran.parametres) }}" class="{{ ecran.actif ? 'actif' }}" {% if ecran.actif %}aria-current="page"{% endif %}>
+										<span>{{ ecran.libelle }}</span>
+										{% if ecran.pastille > 0 %}<span class="si-menu-compte petit">{{ ecran.pastille }}</span>{% endif %}
+									</a></li>
+								{% endfor %}
+							</ul>
 						{% endif %}
-						{% if peutVoirDevis %}
-							<li><a href="{{ path('app_devis_index') }}" class="{{ routeCourante starts with 'app_devis_' ? 'mm-active' }}">Devis</a></li>
-						{% endif %}
-						{% if peutVoirLivraison %}
-							<li><a href="{{ path('app_livraisons_index') }}" class="{{ routeCourante starts with 'app_livraisons_' ? 'mm-active' }}">Livraisons</a></li>
-						{% endif %}
-						{% if peutVoirClients %}
-							<li><a href="{{ path('app_clients_index') }}" class="{{ routeCourante starts with 'app_clients_' and routeCourante != 'app_clients_soldes' ? 'mm-active' }}">Clients</a></li>
-							{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
-								<li><a href="{{ path('app_clients_soldes') }}" class="{{ routeCourante starts with 'app_clients_soldes' ? 'mm-active' }}">Soldes clients</a></li>
-							{% endif %}
-						{% endif %}
-					</ul>
-				</li>
+					</li>
+				{% endfor %}
+			{% else %}
+				{% for ecran in menu.entrees %}
+					<li class="si-menu-module {{ ecran.actif ? 'actif' }}">
+						<a href="{{ path(ecran.route, ecran.parametres) }}" class="si-menu-lien" title="{{ ecran.libelle }}" {% if ecran.actif %}aria-current="page"{% endif %}>
+							<i class="{{ ecran.icone }}" aria-hidden="true"></i>
+							<span class="nav-text">{{ ecran.libelle }}</span>
+							{% if ecran.pastille > 0 %}<span class="si-menu-compte">{{ ecran.pastille }}</span>{% endif %}
+						</a>
+					</li>
+				{% endfor %}
+				{% if employe %}
+					{% set dansMonEspace = routeCourante starts with 'app_mon_espace_' or routeCourante starts with 'app_pointer_' or routeCourante == 'app_mes_statistiques' %}
+					<li class="si-menu-module {{ dansMonEspace ? 'actif ouvert' }}" data-module="mon_espace">
+						<a href="{{ path('app_mon_espace_index') }}" class="si-menu-lien" data-volet aria-expanded="{{ dansMonEspace ? 'true' : 'false' }}" title="Mon espace">
+							<i class="far fa-star" aria-hidden="true"></i><span class="nav-text">Mon espace</span><span class="si-menu-fleche nav-text" aria-hidden="true"></span>
+						</a>
+						<ul class="si-menu-ecrans">
+							<li><a href="{{ path('app_mon_espace_index') }}" class="{{ routeCourante starts with 'app_mon_espace_' ? 'actif' }}">Mes points, congés et bulletins</a></li>
+							<li><a href="{{ path('app_pointer_index') }}" class="{{ routeCourante starts with 'app_pointer_' ? 'actif' }}">Pointer</a></li>
+							{% if is_granted('ROLE_STATS_PERSO') and not livreurSeul %}<li><a href="{{ path('app_mes_statistiques') }}" class="{{ routeCourante == 'app_mes_statistiques' ? 'actif' }}">Mes statistiques</a></li>{% endif %}
+						</ul>
+					</li>
+				{% endif %}
 			{% endif %}
-
-			{# ==========================================================
-			   PRODUCTION : l'atelier, du lancement à la sortie machine
-			   ========================================================== #}
-			{% if peutVoirProduction %}
-				<li class="{{ routeCourante starts with 'app_production_' or routeCourante starts with 'app_controle_pre_presse_' or routeCourante starts with 'app_consommables_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-industry"></i>
-						<span class="nav-text">Production</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_production_index') }}" class="{{ routeCourante starts with 'app_production_index' ? 'mm-active' }}">File de production</a></li>
-						{% if peutVoirPrepresse %}
-							<li><a href="{{ path('app_controle_pre_presse_index') }}" class="{{ routeCourante starts with 'app_controle_pre_presse_' ? 'mm-active' }}">Contrôle pré-presse</a></li>
-						{% endif %}
-						<li><a href="{{ path('app_production_termines') }}" class="{{ routeCourante starts with 'app_production_termines' ? 'mm-active' }}">Travaux terminés</a></li>
-						<li><a href="{{ path('app_production_apercu') }}" class="{{ routeCourante starts with 'app_production_apercu' ? 'mm-active' }}">Aperçu global</a></li>
-						{% if peutGererProduction %}
-							<li><a href="{{ path('app_consommables_index') }}" class="{{ routeCourante starts with 'app_consommables_' ? 'mm-active' }}">Consommables</a></li>
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   STOCK & ACHATS : ce qui entre et sort du magasin
-			   ========================================================== #}
-			{% if peutVoirStocks %}
-				<li class="{{ routeCourante starts with 'app_stock_' or routeCourante starts with 'app_article_' or routeCourante starts with 'app_fournisseur_' or routeCourante starts with 'app_achat_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-boxes"></i>
-						<span class="nav-text">Stock &amp; achats</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_stock_etat_index') }}" class="{{ routeCourante starts with 'app_stock_etat_' ? 'mm-active' }}">État du stock</a></li>
-						<li><a href="{{ path('app_article_index') }}" class="{{ routeCourante starts with 'app_article_' ? 'mm-active' }}">Articles</a></li>
-						<li><a href="{{ path('app_achat_index', {statut: 'demande'}) }}" class="{{ routeCourante starts with 'app_achat_' ? 'mm-active' }}">Achats demandés</a></li>
-						<li><a href="{{ path('app_achat_index', {statut: 'recu'}) }}">Achats reçus</a></li>
-						<li><a href="{{ path('app_fournisseur_index') }}" class="{{ routeCourante starts with 'app_fournisseur_' ? 'mm-active' }}">Fournisseurs</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   TRÉSORERIE : l'argent qui entre et sort de l'entreprise
-			   (séparé des statistiques : avant, "Gestion" entassait les
-			   deux et personne ne trouvait rien)
-			   ========================================================== #}
-			{% if peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement %}
-				<li class="{{ routeCourante starts with 'app_factures_' or routeCourante starts with 'app_paiements_' or routeCourante starts with 'app_compte_tresorerie_' or routeCourante starts with 'app_mouvement_tresorerie_' or routeCourante starts with 'app_decaissement_recurrent_' or routeCourante starts with 'app_journal_caisse_' or routeCourante starts with 'app_rapprochement_bancaire_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-wallet"></i>
-						<span class="nav-text">Trésorerie</span>
-					</a>
-					<ul aria-expanded="false">
-						{% if peutVoirPaiements %}
-							<li><a href="{{ path('app_paiements_index') }}" class="{{ routeCourante starts with 'app_paiements_' ? 'mm-active' }}">Paiements reçus</a></li>
-						{% endif %}
-						{% if peutVoirFactures %}
-							<li><a href="{{ path('app_factures_index') }}" class="{{ routeCourante starts with 'app_factures_' ? 'mm-active' }}">Factures</a></li>
-						{% endif %}
-						{% if peutVoirJournalCaisse %}
-							<li><a href="{{ path('app_journal_caisse_index') }}" class="{{ routeCourante starts with 'app_journal_caisse_' ? 'mm-active' }}">Journal de caisse</a></li>
-						{% endif %}
-						{% if peutVoirTresorerie %}
-							<li><a href="{{ path('app_mouvement_tresorerie_index') }}" class="{{ routeCourante starts with 'app_mouvement_tresorerie_' ? 'mm-active' }}">Mouvements &amp; décaissements</a></li>
-							{% if is_granted('ROLE_ADMIN') %}
-								<li><a href="{{ path('app_decaissement_recurrent_index') }}" class="{{ routeCourante starts with 'app_decaissement_recurrent_' ? 'mm-active' }}">Charges récurrentes</a></li>
-							{% endif %}
-						{% endif %}
-						{% if peutVoirComptesTresorerie %}
-							<li><a href="{{ path('app_compte_tresorerie_index') }}" class="{{ routeCourante starts with 'app_compte_tresorerie_' ? 'mm-active' }}">Comptes &amp; caisses</a></li>
-						{% endif %}
-						{% if peutVoirRapprochement %}
-							<li><a href="{{ path('app_rapprochement_bancaire_index') }}" class="{{ routeCourante starts with 'app_rapprochement_bancaire_' ? 'mm-active' }}">Rapprochement bancaire</a></li>
-						{% endif %}
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   STATISTIQUES : sorti de "Gestion" pour être enfin visible
-			   ========================================================== #}
-			{% if peutVoirStatsGlobales %}
-				<li class="{{ routeCourante starts with 'app_statistiques_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-chart-line"></i>
-						<span class="nav-text">Statistiques</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_statistiques_globales_index') }}" class="{{ routeCourante starts with 'app_statistiques_globales_' ? 'mm-active' }}">Vue globale</a></li>
-						<li><a href="{{ path('app_statistiques_commandes_index') }}" class="{{ routeCourante starts with 'app_statistiques_commandes_' ? 'mm-active' }}">Commandes</a></li>
-						<li><a href="{{ path('app_statistiques_tresorerie_index') }}" class="{{ routeCourante starts with 'app_statistiques_tresorerie_' ? 'mm-active' }}">Trésorerie</a></li>
-						<li><a href="{{ path('app_statistiques_clients_index') }}" class="{{ routeCourante starts with 'app_statistiques_clients_' ? 'mm-active' }}">Clients</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   CATALOGUE : tout ce qui décrit ce qu'on vend et fabrique
-			   (séparé des vrais paramètres généraux)
-			   ========================================================== #}
-			{% if peutVoirParametres %}
-				<li class="{{ routeCourante starts with 'app_categorie_produit_' or routeCourante starts with 'app_produits_' or routeCourante starts with 'app_produit_configuration_' or routeCourante starts with 'app_type_impression_' or routeCourante starts with 'app_support_' or routeCourante starts with 'app_format_' or routeCourante starts with 'app_finition_' or routeCourante starts with 'app_machines_' or routeCourante starts with 'app_lot_etiquette_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-swatchbook"></i>
-						<span class="nav-text">Catalogue</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_produits_index') }}" class="{{ routeCourante starts with 'app_produits_' ? 'mm-active' }}">Produits</a></li>
-						<li><a href="{{ path('app_categorie_produit_index') }}" class="{{ routeCourante starts with 'app_categorie_produit_' ? 'mm-active' }}">Catégories</a></li>
-						<li><a href="{{ path('app_produit_configuration_index') }}" class="{{ routeCourante starts with 'app_produit_configuration_' ? 'mm-active' }}">Configuration produit</a></li>
-						<li><a href="{{ path('app_type_impression_index') }}" class="{{ routeCourante starts with 'app_type_impression_' ? 'mm-active' }}">Types d'impression</a></li>
-						<li><a href="{{ path('app_support_index') }}" class="{{ routeCourante starts with 'app_support_' ? 'mm-active' }}">Supports</a></li>
-						<li><a href="{{ path('app_format_index') }}" class="{{ routeCourante starts with 'app_format_' ? 'mm-active' }}">Formats</a></li>
-						<li><a href="{{ path('app_finition_index') }}" class="{{ routeCourante starts with 'app_finition_' ? 'mm-active' }}">Finitions</a></li>
-						<li><a href="{{ path('app_machines_index') }}" class="{{ routeCourante starts with 'app_machines_' ? 'mm-active' }}">Machines</a></li>
-						<li><a href="{{ path('app_lot_etiquette_index') }}" class="{{ routeCourante starts with 'app_lot_etiquette_' ? 'mm-active' }}">Lots d'étiquettes</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
-			{# ==========================================================
-			   ÉQUIPE : les personnes, pas les paramètres techniques
-			   ========================================================== #}
-			{% if peutVoirRh %}
-				<li class="{{ routeCourante starts with 'app_employes_' or routeCourante starts with 'app_user_' or routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-users"></i>
-						<span class="nav-text">Équipe</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_employes_index') }}" class="{{ routeCourante starts with 'app_employes_index' ? 'mm-active' }}">Employés</a></li>
-						<li><a href="{{ path('app_employes_new') }}" class="{{ routeCourante starts with 'app_employes_new' ? 'mm-active' }}">Nouvel employé</a></li>
-						<li><a href="{{ path('app_user_index') }}" class="{{ routeCourante starts with 'app_user_index' ? 'mm-active' }}">Comptes &amp; accès</a></li>
-						<li><a href="{{ path('app_journal_activite_index') }}" class="{{ routeCourante starts with 'app_journal_activite_' ? 'mm-active' }}">Journal d'activité</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
-			{{ m.item(routeCourante, ['app_reclamation_'], path('app_reclamation_index'), 'fas fa-exclamation-circle', 'Réclamations') }}
-
-			{{ m.item(routeCourante, ['app_chat_'], path('app_chat_index'), 'fas fa-comments', 'Messagerie') }}
-
-			{# ==========================================================
-			   PARAMÈTRES : réglages généraux, en bas, à leur place
-			   ========================================================== #}
-			{% if is_granted('ROLE_ADMIN') %}
-				<li class="{{ routeCourante starts with 'app_fichier_dossier_partage' or routeCourante starts with 'app_parametres_paiement_' ? 'mm-active' }}">
-					<a class="has-arrow" href="javascript:void(0)" aria-expanded="false">
-						<i class="fas fa-cog"></i>
-						<span class="nav-text">Paramètres</span>
-					</a>
-					<ul aria-expanded="false">
-						<li><a href="{{ path('app_parametres_paiement_edit') }}" class="{{ routeCourante starts with 'app_parametres_paiement_' ? 'mm-active' }}">Paiement</a></li>
-						<li><a href="{{ path('app_fichier_dossier_partage') }}" class="{{ routeCourante starts with 'app_fichier_dossier_partage' ? 'mm-active' }}">Dossier partagé</a></li>
-					</ul>
-				</li>
-			{% endif %}
-
 		</ul>
 
-		<div class="copyright">
-			<p><strong>Madial Group</strong></p>
+		<div class="si-menu-bas">
+			{% if is_granted('ROLE_ADMIN') %}
+				{% set synchro = pastille_synchro() %}
+				{% if synchro %}
+					<a href="{{ path('app_synchronisation_index') }}" class="si-menu-synchro nav-text {{ synchro.panne ? 'panne' }}">
+						<b>● {{ synchro.panne ? 'Synchro en panne' : 'Synchronisé' }}</b> avec {{ synchro.site }}<br>{{ synchro.reussite ? synchro.reussite|temps_ecoule : 'jamais' }}
+					</a>
+				{% endif %}
+			{% endif %}
+			<button type="button" class="si-menu-replier" data-replier-menu>
+				<span class="si-replier-icone" aria-hidden="true">«</span><span class="nav-text">Replier le menu</span>
+			</button>
 		</div>
 	</div>
 </div>
+<script>
+	// Avant l'affichage : menu replié selon le dernier choix de la personne,
+	// sinon selon son rôle (le graphiste commence replié, maquette R03).
+	(function () {
+		var enveloppe = document.getElementById('main-wrapper');
+		if (!enveloppe) {
+			return;
+		}
+		{% if menu.style == 'volets' %}enveloppe.classList.add('si-avec-volets');{% endif %}
+		if (window.innerWidth < 1024) {
+			return;
+		}
+		var choix = null;
+		try {
+			choix = window.localStorage.getItem('si-menu-replie-{{ menu.style }}');
+		} catch (e) {}
+		if (choix === '1' || (choix === null && {{ menu.style == 'replie' ? 'true' : 'false' }})) {
+			enveloppe.classList.add('menu-toggle');
+			var hamburger = document.querySelector('.nav-control .hamburger');
+			if (hamburger) {
+				hamburger.classList.add('is-active');
+			}
+		}
+	})();
+</script>
+
+{# « Aller à… » : toutes les pages autorisées, filtrées au clavier. #}
+{% if not livreurSeul %}
+{% set toutes = menu_admin(routeCourante, 'volets') %}
+<div class="si-aller" id="si-aller" hidden>
+	<div class="si-aller-boite" role="dialog" aria-modal="true" aria-label="Aller à une page">
+		<input type="search" class="form-control" placeholder="Page, ou client, commande, facture à rechercher…" data-aller-champ autocomplete="off" aria-label="Aller à">
+		<ul class="si-aller-liste" data-aller-liste>
+			{% for module in toutes.entrees %}
+				{% for ecran in (module.items is not empty ? module.items : [{libelle: module.libelle, route: module.route, parametres: module.parametres}]) %}
+					<li><a href="{{ path(ecran.route, ecran.parametres) }}" data-texte="{{ (module.libelle ~ ' ' ~ ecran.libelle)|lower }}"><small>{{ module.libelle }}</small>{{ ecran.libelle }}</a></li>
+				{% endfor %}
+			{% endfor %}
+			{% if is_granted('ROLE_DEVIS') %}<li><a href="{{ path('app_devis_new') }}" data-texte="nouveau devis"><small>Nouveau</small>Devis</a></li>{% endif %}
+			{% if is_granted('ROLE_COMMANDE') %}<li><a href="{{ path('app_commandes_new') }}" data-texte="nouvelle commande"><small>Nouveau</small>Commande</a></li>{% endif %}
+			{% if is_granted('ROLE_TRESORERIE_SAISIR') %}<li><a href="{{ path('app_finances_depenses') }}#saisir-depense" data-texte="nouvelle dépense reçu"><small>Nouveau</small>Dépense</a></li>{% endif %}
+			{% if is_granted('ROLE_TRESORERIE_TRANSFERER') %}<li><a href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert'}) }}" data-texte="nouveau virement entre comptes verser la caisse à la banque"><small>Nouveau</small>Virement entre comptes</a></li>{% endif %}
+			{% if is_granted('ROLE_CLIENT') %}<li><a href="{{ path('app_clients_index', {nouveau: 1}) }}" data-texte="nouveau client"><small>Nouveau</small>Client</a></li>{% endif %}
+			{% if employe %}<li><a href="{{ path('app_mon_espace_index') }}" data-texte="mon espace pointage congés bulletins"><small>Moi</small>Mon espace</a></li>{% endif %}
+		</ul>
+		<a class="si-aller-recherche" href="{{ path('app_recherche') }}" data-aller-recherche>Rechercher « <span></span> » dans les clients, commandes et factures</a>
+	</div>
+</div>
+{% endif %}

@@ -1,0 +1,9 @@
+{# Sous-navigation des écrans de production (FabricationExtension::ENTREES). #}
+{% set onglets = fabrication_onglets() %}
+{% if onglets|length > 1 %}
+	<nav class="si-fab-nav" aria-label="Écrans de la production">
+		{% for o in onglets %}
+			<a href="{{ path(o.route) }}"{% if o.cle == actif %} class="actif" aria-current="page"{% endif %}>{{ o.libelle }}</a>
+		{% endfor %}
+	</nav>
+{% endif %}

@@ -1,10 +1,62 @@
 DirectoryIndex index.php
 
+# Rouvre l'accès que le .htaccess à la racine du projet refuse.
+<IfModule mod_authz_core.c>
+    Require all granted
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Allow from all
+</IfModule>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
+
+    # Une seule adresse pour Google : succesimprim.com, sans « www » (décision du
+    # gérant du 15/10/2026, docs/referencement.md). www.succesimprim.com renvoie en
+    # 301 vers la même page sans « www », directement en https (un seul détour),
+    # chemin et paramètres gardés. Seul ce domaine est visé : XAMPP (localhost),
+    # l'adresse temporaire de l'hébergeur et le dossier public/ ne changent pas.
+    RewriteCond %{HTTP_HOST} ^www\.succesimprim\.com$ [NC]
+    RewriteRule ^ https://succesimprim.com%{REQUEST_URI} [L,R=301,NE]
 
     RewriteCond %{REQUEST_FILENAME} -f
     RewriteRule ^ - [L]
 
     RewriteRule ^ index.php [L]
+</IfModule>
+
+# Pages légères en 3G (docs/referencement.md, comme la configuration Nginx
+# de docs/deploiement.md) : texte compressé, fichiers statiques gardés par le
+# navigateur. Sans effet si l'hébergeur n'a pas ces modules ; LiteSpeed (LWS)
+# compresse de lui-même et lit les règles Expires. Rien ici ne force le https
+# ni ne pose d'en-tête de sécurité.
+<IfModule mod_mime.c>
+    AddType image/webp .webp
+    AddType font/woff2 .woff2
+    AddType application/manifest+json .webmanifest
+    AddType model/gltf-binary .glb
+</IfModule>
+<IfModule mod_deflate.c>
+    # Apache récent sert les .js en text/javascript, un plus ancien en application/javascript.
+    AddOutputFilterByType DEFLATE text/html text/css text/plain text/xml text/javascript application/javascript application/json application/ld+json application/manifest+json application/xml image/svg+xml image/x-icon model/gltf+json
+</IfModule>
+<IfModule mod_expires.c>
+    ExpiresActive On
+    # Feuilles et scripts : 7 jours, leur adresse ne change pas d'une version à l'autre.
+    ExpiresByType text/css "access plus 7 days"
+    ExpiresByType text/javascript "access plus 7 days"
+    ExpiresByType application/javascript "access plus 7 days"
+    ExpiresByType application/manifest+json "access plus 1 day"
+    # Images, polices et modèles 3D : 30 jours (une photo du site change de nom quand elle change).
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/png "access plus 30 days"
+    ExpiresByType image/jpeg "access plus 30 days"
+    ExpiresByType image/gif "access plus 30 days"
+    ExpiresByType image/svg+xml "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType image/vnd.microsoft.icon "access plus 30 days"
+    ExpiresByType font/woff2 "access plus 30 days"
+    ExpiresByType font/woff "access plus 30 days"
+    ExpiresByType model/gltf-binary "access plus 30 days"
 </IfModule>

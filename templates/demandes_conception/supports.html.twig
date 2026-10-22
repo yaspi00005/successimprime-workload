@@ -1,0 +1,57 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Conception · supports et forfaits{% endblock %}
+{% block stylesheets %}<link href="{{ asset('css/demandes-conception.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_reglages_parametres_index', {tuile: 'conception'}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-sliders-h me-1"></i>Prix IA et plafonds</a></li>
+{% endblock %}
+
+{% macro ligne(s, produits, jeton, enLigne) %}
+	{% set id = s.id ?? 'nouveau' %}
+	<form method="post" action="{{ path('app_reglages_parametres_conception_enregistrer', {id: id}) }}" class="si-dc-support">
+		<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+		<fieldset{{ enLigne ? ' disabled' }}>
+			<div class="si-dc-support-tete">
+				<input type="color" name="couleur" value="{{ s.couleur ?? '#9CA3AF' }}" aria-label="Couleur de la carte">
+				<label>Nom<input class="form-control form-control-sm" name="nom" maxlength="80" value="{{ s.nom ?? '' }}" required placeholder="Kakémono / roll-up"></label>
+				<label>Nom court<input class="form-control form-control-sm" name="court" maxlength="30" value="{{ s.court ?? '' }}" placeholder="Kakémono"></label>
+				<label>Format affiché<input class="form-control form-control-sm" name="format" maxlength="60" value="{{ s.format ?? '' }}" placeholder="85 × 200 cm"></label>
+				<label class="si-pg-case"><input type="checkbox" name="actif" value="1"{{ (s.actif ?? true) ? ' checked' }}> Proposé</label>
+			</div>
+			<div class="si-dc-support-chiffres">
+				<label>Code<input class="form-control form-control-sm" name="code" maxlength="30" value="{{ s.code ?? '' }}" placeholder="kakemono"></label>
+				<label>Largeur (cm)<input class="form-control form-control-sm" name="largeur" inputmode="decimal" value="{{ s.largeurCm ?? '' }}"></label>
+				<label>Hauteur (cm)<input class="form-control form-control-sm" name="hauteur" inputmode="decimal" value="{{ s.hauteurCm ?? '' }}"></label>
+				<label>Forfait graphiste (F)<input class="form-control form-control-sm" name="forfait" type="number" min="0" step="500" value="{{ s.forfait ?? 10000 }}"></label>
+				<label>Acompte (%)<input class="form-control form-control-sm" name="acompte" type="number" min="0" max="100" value="{{ s.acomptePourcent ?? 50 }}"></label>
+				<label>1er BAT (h ouvrées)<input class="form-control form-control-sm" name="delai" type="number" min="1" max="720" value="{{ s.delaiBatHeures ?? 24 }}"></label>
+				<label>Corrections<input class="form-control form-control-sm" name="corrections" type="number" min="0" max="20" value="{{ s.correctionsIncluses ?? 2 }}"></label>
+				<label>Ordre<input class="form-control form-control-sm" name="ordre" type="number" min="0" max="999" value="{{ s.ordre ?? 99 }}"></label>
+			</div>
+			<label class="si-dc-produits">Produits du catalogue qui l'impriment (le premier publié sert au prix de l'impression après l'IA)
+				<select class="form-select form-select-sm" name="produits[]" multiple size="3">
+					{% set lies = s ? s.configurations|map(c => c.id) : [] %}
+					{% for p in produits %}<option value="{{ p.id }}"{{ p.id in lies ? ' selected' }}>{{ p }}</option>{% endfor %}
+				</select>
+			</label>
+			{% if not enLigne %}<button class="btn btn-primary btn-sm">{{ s ? 'Enregistrer' : 'Ajouter le support' }}</button>{% endif %}
+		</fieldset>
+	</form>
+{% endmacro %}
+
+{% block body %}
+	<section class="card si-ac-bloc">
+		<h2>Supports de la demande de conception <span class="si-pg-compte">{{ supports|length }}</span></h2>
+		<p class="si-pg-note">Ce que le client peut faire concevoir depuis son espace (maquette DC01) : forfait du graphiste, part payée en acompte par Orange Money, délai du premier BAT et corrections incluses. Le solde se règle à la validation du BAT. {% if enLigne %}<b>En ligne, consultation seulement : les supports se règlent au local, puis descendent sur le site.</b>{% endif %}</p>
+		{% for s in supports %}
+			{{ _self.ligne(s, produits, jeton, enLigne) }}
+		{% endfor %}
+	</section>
+	{% if not enLigne %}
+		<section class="card si-ac-bloc">
+			<h2>Nouveau support</h2>
+			{{ _self.ligne(null, produits, jeton, enLigne) }}
+		</section>
+	{% endif %}
+{% endblock %}

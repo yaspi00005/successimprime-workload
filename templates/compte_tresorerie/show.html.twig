@@ -59,7 +59,7 @@
 
     <div class="row">
 
-        <div class="col-md-4">
+        <div class="col-md-4 si-compte-colonne">
 
             <div class="card">
 
@@ -118,6 +118,23 @@
 
             </div>
 
+            {# Orange Money : Orange débite le fonds de soutien et le frais de retrait payés par les clients quand l’argent sort du compte. #}
+            {% set etat_om = etat_orange_money(compte) %}
+            {% if etat_om is not null %}
+                <div class="card si-compte-orange">
+                    <div class="card-body">
+                        <dl class="mb-2">
+                            <div><dt>Dont frais Orange à prélever</dt><dd class="{{ etat_om.a_prelever > 0 ? 'si-compte-orange-attention' }}">{{ etat_om.a_prelever|number_format(0, ',', ' ') }} {{ compte.devise }}</dd></div>
+                            <div><dt>Transférable</dt><dd class="si-compte-orange-ok">{{ etat_om.transferable|number_format(0, ',', ' ') }} {{ compte.devise }}</dd></div>
+                        </dl>
+                        <p class="text-muted small mb-2">Fonds de soutien et frais de retrait payés par les clients : Orange les débite quand l’argent sort du compte (retrait, chèque, transfert).</p>
+                        {% if compte.actif and (is_granted('ROLE_TRESORERIE_TRANSFERER') or is_granted('ROLE_ADMIN')) %}
+                            <a class="btn btn-outline-primary btn-sm" href="{{ path('app_mouvement_tresorerie_new', {type: 'transfert', source: compte.id}) }}"><i class="fa fa-exchange mr-1"></i>Virer vers la banque ou la caisse</a>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endif %}
+
         </div>
 
         <div class="col-md-8">
@@ -156,6 +173,17 @@
                                         </span>
                                     </td>
                                 </tr>
+
+                                {% if compte.orangeMoneyEnLigne %}
+                                    <tr>
+                                        <th>Paiements en ligne</th>
+                                        <td>
+                                            <span class="badge badge-success text-wrap">
+                                                Reçoit les paiements de l’espace client (API)
+                                            </span>
+                                        </td>
+                                    </tr>
+                                {% endif %}
 
                                 <tr>
                                     <th>Validation des paiements</th>

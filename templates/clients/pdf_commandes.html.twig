@@ -201,6 +201,8 @@
 				border-radius: 4px;
 			}
 
+			/* Nom commercial d'abord, désignation technique à côté (docs/noms-commerciaux.md). */
+			.nc-technique { font-weight: normal; font-size: 0.85em; color: #6B7280; }
 		</style>
 
 	</head>
@@ -260,7 +262,7 @@
 					{% for ligne in commandes %}
 
 						<tr class="commande-header">
-							<td>{{ ligne.commande.numero }}</td>
+							<td>{{ ligne.commande.libelle }}</td>
 							<td>{{ ligne.commande.dateCommande ? ligne.commande.dateCommande|date('d/m/Y') : '—' }}</td>
 							<td>
 								<span class="statut statut-{{ ligne.statutPaiement }}">
@@ -286,7 +288,7 @@
 
 							<tr class="ligne-detail">
 								<td colspan="3">
-									{{ detail.produit ? detail.produit.nom : detail.designation|default('Article') }}
+									{{ detail|ligne_client('Article') }}
 									{% if dimensionsDetail %}
 										({{ dimensionsDetail }})
 									{% endif %}

@@ -2,173 +2,47 @@
 
 namespace App\Command;
 
-use App\Repository\CommandeDetailFichierRepository;
-use App\Repository\OrdreProductionRepository;
-use Doctrine\ORM\EntityManagerInterface;
+use App\Service\Fichiers\ConservationFichiers;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
-use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(
-    name: 'app:nettoyer-fichiers-production',
-    description: 'Supprime les fichiers de production arrivés à expiration.'
-)]
+/**
+ * Efface du serveur les fichiers de commande arrivés au bout de leur durée
+ * de conservation (ConservationFichiers). Une fois par nuit, sur le
+ * serveur de l'imprimerie et sur le serveur en ligne :
+ *   15 2 * * * php bin/console app:nettoyer-fichiers-production
+ */
+#[AsCommand(name: 'app:nettoyer-fichiers-production', description: 'Efface les fichiers de commande imprimés depuis plus que la durée de conservation (sauf Mes produits et « Garder 1 an »).')]
 final class NettoyerFichiersProductionCommand extends Command
 {
-    public function __construct(
-        private readonly CommandeDetailFichierRepository $fichierRepository,
-        private readonly OrdreProductionRepository $ordreProductionRepository,
-        private readonly EntityManagerInterface $entityManager,
-
-        #[Autowire('%kernel.project_dir%')]
-        private readonly string $projectDir,
-
-        #[Autowire('%env(int:FICHIER_PRODUCTION_RETENTION_MONTHS)%')]
-        private readonly int $retentionMonths
-    ) {
+    public function __construct(private readonly ConservationFichiers $conservation)
+    {
         parent::__construct();
     }
 
-    protected function execute(
-        InputInterface $input,
-        OutputInterface $output
-    ): int {
-        $dateLimite = new \DateTimeImmutable(
-            sprintf(
-                '-%d months',
-                $this->retentionMonths
-            )
-        );
+    protected function configure(): void
+    {
+        $this->addOption('essai', null, InputOption::VALUE_NONE, 'Compter seulement, sans rien effacer');
+    }
 
-        $racine =
-            $this->projectDir
-            . '/var/uploads/commandes';
-
-        $supprimes = 0;
-        $ignores = 0;
-
-        $fichiers =
-            $this->fichierRepository->findBy([
-                'supprimeStockage' => false,
-            ]);
-
-        foreach ($fichiers as $fichier) {
-
-            $detail =
-                $fichier->getCommandeDetail();
-
-            if ($detail === null) {
-                $ignores++;
-                continue;
-            }
-
-            /*
-             * On prend uniquement une production réellement terminée.
-             */
-            $ordre =
-                $this->ordreProductionRepository
-                    ->findOneBy(
-                        [
-                            'commandeDetail' => $detail,
-                            'statut' => 'termine',
-                        ],
-                        [
-                            'termineLe' => 'DESC',
-                        ]
-                    );
-
-            if ($ordre === null) {
-                $ignores++;
-                continue;
-            }
-
-            /*
-             * IMPORTANT :
-             * la durée commence à la date de fin réelle
-             * de production.
-             */
-            $dateFin =
-                $ordre->getTermineLe();
-
-            if ($dateFin === null) {
-                $ignores++;
-                continue;
-            }
-
-            if ($dateFin > $dateLimite) {
-                continue;
-            }
-
-            $nomStockage = basename(
-                trim(
-                    (string) $fichier->getNomStockage()
-                )
-            );
-
-            if (
-                $nomStockage === ''
-                || $nomStockage === '.'
-            ) {
-                $ignores++;
-                continue;
-            }
-
-            $chemin =
-                $racine
-                . DIRECTORY_SEPARATOR
-                . $nomStockage;
-
-            /*
-             * Suppression du fichier original.
-             */
-            if (is_file($chemin)) {
-                @unlink($chemin);
-            }
-
-            /*
-             * Suppression éventuelle de l'aperçu.
-             */
-            $cheminApercu =
-                $racine
-                . DIRECTORY_SEPARATOR
-                . 'apercus'
-                . DIRECTORY_SEPARATOR
-                . $nomStockage;
-
-            if (is_file($cheminApercu)) {
-                @unlink($cheminApercu);
-            }
-
-            /*
-             * On conserve la trace en base.
-             */
-            $fichier
-                ->setSupprimeStockage(true)
-                ->setSupprimeStockageLe(
-                    new \DateTimeImmutable()
-                )
-                ->setActif(false);
-
-            $supprimes++;
-        }
-
-        $this->entityManager->flush();
-
-        $output->writeln(
-            sprintf(
-                '<info>%d fichier(s) supprimé(s).</info>',
-                $supprimes
-            )
-        );
-
-        $output->writeln(
-            sprintf(
-                '<comment>%d fichier(s) ignoré(s).</comment>',
-                $ignores
-            )
-        );
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+        $essai = (bool) $input->getOption('essai');
+        $bilan = $this->conservation->nettoyer(new \DateTimeImmutable(), $essai);
+        $io->success(\sprintf(
+            '%s : %d fichier(s), %s Mo libérés. Conservation %d mois après impression, %d avec « Garder 1 an » (%d gardé(s) en plus).',
+            $essai ? 'Essai, rien effacé' : 'Effacés',
+            $bilan['effaces'],
+            number_format($bilan['octets'] / 1048576, 1, ',', ' '),
+            $this->conservation->mois(),
+            $this->conservation->moisGarde(),
+            $bilan['gardes'],
+        ));
 
         return Command::SUCCESS;
     }

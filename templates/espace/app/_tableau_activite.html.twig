@@ -1,0 +1,18 @@
+{# Activité récente (maquette EC01) : les dernières notifications de la personne, déjà filtrées selon ses droits. Sur téléphone, la cloche en tient lieu. #}
+<section class="ec-carte ec-bloc ec-bureau">
+	<div class="ec-bloc-tete">
+		<h2>Activité récente</h2>
+		<a class="ec-lien" href="{{ path('app_espace_notifications') }}">Toutes les notifications →</a>
+	</div>
+	<ul class="ec-activite">
+		{% for n in activite %}
+			<li>
+				<span class="ec-point {{ n.couleur }}" aria-hidden="true"></span>
+				<time datetime="{{ n.date|date('c') }}">{{ n.date|espace_quand|capitalize }}</time>
+				<a href="{{ path('app_espace_notification_ouvrir', {cle: n.cle}) }}">{{ n.titre }} · {{ n.texte }}{{ n.montant is not null ? ' · ' ~ n.montant|number_format(0, ',', ' ') ~ ' F' }}</a>
+			</li>
+		{% else %}
+			<li class="ec-petit">Rien de nouveau ces dernières semaines.</li>
+		{% endfor %}
+	</ul>
+</section>

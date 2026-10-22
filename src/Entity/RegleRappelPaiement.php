@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\RegleRappelPaiementRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -16,12 +17,32 @@ use Symfony\Component\Validator\Constraints as Assert;
  * 30 jours). La commande app:executer-rappels-paiement (tâche
  * planifiée) est responsable de l'envoi réel — cet écran ne fait que
  * définir QUOI et QUAND (voir RappelPaiementService::estDue()).
+ *
+ * Le site en ligne en reçoit le délai, le type et l'état (synchronisation)
+ * pour annoncer au client son prochain rappel (« Factures et paiements ») ;
+ * le nom et le modèle de message restent au local : sur le site, une règle
+ * n'a pas de modèle et n'envoie rien.
  */
 #[ORM\Entity(repositoryClass: RegleRappelPaiementRepository::class)]
 #[ORM\Table(name: 'regle_rappel_paiement')]
 #[ORM\HasLifecycleCallbacks]
 class RegleRappelPaiement
 {
+    use PublicIdTrait;
+
+    /*
+     * paiement : commande non soldée, compté depuis la date de commande.
+     * retrait : commande prête mais pas encore récupérée, compté depuis
+     * le jour où elle est prête (RelanceRetraitService).
+     */
+    public const TYPE_PAIEMENT = 'paiement';
+    public const TYPE_RETRAIT = 'retrait';
+
+    public const TYPES = [
+        'Rappel de paiement' => self::TYPE_PAIEMENT,
+        'Commande prête à retirer' => self::TYPE_RETRAIT,
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -35,16 +56,25 @@ class RegleRappelPaiement
     #[Assert\Positive(message: 'Le délai doit être supérieur à zéro.')]
     private int $delaiJours = 7;
 
+    // Toujours renseigné au local (formulaire) ; vide sur le site en ligne, qui n'en reçoit pas.
     #[ORM\ManyToOne(targetEntity: ModeleMessage::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'RESTRICT')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'RESTRICT')]
     #[Assert\NotNull(message: 'Le modèle de message est obligatoire.')]
     private ?ModeleMessage $modeleMessage = null;
 
     #[ORM\Column]
     private bool $actif = true;
 
+    #[ORM\Column(length: 20, options: ['default' => self::TYPE_PAIEMENT])]
+    private string $type = self::TYPE_PAIEMENT;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?\DateTimeImmutable $dateCreation = null;
+
+    public function __construct()
+    {
+        $this->initialiserPublicId();
+    }
 
     #[ORM\PrePersist]
     public function initialiser(): void
@@ -105,6 +135,23 @@ class RegleRappelPaiement
         $this->actif = $actif;
 
         return $this;
+    }
+
+    public function getType(): string
+    {
+        return $this->type;
+    }
+
+    public function setType(string $type): static
+    {
+        $this->type = \in_array($type, self::TYPES, true) ? $type : self::TYPE_PAIEMENT;
+
+        return $this;
+    }
+
+    public function isRetrait(): bool
+    {
+        return $this->type === self::TYPE_RETRAIT;
     }
 
     public function getDateCreation(): ?\DateTimeImmutable

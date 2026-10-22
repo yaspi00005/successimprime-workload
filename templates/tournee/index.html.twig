@@ -1,0 +1,100 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Ma tournée (L03, téléphone d'abord) : les livraisons du jour du livreur,
+	dans l'ordre de la tournée. Le bureau choisit un livreur et un jour.
+#}
+
+{% set token = csrf_token(jeton) %}
+
+{% block title %}Ma tournée · {{ jour|date_fr('EEE d/MM') }}{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/livraisons.css') }}" rel="stylesheet">{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-lv">
+		{% if livreurs is not empty %}
+			<form method="get" class="si-tr-choix">
+				<select name="livreur" class="form-select form-select-sm" onchange="this.form.submit()" aria-label="Livreur">
+					{% for l in livreurs %}<option value="{{ l.id }}"{{ l == livreur ? ' selected' }}>{{ l|nom_pointage }}</option>{% endfor %}
+					{% if livreur not in livreurs %}<option value="" selected>{{ livreur|nom_pointage }}</option>{% endif %}
+				</select>
+				<input type="date" name="jour" value="{{ jour|date('Y-m-d') }}" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Jour">
+			</form>
+		{% endif %}
+
+		<section class="card si-tr-jour">
+			<div class="si-tr-jour-tete">
+				<small>{{ jour|date_fr('EEEE d/MM')|capitalize }} · {{ livreur|nom_pointage }}</small>
+				{% if j.points is not empty %}<span class="si-tr-pts{{ j.jour < 0 ? ' si-tr-pts-moins' }}">{{ j.jour >= 0 ? '+' }}{{ j.jour }} pts</span>{% endif %}
+			</div>
+			<b class="si-tr-total">{{ faites }} / {{ bons|length }} livraison{{ bons|length > 1 ? 's' }}{% if echecs > 0 %} <span class="si-lv-badge si-lv-badge-echec">{{ echecs }} échec{{ echecs > 1 ? 's' }}</span>{% endif %}</b>
+			<div class="si-mf-barre"><i style="width: {{ bons|length > 0 ? (faites * 100 / bons|length)|round : 0 }}%"></i></div>
+			<div class="si-tr-jour-pied">
+				<span>Départ atelier <b>{{ j.depart ? j.depart|date('H:i') : '–' }}</b></span>
+				<span>Ponctualité du mois <b>{{ j.mois.ponctualite is not null ? j.mois.ponctualite ~ ' %' : '–' }}</b></span>
+				<span>Points du mois <b>{{ j.mois.gagnes }} / {{ j.mois.possibles }}</b> · note <b>{{ j.mois.note }}/100</b></span>
+			</div>
+		</section>
+
+		{% set points = [] %}
+		{% for b in bons %}{% set cli = b.commande.clients %}{% if cli and cli.estLocalise %}{% set points = points|merge([{lat: cli.latitude, lng: cli.longitude, n: b.ordreTournee ?? loop.index, etat: b.statut == 'livre' ? 'livree' : (b.etatSuivi == 'echec' ? 'echec' : (b.enRouteLe ? 'encours' : 'avenir')), nom: cli.nomComplet}]) %}{% endif %}{% endfor %}
+		{% if points is not empty %}
+			<div class="si-carte si-tr-carte" id="si-tr-carte" data-points="{{ points|json_encode|e('html_attr') }}"></div>
+		{% endif %}
+
+		{% if bons is empty %}
+			<p class="si-ac-vide card p-3">Aucune livraison prévue ce jour.</p>
+		{% endif %}
+		<ul class="si-lv-liste">
+			{% for b in bons %}
+				{% include 'tournee/_arret_livreur.html.twig' with {rang: b.ordreTournee ?? loop.index, pts: j.points[b.id] ?? null, motifs: constant('App\\Entity\\BonLivraison::MOTIFS_ECHEC')} %}
+			{% endfor %}
+		</ul>
+		{% if is_granted('LIVREUR') %}
+			<p class="si-lv-pied"><a href="{{ path('app_livraisons_mes_livraisons') }}">Mes livraisons des 30 derniers jours ›</a></p>
+		{% endif %}
+	</div>
+	{% if points is not empty %}
+		<link rel="stylesheet" href="{{ asset('vendor/leaflet/leaflet.css') }}">
+		<script src="{{ asset('vendor/leaflet/leaflet.js') }}"></script>
+		<script>
+		(function () {
+			var el = document.getElementById('si-tr-carte');
+			if (!window.L || !el) { return; }
+			var points = JSON.parse(el.dataset.points);
+			var carte = L.map(el, {scrollWheelZoom: false});
+			L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(carte);
+			var couleurs = {livree: '#16A34A', encours: '#DC2626', avenir: '#94A3B8', echec: '#B45309'};
+			var lignes = [];
+			points.forEach(function (p) {
+				var ll = [parseFloat(p.lat), parseFloat(p.lng)];
+				lignes.push(ll);
+				L.marker(ll, {icon: L.divIcon({className: 'si-tr-pin', html: '<span style="background:' + couleurs[p.etat] + '">' + p.n + '</span>', iconSize: [26, 26]})}).addTo(carte).bindTooltip(p.nom.replace(/[<>&]/g, ''));
+			});
+			L.polyline(lignes, {color: '#0F3D8C', weight: 3, dashArray: '6 6'}).addTo(carte);
+			carte.fitBounds(L.latLngBounds(lignes).pad(0.2));
+		})();
+		</script>
+	{% endif %}
+	{# Suivi en direct du client (maquette DB10) : tant qu'une livraison est en route, la position part chaque minute, page ouverte seulement. #}
+	{% set enRoute = bons|filter(b => b.statut == 'valide' and b.enRouteLe and not b.echecEnCours and b.livreur and b.livreur == app.user) %}
+	{% if enRoute is not empty %}
+		<p class="si-pg-note text-center" id="si-tr-position" role="status">Position partagée avec les clients en attente pendant la tournée.</p>
+		<script>
+		(function () {
+			if (!navigator.geolocation) { return; }
+			var etat = document.getElementById('si-tr-position'), dernier = 0;
+			navigator.geolocation.watchPosition(function (p) {
+				if (Date.now() - dernier < 60000) { return; }
+				dernier = Date.now();
+				var d = new FormData();
+				d.append('_token', {{ token|json_encode|raw }});
+				d.append('latitude', p.coords.latitude);
+				d.append('longitude', p.coords.longitude);
+				fetch({{ path('app_livraisons_tournee_position')|json_encode|raw }}, {method: 'POST', body: d, credentials: 'same-origin'}).catch(function () {});
+			}, function () { etat.textContent = 'Position refusée : les clients voient seulement l\'heure prévue.'; }, {enableHighAccuracy: true, maximumAge: 30000});
+		})();
+		</script>
+	{% endif %}
+{% endblock %}

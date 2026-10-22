@@ -1,0 +1,97 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Ma file de travail{% endblock %}
+
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	{% set aEtiqueter = file.colonnes.a_etiqueter|length %}
+	<li class="nav-item"><a href="#col-a_etiqueter" class="btn btn-light btn-sm si-btn-entete si-pm-entete-btn"><i class="fas fa-tag"></i><span class="si-masque-mobile ms-1">Étiquettes</span>{% if aEtiqueter %}<span class="si-pm-pastille">{{ aEtiqueter }}</span>{% endif %}</a></li>
+	<li class="nav-item">
+		<details class="si-pm-scanner">
+			<summary class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-barcode"></i><span class="si-masque-mobile ms-1">Scanner un bon</span></summary>
+			<form method="get" action="{{ path('app_ma_file_scanner') }}" class="si-pm-scanner-form">
+				<label for="si-pm-code">Scannez le QR ou le code-barres du bon, ou tapez le numéro</label>
+				<div><input id="si-pm-code" name="code" class="form-control form-control-sm" placeholder="CMD-… ou ETQ-…" autocomplete="off" autofocus><button class="btn btn-primary btn-sm">Ouvrir</button></div>
+			</form>
+		</details>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set moi = app.user|nom_pointage %}
+	<div class="si-pm">
+		<header class="si-pm-tete">
+			<small>{{ moi }}{% if suivies is not empty %} · {% for m in suivies %}{{ loop.first ? m.nom : (loop.last ? ' et ' : ', ') ~ m.nom|replace({'Solvant ': ''}) }}{% endfor %}{% else %} · toutes les machines{% endif %}{% if posteMachine %} · <i class="fas fa-desktop"></i> poste {{ posteMachine.nom }}{% endif %}</small>
+			<h1>Ma file de travail · {{ maintenant|date_fr('EEEE d/MM') }}</h1>
+		</header>
+
+		<nav class="si-pm-puces" aria-label="Machines">
+			<a href="{{ path('app_ma_file_index') }}" class="{{ choix == '' ? 'actif' }}">{{ posteMachine ? 'Ce poste' : 'Mes machines' }}</a>
+			{% for m in toutes %}
+				<a href="{{ path('app_ma_file_index', {m: m.id}) }}" class="{{ choix == m.id ~ '' ? 'actif' }}">{{ m.nom }}</a>
+			{% endfor %}
+			<a href="{{ path('app_ma_file_index', {m: 'toutes'}) }}" class="{{ choix == 'toutes' ? 'actif' }}">Toutes</a>
+		</nav>
+
+		{% if file.retours is not empty %}
+			<section class="si-pm-retours" aria-label="Retournés au prépresse">
+				{% for r in file.retours %}
+					{% set c = r.carte %}
+					<a href="{{ path('app_ma_file_verifier', {id: c.id}) }}" class="si-pm-retour">
+						<span class="si-pm-etiquette si-pm-rouge">Retourné au prépresse</span>
+						<b>{{ c.numero }} · {{ c.client ?? '—' }} · {{ c.titre }}</b>
+						<span class="si-pm-retour-motif">{{ r.retour.libelleMotifs|lower }} · renvoyé à {{ r.retour.creeLe|date('H:i') }}{% if r.retour.destinataire %} à <span class="si-pm-avatar">{{ r.retour.destinataire|nom_pointage|split(' ')|first|slice(0, 1) }}</span><b>{{ r.retour.destinataire|nom_pointage|split(' ')|first }}</b>{% else %} à la prépresse{% endif %}</span>
+						<span class="si-pm-retour-duree">en correction depuis {{ r.minutes < 60 ? r.minutes ~ ' min' : (r.minutes // 60) ~ ' h ' ~ '%02d'|format(r.minutes % 60) }}</span>
+					</a>
+				{% endfor %}
+			</section>
+		{% endif %}
+
+		<div class="si-pm-colonnes">
+			{% for cle, libelle in colonnes %}
+				{% set cartes = file.colonnes[cle] %}
+				<section class="si-pm-colonne si-pm-col-{{ cle }}" id="col-{{ cle }}">
+					<h2><span class="si-pm-etiquette">{{ libelle }}</span><span class="si-pm-nombre">{{ cartes|length }}</span></h2>
+					{% for c in cartes|slice(0, 4) %}
+						{{ _self.carte(c, cle, loop.first, peutAgir, maintenant) }}
+					{% else %}
+						<p class="si-pm-vide">Rien ici.</p>
+					{% endfor %}
+					{% if cartes|length > 4 %}
+						<details class="si-pm-plus">
+							<summary>Voir {{ cartes|length - 4 }} autre{{ cartes|length - 4 > 1 ? 's' }}</summary>
+							{% for c in cartes|slice(4) %}{{ _self.carte(c, cle, false, peutAgir, maintenant) }}{% endfor %}
+						</details>
+					{% endif %}
+				</section>
+			{% endfor %}
+		</div>
+	</div>
+{% endblock %}
+
+{% macro carte(c, cle, premiere, peutAgir, maintenant) %}
+						{% set o = c.ordre %}
+						<article class="si-pm-carte{{ premiere and cle == 'a_verifier' ? ' si-pm-carte-premiere' }}">
+							<a href="{{ path('app_ma_file_travail', {id: c.id}) }}" class="si-pm-carte-lien">
+								<div class="si-pm-carte-haut"><b>{{ c.numero }}</b>{% if c.promis %}<span class="si-pm-promis{{ c.enRetard ? ' si-pm-retard' }}"><i class="far fa-calendar"></i> {{ c.promis|date('d/m') }}</span>{% endif %}</div>
+								<div class="si-pm-client"><span class="si-pm-initiales" style="--c: {{ c.couleur }}">{{ c.initiales }}</span>{{ c.client ?? 'Client de passage' }}</div>
+								<div class="si-pm-quoi">{{ c.titre }}{% if c.taille %} · {{ c.taille }}{% endif %}</div>
+								<small>
+									{% if cle == 'a_verifier' %}{{ c.m2 ? c.m2|number_format(c.m2 == c.m2|round ? 0 : 1, ',', ' ') ~ ' m²' : (c.machine ?? 'machine à choisir') }}
+									{% elseif cle == 'pret' %}estimé {{ c.estime ?? '—' }}{% if c.machine %} · {{ c.machine }}{% endif %}{% if c.debutPrevu and c.debutPrevu > maintenant %} · vers {{ c.debutPrevu|date('H:i') }}{% endif %}
+									{% elseif cle == 'en_cours' %}{{ c.enPause ? 'en pause' : 'démarré ' ~ (c.demarre ?? o.demarreLe)|date('H:i') }}{% if c.pourcent is not null %} · {{ c.pourcent }} %{% endif %}{% if c.machine %} · {{ c.machine }}{% endif %}
+									{% elseif cle == 'a_etiqueter' %}terminé {{ o.termineLe|date(o.termineLe|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{% if o.etiquettesImprimeesLe %} · {{ o.nombreColis }} étiquette{{ o.nombreColis > 1 ? 's' }} imprimée{{ o.nombreColis > 1 ? 's' }}{% endif %}
+									{% else %}{{ c.colis ?? 1 }} colis · {{ c.livraison ? (c.livreur ?? 'livreur à choisir') : 'retrait' }}{% endif %}
+								</small>
+								{% if cle == 'en_cours' and c.pourcent is not null %}<span class="si-pm-barre"><i style="width: {{ c.pourcent }}%"></i></span>{% endif %}
+							</a>
+							{% if peutAgir and cle == 'a_verifier' %}
+								<a href="{{ path('app_ma_file_verifier', {id: c.id}) }}" class="btn btn-primary btn-sm si-pm-carte-btn">Ouvrir et vérifier</a>
+							{% elseif peutAgir and cle == 'a_etiqueter' %}
+								<a href="{{ path('app_ma_file_etiquettes', {id: c.id}) }}" class="btn btn-sm si-pm-carte-btn si-pm-btn-violet"><i class="fas fa-tag me-1"></i>{{ o.etiquettesImprimeesLe ? 'Colis et contrôle' : 'Étiqueter les colis' }}</a>
+							{% endif %}
+						</article>
+{% endmacro %}

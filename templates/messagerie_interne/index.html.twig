@@ -1,0 +1,263 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Équipe › Messagerie (docs/messagerie-interne.md, maquettes MI01, MI03, MI05) :
+	les fils à gauche, le fil ouvert au centre, fichiers, épingles et membres à
+	droite. ERP local seulement ; les clients n'y ont jamais accès.
+#}
+{% block title %}{{ active ? active.getLibellePour(moi) ~ ' · ' }}Messagerie de l'équipe{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/messagerie-interne.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set c = active %}
+	<div class="mi {{ c ? 'avec-fil' : 'sans-fil' }}" id="mi"
+		data-envoi-url="{{ path('app_messagerie_interne_envoi_debut') }}"
+		data-envoi-jeton="{{ csrf_token('mi_envoi') }}"
+		data-morceau="{{ morceau }}" data-taille-max="{{ tailleMax }}"
+		data-liaisons-url="{{ path('app_messagerie_interne_liaisons') }}"
+		{% if c %}
+			data-jeton="{{ c.jeton }}"
+			data-csrf="{{ csrf_token('mi_' ~ c.jeton) }}"
+			data-nouveaux-url="{{ path('app_messagerie_interne_nouveaux', {jeton: c.jeton}) }}"
+			data-envoyer-url="{{ path('app_messagerie_interne_envoyer', {jeton: c.jeton}) }}"
+			data-reaction-url="{{ path('app_messagerie_interne_reaction', {jeton: c.jeton, id: 0}) }}"
+			data-dossier-url="{{ path('app_messagerie_interne_dossier_client', {jeton: c.jeton}) }}"
+			data-client="{{ c.client ? c.client.id|code_id }}"
+			data-membres="{{ membres|filter(x => x.utilisateur.id != moi.id)|map(x => {id: x.utilisateur.id, nom: x.utilisateur|nom_equipe, pseudo: x.utilisateur|pseudo_equipe})|json_encode }}"
+		{% endif %}>
+		{% include 'messagerie_interne/_liste.html.twig' %}
+
+		{% if c is null %}
+			<section class="mi-fil mi-accueil">
+				<div class="mi-accueil-texte">
+					<h1>Messagerie de l'équipe</h1>
+					<p>Choisissez un groupe ou un collègue à gauche.</p>
+					<ul>
+						<li><b>Groupes</b> : Général, Atelier, Prépresse, Caisse et finances, et les groupes de projet liés à une commande.</li>
+						<li><b>Messages privés</b> : entre deux personnes seulement.</li>
+						<li>Photos, fichiers, notes vocales, <b>@prénom</b> pour prévenir un collègue, <b>CMD-…</b> pour montrer une commande.</li>
+					</ul>
+					<p class="mi-confidentialite">🔒 {{ regles.phraseConfidentialite }} Les clients ne voient jamais cette messagerie.</p>
+				</div>
+			</section>
+		{% else %}
+			{% set membresNoms = membres|map(x => x.utilisateur|nom_equipe|split(' ')|first)|join(', ') %}
+			<section class="mi-fil" aria-label="{{ c.getLibellePour(moi) }}">
+				<header class="mi-fil-tete">
+					<a href="{{ path('app_messagerie_interne_index') }}" class="mi-retour" aria-label="Retour aux fils">‹</a>
+					{% include 'messagerie_interne/_vignette.html.twig' with {c: c, autre: autre} only %}
+					<div class="mi-fil-titre">
+						<h1>{{ c.getLibellePour(moi) }}{% if c.estFerme %} <span class="mi-puce gris">fermé</span>{% endif %}</h1>
+						<small>
+							{% if c.estPrive %}
+								{{ autre and autre.employe ? autre.employe.fonction }}{{ presenceAutre ? ' · ' ~ presenceAutre }}
+							{% else %}
+								{{ membresNoms }}{{ c.description ? ' · ' ~ c.description }}
+								{% if c.commande %} · <a href="{{ is_granted('ROLE_COMMANDE') ? path('app_commandes_show', {id: c.commande.id}) : '#' }}">{{ c.commande.numero }}</a>{% elseif c.devis %} · {{ c.devis.numero }}{% elseif c.client %} · {{ c.client.code }}{% endif %}
+							{% endif %}
+						</small>
+					</div>
+					{% if c.estGroupe %}
+						<span class="mi-avatars" aria-hidden="true">{% for x in membres|slice(0, 5) %}{% include 'messagerie_interne/_avatar.html.twig' with {u: x.utilisateur, classe: 'mini'} only %}{% endfor %}</span>
+					{% endif %}
+					{% if epingles is not empty %}<a href="#mi-epingles" class="mi-btn petit" data-panneau title="Messages épinglés">📌 {{ epingles|length }}</a>{% endif %}
+					<button type="button" class="mi-btn petit" data-panneau aria-controls="mi-cote" title="Fichiers, épingles et membres" aria-label="Fichiers, épingles et membres">ⓘ</button>
+				</header>
+
+				{% if lectureDirection %}
+					<div class="mi-bandeau bleu"><b>Lecture de la direction</b><span>Vous n'êtes pas membre de ce groupe : vous le lisez, sans y écrire. {{ regles.phraseConfidentialite }}</span></div>
+				{% endif %}
+				{% if c.estFerme %}
+					<div class="mi-bandeau gris"><b>Groupe fermé</b><span>{{ (c.fermeMotif|first|upper) ~ c.fermeMotif|slice(1) }}{{ c.fermeLe ? ' le ' ~ c.fermeLe|date('d/m/Y') }}. Il reste lisible.</span></div>
+				{% elseif c.estAnnonces and not peutEcrire and not lectureDirection %}
+					<div class="mi-bandeau gris"><b>Annonces</b><span>Seuls les responsables du groupe écrivent ici.</span></div>
+				{% endif %}
+
+				<div class="mi-messages" id="mi-messages" data-dernier="{{ liste is not empty ? (liste|last).id : 0 }}" aria-live="polite">
+					{% if liste is empty %}<p class="mi-vide">Pas encore de message. Écrivez le premier !</p>{% endif %}
+					{% include 'messagerie_interne/_messages.html.twig' %}
+				</div>
+				<div class="mi-emojis" id="mi-emojis" hidden>{% for e in emojis %}<button type="button" data-emoji="{{ e }}">{{ e }}</button>{% endfor %}</div>
+
+				{% if peutEcrire %}
+					<form class="mi-composeur" id="mi-composeur" novalidate>
+						<div class="mi-reponse" hidden><span></span><button type="button" data-annuler-reponse aria-label="Ne plus répondre">×</button></div>
+						<input type="hidden" name="reponse" value="">
+						<label for="mi-texte" class="visually-hidden">Message</label>
+						<textarea id="mi-texte" name="texte" rows="2" maxlength="{{ constant('App\\Entity\\Message::LONGUEUR_MAX') }}" placeholder="{{ c.estPrive ? 'Écrire à ' ~ c.getLibellePour(moi)|split(' ')|first ~ '…' : 'Écrire à #' ~ c.nom ~ '… (@ pour mentionner, CMD- pour une commande)' }}"></textarea>
+						<ul class="mi-mentions" hidden role="listbox" aria-label="Personnes"></ul>
+						<div class="mi-outils">
+							<button type="button" class="mi-plus-mobile" data-outils aria-label="Joindre">+</button>
+							<span class="mi-outils-liste">
+								{% if peutFichiers %}
+									<label class="mi-outil">📎 <span>Fichier</span><input type="file" multiple data-fichiers hidden></label>
+									<label class="mi-outil">🖼 <span>Photo</span><input type="file" accept="image/*" multiple data-fichiers hidden></label>
+									{% if peutParcourir or (dossiersDisponibles and (is_granted('ROLE_CLIENT') or is_granted('ROLE_PREPRESSE'))) %}
+										<button type="button" class="mi-outil" data-dossier>📁 <span>Dossier client</span></button>
+									{% endif %}
+								{% endif %}
+								<button type="button" class="mi-outil" data-commande>📦 <span>Commande</span></button>
+							</span>
+							{% if peutFichiers %}<label class="mi-outil mi-camera" aria-label="Prendre une photo">📷<input type="file" accept="image/*" capture="environment" data-fichiers hidden></label>{% endif %}
+							{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_messagerie_interne_vocale', {jeton: c.jeton}), jeton: csrf_token('mi_' ~ c.jeton), evenement: 'mi:vocale', classe: 'mi-outil', libelle: 'Vocal'} only %}
+							<button class="mi-btn bleu mi-envoyer">Envoyer</button>
+						</div>
+						<div class="mi-commande" hidden>
+							<input type="search" placeholder="Numéro ou client de la commande" aria-label="Chercher une commande" autocomplete="off">
+							<ul class="mi-propositions"></ul>
+						</div>
+						<p class="mi-erreur" role="alert" hidden></p>
+					</form>
+				{% elseif not lectureDirection and not c.estFerme and not c.estAnnonces %}
+					<p class="mi-composeur-lecture">Vous ne pouvez pas écrire ici.</p>
+				{% endif %}
+			</section>
+
+			{# ---------- Panneau droit : fichiers, épingles, membres ---------- #}
+			{% set photos = pieces|filter(p => p.estPhoto) %}
+			{% set autres = pieces|filter(p => not p.estPhoto) %}
+			<aside class="mi-cote" id="mi-cote" aria-label="Fichiers, épingles et membres">
+				<button type="button" class="mi-fermer mi-cote-fermer" data-panneau aria-label="Fermer le panneau">×</button>
+				<h2>Fichiers {{ c.estPrive ? 'échangés' : 'du groupe' }}</h2>
+				<div class="mi-onglets" role="tablist">
+					<button type="button" role="tab" class="actif" aria-selected="true" data-onglet="fichiers">Fichiers · {{ autres|length }}</button>
+					<button type="button" role="tab" aria-selected="false" data-onglet="photos">Photos · {{ photos|length }}</button>
+					<button type="button" role="tab" aria-selected="false" data-onglet="liens">Liens · {{ liensTexte|length }}</button>
+				</div>
+				<ul class="mi-cote-liste" data-contenu="fichiers">
+					{% for p in autres|slice(0, 12) %}
+						<li>
+							<span class="mi-ext ext-{{ p.etiquette|lower }}">{{ p.etiquette }}</span>
+							<span><a href="{{ path('app_messagerie_interne_fichier', {jeton: c.jeton, id: p.id}) }}" target="_blank" rel="noopener">{{ p.nom }}</a>
+							<small>{{ p.message and p.message.epingleLe ? 'épinglé · ' }}{{ p.message ? p.message.auteur|nom_equipe|split(' ')|first }} · {{ p.creeLe ? (p.creeLe|date('Ymd') == 'now'|date('Ymd') ? p.creeLe|date('H:i') : p.creeLe|date('d/m')) }}{{ p.estLien ? ' · lien' }}</small></span>
+						</li>
+					{% else %}
+						<li class="mi-vide">Aucun fichier.</li>
+					{% endfor %}
+				</ul>
+				<div class="mi-cote-photos" data-contenu="photos" hidden>
+					{% for p in photos|slice(0, 18) %}
+						<a href="{{ path('app_messagerie_interne_fichier', {jeton: c.jeton, id: p.id}) }}" target="_blank" rel="noopener"><img src="{{ path('app_messagerie_interne_fichier', {jeton: c.jeton, id: p.id, mini: 1}) }}" alt="{{ p.nom }}" loading="lazy"></a>
+					{% else %}
+						<p class="mi-vide">Aucune photo.</p>
+					{% endfor %}
+				</div>
+				<ul class="mi-cote-liste" data-contenu="liens" hidden>
+					{% for l in liensTexte %}
+						<li><span class="mi-ext">URL</span><span><a href="{{ l.url }}" target="_blank" rel="noopener noreferrer">{{ l.url|length > 40 ? l.url|slice(0, 40) ~ '…' : l.url }}</a><small>{{ l.message.auteur|nom_equipe|split(' ')|first }} · {{ l.message.dateEnvoi|date('d/m') }}</small></span></li>
+					{% else %}
+						<li class="mi-vide">Aucun lien.</li>
+					{% endfor %}
+				</ul>
+				<a class="mi-tout-voir" href="{{ path('app_messagerie_interne_fichiers', {groupe: c.id}) }}">Tous les fichiers partagés ›</a>
+
+				<h2 id="mi-epingles">Épinglé</h2>
+				{% for m in epingles %}
+					<a class="mi-epingle" href="#m{{ m.id }}">📌 {{ m.apercu(70) }}</a>
+				{% else %}
+					<p class="mi-vide petit">Rien d'épinglé.</p>
+				{% endfor %}
+
+				{% if c.estGroupe %}
+					<h2>Membres · {{ membres|length }}</h2>
+					<ul class="mi-membres">
+						{% for x in membres %}
+							<li>
+								{% include 'messagerie_interne/_avatar.html.twig' with {u: x.utilisateur, classe: 'mini'} only %}
+								<span>{{ x.utilisateur|nom_equipe }}{% if x.admin %} <small class="mi-puce bleu">responsable</small>{% endif %}{% if x.presence == 'en ligne' %} <small class="mi-en-ligne">en ligne</small>{% endif %}</span>
+								{% if peutGerer and x.utilisateur.id != moi.id %}
+									<form method="post" action="{{ path('app_messagerie_interne_membres', {jeton: c.jeton}) }}" data-confirmer="Retirer {{ x.utilisateur|nom_equipe }} du groupe ?" data-confirmer-detail="Il ne lit plus le groupe, même s'il a le rôle du groupe." data-confirmer-bouton="Retirer" data-confirmer-danger>
+										<input type="hidden" name="_token" value="{{ csrf_token('mi_' ~ c.jeton) }}"><input type="hidden" name="action" value="retirer"><input type="hidden" name="membre" value="{{ x.utilisateur.id }}">
+										<button class="mi-retirer" aria-label="Retirer {{ x.utilisateur|nom_equipe }}">×</button>
+									</form>
+								{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+					{% if c.rolesMembres is not empty %}<p class="mi-aide">Entrent aussi d'eux-mêmes : {{ roles|filter(r => r.code in c.rolesMembres)|map(r => r.nom)|join(', ') ?: c.rolesMembres|join(', ') }}{{ 'ROLE_ADMIN' in c.rolesMembres ? ' (Direction)' }}.</p>{% endif %}
+					{% if peutGerer %}
+						<details class="mi-gerer">
+							<summary class="mi-btn petit">Gérer le groupe</summary>
+							<form method="post" action="{{ path('app_messagerie_interne_membres', {jeton: c.jeton}) }}" class="mi-gerer-form">
+								<input type="hidden" name="_token" value="{{ csrf_token('mi_' ~ c.jeton) }}"><input type="hidden" name="action" value="ajouter">
+								<label for="mi-ajouter" class="visually-hidden">Ajouter une personne</label>
+								<select name="membre" id="mi-ajouter" required><option value="">Ajouter une personne…</option>{% for u in collegues|filter(u => not c.aPourParticipant(u)) %}<option value="{{ u.id }}">{{ u|nom_equipe }}</option>{% endfor %}</select>
+								<button class="mi-btn petit">Ajouter</button>
+							</form>
+							<form method="post" action="{{ path('app_messagerie_interne_membres', {jeton: c.jeton}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('mi_' ~ c.jeton) }}"><input type="hidden" name="action" value="{{ c.estFerme ? 'rouvrir' : 'fermer' }}">
+								<button class="mi-btn petit">{{ c.estFerme ? 'Rouvrir le groupe' : 'Fermer le groupe' }}</button>
+							</form>
+						</details>
+					{% endif %}
+					{% if c.aPourParticipant(moi) and c.parDefaut is null %}
+						<form method="post" action="{{ path('app_messagerie_interne_membres', {jeton: c.jeton}) }}" data-confirmer="Quitter ce groupe ?" data-confirmer-detail="Un responsable pourra vous y ajouter de nouveau." data-confirmer-bouton="Quitter" class="mi-quitter">
+							<input type="hidden" name="_token" value="{{ csrf_token('mi_' ~ c.jeton) }}"><input type="hidden" name="action" value="quitter">
+							<button class="mi-lien-rouge">Quitter le groupe</button>
+						</form>
+					{% endif %}
+					{% if c.isFermetureAuto and not c.estFerme %}<p class="mi-aide">Se ferme tout seul à la livraison de {{ c.commandeSuivie ? c.commandeSuivie.numero : 'la commande du devis' }}.</p>{% endif %}
+				{% endif %}
+				<p class="mi-confidentialite">🔒 {{ regles.phraseConfidentialite }}</p>
+			</aside>
+
+			{# ---------- Envoi de fichiers (MI03) ---------- #}
+			{% if peutEcrire and peutFichiers %}
+				<dialog class="mi-dialogue large" id="mi-dlg-envoi" aria-labelledby="mi-dlg-envoi-titre">
+					<div class="mi-dlg-tete">
+						<h2 id="mi-dlg-envoi-titre">Envoyer des fichiers</h2>
+						<span class="mi-dlg-vers">à {{ c.estPrive ? c.getLibellePour(moi) : '#' ~ c.nom }}</span>
+						<button type="button" class="mi-fermer" data-fermer aria-label="Fermer">×</button>
+					</div>
+					<div class="mi-dlg-corps">
+						<ul class="mi-envois" aria-live="polite"></ul>
+						<div class="mi-depot" data-depot tabindex="0">
+							<b>Déposer d'autres fichiers</b>
+							<span>ou <label class="mi-lien">choisir sur l'ordinateur<input type="file" multiple data-fichiers hidden></label></span>
+							{% if peutParcourir or (dossiersDisponibles and (is_granted('ROLE_CLIENT') or is_granted('ROLE_PREPRESSE'))) %}
+								<button type="button" class="mi-btn petit" data-dossier>📁 Depuis le dossier du client</button>
+							{% endif %}
+						</div>
+						<div class="mi-dossier" hidden>
+							<div class="mi-dossier-tete">
+								<b>Dossier du client</b>
+								{% if is_granted('ROLE_CLIENT') or is_granted('ROLE_PREPRESSE') %}
+									<input type="search" class="mi-dossier-client" placeholder="Autre client (code ou nom)" aria-label="Chercher un autre client" autocomplete="off">
+								{% endif %}
+							</div>
+							<ul class="mi-propositions" hidden></ul>
+							<p class="mi-dossier-etat"></p>
+							<ul class="mi-dossier-liste"></ul>
+						</div>
+						<label class="mi-interrupteur {{ rangementRaison ? 'grise' }}">
+							<input type="checkbox" name="ranger" value="1"{{ rangementRaison ? ' disabled' : (c.rangerDossierClient ? ' checked') }}>
+							<span>Ranger aussi dans {{ rangementDestination ? '« ' ~ rangementDestination ~ ' »' : 'le dossier du client' }}
+								<small>{{ rangementRaison ?: 'une copie, jamais d\'écrasement : un fichier du même nom devient « nom (2) ».' }}</small>
+							</span>
+						</label>
+						<label class="mi-champ">
+							<span>Message <small>(facultatif)</small></span>
+							<input type="text" class="mi-envoi-texte" maxlength="500" placeholder="ex. Voici les fichiers corrigés">
+						</label>
+						<p class="mi-aide">Jusqu'à {{ (tailleMax / 1048576)|round }} Mo par fichier, envoyés par morceaux (une coupure reprend où elle s'est arrêtée). Plus gros : partagez-le en lien depuis le dossier du client, sans copie.</p>
+						<p class="mi-erreur" role="alert" hidden></p>
+					</div>
+					<div class="mi-dlg-pied">
+						<button type="button" class="mi-btn" data-fermer>Annuler</button>
+						<button type="button" class="mi-btn bleu" data-envoyer-fichiers disabled>Envoyer</button>
+					</div>
+				</dialog>
+			{% endif %}
+		{% endif %}
+	</div>
+	{% include 'messagerie_interne/_dialogues.html.twig' %}
+{% endblock %}
+
+{% block javascripts %}
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
+	<script src="{{ asset('js/messagerie-interne.js') }}" defer></script>
+{% endblock %}

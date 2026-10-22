@@ -1,0 +1,117 @@
+/* Prépresse › Produits des clients (maquette MP02, docs/mes-produits.md). */
+.si-pcl-tete { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+.si-pcl-tete small.fil { display: block; color: #64748B; font-size: .78rem; }
+.si-pcl-tete h2 { margin: 0; font-size: 1.35rem; font-weight: 800; color: #0F172A; }
+.si-pcl-tete .si-pcl-nouveaux { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #FEF3C7; color: #B45309; font-size: .74rem; font-weight: 800; vertical-align: middle; }
+.si-pcl-tete .si-pcl-depuis { color: #64748B; font-size: .82rem; margin-left: 6px; }
+.si-pcl-mise { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+@media (min-width: 1100px) { .si-pcl-mise { grid-template-columns: minmax(0, 1fr) 360px; } .si-pcl-cote { position: sticky; top: 90px; } }
+.si-pcl-carte { background: #fff; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.08); padding: 14px 16px; }
+.si-pcl-entetes, .si-pcl-ligne { display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 8px 14px; align-items: center; }
+.si-pcl-entetes { display: none; font-size: .68rem; font-weight: 800; letter-spacing: .05em; color: #64748B; text-transform: uppercase; padding: 0 8px 8px; border-bottom: 1px solid #EEF1F6; }
+@media (min-width: 900px) {
+  .si-pcl-entetes, .si-pcl-ligne { grid-template-columns: 74px minmax(0, 1fr) minmax(0, 1.3fr) 140px; }
+  .si-pcl-entetes { display: grid; }
+}
+.si-pcl-ligne { padding: 10px 8px; border-bottom: 1px solid #EEF1F6; border-radius: 10px; cursor: pointer; }
+.si-pcl-ligne.choisi { background: #F1F6FE; }
+.si-pcl-image { width: 74px; height: 64px; border-radius: 10px; background: #F1F5F9; display: grid; place-items: center; overflow: hidden; font-weight: 800; color: #64748B; }
+.si-pcl-image img { width: auto !important; height: auto !important; max-width: 74px !important; max-height: 64px !important; object-fit: contain; }
+.si-pcl-produit b { display: block; color: #0F172A; font-size: .95rem; }
+.si-pcl-produit small { color: #64748B; font-size: .8rem; }
+.si-pcl-produit .si-pcl-ref { font-size: .7rem; color: #94A3B8; }
+.si-pcl-fichiers { grid-column: 1 / -1; display: grid; gap: 6px; }
+@media (min-width: 900px) { .si-pcl-fichiers { grid-column: auto; } }
+.si-pcl-fichier { display: flex; align-items: center; gap: 10px; border: 1px solid #E2E8F0; border-radius: 10px; padding: 7px 10px; background: #fff; min-width: 0; }
+.si-pcl-fichier.depose { border: 1.5px solid #1D5BB8; box-shadow: 0 0 0 2px rgba(29,91,184,.12); }
+.si-pcl-fichier.alerte { border-color: #FCA5A5; background: #FEF2F2; }
+.si-pcl-fichier > span:not(.si-pcl-pdf) { min-width: 0; flex: 1; }
+.si-pcl-fichier b { display: block; font-size: .84rem; color: #0F172A; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-pcl-fichier small { color: #64748B; font-size: .74rem; }
+.si-pcl-pdf { flex: 0 0 30px; height: 30px; border-radius: 6px; background: #E0102B; color: #fff; font-size: .6rem; font-weight: 800; display: grid; place-items: center; text-transform: uppercase; }
+.si-pcl-pdf.autre { background: #64748B; }
+.si-pcl-pdf.dossier { background: #F5B301; }
+.si-pcl-depot { border: 1.5px dashed #CBD5E1; border-radius: 10px; padding: 12px; text-align: center; color: #64748B; font-size: .8rem; }
+.si-pcl-depot.survol { border-color: #1D5BB8; background: #EAF1FC; color: #1D5BB8; }
+.si-pcl-tailles-form { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: .78rem; color: #64748B; }
+.si-pcl-tailles-form input { width: 70px; padding: 3px 6px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: .8rem; }
+.si-pcl-statut { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+@media (min-width: 900px) { .si-pcl-statut { grid-column: auto; flex-direction: column; align-items: flex-start; } }
+.si-pcl-badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.si-pcl-badge.pret { background: #DCFCE7; color: #15803D; }
+.si-pcl-badge.prep { background: #FEF3C7; color: #B45309; }
+.si-pcl-badge.susp { background: #FEE2E2; color: #B91C1C; }
+.si-pcl-badge.prix { background: #F1F5F9; color: #475569; }
+.si-pcl-valider { border: 0; border-radius: 8px; padding: 6px 12px; background: #16A34A; color: #fff; font-weight: 800; font-size: .8rem; }
+.si-pcl-valider[disabled] { opacity: .45; }
+.si-pcl-mini { border: 0; background: none; padding: 0; color: #64748B; font-size: .74rem; text-decoration: underline; }
+.si-pcl-note { margin-top: 12px; padding: 10px 14px; background: #F8FAFC; border-radius: 10px; font-size: .82rem; color: #475569; }
+.si-pcl-commandees { margin-top: 4px; font-size: .74rem; color: #B45309; }
+.si-pcl-commandees button { border: 0; background: #FEF3C7; color: #B45309; border-radius: 999px; padding: 1px 8px; font-size: .72rem; font-weight: 700; margin: 2px 2px 0 0; }
+.si-pcl-dossier { background: #fff; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.08); overflow: hidden; }
+.si-pcl-dossier-tete { background: #0F1F3D; color: #fff; padding: 10px 14px; }
+.si-pcl-dossier-tete small { display: block; color: #A5B4CB; font-size: .72rem; }
+.si-pcl-dossier-tete code { color: #fff; font-size: .8rem; overflow-wrap: anywhere; background: none; padding: 0; }
+.si-pcl-liste { list-style: none; margin: 0; padding: 4px 8px; max-height: 360px; overflow-y: auto; }
+.si-pcl-liste li { display: flex; align-items: center; gap: 10px; padding: 8px 6px; border-bottom: 1px solid #EEF1F6; }
+.si-pcl-liste li:last-child { border-bottom: 0; }
+.si-pcl-liste li[draggable=true] { cursor: grab; }
+.si-pcl-liste li[draggable=true]:hover { background: #F8FAFC; }
+.si-pcl-liste li > span:nth-child(2) { flex: 1; min-width: 0; }
+.si-pcl-liste b { display: block; font-size: .82rem; color: #0F172A; overflow-wrap: anywhere; }
+.si-pcl-liste small { color: #64748B; font-size: .72rem; }
+.si-pcl-liste .poignee { color: #CBD5E1; }
+.si-pcl-liste .lie { color: #15803D; font-weight: 700; }
+.si-pcl-controle { margin-top: 14px; }
+.si-pcl-controle h3 { font-size: .92rem; font-weight: 800; margin: 0 0 8px; color: #0F172A; }
+.si-pcl-controle ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+.si-pcl-controle li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: .8rem; }
+.si-pcl-controle li span:nth-child(2) { color: #64748B; }
+.si-pcl-controle li b { text-align: right; color: #0F172A; max-width: 190px; }
+.si-pcl-point { width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-size: .62rem; font-weight: 900; margin-top: 1px; }
+.si-pcl-point.ok { background: #16A34A; } .si-pcl-point.attention, .si-pcl-point.a_verifier { background: #F59E0B; } .si-pcl-point.erreur { background: #DC2626; }
+.si-pcl-file td, .si-pcl-file th { vertical-align: middle; }
+
+/* Fiche commande › aiguillage des lignes (maquette MP06). */
+.si-aig h4 { font-size: 1rem; font-weight: 800; }
+.si-aig-ligne { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px 14px; align-items: center; padding: 10px 0; border-top: 1px solid #EEF1F6; }
+.si-aig-ligne .si-pcl-image { width: 64px; height: 56px; }
+.si-aig-produit b { color: #0F172A; }
+.si-aig-produit { font-size: .9rem; }
+.si-aig-fichier, .si-aig-dest { grid-column: 1 / -1; }
+.si-aig-nom { display: block; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .78rem; color: #0F172A; overflow-wrap: anywhere; }
+.si-aig-fichier small { display: block; }
+.si-aig-fichier small { color: #64748B; font-size: .76rem; }
+.si-aig-fichier.prep small { color: #C2410C; }
+.si-aig-fichier.alerte small { color: #B91C1C; font-weight: 700; }
+.si-aig-fleche { display: none; font-size: 1.2rem; font-weight: 900; color: #16A34A; }
+.si-aig-fleche.prepresse { color: #EA580C; } .si-aig-fleche.alerte { color: #DC2626; } .si-aig-fleche.standard { color: #94A3B8; }
+.si-aig-dest { border-radius: 10px; padding: 8px 12px; background: #DCFCE7; }
+.si-aig-dest b { display: block; font-size: .82rem; color: #15803D; }
+.si-aig-dest small { font-size: .74rem; color: #475569; }
+.si-aig-dest.prepresse { background: #FFEDD5; } .si-aig-dest.prepresse b { color: #C2410C; }
+.si-aig-dest.alerte { background: #FEE2E2; } .si-aig-dest.alerte b { color: #B91C1C; }
+.si-aig-dest.standard { background: #F1F5F9; } .si-aig-dest.standard b { color: #475569; }
+@media (min-width: 992px) {
+  .si-aig-ligne { grid-template-columns: 64px minmax(0, 1.2fr) minmax(0, 1.3fr) 28px minmax(0, 1fr); }
+  .si-aig-fichier, .si-aig-dest { grid-column: auto; }
+  .si-aig-fleche { display: block; text-align: center; }
+}
+.si-aig-file { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-top: 1px solid #EEF1F6; font-size: .84rem; }
+.si-aig-file > span:nth-child(2) { flex: 1; min-width: 0; }
+.si-aig-file a { font-weight: 700; white-space: nowrap; }
+.si-aig-regles { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; font-size: .8rem; }
+.si-aig-regles dt, .si-aig-regles dd { padding: 6px 0; border-top: 1px solid #EEF1F6; margin: 0; }
+.si-aig-regles dt { font-weight: 700; color: #0F172A; padding-right: 10px; }
+.si-aig-regles dd { color: #64748B; }
+@media (max-width: 575px) { .si-aig-regles { grid-template-columns: 1fr; } .si-aig-regles dd { border-top: 0; padding-top: 0; } }
+.si-aig .si-pcl-nouveaux { display: inline-block; margin-left: 8px; padding: 2px 9px; border-radius: 999px; background: #EAF1FC; color: #0F4590; font-size: .72rem; font-weight: 800; vertical-align: middle; }
+.si-aig-file a { color: #1D5BB8; }
+
+/* Fichier de découpe lié avec le fichier à imprimer (docs/prepresse.md). */
+.si-pcl-badge.decoupe { background: #FEF3C7; color: #92400E; }
+.si-pcl-decoupe { display: block; font-size: .74rem; color: #475569; overflow-wrap: anywhere; }
+.si-pcl-decoupe.manquant { color: #92400E; font-weight: 700; }
+.si-pcl-decoupe-form { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: .78rem; color: #64748B; margin-top: 4px; }
+.si-pcl-decoupe-form select { max-width: 100%; padding: 3px 6px; border: 1px solid #E2E8F0; border-radius: 6px; font-size: .8rem; }
+.si-pcl-decoupe-form .si-pcl-sans { display: inline-flex; align-items: center; gap: 4px; }

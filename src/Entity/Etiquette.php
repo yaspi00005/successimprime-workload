@@ -48,7 +48,8 @@ class Etiquette
     private ?string $token = null;
 
     /**
-     * Chemin relatif du fichier PNG.
+     * Chemin du fichier PNG, relatif à var/ (hors de public/,
+     * servi par LotEtiquetteController::qr, FichiersPrives).
      */
     #[ORM\Column(length: 255)]
     private ?string $fichierQr = null;

@@ -1,0 +1,92 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mes devis (maquette DB01, téléphone DB12) : quatre chiffres, onglets,
+	une ligne par devis ou demande avec son état, sa validité et le bouton
+	du moment (MesDevisClient). Le prix pour qui voit les montants
+	(coque.montants) ; accepter pour qui valide (peutValider).
+#}
+
+{% block title %}Mes devis{% endblock %}
+{% block page_classe %} ec-page-large cd-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes devis</a>{% endblock %}
+
+{% block contenu %}
+	{% set montants = coque.montants %}
+	<div class="cd-tete">
+		<h1 class="ec-bureau">Mes devis</h1>
+		{% if coque.ecrit %}<a class="ec-bouton rouge db-demander" href="{{ path('app_site_devis') }}">+ Demander un devis</a>{% endif %}
+	</div>
+
+	<div class="cd-chiffres">
+		<div class="ec-carte cd-chiffre">
+			<span>À accepter</span>
+			<b class="orange">{{ chiffres.aAccepter }}</b>
+			<small>{{ [montants and chiffres.aAccepter ? chiffres.montantAAccepter|number_format(0, ',', ' ') ~ ' F' : null, chiffres.expireDans is not null ? (chiffres.expireDans <= 0 ? 'expire aujourd\'hui' : 'expire dans ' ~ chiffres.expireDans ~ ' j') : null]|filter(t => t)|join(' · ')|default('rien à accepter') }}</small>
+		</div>
+		<div class="ec-carte cd-chiffre">
+			<span>En préparation</span>
+			<b class="bleu">{{ chiffres.preparation }}</b>
+			<small>{{ chiffres.promesse ?: 'aucune demande en cours' }}</small>
+		</div>
+		<div class="ec-carte cd-chiffre">
+			<span>Acceptés en {{ chiffres.annee }}</span>
+			<b class="vert">{{ chiffres.acceptes }}</b>
+			<small>devenus commandes</small>
+		</div>
+		<div class="ec-carte cd-chiffre">
+			<span>Délai moyen de réponse</span>
+			<b>{{ chiffres.delai ?: '—' }}</b>
+			<small>pour vos demandes</small>
+		</div>
+	</div>
+
+	<section class="ec-carte cd-liste">
+		<nav class="cd-onglets db-onglets" aria-label="Trier les devis">
+			{% for cle, libelle in onglets %}
+				<a class="cd-onglet{{ filtre == cle ? ' actif' }}" href="{{ path('app_espace_devis', {filtre: cle}) }}"{% if filtre == cle %} aria-current="page"{% endif %}>{{ libelle }} · {{ compte[cle] }}</a>
+			{% endfor %}
+		</nav>
+		{% set badges = {accepter: ['À accepter', 'orange'], modifie: ['Modifié', 'violet'], preparation: ['En préparation', 'bleu'], accepte: ['Accepté', 'vert'], expire: ['Expiré', 'gris'], refuse: ['Refusé', 'gris']} %}
+		<ul class="db-devis">
+			{% for l in visibles %}
+				{% set badge = badges[l.etat] %}
+				{% set d = l.devis ?? null %}
+				{% set url = d ? path('app_espace_devis_detail', {id: d.id}) : path('app_espace_devis_demande', {id: l.demande.id}) %}
+				<li class="db-devis-ligne db-{{ l.etat }}">
+					<a class="db-devis-nom" href="{{ url }}">
+						<b>{{ l.titre }} <span class="db-badge {{ badge[1] }}">{{ badge[0] }}{{ l.etat == 'modifie' ? ' · v' ~ d.version }}</span></b>
+						<small>{{ l.numero }} · {{ l.sous }}</small>
+					</a>
+					<span class="db-devis-quand{{ l.urgent ? ' urgent' }}">{{ l.quand }}</span>
+					<span class="db-devis-montant">{% if l.montant is null %}—{% elseif montants %}{{ l.montant|number_format(0, ',', ' ') }} F{% else %}<small>prix vu par votre valideur</small>{% endif %}</span>
+					<span class="db-devis-action">
+						{% if l.etat == 'accepter' %}
+							<a class="ec-bouton orange" href="{{ url }}">{{ peutValider ? 'Voir et accepter' : 'Voir le devis' }}</a>
+						{% elseif l.etat == 'modifie' %}
+							<a class="ec-bouton violet" href="{{ url }}">Voir la v{{ d.version }}</a>
+						{% elseif l.etat == 'preparation' %}
+							<a class="ec-bouton-blanc" href="{{ url }}">Voir ma demande</a>
+						{% elseif l.etat == 'accepte' and d.commande %}
+							<a class="ec-bouton-blanc" href="{{ path('app_espace_commande', {id: d.commande.publicId}) }}">Voir la commande</a>
+						{% elseif l.etat == 'expire' and peutValider %}
+							<form method="post" action="{{ path('app_espace_devis_modification', {id: d.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+								<input type="hidden" name="texte" value="Merci de m'envoyer une nouvelle version de ce devis.">
+								<button type="submit" class="ec-bouton-blanc">Redemander</button>
+							</form>
+						{% else %}
+							<a class="ec-bouton-blanc" href="{{ url }}">Voir</a>
+						{% endif %}
+					</span>
+				</li>
+			{% else %}
+				<li class="cd-vide ec-petit">{{ filtre == 'tous' ? 'Aucun devis pour le moment. Demandez-en un : nous répondons dans la journée.' : 'Aucun devis ici.' }}</li>
+			{% endfor %}
+		</ul>
+	</section>
+{% endblock %}

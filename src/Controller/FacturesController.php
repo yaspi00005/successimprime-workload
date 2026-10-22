@@ -5,7 +5,10 @@ namespace App\Controller;
 use App\Entity\Commandes;
 use App\Entity\Factures;
 use App\Form\FacturesType;
+use App\Repository\EntrepriseRepository;
 use App\Repository\FacturesRepository;
+use App\Service\DocumentsEntreprise;
+use App\Service\NumerotationFactures;
 use App\Service\WhatsAppService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -17,47 +20,13 @@ use Symfony\Component\Routing\Attribute\Route;
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-use Endroid\QrCode\Encoding\Encoding;
-use Endroid\QrCode\ErrorCorrectionLevel;
-use Endroid\QrCode\QrCode;
-use Endroid\QrCode\RoundBlockSizeMode;
-use Endroid\QrCode\Writer\PngWriter;
 
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 #[Route('/factures')]
 class FacturesController extends AbstractController
 {
-    /*
-     * ============================================================
-     * LISTE
-     * ============================================================
-     */
-    #[Route(
-        '/',
-        name: 'app_factures_index',
-        methods: ['GET']
-    )]
-    public function index(
-        FacturesRepository $facturesRepository
-    ): Response {
-        $factures =
-            $facturesRepository->findBy(
-                [],
-                [
-                    'dateFacture' => 'DESC',
-                    'id' => 'DESC',
-                ]
-            );
-
-        return $this->render(
-            'factures/index.html.twig',
-            [
-                'factures' => $factures,
-            ]
-        );
-    }
-
+    // La liste (maquette FD06) est dans DocumentsFacturationController.
 
     /*
      * ============================================================
@@ -73,8 +42,14 @@ class FacturesController extends AbstractController
         Commandes $commande,
         Request $request,
         EntityManagerInterface $entityManager,
-        FacturesRepository $facturesRepository
+        FacturesRepository $facturesRepository,
+        EntrepriseRepository $entrepriseRepository,
+        NumerotationFactures $numerotation
     ): Response {
+        if ($commande->estSoldeOuverture()) {
+            // Pas de facture à prix inventé : le solde d'ouverture n'est pas une vente.
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se facture pas.');
+        }
         /*
          * --------------------------------------------------------
          * Création du document
@@ -97,8 +72,11 @@ class FacturesController extends AbstractController
         /*
          * Valeurs par défaut.
          */
+        // « Nouveau document » (FD01) peut demander une proforma.
         $facture->setTypeDocument(
-            Factures::TYPE_FACTURE
+            Factures::TYPE_PROFORMA === $request->query->getString('type')
+                ? Factures::TYPE_PROFORMA
+                : Factures::TYPE_FACTURE
         );
 
         $facture->setEmetteur(
@@ -394,36 +372,12 @@ class FacturesController extends AbstractController
 
 
                 /*
-                 * =================================================
-                 * NUMÉRO
-                 * =================================================
+                 * Numéro : une facture n'en reçoit un qu'à sa validation
+                 * (« Valider et numéroter », emettre) ; une proforma tout de suite.
                  */
-
-                if (
-                    $facture->estFacture()
-                ) {
-                    $prefixe = 'FAC';
-                } else {
-                    $prefixe = 'PF';
+                if (!$facture->estFacture()) {
+                    $numerotation->attribuer($facture);
                 }
-
-
-                /*
-                 * Exemples :
-                 *
-                 * FAC-000001-08-2026
-                 * PF-000002-08-2026
-                 */
-                $facture->setNumero(
-                    sprintf(
-                        '%s-%06d-%s',
-                        $prefixe,
-                        $facture->getId(),
-                        $facture
-                            ->getDateFacture()
-                            ->format('m-Y')
-                    )
-                );
 
 
                 /*
@@ -472,13 +426,9 @@ class FacturesController extends AbstractController
 
                 $this->addFlash(
                     'success',
-                    sprintf(
-                        '%s %s a été enregistré avec succès.',
-                        $facture
-                            ->getTypeDocumentLabel(),
-                        $facture
-                            ->getNumero()
-                    )
+                    null === $facture->getNumero()
+                        ? 'Facture enregistrée en brouillon : son numéro sera attribué à la validation.'
+                        : sprintf('%s %s a été enregistré avec succès.', $facture->getTypeDocumentLabel(), $facture->getNumero())
                 );
 
 
@@ -623,6 +573,11 @@ class FacturesController extends AbstractController
         }
 
 
+        // Nouveaux écrans (maquettes FD02, FD03) : brouillon, facture et facture d'acompte validées.
+        if (!$facture->estAnnulee() && null !== $facture->getCommande() && ($facture->estBrouillon() || !$facture->estProforma())) {
+            return $this->forward(FacturesEcransController::class.'::ecran', ['id' => $facture->getId()]);
+        }
+
         return $this->render(
             'factures/show.html.twig',
             [
@@ -643,6 +598,9 @@ class FacturesController extends AbstractController
 
                 'statutPaiement' =>
                 $facture->getStatutPaiement(),
+
+                'avoirsFacture' =>
+                $entityManager->getRepository(\App\Entity\Avoir::class)->findBy(['facture' => $facture], ['id' => 'ASC']),
             ]
         );
     }
@@ -660,7 +618,8 @@ class FacturesController extends AbstractController
     public function emettre(
         Factures $facture,
         Request $request,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        \App\Service\Facturation\ValidationFacture $validation
     ): Response {
         if (
             !$this->isCsrfTokenValid(
@@ -710,11 +669,8 @@ class FacturesController extends AbstractController
         }
 
 
-        $facture->setEtat(
-            Factures::ETAT_EMISE
-        );
-
-        $entityManager->flush();
+        $par = $this->getUser();
+        $validation->valider($facture, $par instanceof \App\Entity\User ? $par : null);
 
 
         $this->addFlash(
@@ -891,6 +847,15 @@ class FacturesController extends AbstractController
             );
         }
 
+        // Règle de Yaya (19/10/2026) : une facture validée ne se modifie ni ne s'annule ;
+        // toute correction passe par un avoir numéroté.
+        if ($facture->estFacture() && $facture->estEmise()) {
+            $this->addFlash('warning', sprintf('La facture %s est validée : elle ne se modifie plus. Pour la corriger ou l\'annuler, créez un avoir.', $facture->getNumero()));
+
+            return $this->redirectToRoute('app_factures_show', ['id' => $facture->getId()]);
+        }
+
+
 
         /*
          * Une fois la facture totalement payée, elle redevient un
@@ -999,6 +964,15 @@ class FacturesController extends AbstractController
             );
         }
 
+        // Règle de Yaya (19/10/2026) : une facture validée ne se modifie ni ne s'annule ;
+        // toute correction passe par un avoir numéroté.
+        if ($facture->estFacture() && $facture->estEmise()) {
+            $this->addFlash('warning', sprintf('La facture %s est validée : elle ne se modifie plus. Pour la corriger ou l\'annuler, créez un avoir.', $facture->getNumero()));
+
+            return $this->redirectToRoute('app_factures_show', ['id' => $facture->getId()]);
+        }
+
+
 
         $facture->setEtat(
             Factures::ETAT_ANNULEE
@@ -1035,7 +1009,8 @@ class FacturesController extends AbstractController
 )]
 public function pdf(
     Factures $facture,
-    EntityManagerInterface $entityManager
+    EntityManagerInterface $entityManager,
+    DocumentsEntreprise $documentsEntreprise
 ): Response {
 
     /*
@@ -1238,122 +1213,11 @@ public function pdf(
 
     /*
      * ============================================================
-     * URL D'AUTHENTICITÉ
+     * EN-TÊTE, QR ET MONTANT EN LETTRES
      * ============================================================
-     */
-    $urlFacture =
-        $this->generateUrl(
-            'app_factures_show',
-            [
-                'id' =>
-                    $facture->getId(),
-            ],
-            UrlGeneratorInterface::ABSOLUTE_URL
-        );
-
-
-    /*
-     * ============================================================
-     * QR CODE
-     * ============================================================
-     */
-    $contenuQr =
-        sprintf(
-            "%s\nFacture: %s\nAuthenticite: %s",
-            $urlFacture,
-            $facture->getNumero()
-                ?? '#' . $facture->getId(),
-            $facture->getTokenAuthenticite()
-                ?? ''
-        );
-
-
-    $qrCode =
-        new QrCode(
-            data: $contenuQr,
-            encoding:
-                new Encoding(
-                    'UTF-8'
-                ),
-            errorCorrectionLevel:
-                ErrorCorrectionLevel::Medium,
-            size: 250,
-            margin: 8,
-            roundBlockSizeMode:
-                RoundBlockSizeMode::Margin
-        );
-
-
-    $writer =
-        new PngWriter();
-
-
-    $qrResult =
-        $writer->write(
-            $qrCode
-        );
-
-
-    $qrCodeDataUri =
-        $qrResult->getDataUri();
-
-
-    /*
-     * ============================================================
-     * LOGOS / SIGNATURES
-     * ============================================================
-     */
-    $documents = [
-
-        /*
-         * DREPA TECHNOLOGIE
-         */
-        'drepa' => [
-
-            'logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/drepa-logo.png'
-                ),
-
-            'signature' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/drepa-signature-cachet.png'
-                ),
-        ],
-
-
-        /*
-         * MADIAL GROUP / SUCCESS IMPRIM
-         */
-        'mdg' => [
-
-            'logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/mdg-logo.png'
-                ),
-
-            'success_logo' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/success-imprim-logo.png'
-                ),
-
-            'signature' =>
-                $this->imageVersDataUri(
-                    $projectDir
-                    . '/public/assets/images/documents/mdg-signature-cachet.png'
-                ),
-        ],
-    ];
-
-
-    /*
-     * ============================================================
-     * HTML
-     * ============================================================
+     *
+     * Tout vient de l'entreprise émettrice (Réglages › Entreprises) :
+     * le QR de suivi ouvre /f/{code}, sans connexion.
      */
     $html =
         $this->renderView(
@@ -1361,22 +1225,11 @@ public function pdf(
             [
                 'facture' =>
                     $facture,
-
                 'commande' =>
                     $commande,
-
                 'client' =>
                     $commande->getClients(),
-
-                'qrCode' =>
-                    $qrCodeDataUri,
-
-                'urlFacture' =>
-                    $urlFacture,
-
-                'documents' =>
-                    $documents,
-            ]
+            ] + $documentsEntreprise->vueFacture($facture)
         );
 
 
@@ -1550,6 +1403,19 @@ public function pdf(
 
 
     /*
+     * Brouillon : PDF d'aperçu (mention « Brouillon », sans numéro),
+     * jamais archivé. Le PDF définitif s'archive une fois la facture validée.
+     */
+    if (Factures::ETAT_BROUILLON === $facture->getEtat()) {
+        return new Response($contenuPdf, Response::HTTP_OK, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => sprintf('inline; filename="brouillon-%d.pdf"', $facture->getId()),
+            'Cache-Control' => 'private, no-store',
+        ]);
+    }
+
+
+    /*
      * ============================================================
      * CRÉATION DU DOSSIER
      * ============================================================
@@ -1718,7 +1584,8 @@ public function pdf(
     public function pdfPublic(
         Factures $facture,
         string $token,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        DocumentsEntreprise $documentsEntreprise
     ): Response {
         $tokenAttendu = (string) $facture->getTokenAuthenticite();
 
@@ -1731,7 +1598,13 @@ public function pdf(
             );
         }
 
-        return $this->pdf($facture, $entityManager);
+        // Première ouverture du lien envoyé au client (« Envois », maquette FD03).
+        if ($facture->estEmise() && null === $facture->getLienOuvertLe()) {
+            $facture->setLienOuvertLe(new \DateTimeImmutable());
+            $entityManager->flush();
+        }
+
+        return $this->pdf($facture, $entityManager, $documentsEntreprise);
     }
 
     /*
@@ -1764,6 +1637,9 @@ public function pdf(
             );
         }
 
+        if ($facture->estFacture() && null === $facture->getNumero()) {
+            return $this->json(['success' => false, 'message' => 'Validez la facture avant de l\'envoyer : un brouillon n\'a pas encore de numéro.'], Response::HTTP_BAD_REQUEST);
+        }
         if (!$whatsAppService->estConfigure()) {
             return $this->json(
                 [
@@ -1850,40 +1726,4 @@ public function pdf(
             : '';
     }
 
-    private function imageVersDataUri(
-        string $chemin
-    ): ?string {
-        if (
-            !is_file($chemin)
-            || !is_readable($chemin)
-        ) {
-            return null;
-        }
-
-        $contenu =
-            file_get_contents(
-                $chemin
-            );
-
-        if ($contenu === false) {
-            return null;
-        }
-
-        $mime =
-            mime_content_type(
-                $chemin
-            );
-
-        if (!$mime) {
-            $mime = 'image/png';
-        }
-
-        return sprintf(
-            'data:%s;base64,%s',
-            $mime,
-            base64_encode(
-                $contenu
-            )
-        );
-    }
 }

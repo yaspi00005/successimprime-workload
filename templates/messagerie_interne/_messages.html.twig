@@ -1,0 +1,72 @@
+{#
+	Messages d'un fil (docs/messagerie-interne.md, MI01) : aussi rendu pour le
+	rafraîchissement et après un envoi. Variables : c, liste, cartes,
+	peutReagir, peutEpingler, membresParId.
+#}
+{% set jourPrecedent = null %}
+{% for m in liste %}
+	{% set jour = m.dateEnvoi|date('Ymd') %}
+	{% if jour != jourPrecedent %}
+		{% set aujourdhui = 'now'|date('Ymd') %}
+		<div class="mi-jour" data-jour="{{ jour }}"><span>{{ jour == aujourdhui ? 'Aujourd\'hui' : (jour == 'now'|date_modify('-1 day')|date('Ymd') ? 'Hier' : m.dateEnvoi|date('d/m/Y')) }}</span></div>
+		{% set jourPrecedent = jour %}
+	{% endif %}
+	{% if m.estSysteme %}
+		<p class="mi-systeme" id="m{{ m.id }}" data-id="{{ m.id }}">{{ m.contenu }} · {{ m.dateEnvoi|date('H:i') }}</p>
+	{% else %}
+		{% set moiAuteur = m.auteur and m.auteur.id == app.user.id %}
+		<article class="mi-msg {{ moiAuteur ? 'moi' }} {{ m.epingleLe ? 'epingle' }}" id="m{{ m.id }}" data-id="{{ m.id }}" data-code="{{ m.id|code_id }}" data-auteur="{{ m.auteur|nom_equipe }}" data-apercu="{{ m.apercu(90) }}">
+			{% include 'messagerie_interne/_avatar.html.twig' with {u: m.auteur} only %}
+			<div class="mi-msg-corps">
+				<p class="mi-msg-tete">
+					<b>{{ m.auteur|nom_equipe }}</b>
+					{% if m.auteur and m.auteur.employe and m.auteur.employe.fonction %}<span class="mi-metier">{{ m.auteur.employe.fonction }}</span>{% endif %}
+					<time datetime="{{ m.dateEnvoi|date('c') }}">{{ m.dateEnvoi|date('H:i') }}</time>
+					{% if m.epingleLe %}<span class="mi-epingle-marque" title="Épinglé">📌</span>{% endif %}
+				</p>
+				{% if m.reponseA %}
+					<a class="mi-citation" href="#m{{ m.reponseA.id }}"><b>{{ m.reponseA.auteur|nom_equipe }}</b> {{ m.reponseA.apercu(90) }}</a>
+				{% endif %}
+				{% if m.contenu != '' and not m.texteEstLibelleVocale %}
+					<div class="mi-texte">{{ m|texte_equipe(membresParId) }}</div>
+				{% endif %}
+				{% if m.aUneNoteVocale %}
+					{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: m, url: path('app_messagerie_interne_vocale_ecouter', {jeton: c.jeton, id: m.id})} only %}
+				{% endif %}
+				{% for id in m.commandes %}
+					{% set carte = cartes[id] ?? null %}
+					{% if carte %}
+						<div class="mi-carte">
+							<span class="mi-carte-icone" aria-hidden="true">📦</span>
+							<span class="mi-carte-corps">
+								<b>{% if carte.lien %}<a href="{{ path('app_commandes_show', {id: carte.id}) }}">{{ carte.numero }}</a>{% else %}{{ carte.numero }}{% endif %}{{ carte.client ? ' · ' ~ carte.client }}</b>
+								<small>{{ carte.article ?? 'Commande' }}{{ carte.echeance ? ' · promis ' ~ carte.echeance|date('d/m') }}{% if carte.total is not null %} · {{ carte.total|number_format(0, ',', ' ') }} F{% if carte.reste %}, reste {{ carte.reste|number_format(0, ',', ' ') }} F{% endif %}{% endif %}</small>
+							</span>
+							<span class="mi-statut ton-{{ carte.ton }}">{{ carte.statut }}</span>
+						</div>
+					{% endif %}
+				{% endfor %}
+				{% if m.pieces is not empty %}
+					<div class="mi-pieces">
+						{% for p in m.pieces %}{% include 'messagerie_interne/_piece.html.twig' with {p: p, c: c} only %}{% endfor %}
+					</div>
+				{% endif %}
+				{% include 'messagerie_interne/_reactions.html.twig' with {m: m, c: c, peutReagir: peutReagir} only %}
+			</div>
+			{% if peutReagir or peutEpingler %}
+				<div class="mi-msg-actions">
+					{% if peutReagir %}
+						<button type="button" data-repondre title="Répondre" aria-label="Répondre">↩</button>
+						<button type="button" data-emojis title="Réagir" aria-label="Réagir">☺</button>
+					{% endif %}
+					{% if peutEpingler %}
+						<form method="post" action="{{ path('app_messagerie_interne_epingler', {jeton: c.jeton, id: m.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('mi_' ~ c.jeton) }}">
+							<button title="{{ m.epingleLe ? 'Désépingler' : 'Épingler' }}" aria-label="{{ m.epingleLe ? 'Désépingler' : 'Épingler' }}">📌</button>
+						</form>
+					{% endif %}
+				</div>
+			{% endif %}
+		</article>
+	{% endif %}
+{% endfor %}

@@ -1,0 +1,29 @@
+{#
+	Sondage global ou libre construit par l'admin : ses questions dans
+	l'ordre. identite : demander le nom et le téléphone (page sans compte),
+	obligatoires si le sondage n'accepte pas l'anonymat.
+#}
+<form method="post" class="av-form">
+	<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+	<div class="av-piege" aria-hidden="true"><label>Site <input type="text" name="site" tabindex="-1" autocomplete="off"></label></div>
+
+	<div class="ec-carte">
+		{% for q in sondage.questions %}
+			{% include 'avis/_question.html.twig' with {q: q, nom: null} %}
+		{% endfor %}
+	</div>
+
+	{% if identite ?? false %}
+		{% set requis = not sondage.anonymeAutorise %}
+		<div class="ec-carte av-champs">
+			<h2 style="margin:0">Vous{{ requis ? '' : ' (facultatif)' }}</h2>
+			{% if not requis %}<p class="ec-petit" style="margin:0">Vous pouvez répondre sans donner votre nom. Laissez votre numéro si vous voulez qu'on vous rappelle.</p>{% endif %}
+			<label class="ec-etiquette" for="nom" style="margin:0">Nom</label>
+			<input class="ec-saisie" id="nom" name="nom" maxlength="80" autocomplete="name" value="{{ saisie.nom ?? '' }}"{{ requis ? ' required' }}>
+			<label class="ec-etiquette" for="telephone" style="margin:0">Téléphone</label>
+			<input class="ec-saisie" id="telephone" name="telephone" inputmode="tel" maxlength="20" autocomplete="tel" placeholder="Ex. : 76 00 00 01" value="{{ saisie.telephone ?? '' }}"{{ requis ? ' required' }}>
+		</div>
+	{% endif %}
+
+	<button type="submit" class="ec-bouton av-envoyer">Envoyer mes réponses</button>
+</form>

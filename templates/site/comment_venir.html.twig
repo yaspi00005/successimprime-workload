@@ -1,0 +1,88 @@
+{#
+	Comment venir (maquette EC07) : l'itinéraire en vraies photos du local
+	(PhotosSite::LOCAL, 17/10/2026) précédé du plan, les accès et la
+	livraison tels que réglés (tuile « Site : contact et accueil » ; un
+	texte vide n'est pas montré), et l'astuce fichier. Aucune photo
+	d'exemple : une étape sans vraie photo n'est pas affichée.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_contact' %}
+{% set entreprise = site_entreprise() %}
+{% set visite = site_visite() %}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, je viens à l\'atelier. Pouvez-vous m\'indiquer le chemin depuis : ') %}
+{% set photos = site_photos_local() %}
+{% set textes = {
+	'facade-local-succes-imprim-bamako': 'La maison bleu-gris au balcon rond, entre les palmiers.',
+	'allee-entree-succes-imprim': 'Suivez l\'allée pavée jusque sous le balcon.',
+	'jardin-entree-succes-imprim': 'L\'entrée est au fond de la terrasse, derrière le jardin.',
+} %}
+{% set accesListe = [
+	{icone: 'lieu', titre: 'En voiture', texte: acces.voiture},
+	{icone: 'livraison', titre: 'À moto ou en Sotrama', texte: acces.moto},
+	{icone: 'envoi', titre: 'Pas le temps de venir ?', texte: acces.livraison},
+]|filter(a => a.texte) %}
+
+{% block title %}Comment venir à l'imprimerie à Bamako · Succès Imprim{% endblock %}
+{% block description %}Trouvez l'imprimerie Succès Imprim du premier coup : plan, photos de la façade, de l'allée et de l'entrée, accès et horaires à Bamako.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-contact.css', 'css/site-venir.css') }}
+	{% if lienPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	<section class="si-contact-tete sv-tete">
+		<div class="si-cadre">
+			<nav class="si-ariane si-ariane-claire" aria-label="Fil d'Ariane"><a href="{{ site_lien('app_site_contact') }}">Contact</a> <span aria-hidden="true">›</span> <span aria-current="page">Comment venir</span></nav>
+			<div class="si-contact-titre">
+				<h1>Trouvez l'atelier du premier coup.</h1>
+				<div class="si-accroche-actions">
+					<a href="{{ visite.itineraire }}" class="si-bouton si-bouton-contour" target="_blank" rel="noopener">{{ include('site/_icone.svg.twig', {nom: 'lieu', taille: 18}) }} Itinéraire</a>
+					{% if wa %}<a href="{{ wa }}" class="si-bouton si-bouton-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} Demander le chemin</a>{% endif %}
+				</div>
+			</div>
+			<p class="sv-adresse">{{ visite.nom }} · {{ visite.adresse }}{% if repere %} · {{ repere }}{% endif %} · {{ horaires.texte }}{% if horaires.fermes %} · {{ horaires.fermes|lower }}{% endif %}</p>
+		</div>
+		{{ site_fil_ariane([{nom: 'Contact', url: path('app_site_contact')}, {nom: 'Comment venir'}]) }}
+	</section>
+
+	<section class="si-section sv-etapes-section" aria-label="L'itinéraire en photos">
+		<div class="si-cadre">
+			<ol class="sv-etapes">
+				{% if lienPlan %}
+					<li class="sv-etape si-revele">
+						<div class="sv-media sv-plan">{{ include('site/_carte_plan.html.twig') }}</div>
+						<span class="sv-num" aria-hidden="true">1</span>
+						<h2>Le quartier</h2>
+						<p>{{ visite.ville }}{% if repere %}, {{ repere }}{% endif %}.</p>
+					</li>
+				{% endif %}
+				{% for p in photos %}
+					<li class="sv-etape si-revele">
+						<figure class="sv-media">{{ include('site/_photo.html.twig', {photo: p, sizes: '(max-width: 620px) calc(100vw - 32px), (max-width: 1180px) calc((100vw - 80px) / 2), 280px', immediate: loop.first}) }}</figure>
+						<span class="sv-num" aria-hidden="true">{{ loop.index + (lienPlan ? 1 : 0) }}</span>
+						<h2>{{ p.legende ?? 'Le local' }}</h2>
+						<p>{{ textes[p.nom] ?? '' }}</p>
+					</li>
+				{% endfor %}
+			</ol>
+
+			{% if accesListe %}
+				<ul class="sv-acces">
+					{% for a in accesListe %}
+						<li class="si-revele">{{ include('site/_icone.svg.twig', {nom: a.icone, taille: 26}) }}<div><h2>{{ a.titre }}</h2><p>{{ a.texte }}</p></div></li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+
+			<p class="sv-astuce si-revele">
+				{{ include('site/_icone.svg.twig', {nom: 'fichier', taille: 24}) }}
+				<span><strong>Venez avec votre fichier sur clé USB, ou envoyez-le par WhatsApp avant de venir.</strong> La PAO le vérifie devant vous, gratuitement.</span>
+				{% if site_lien('app_site_guide') %}<a href="{{ site_lien('app_site_guide') }}" class="si-lien-fleche">Préparer son fichier</a>{% endif %}
+			</p>
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

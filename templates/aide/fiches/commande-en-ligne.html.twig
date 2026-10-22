@@ -1,0 +1,20 @@
+{# Fiche du guide « commande-en-ligne » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Le chiffre sur « Devis et commandes » compte les commandes du site à confirmer.</li>
+	<li>Ouvrez la commande. Le bandeau dit : « Commande passée par le client dans son espace ».</li>
+	<li>Touchez « Vérifier et confirmer ».</li>
+	<li>Vérifiez le prix et le fichier, corrigez si besoin. Une ligne à zéro attend son prix : saisissez-le dans « Prix unitaire ».</li>
+	<li>Touchez « Confirmer la commande ». Ou « Enregistrer en brouillon » si vous attendez une réponse du client.</li>
+	<li>Le message « La commande a été modifiée avec succès. » s'affiche et le bandeau disparaît : la commande part à l'atelier.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Le prix affiché par le site est indicatif. La commande ne part pas à l'atelier avant votre confirmation.</li>
+	<li>Un client peut donner la quantité d'autocollants ou d'étiquettes en m² : la ligne arrive avec la case « Pièces au m² » cochée, la quantité en pièces et la surface facturée (« 361 pièces au m² (19 × 19, espacement 1 mm) · 2,50 m² facturés »).</li>
+	<li>Un paiement Orange Money du client arrive « À valider » : la Direction le valide après contrôle.</li>
+	<li>Pour un compte entreprise, le client « demandeur » ne voit aucun montant dans son espace ; le « payeur » voit le solde et les factures.</li>
+</ul>
+{% endblock %}

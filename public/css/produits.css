@@ -1,0 +1,716 @@
+/*
+ * Produits de l'application (maquettes PR01 à PR04, docs/produits.md) :
+ * catalogue, fiche produit, prix spéciaux, options partagées.
+ */
+
+.si-pd-carte {
+  background: #fff;
+  border-radius: 0.9rem;
+  box-shadow: var(--si-carte-ombre);
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.si-pd-carte h3 {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #12213A;
+  margin: 0;
+}
+
+.si-pd-carte-tete {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.si-pd-carte-tete a,
+.si-pd-carte-tete .si-pd-lien {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0F4590;
+}
+
+.si-pd-note {
+  font-size: 0.78rem;
+  color: #6B7A90;
+  margin: 0.5rem 0 0;
+}
+
+/* ---------- Indicateurs ---------- */
+
+.si-pd-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.si-pd-kpi {
+  background: #fff;
+  border-radius: 0.9rem;
+  box-shadow: var(--si-carte-ombre);
+  padding: 0.85rem 1.1rem;
+  min-width: 0;
+}
+
+.si-pd-kpi span {
+  display: block;
+  font-size: 0.78rem;
+  color: #6B7A90;
+}
+
+.si-pd-kpi strong {
+  display: block;
+  font-size: 1.55rem;
+  font-weight: 800;
+  color: #12213A;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.si-pd-kpi strong.bon { color: #16A34A; }
+.si-pd-kpi strong.alerte { color: #D97706; }
+.si-pd-kpi small { font-size: 0.75rem; color: #6B7A90; }
+
+/* ---------- Filtres ---------- */
+
+.si-pd-filtres {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.8rem;
+}
+
+.si-pd-puces {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.si-pd-puce {
+  border-radius: 2rem;
+  padding: 0.32rem 0.85rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  background: #fff;
+  color: #12213A;
+  box-shadow: 0 1px 3px rgba(15, 69, 144, 0.1);
+  white-space: nowrap;
+}
+
+.si-pd-puce:hover { color: #0F4590; }
+
+.si-pd-puce.actif {
+  background: #12213A;
+  color: #fff;
+}
+
+.si-pd-recherche {
+  position: relative;
+  min-width: 15rem;
+}
+
+.si-pd-recherche i {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #94A3B8;
+  font-size: 0.8rem;
+}
+
+.si-pd-recherche input {
+  width: 100%;
+  border: 1px solid #E2E8F0;
+  border-radius: 0.6rem;
+  padding: 0.42rem 0.75rem 0.42rem 2rem;
+  font-size: 0.85rem;
+  background: #fff;
+}
+
+/* ---------- Tableau du catalogue ---------- */
+
+.si-pd-table {
+  width: 100%;
+  font-size: 0.86rem;
+}
+
+.si-pd-table th {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #6B7A90;
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid #EEF2F7;
+  white-space: nowrap;
+}
+
+.si-pd-table td {
+  padding: 0.6rem;
+  border-bottom: 1px solid #F1F4F9;
+  vertical-align: middle;
+}
+
+.si-pd-table tr:last-child td { border-bottom: 0; }
+
+.si-pd-nom {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-weight: 700;
+  color: #12213A;
+}
+
+.si-pd-nom small {
+  display: block;
+  font-weight: 400;
+  color: #6B7A90;
+}
+
+.si-pd-pastille {
+  flex: 0 0 auto;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 0.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--teinte, #0F4590), color-mix(in srgb, var(--teinte, #0F4590) 55%, #fff));
+}
+
+.si-pd-num { text-align: right; white-space: nowrap; }
+.si-pd-gris { color: #6B7A90; }
+
+.si-pd-marge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  white-space: nowrap;
+  font-weight: 700;
+}
+
+.si-pd-barre {
+  display: inline-block;
+  width: 3.2rem;
+  height: 0.35rem;
+  border-radius: 1rem;
+  background: #EEF2F7;
+  overflow: hidden;
+}
+
+.si-pd-barre i {
+  display: block;
+  height: 100%;
+  border-radius: 1rem;
+  background: #16A34A;
+}
+
+.si-pd-marge.moyenne .si-pd-barre i { background: #F59E0B; }
+.si-pd-marge.faible .si-pd-barre i { background: #EF4444; }
+.si-pd-marge.faible { color: #DC2626; }
+
+/* Interrupteur « En ligne » */
+.si-pd-bascule {
+  display: inline-block;
+  flex: none;
+  border: 0;
+  background: #CBD5E1;
+  width: 2.6rem;
+  height: 1.45rem;
+  border-radius: 1rem;
+  position: relative;
+  padding: 0;
+  cursor: pointer;
+  vertical-align: middle;
+}
+
+.si-pd-bascule::after {
+  content: "";
+  position: absolute;
+  top: 0.17rem;
+  left: 0.2rem;
+  width: 1.1rem;
+  height: 1.1rem;
+  border-radius: 50%;
+  background: #fff;
+  transition: left 0.15s;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.si-pd-bascule.oui { background: #16A34A; }
+.si-pd-bascule.oui::after { left: 1.3rem; }
+.si-pd-bascule:disabled,
+span.si-pd-bascule { cursor: default; }
+.si-pd-bascule:disabled { opacity: 0.9; }
+
+.si-pd-etat {
+  display: inline-block;
+  border-radius: 1rem;
+  padding: 0.1rem 0.55rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: #EEF2F7;
+  color: #475569;
+}
+
+.si-pd-etat.vert { background: #DCFCE7; color: #15803D; }
+.si-pd-etat.bleu { background: #DBEAFE; color: #1D4ED8; }
+.si-pd-etat.orange { background: #FEF3C7; color: #B45309; }
+.si-pd-etat.rouge { background: #FEE2E2; color: #B91C1C; }
+
+/* Liste du téléphone : une carte par produit */
+.si-pd-cartes { display: none; }
+
+.si-pd-ligne {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 0.25rem 0.7rem;
+  align-items: center;
+  padding: 0.7rem 0;
+  border-bottom: 1px solid #F1F4F9;
+}
+
+.si-pd-ligne:last-child { border-bottom: 0; }
+.si-pd-ligne .si-pd-nom { font-size: 0.9rem; }
+.si-pd-ligne-infos {
+  grid-column: 2 / 4;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.8rem;
+  font-size: 0.78rem;
+  color: #475569;
+}
+
+/* ---------- Fiche produit ---------- */
+
+.si-pd-fiche {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1.05fr) minmax(0, 0.8fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.si-pd-champs {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.6rem 0.8rem;
+}
+
+.si-pd-champs label,
+.si-pd-champ label {
+  display: block;
+  font-size: 0.76rem;
+  color: #6B7A90;
+  margin-bottom: 0.15rem;
+}
+
+.si-pd-champs .large { grid-column: 1 / -1; }
+
+.si-pd-general {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  gap: 0.9rem;
+}
+
+.si-pd-visuel {
+  border-radius: 0.7rem;
+  height: 7rem;
+  background: linear-gradient(120deg, #12213A 0 55%, #D6245F 55%);
+  color: #fff;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 0.4rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.si-pd-visuel span {
+  background: rgba(255, 255, 255, 0.9);
+  color: #12213A;
+  border-radius: 1rem;
+  padding: 0.05rem 0.5rem;
+}
+
+.si-pd-interrupteurs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.2rem;
+  margin-top: 0.8rem;
+  font-size: 0.85rem;
+}
+
+.si-pd-interrupteurs .form-check-input { cursor: pointer; }
+
+.si-pd-mini {
+  width: 100%;
+  font-size: 0.84rem;
+}
+
+.si-pd-mini th {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6B7A90;
+  padding: 0.35rem 0.4rem;
+  background: #F8FAFC;
+}
+
+.si-pd-mini td {
+  padding: 0.45rem 0.4rem;
+  border-bottom: 1px solid #F1F4F9;
+  vertical-align: top;
+}
+
+.si-pd-mini tfoot td {
+  font-weight: 800;
+  border-bottom: 0;
+}
+
+.si-pd-liste {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.si-pd-liste li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.38rem 0;
+  border-bottom: 1px solid #F1F4F9;
+}
+
+.si-pd-liste li:last-child { border-bottom: 0; }
+.si-pd-liste li > :last-child { font-weight: 700; text-align: right; }
+
+.si-pd-bandeau {
+  background: #ECFDF5;
+  border-radius: 0.6rem;
+  padding: 0.55rem 0.8rem;
+  margin-top: 0.7rem;
+  font-size: 0.84rem;
+  color: #14532D;
+}
+
+.si-pd-bandeau strong { font-size: 1.25rem; color: #16A34A; margin-right: 0.3rem; }
+.si-pd-bandeau.faible { background: #FEF2F2; color: #7F1D1D; }
+.si-pd-bandeau.faible strong { color: #DC2626; }
+.si-pd-bandeau.moyenne { background: #FFFBEB; color: #78350F; }
+.si-pd-bandeau.moyenne strong { color: #D97706; }
+
+.si-pd-alerte {
+  background: #FFF7ED;
+  color: #9A3412;
+  border-radius: 0.5rem;
+  padding: 0.45rem 0.7rem;
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+
+.si-pd-simulateur {
+  background: #12213A;
+  color: #fff;
+  border-radius: 0.9rem;
+  padding: 1rem 1.15rem;
+  margin-bottom: 1rem;
+}
+
+.si-pd-simulateur h3 { color: #fff; font-size: 0.9rem; font-weight: 700; margin-bottom: 0.6rem; }
+.si-pd-simulateur label { font-size: 0.74rem; color: #A9B6CC; margin: 0; }
+
+.si-pd-simulateur input,
+.si-pd-simulateur select {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  border-radius: 0.45rem;
+  padding: 0.25rem 0.45rem;
+  font-size: 0.84rem;
+  width: 100%;
+}
+
+.si-pd-simulateur select option { color: #12213A; }
+
+.si-pd-sim-grille {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.7rem;
+}
+
+.si-pd-sim-res {
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding-top: 0.6rem;
+  font-size: 0.84rem;
+}
+
+.si-pd-sim-res div { display: flex; justify-content: space-between; padding: 0.12rem 0; }
+.si-pd-sim-res .prix { font-size: 1.7rem; font-weight: 800; }
+
+.si-pd-apercu {
+  border: 1px solid #E2E8F0;
+  border-radius: 0.7rem;
+  padding: 0.7rem 0.8rem;
+}
+
+.si-pd-apercu b { display: block; font-size: 0.95rem; }
+.si-pd-apercu small { display: block; color: #6B7A90; margin-bottom: 0.5rem; }
+
+.si-pd-apercu .btn { width: 100%; pointer-events: none; }
+
+.si-pd-pliable summary {
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #12213A;
+}
+
+.si-pd-coches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.2rem 0.8rem;
+  font-size: 0.82rem;
+  margin: 0.3rem 0 0.7rem;
+}
+
+.si-pd-nomenclature {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 5rem 9rem;
+  gap: 0.35rem;
+  margin-bottom: 0.35rem;
+}
+
+/* Champs compacts (le thème les fait très hauts). */
+.si-pd-carte .form-control,
+.si-pd-carte .form-select,
+.si-pd-ajout .form-control,
+.si-pd-ajout .form-select {
+  height: auto;
+  min-height: 0;
+  padding: 0.32rem 0.55rem;
+  font-size: 0.85rem;
+  border-radius: 0.45rem;
+  line-height: 1.4;
+}
+
+.si-pd-carte .form-select { padding-right: 1.8rem; }
+
+/* ---------- Prix spéciaux ---------- */
+
+.si-pd-deux.si-pd-deux-large { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); }
+
+.si-pd-deux {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem;
+  align-items: start;
+}
+
+.si-pd-avatar {
+  display: inline-flex;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 0.4rem;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  color: #fff;
+  background: #1D4ED8;
+  margin-right: 0.4rem;
+  vertical-align: middle;
+}
+
+.si-pd-barre-prix { text-decoration: line-through; color: #94A3B8; }
+
+.si-pd-promo {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 0.55rem 0;
+  border-bottom: 1px solid #F1F4F9;
+  font-size: 0.84rem;
+}
+
+.si-pd-promo:last-child { border-bottom: 0; }
+.si-pd-promo b { display: block; color: #12213A; }
+.si-pd-promo small { display: block; color: #6B7A90; }
+
+.si-pd-ajout {
+  display: grid;
+  grid-template-columns: 1.3fr 1.6fr 0.8fr 0.9fr auto;
+  gap: 0.45rem;
+  align-items: end;
+  background: #F8FAFC;
+  border-radius: 0.6rem;
+  padding: 0.6rem;
+  margin-bottom: 0.7rem;
+}
+
+.si-pd-ajout label { font-size: 0.72rem; color: #6B7A90; margin: 0; }
+.si-pd-ajout .large { grid-column: 1 / -1; }
+
+/* ---------- Options partagées ---------- */
+
+.si-pd-quatre {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1rem;
+  align-items: start;
+}
+
+.si-pd-option {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0.35rem;
+  border-bottom: 1px solid #F1F4F9;
+  font-size: 0.85rem;
+  color: #12213A;
+  border-radius: 0.35rem;
+}
+
+.si-pd-option:hover { background: #F8FAFC; color: #0F4590; }
+.si-pd-option.actif { background: #EFF6FF; }
+.si-pd-option b { white-space: nowrap; }
+.si-pd-option .base { color: #94A3B8; font-weight: 400; }
+
+.si-pd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.si-pd-chip {
+  background: #F1F5F9;
+  border-radius: 2rem;
+  padding: 0.22rem 0.75rem;
+  font-size: 0.8rem;
+  color: #12213A;
+}
+
+.si-pd-prix-finition {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.si-pd-prix-finition input { max-width: 7rem; }
+
+/* ---------- Téléphone (390 px) ---------- */
+
+@media (max-width: 1199px) {
+  .si-pd-fiche { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .si-pd-fiche > :last-child { grid-column: 1 / -1; }
+  .si-pd-quatre { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 767px) {
+  .si-pd-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .si-pd-kpi { padding: 0.7rem 0.8rem; }
+  .si-pd-kpi strong { font-size: 1.15rem; }
+  .si-pd-filtres { flex-direction: column; align-items: stretch; }
+  .si-pd-puces { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 0.2rem; }
+  .si-pd-filtres > * { min-width: 0; max-width: 100%; }
+  .si-pd-recherche { min-width: 0; width: 100%; }
+  .si-pd-tableau { display: none; }
+  .si-pd-cartes { display: block; }
+  .si-pd-fiche,
+  .si-pd-deux,
+  .si-pd-deux.si-pd-deux-large,
+  .si-pd-quatre { grid-template-columns: minmax(0, 1fr); }
+  .si-pd-general { grid-template-columns: minmax(0, 1fr); }
+  .si-pd-visuel { height: 4.5rem; }
+  .si-pd-champs { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .si-pd-ajout { grid-template-columns: minmax(0, 1fr); }
+  .si-pd-nomenclature { grid-template-columns: minmax(0, 1fr) 4rem; }
+  .si-pd-nomenclature select:last-child { grid-column: 1 / -1; }
+  .si-pd-carte { padding: 0.85rem 0.9rem; }
+  .si-pd-mini { font-size: 0.8rem; }
+  .si-pd-mini.si-pd-empile thead { display: none; }
+  .si-pd-mini.si-pd-empile tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.1rem 0.75rem; padding: 0.6rem 0; border-bottom: 1px solid var(--si-pd-trait, #e9edf3); }
+  .si-pd-mini.si-pd-empile td { display: block; padding: 0; border: 0; text-align: left; }
+  .si-pd-mini.si-pd-empile td:nth-child(1) { grid-column: 1 / -1; font-weight: 600; }
+  .si-pd-mini.si-pd-empile td:nth-child(2) { grid-column: 1; grid-row: 2; }
+  .si-pd-mini.si-pd-empile td:nth-child(3) { grid-column: 2; grid-row: 2; text-align: right; }
+  .si-pd-mini.si-pd-empile td:nth-child(4) { grid-column: 2; grid-row: 3; text-align: right; }
+  .si-pd-mini.si-pd-empile td:nth-child(5) { grid-column: 1; grid-row: 3; }
+  .si-pd-mini.si-pd-empile td.si-pd-actions { grid-column: 1 / -1; grid-row: 4; text-align: left; }
+  .si-pd-mini.si-pd-empile td.si-pd-actions form.flex-column { flex-direction: row !important; }
+  .si-pd-mini.si-pd-empile td.si-pd-actions:empty { display: none; }
+  .si-pd-masque-mobile { display: none; }
+}
+
+/* Coût incomplet (docs/produits.md) : un prix d'achat manque, la marge n'est qu'un plafond. */
+.si-pd-marge.incertaine { color: #6B7280; font-style: italic; }
+.si-pd-marge.incertaine .si-pd-barre i { background: repeating-linear-gradient(45deg, #9CA3AF 0 4px, #D1D5DB 4px 8px); }
+.si-pd-incomplet { display: block; margin-top: 0.15rem; text-align: left; font-style: normal; }
+.si-pd-incomplet > summary {
+  display: inline-block;
+  cursor: pointer;
+  list-style: none;
+  background: #FEF3C7;
+  color: #92400E;
+  border-radius: 999px;
+  padding: 0.05rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.si-pd-incomplet > summary::-webkit-details-marker { display: none; }
+.si-pd-incomplet ul { margin: 0.3rem 0 0; padding-left: 1rem; font-size: 0.75rem; color: #78350F; white-space: normal; min-width: 12rem; }
+.si-pd-badge-incomplet { display: inline-block; background: #FEF3C7; color: #92400E; border-radius: 999px; padding: 0.05rem 0.55rem; font-size: 0.72rem; font-weight: 700; vertical-align: middle; }
+
+/* Paliers de prix (fiche produit) */
+.si-pd-paliers details { border-top: 1px solid #E5E7EB; padding: 0.45rem 0; }
+.si-pd-paliers details:first-of-type { border-top: 0; }
+.si-pd-paliers summary { cursor: pointer; font-weight: 600; font-size: 0.86rem; }
+.si-pd-paliers summary small { font-weight: 400; color: #6B7280; }
+.si-pd-tranches { list-style: none; margin: 0.35rem 0 0.5rem; padding: 0; display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.si-pd-tranches li { background: #EFF6FF; color: #1E3A8A; border-radius: 0.5rem; padding: 0.2rem 0.55rem; font-size: 0.78rem; }
+.si-pd-tranches li b { margin-left: 0.25rem; }
+.si-pd-tranches li.surface { background: #ECFDF5; color: #14532D; }
+.si-pd-palier-saisie { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.35rem; margin-bottom: 0.3rem; }
+.si-pd-palier-effet { grid-column: 1 / -1; margin: 0; font-size: 0.72rem; color: #6B7280; min-height: 0; }
+.si-pd-palier-effet:empty { display: none; }
+.si-pd-palier-effet b.faible { color: #DC2626; }
+/* Paliers en tableau, comme la maquette PR02 : tranche, prix, remise au client, marge qui reste. */
+.si-pd-paliers-table { width: 100%; margin: 0.35rem 0 0.5rem; font-size: 0.8rem; border-collapse: collapse; }
+.si-pd-paliers-table th { font-size: 0.7rem; font-weight: 600; color: #6B7280; text-align: left; padding: 0.25rem 0.4rem; background: #F8FAFC; }
+.si-pd-paliers-table td { padding: 0.35rem 0.4rem; border-top: 1px solid #EEF1F5; }
+.si-pd-paliers-table td:nth-child(n+2), .si-pd-paliers-table th:nth-child(n+2) { text-align: right; }
+.si-pd-paliers-table small { color: #6B7280; }
+.si-pd-paliers-sous th { background: transparent; padding-top: 0.6rem; text-transform: uppercase; letter-spacing: 0.03em; }
+.si-pd-pm { font-weight: 700; color: #15803D; }
+.si-pd-pm.moyenne { color: #B45309; }
+.si-pd-pm.faible { color: #DC2626; }
+.si-pd-palier-saisie label { display: block; font-size: 0.7rem; color: #6B7280; margin: 0; }
+.si-pd-palier-saisie input { display: block; width: 100%; min-width: 0; }
+.si-pd-paliers h4 { font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.03em; color: #6B7280; margin: 0.5rem 0 0.25rem; }
+.si-pd-sim-palier { font-size: 0.78rem; color: #A7F3D0; margin-top: 0.4rem; min-height: 1em; }
+.si-pd-sim-palier small { display: block; color: #CBD5E1; }
+@media (max-width: 575.98px) {
+  .si-pd-palier-saisie { grid-template-columns: 1fr 1fr; }
+  .si-pd-palier-saisie > :first-child { grid-column: 1 / -1; }
+}
+
+/* Prix par configuration, saisis dans la fiche : une ligne par configuration, champs côte à côte. */
+.si-pd-configs { display: grid; gap: 10px; }
+.si-pd-config { border: 1px solid #e6e9f0; border-radius: 10px; padding: 10px 12px; }
+.si-pd-config-tete { display: flex; justify-content: space-between; gap: 8px; font-weight: 600; font-size: 13px; }
+.si-pd-config-tete small { font-weight: 400; }
+.si-pd-config-champs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 8px; align-items: end; margin-top: 8px; }
+.si-pd-config-champs label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: #6b7280; margin: 0; }
+.si-pd-config-champs label.si-pd-config-vente { flex-direction: row; align-items: center; gap: 6px; padding-bottom: 6px; white-space: nowrap; }
+@media (max-width: 480px) { .si-pd-config-champs { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

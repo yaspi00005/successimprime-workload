@@ -12,8 +12,17 @@ use App\Repository\CommandeDetailFichierRepository;
 use App\Repository\CommandesDetailsRepository;
 use App\Repository\OrdreProductionRepository;
 
+use App\Security\FichierEnvoye;
+use App\Security\FichiersPrivesVoter;
 use App\Service\ControleCreditClientService;
 use App\Service\BonusPlafondClientService;
+use App\Service\AnalyseFichierImpression;
+use App\Service\Atelier\PosteMachiniste;
+use App\Service\FichiersPrives;
+use App\Service\Http\Entree;
+use App\Service\TableauProduction;
+use App\Service\SuiviMetiers\TableauConception;
+use App\Controller\UtilisateursController;
 
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -24,7 +33,6 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
-use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\String\Slugger\SluggerInterface;
 
 
@@ -32,41 +40,17 @@ use Symfony\Component\String\Slugger\SluggerInterface;
 #[Route('/pre-presse', name: 'app_controle_pre_presse_')]
 final class ControlePrePresseController extends AbstractController
 {
-    #[Route('/', name: 'index', methods: ['GET'])]
-    public function index(
-        CommandesDetailsRepository $detailsRepository
-    ): Response {
-        /*
-         * Affiche uniquement les lignes ayant au moins un fichier
-         * ET nécessitant réellement un contrôle prépresse : une
-         * ligne en impression directe (prePresseNecessaire = false)
-         * ne doit jamais apparaître ici, même si un fichier y est
-         * rattaché.
-         */
-        $details = $detailsRepository
-            ->createQueryBuilder('detail')
-            ->addSelect('commande', 'produit', 'fichier')
-            ->innerJoin('detail.commande', 'commande')
-            ->leftJoin('detail.produit', 'produit')
-            ->leftJoin(
-                'detail.fichiers',
-                'fichier',
-                'WITH',
-                'fichier.actif = :actif'
-            )
-            ->andWhere('detail.prePresseNecessaire = :prepresseNecessaire')
-            ->setParameter('actif', true)
-            ->setParameter('prepresseNecessaire', true)
-            ->orderBy('commande.dateCommande', 'DESC')
-            ->addOrderBy('detail.id', 'DESC')
-            ->distinct()
-            ->getQuery()
-            ->getResult();
-
-        return $this->render('controle_pre_presse/index.html.twig', [
-            'details' => $details,
-        ]);
+    /**
+     * Les fichiers traités sont rangés hors de public/ : sous
+     * var/uploads/prepresse/commande_X/detail_Y (FichiersPrives), servis
+     * par visualiserFichier() et telechargerFichier() après contrôle des
+     * droits (docs/securite.md).
+     */
+    public function __construct(private readonly FichiersPrives $fichiersPrives)
+    {
     }
+
+    // La liste (maquette PQ01), le tableau, le dépôt groupé et les relances : PrepresseController.
 
     /*
      * ============================================================
@@ -116,7 +100,10 @@ public function controler(
     EntityManagerInterface $entityManager,
     OrdreProductionRepository $ordreProductionRepository,
     ControleCreditClientService $controleCreditClientService,
-    BonusPlafondClientService $bonusPlafondClientService
+    BonusPlafondClientService $bonusPlafondClientService,
+    AnalyseFichierImpression $analyseFichier,
+    TableauConception $tableauConception,
+    PosteMachiniste $posteMachiniste
 ): Response {
     /*
      * ============================================================
@@ -314,6 +301,26 @@ public function controler(
                         $detail->getId(),
                 ]
             );
+        }
+
+
+        /*
+         * ========================================================
+         * FICHIER DE DÉCOUPE (docs/prepresse.md)
+         * ========================================================
+         *
+         * Le fichier de découpe le plus récent part avec le fichier
+         * à imprimer : il est validé et transmis à l'ordre avec lui.
+         */
+
+        $fichierDecoupe = $detail->fichierDecoupe();
+
+        if (
+            $fichierDecoupe !== null
+            && in_array((string) $request->request->get('action'), ['valider', 'valider_production'], true)
+            && !$controle->getFichiers()->contains($fichierDecoupe)
+        ) {
+            $controle->addFichier($fichierDecoupe);
         }
 
 
@@ -532,6 +539,7 @@ public function controler(
                 $action,
                 [
                     'enregistrer',
+                    'envoyer_bat',
                     'valider',
                     'valider_production',
                 ],
@@ -558,6 +566,44 @@ public function controler(
          * DÉTERMINATION DU CIRCUIT
          * ========================================================
          */
+
+        /*
+         * Maquette 25 : le BAT part chez le client, qui le valide
+         * (ou demande une correction) avant l'impression.
+         */
+        if ($action === 'envoyer_bat') {
+            $controle
+                ->setBatNecessaire(true)
+                ->setBatValide(false)
+                ->setCorrectionNecessaire(false)
+                ->setStatut(ControlePrePresse::STATUT_EN_ATTENTE_BAT);
+            $detail->addControlePrePresse($controle);
+            $entityManager->persist($controle);
+            $entityManager->flush();
+            $tableauConception->batEnvoyeDepuisPrepresse($controle, $utilisateur, new \DateTimeImmutable());
+
+            $version = 0;
+            foreach ($controle->getFichiers() as $fichier) {
+                $version = max($version, $fichier->getVersion());
+            }
+            $this->addFlash('success', sprintf('BAT version %d enregistré comme envoyé au client.', $version));
+            $telephone = trim((string) $commande->getClients()?->getTelephone());
+            if ($telephone !== '') {
+                $this->addFlash('bat_whatsapp', [
+                    'numero' => UtilisateursController::numeroWhatsApp($telephone),
+                    'message' => sprintf(
+                        "Bonjour, le BAT (version %d) de votre %s, commande %s, est prêt chez Succès Imprim. Merci de nous dire s'il est bon à imprimer ou ce qu'il faut corriger. Suivi : %s",
+                        $version,
+                        // Message au client : le nom commercial d'abord (docs/noms-commerciaux.md).
+                        TableauProduction::titreClient($detail),
+                        $commande->getNumero(),
+                        $this->generateUrl('app_espace_suivre', ['numero' => $commande->getNumero()], \Symfony\Component\Routing\Generator\UrlGeneratorInterface::ABSOLUTE_URL),
+                    ),
+                ]);
+            }
+
+            return $this->redirectToRoute('app_controle_pre_presse_controler', ['id' => $detail->getId()]);
+        }
 
         $validerControle =
             in_array(
@@ -605,6 +651,34 @@ public function controler(
              */
 
             if ($envoyerProduction) {
+
+                /*
+                 * Fichier de découpe : une ligne avec une découpe ne part
+                 * pas sans lui, sauf « Découpe sans fichier séparé »
+                 * (le contour est dans le fichier d'impression).
+                 */
+                if (
+                    $detail->besoinFichierDecoupe()
+                    && $detail->fichierDecoupe() === null
+                    && !$detail->isDecoupeSansFichier()
+                ) {
+                    if (!$request->request->getBoolean('decoupeSansFichier')) {
+                        throw new \DomainException(
+                            'Ce travail a une découpe : ajoutez le fichier de découpe (« Ajouter le fichier de découpe »), ou cochez « Découpe sans fichier séparé » si le contour est dans le fichier d\'impression.'
+                        );
+                    }
+
+                    $detail->setDecoupeSansFichier(true);
+                }
+
+                if ([] === array_filter(
+                    $controle->getFichiers()->toArray(),
+                    static fn (CommandeDetailFichier $f): bool => !$f->estDecoupe()
+                )) {
+                    throw new \DomainException(
+                        'Sélectionnez le fichier à imprimer : le fichier de découpe part avec lui.'
+                    );
+                }
 
                 $controleCredit =
                     $controleCreditClientService
@@ -842,6 +916,9 @@ public function controler(
 
                     $ordre->transmettre();
 
+                    // Nom du fichier de production (docs/production-rouleau.md).
+                    \App\Service\Production\FichierProduction::preparer($ordre);
+
 
                     /*
                      * =============================================
@@ -871,7 +948,7 @@ public function controler(
 
                         $message =
                             sprintf(
-                                'Prépresse validé. L’ordre %s a été transmis à la production. Le plafond du client a augmenté de %s FCFA.',
+                                'Document transmis à la production (ordre %s). Le plafond du client a augmenté de %s FCFA.',
                                 $ordre->getNumero(),
                                 number_format(
                                     $bonusPlafond,
@@ -885,7 +962,7 @@ public function controler(
 
                         $message =
                             sprintf(
-                                'Prépresse validé. L’ordre %s a été transmis à la production.',
+                                'Document transmis à la production (ordre %s).',
                                 $ordre->getNumero()
                             );
                     }
@@ -903,6 +980,14 @@ public function controler(
                             'Le prépresse est validé. L’ordre %s existe déjà en production.',
                             $ordre->getNumero()
                         );
+
+                    // Retour du machiniste (poste machiniste, OP04) : le fichier corrigé repart dans sa file.
+                    if ($posteMachiniste->fichierCorrige($ordre, $controle, new \DateTimeImmutable())) {
+                        $message = sprintf(
+                            'Fichier corrigé renvoyé à la production : l’ordre %s revient « À vérifier » dans la file du machiniste, qui est prévenu.',
+                            $ordre->getNumero()
+                        );
+                    }
                 }
 
             } elseif (
@@ -980,8 +1065,12 @@ public function controler(
 
             /*
              * ====================================================
-             * REDIRECTION VERS PRODUCTION
+             * TRANSMIS À LA PRODUCTION : ON RESTE À LA PRÉPRESSE
              * ====================================================
+             *
+             * Le graphiste n'a rien à faire côté production : il revient
+             * à sa liste avec le message « Document transmis à la
+             * production » (demande de Yaya, 20/10).
              */
 
             if (
@@ -990,11 +1079,7 @@ public function controler(
                 $ordre !== null
             ) {
                 return $this->redirectToRoute(
-                    'app_production_show',
-                    [
-                        'id' =>
-                            $ordre->getId(),
-                    ]
+                    'app_controle_pre_presse_index'
                 );
             }
 
@@ -1063,9 +1148,90 @@ public function controler(
 
             'controleCredit' =>
                 $controleCredit,
-        ]
+        ] + $this->apercuFichier($detail, $request, $analyseFichier)
     );
 }
+
+/**
+ * Versions du travail (originaux puis fichiers traités) et contrôle
+ * automatique de celle affichée, la plus récente par défaut.
+ *
+ * @return array{versions: list<CommandeDetailFichier>, fichierAffiche: ?CommandeDetailFichier, analyse: list<array<string, string>>, typeApercu: ?string}
+ */
+private function apercuFichier(CommandesDetails $detail, Request $request, AnalyseFichierImpression $analyseFichier): array
+{
+    $versions = array_values(array_filter(
+        $detail->getFichiers()->toArray(),
+        static fn (CommandeDetailFichier $fichier): bool => $fichier->isActif()
+    ));
+    usort($versions, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$a->getCreeLe(), $a->getId()] <=> [$b->getCreeLe(), $b->getId()]);
+
+    $choisi = Entree::entier($request->query, 'fichier');
+    $affiche = null;
+    foreach ($versions as $fichier) {
+        // Par défaut, la dernière version à imprimer (pas le fichier de découpe).
+        if (($choisi === 0 && !$fichier->estDecoupe()) || $fichier->getId() === $choisi) {
+            $affiche = $fichier;
+        }
+    }
+    $affiche ??= $choisi === 0 ? ($versions[\count($versions) - 1] ?? null) : null;
+
+    $analyse = [];
+    $image = null;
+    $chemin = $affiche !== null ? $this->resoudreCheminFichierStocke($affiche, false) : null;
+    if ($chemin !== null) {
+        $largeur = (float) $detail->getLargeur();
+        $hauteur = (float) $detail->getLongueur();
+        $analyse = $analyseFichier->analyser($chemin, $largeur > 0 ? $largeur * 100 : null, $hauteur > 0 ? $hauteur * 100 : null);
+        $type = (string) mime_content_type($chemin);
+        $image = match (true) {
+            \in_array($type, ['image/jpeg', 'image/png', 'image/webp', 'image/gif'], true) => 'image',
+            'application/pdf' === $type => 'pdf',
+            default => null,
+        };
+    }
+
+    return ['versions' => $versions, 'fichierAffiche' => $affiche, 'analyse' => $analyse, 'typeApercu' => $image];
+}
+    /**
+     * « Fichier de découpe requis » (docs/prepresse.md) : la prépresse dit
+     * si la ligne a besoin d'un fichier de découpe, ou revient à la règle
+     * des finitions (RegleDecoupe).
+     */
+    #[Route(
+        '/travail/{id}/decoupe',
+        name: 'decoupe_requise',
+        requirements: ['id' => '\d+'],
+        methods: ['POST']
+    )]
+    public function decoupeRequise(
+        CommandesDetails $detail,
+        Request $request,
+        EntityManagerInterface $entityManager
+    ): Response {
+        if (!$this->isCsrfTokenValid('decoupe_requise_' . $detail->getId(), (string) $request->request->get('_token'))) {
+            throw $this->createAccessDeniedException('Le jeton de sécurité est invalide.');
+        }
+
+        $choix = (string) $request->request->get('requis', 'auto');
+        $detail->setFichierDecoupeRequis(match ($choix) {
+            'oui' => true,
+            'non' => false,
+            default => null,
+        });
+        // Un fichier de découpe redemandé : « Découpe sans fichier séparé » ne vaut plus.
+        if ($choix === 'oui') {
+            $detail->setDecoupeSansFichier(false);
+        }
+        $entityManager->flush();
+
+        $this->addFlash('success', $detail->besoinFichierDecoupe()
+            ? 'Ce travail attend un fichier de découpe avant l\'envoi en production.'
+            : 'Ce travail n\'a pas besoin de fichier de découpe.');
+
+        return $this->redirectToRoute('app_controle_pre_presse_controler', ['id' => $detail->getId()]);
+    }
+
     #[Route(
         '/travail/{id}/fichier-traite',
         name: 'ajouter_fichier_traite',
@@ -1139,7 +1305,8 @@ public function controler(
             );
         }
 
-        $fichierSourceId = $request->request->getInt('fichierSource');
+        $fichierSourceId = Entree::entier($request->request, 'fichierSource');
+        $decoupe = CommandeDetailFichier::ROLE_DECOUPE === $request->request->get('role');
 
         $fichierSource = null;
 
@@ -1150,7 +1317,9 @@ public function controler(
             }
         }
 
-        if (!$fichierSource instanceof CommandeDetailFichier) {
+        if ($decoupe) {
+            $fichierSource = $detail->fichierDecoupe();
+        } elseif (!$fichierSource instanceof CommandeDetailFichier) {
             $this->addFlash(
                 'error',
                 'Sélectionnez le fichier original correspondant.'
@@ -1166,6 +1335,7 @@ public function controler(
          * Ces métadonnées doivent être lues avant move(), car le fichier
          * temporaire PHP n'existe plus à son ancien emplacement ensuite.
          */
+        $version = ($fichierSource?->getVersion() ?? 0) + 1;
         $nomOriginal = $fichierUpload->getClientOriginalName();
         $taille = (int) ($fichierUpload->getSize() ?: 0);
         $typeMime = $fichierUpload->getMimeType()
@@ -1180,14 +1350,16 @@ public function controler(
             ->slug($nomSansExtension)
             ->lower();
 
-        $extension = $fichierUpload->guessExtension()
-            ?: $fichierUpload->getClientOriginalExtension()
-            ?: 'bin';
+        // Jamais une extension qu'un serveur exécuterait (FichierEnvoye), même hors de public/.
+        $extension = FichierEnvoye::extensionPublique(
+            $fichierUpload->guessExtension()
+                ?: $fichierUpload->getClientOriginalExtension()
+        );
 
         $nomStockage = sprintf(
             '%s-v%d-%s.%s',
             $nomSecurise,
-            $fichierSource->getVersion() + 1,
+            $version,
             bin2hex(random_bytes(8)),
             strtolower($extension)
         );
@@ -1198,9 +1370,8 @@ public function controler(
             $detail->getId()
         );
 
-        $repertoireAbsolu = $this->getParameter('kernel.project_dir')
-            . '/public/'
-            . $repertoireRelatif;
+        // Hors de public/ : var/uploads/prepresse/… (le chemin enregistré ne change pas).
+        $repertoireAbsolu = $this->fichiersPrives->cible($repertoireRelatif);
 
         try {
             $fichierDeplace = $fichierUpload->move(
@@ -1233,19 +1404,20 @@ public function controler(
             ->setTaille($taille)
             ->setOrigine(CommandeDetailFichier::ORIGINE_INTERNE)
             ->setEtat(CommandeDetailFichier::ETAT_TRAITE)
-            ->setVersion($fichierSource->getVersion() + 1)
+            ->setRole($decoupe ? CommandeDetailFichier::ROLE_DECOUPE : CommandeDetailFichier::ROLE_IMPRESSION)
+            ->setVersion($version)
             ->setFace(
-                $request->request->get('face') ?: $fichierSource->getFace()
+                $request->request->get('face') ?: $fichierSource?->getFace()
             )
             ->setDesignation(
                 $request->request->get('designation')
-                    ?: 'Fichier traité'
+                    ?: ($decoupe ? 'Fichier de découpe' : 'Fichier traité')
             )
             ->setGroupeFichier(
-                $fichierSource->getGroupeFichier()
+                $fichierSource?->getGroupeFichier()
             )
             ->setQuantiteAProduire(
-                $fichierSource->getQuantiteAProduire()
+                $fichierSource?->getQuantiteAProduire()
             )
             ->setObservation(
                 $request->request->get('observation')
@@ -1260,7 +1432,7 @@ public function controler(
 
         $this->addFlash(
             'success',
-            'Le fichier traité a été ajouté avec succès.'
+            $decoupe ? 'Le fichier de découpe a été ajouté.' : 'Le fichier traité a été ajouté avec succès.'
         );
 
         return $this->redirectToRoute(
@@ -1343,6 +1515,8 @@ public function controler(
         $taille = (int) ($donnees['taille'] ?? 0);
         $nombreMorceaux = (int) ($donnees['nombreMorceaux'] ?? 0);
         $fichierSourceId = (int) ($donnees['fichierSource'] ?? 0);
+        // « Ajouter le fichier de découpe » : même envoi, rôle découpe.
+        $decoupe = CommandeDetailFichier::ROLE_DECOUPE === ($donnees['role'] ?? null);
 
         if ($nomOriginal === '' || $taille <= 0 || $nombreMorceaux <= 0) {
             return $this->json(
@@ -1377,23 +1551,29 @@ public function controler(
             }
         }
 
-        if (!$fichierSource instanceof CommandeDetailFichier) {
+        if ($decoupe) {
+            // Le fichier de découpe suit le dernier fichier de découpe de la ligne (s'il y en a un).
+            $fichierSource = $detail->fichierDecoupe();
+        } elseif (!$fichierSource instanceof CommandeDetailFichier) {
             return $this->json(
                 ['message' => 'Sélectionnez le fichier original correspondant.'],
                 Response::HTTP_UNPROCESSABLE_ENTITY
             );
         }
 
+        $version = ($fichierSource?->getVersion() ?? 0) + 1;
+
         $nomSansExtension = pathinfo($nomOriginal, PATHINFO_FILENAME);
         $nomSecurise = $slugger->slug($nomSansExtension)->lower();
-        $extension = strtolower(pathinfo($nomOriginal, PATHINFO_EXTENSION)) ?: 'bin';
+        // Jamais une extension qu'un serveur exécuterait (FichierEnvoye), même hors de public/.
+        $extension = FichierEnvoye::extensionPublique(pathinfo($nomOriginal, PATHINFO_EXTENSION));
 
         $jeton = bin2hex(random_bytes(32));
 
         $nomStockage = sprintf(
             '%s-v%d-%s.%s',
             $nomSecurise,
-            $fichierSource->getVersion() + 1,
+            $version,
             bin2hex(random_bytes(8)),
             $extension
         );
@@ -1433,11 +1613,12 @@ public function controler(
             ->setStatut(CommandeDetailFichier::STATUT_EN_COURS)
             ->setOrigine(CommandeDetailFichier::ORIGINE_INTERNE)
             ->setEtat(CommandeDetailFichier::ETAT_TRAITE)
-            ->setVersion($fichierSource->getVersion() + 1)
-            ->setFace($face !== '' ? $face : $fichierSource->getFace())
-            ->setDesignation($designationFichier !== '' ? $designationFichier : 'Fichier traité')
-            ->setGroupeFichier($fichierSource->getGroupeFichier())
-            ->setQuantiteAProduire($fichierSource->getQuantiteAProduire())
+            ->setRole($decoupe ? CommandeDetailFichier::ROLE_DECOUPE : CommandeDetailFichier::ROLE_IMPRESSION)
+            ->setVersion($version)
+            ->setFace($face !== '' ? $face : $fichierSource?->getFace())
+            ->setDesignation($designationFichier !== '' ? $designationFichier : ($decoupe ? 'Fichier de découpe' : 'Fichier traité'))
+            ->setGroupeFichier($fichierSource?->getGroupeFichier())
+            ->setQuantiteAProduire($fichierSource?->getQuantiteAProduire())
             ->setObservation(
                 trim((string) ($donnees['observation'] ?? '')) ?: null
             )
@@ -1593,10 +1774,9 @@ public function controler(
         CommandeDetailFichier $fichier,
         string $dossierTemporaire
     ): void {
-        $projet = (string) $this->getParameter('kernel.project_dir');
-        $chemin = (string) $fichier->getChemin();
-
-        $repertoireAbsolu = $projet . '/public/' . dirname($chemin);
+        // Hors de public/ : var/uploads/prepresse/… (FichiersPrives).
+        $cheminFinal = $this->fichiersPrives->cible((string) $fichier->getChemin());
+        $repertoireAbsolu = dirname($cheminFinal);
 
         if (
             !is_dir($repertoireAbsolu)
@@ -1608,7 +1788,6 @@ public function controler(
             );
         }
 
-        $cheminFinal = $projet . '/public/' . $chemin;
         $cheminAssemblage = $cheminFinal . '.assemblage';
 
         $sortie = fopen($cheminAssemblage, 'wb');
@@ -1686,40 +1865,26 @@ public function controler(
      * Retrouve le chemin reel sur disque d'un fichier de commande,
      * quel que soit le circuit d'upload par lequel il est arrive :
      *   - fichiers "traites" en pre-presse (ajouterFichierTraite) :
-     *     stockes sous public/{chemin} (chemin relatif enregistre
-     *     en base) ;
+     *     stockes sous var/{chemin} (chemin relatif enregistre en
+     *     base, « uploads/prepresse/… ») ; avant app:fichiers:deplacer,
+     *     encore sous public/{chemin} (FichiersPrives::chemin) ;
      *   - fichiers originaux du client (FichierUploadController) :
      *     stockes a plat sous var/uploads/commandes/{nomStockage},
      *     sans valeur de "chemin" en base.
-     * Sans ceci, seul le deuxieme circuit fonctionnait : visualiser
-     * ou telecharger un fichier traite renvoyait une 404.
+     */
+    /**
+     * @param bool $apercu image réduite quand elle existe (affichage) ;
+     *                     false pour l'original (téléchargement, analyse)
      */
     private function resoudreCheminFichierStocke(
-        CommandeDetailFichier $fichier
+        CommandeDetailFichier $fichier,
+        bool $apercu = true
     ): ?string {
         $projet = (string) $this->getParameter('kernel.project_dir');
         $chemin = trim((string) $fichier->getChemin());
 
-        if ($chemin !== '') {
-            $racinePublique = realpath($projet . '/public');
-
-            if ($racinePublique !== false) {
-                $cheminComplet = realpath(
-                    $projet . '/public/' . $chemin
-                );
-
-                if (
-                    $cheminComplet !== false
-                    && str_starts_with(
-                        $cheminComplet,
-                        $racinePublique . DIRECTORY_SEPARATOR
-                    )
-                    && is_file($cheminComplet)
-                    && is_readable($cheminComplet)
-                ) {
-                    return $cheminComplet;
-                }
-            }
+        if ($chemin !== '' && null !== ($cheminComplet = $this->fichiersPrives->chemin($chemin)) && is_readable($cheminComplet)) {
+            return $cheminComplet;
         }
 
         /*
@@ -1779,7 +1944,7 @@ public function controler(
             'webp',
         ];
 
-        if (in_array($extension, $extensionsImages, true)) {
+        if ($apercu && in_array($extension, $extensionsImages, true)) {
             $racineApercus = $racineReelle
                 . DIRECTORY_SEPARATOR
                 . 'apercus';
@@ -1795,6 +1960,12 @@ public function controler(
 
         return $cheminComplet;
     }
+    /*
+     * Voir ou télécharger un fichier : la prépresse, et la production qui
+     * l'ouvre depuis l'ordre de sa machine (security.yaml et
+     * FichiersPrivesVoter::PREPRESSE). Type lu dans le contenu : une
+     * image ou un PDF s'ouvre, le reste se télécharge (FichierEnvoye).
+     */
     #[Route(
         '/fichier/{id}/visualiser',
         name: 'visualiser_fichier',
@@ -1804,47 +1975,9 @@ public function controler(
     public function visualiserFichier(
         CommandeDetailFichier $fichier
     ): BinaryFileResponse {
-        if (!$fichier->isActif()) {
-            throw $this->createNotFoundException(
-                'Le fichier demandé est indisponible.'
-            );
-        }
-
-        $cheminComplet = $this->resoudreCheminFichierStocke($fichier);
-
-        if ($cheminComplet === null) {
-            throw $this->createNotFoundException(
-                'Le fichier est introuvable sur le serveur.'
-            );
-        }
-        $typeMime = mime_content_type($cheminComplet);
-
-        if ($typeMime === false) {
-            $typeMime = $fichier->getTypeMime()
-                ?: 'application/octet-stream';
-        }
-
-        $nomOriginal = trim(
-            (string) $fichier->getNomOriginal()
-        );
-
-        if ($nomOriginal === '') {
-            $nomOriginal = basename($cheminComplet);
-        }
-
-        $response = new BinaryFileResponse($cheminComplet);
-
-        $response->headers->set('Content-Type', $typeMime);
-        $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('Cache-Control', 'private, max-age=0');
-
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_INLINE,
-            $nomOriginal
-        );
-
-        return $response;
+        return $this->servirFichier($fichier, true);
     }
+
     #[Route(
         '/fichier/{id}/telecharger',
         name: 'telecharger_fichier',
@@ -1854,51 +1987,31 @@ public function controler(
     public function telechargerFichier(
         CommandeDetailFichier $fichier
     ): BinaryFileResponse {
+        return $this->servirFichier($fichier, false);
+    }
+
+    /**
+     * @param bool $apercu true : image réduite quand elle existe, ouverte
+     *                     dans le navigateur ; false : l'original, téléchargé
+     */
+    private function servirFichier(CommandeDetailFichier $fichier, bool $apercu): BinaryFileResponse
+    {
+        $this->denyAccessUnlessGranted(FichiersPrivesVoter::PREPRESSE, $fichier);
+
         if (!$fichier->isActif()) {
             throw $this->createNotFoundException(
                 'Le fichier demandé est indisponible.'
             );
         }
 
-        $cheminComplet = $this->resoudreCheminFichierStocke($fichier);
+        $cheminComplet = $this->resoudreCheminFichierStocke($fichier, $apercu);
 
         if ($cheminComplet === null) {
             throw $this->createNotFoundException(
-                'Le fichier original est introuvable sur le serveur.'
+                'Le fichier est introuvable sur le serveur.'
             );
         }
 
-        $nomOriginal = trim(
-            (string) $fichier->getNomOriginal()
-        );
-
-        if ($nomOriginal === '') {
-            $nomOriginal = basename($cheminComplet);
-        }
-
-        $response = new BinaryFileResponse($cheminComplet);
-
-        /*
-     * ATTACHMENT force le téléchargement.
-     * La route de visualisation utilise INLINE.
-     */
-        $response->setContentDisposition(
-            ResponseHeaderBag::DISPOSITION_ATTACHMENT,
-            $nomOriginal
-        );
-
-        $typeMime = mime_content_type($cheminComplet);
-
-        $response->headers->set(
-            'Content-Type',
-            $typeMime ?: 'application/octet-stream'
-        );
-
-        $response->headers->set(
-            'X-Content-Type-Options',
-            'nosniff'
-        );
-
-        return $response;
+        return FichierEnvoye::reponse($cheminComplet, $fichier->getNomOriginal(), !$apercu);
     }
 }

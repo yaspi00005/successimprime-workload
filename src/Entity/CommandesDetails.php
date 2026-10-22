@@ -2,6 +2,10 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PromotionLigneTrait;
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\PiecesAuM2Trait;
+use App\Entity\Trait\TotalFigeTrait;
 use App\Repository\CommandesDetailsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,8 +16,14 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 #[ORM\Entity(repositoryClass: CommandesDetailsRepository::class)]
 #[ORM\Table(name: 'commandes_details')]
+#[ORM\HasLifecycleCallbacks]
 class CommandesDetails
 {
+    use PublicIdTrait;
+    use PromotionLigneTrait;
+    use TotalFigeTrait;
+    use PiecesAuM2Trait;
+
     public const PRODUCTION_A_PRODUIRE = 'a_produire';
     public const PRODUCTION_EN_COURS = 'en_production';
     public const PRODUCTION_TERMINEE = 'terminee';
@@ -38,7 +48,30 @@ class CommandesDetails
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?Produits $produit = null;
 
+    /*
+     * « Mes produits » (docs/mes-produits.md) : la ligne vient d'un produit
+     * deja valide du client. On garde ce que le client a demande (ex. 20 m2)
+     * a cote de ce que l'atelier produit (quantite, ex. 4 baches).
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?ProduitClient $produitClient = null;
 
+    #[ORM\Column(type: Types::DECIMAL, precision: 12, scale: 2, nullable: true)]
+    private ?string $quantiteDemandee = null;
+
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $uniteDemandee = null;
+
+    /*
+     * Fichier lie du produit du client retenu a la commande (MP05/MP06) :
+     * nom, empreinte SHA-256, taille validee (mm) et date du lien. Seulement
+     * la reference : le fichier reste sur le serveur de l'atelier. Le local
+     * la compare a son produit et au fichier du dossier avant l'impression
+     * (App\Service\ProduitsClient\Aiguillage).
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $fichierLie = null;
 
     #[ORM\Column(length: 20, options: ['default' => 'automatique'])]
     #[Assert\Choice(
@@ -107,7 +140,7 @@ class CommandesDetails
     )]
     private int $quantite = 1;
 
-    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => 0])]
+    #[ORM\Column(type: Types::DECIMAL, precision: 15, scale: 4, options: ['default' => '0.0000'])]
     #[Assert\PositiveOrZero(
         message: 'Le prix unitaire ne peut pas être négatif.'
     )]
@@ -221,6 +254,10 @@ class CommandesDetails
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $observation = null;
 
+    /** Ce que le client a écrit en commandant depuis son espace (ses mots, visibles de lui). */
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $demandeClient = null;
+
     #[ORM\Column(
         length: 30,
         options: ['default' => 'a_produire']
@@ -240,11 +277,45 @@ class CommandesDetails
     #[ORM\Column(length: 30, nullable: true)]
     private ?string $statutProductionAvantAnnulation = null;
 
+    /**
+     * Ligne sans fichier retirée de la liste de la prépresse (bouton
+     * « Retirer de la liste », docs/prepresse.md) : la commande n'est ni
+     * clôturée ni supprimée, et « Remettre dans la liste » l'y ramène.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $retirePrepresseLe = null;
+
+    #[ORM\Column(length: 120, nullable: true)]
+    private ?string $retirePrepressePar = null;
+
+    /**
+     * Fichier de découpe (docs/prepresse.md) : null, d'après les finitions
+     * de la ligne (RegleDecoupe) ; true ou false, la prépresse l'a coché
+     * (« Fichier de découpe requis ») ou décoché.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?bool $fichierDecoupeRequis = null;
+
+    /**
+     * « Découpe sans fichier séparé » : coché par le graphiste à l'envoi en
+     * production (le contour est dans le fichier d'impression). Montré au
+     * machiniste.
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $decoupeSansFichier = false;
+
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionDebuteLe = null;
 
     #[ORM\Column(nullable: true)]
     private ?\DateTimeImmutable $productionTermineeLe = null;
+
+    /**
+     * Passage « prête pour la livraison » (contrôle final fait, colis
+     * scannés) : c'est la date de l'étape « Prête » vue par le client.
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $preteLivraisonLe = null;
 
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(
@@ -369,6 +440,7 @@ class CommandesDetails
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->finitions = new ArrayCollection();
         $this->fichiers = new ArrayCollection();
         $this->productions = new ArrayCollection();
@@ -652,8 +724,9 @@ class CommandesDetails
             'metre' => (float) ($this->longueur ?? 0)
                 * $this->quantite,
 
-            'metre_carre' => (float) ($this->surface ?? 0)
-                * $this->quantite,
+            // Petites pièces (PiecesAuM2Trait) : la surface facturée vient du nombre de pièces au m².
+            'metre_carre' => $this->surfacePiecesAuM2()
+                ?? (float) ($this->surface ?? 0) * $this->quantite,
 
             'face' => max(1, $this->nombreFaces)
                 * $this->quantite,
@@ -673,7 +746,54 @@ class CommandesDetails
      */
     public function getSurfaceTotale(): float
     {
-        return (float) ($this->surface ?? 0) * $this->quantite;
+        // En pièces au m² : la surface facturée (espacement et chutes compris).
+        return $this->surfacePiecesAuM2() ?? (float) ($this->surface ?? 0) * $this->quantite;
+    }
+
+    public function getProduitClient(): ?ProduitClient
+    {
+        return $this->produitClient;
+    }
+
+    public function setProduitClient(?ProduitClient $produitClient): static
+    {
+        $this->produitClient = $produitClient;
+
+        return $this;
+    }
+
+    /** @return array{nom: string, empreinte: string, l: float, h: float, le: ?string}|null */
+    public function getFichierLie(): ?array
+    {
+        return $this->fichierLie;
+    }
+
+    public function setFichierLie(?array $fichierLie): static
+    {
+        $this->fichierLie = $fichierLie;
+
+        return $this;
+    }
+
+    public function getQuantiteDemandee(): ?float
+    {
+        return null === $this->quantiteDemandee ? null : (float) $this->quantiteDemandee;
+    }
+
+    public function getUniteDemandee(): ?string
+    {
+        return $this->uniteDemandee;
+    }
+
+    /**
+     * Quantite saisie par le client et son unite (piece, m2, lot).
+     */
+    public function setDemande(?float $quantite, ?string $unite): static
+    {
+        $this->quantiteDemandee = null === $quantite ? null : number_format($quantite, 2, '.', '');
+        $this->uniteDemandee = null === $quantite ? null : $unite;
+
+        return $this;
     }
 
     public function getProduitConfiguration(): ?ProduitConfiguration
@@ -919,23 +1039,29 @@ class CommandesDetails
         return $this;
     }
 
+    /**
+     * @param bool $clientB2B sans effet ici (le tarif B2B est choisi à la
+     *                        création de la ligne) ; gardé pour les appelants
+     */
     public function calculerTotaux(
         bool $clientB2B = false
     ): static {
-        /*
-     * Reprend les données fiables de ProduitConfiguration,
-     * puis calcule ou verrouille les dimensions.
-     */
-        if (
-            $this->typeLigne === self::TYPE_PRODUIT
-            && $this->isConfigurationAutomatique()
-        ) {
-            $this->appliquerConfiguration($clientB2B);
+        // Total d'origine conservé (bascule, TotalFigeTrait) : rien de ce
+        // qui fait le total n'a changé depuis sa lecture.
+        if ($this->garderTotalFige()) {
+            return $this;
         }
 
+        /*
+         * La configuration du catalogue s'applique quand la ligne est
+         * créée, jamais en recalculant ses totaux : une ancienne ligne
+         * « automatique » (promotion décidée, réveil d'un client...)
+         * garde ses dimensions, son prix et ses finitions. La réappliquer
+         * effaçait sa largeur et sa longueur quand la configuration
+         * n'impose pas de dimensions.
+         */
         if (
             $this->typeLigne === self::TYPE_PRODUIT
-            && !$this->isConfigurationAutomatique()
             && $this->modeCalcul === 'metre_carre'
         ) {
             $this->calculerSurface();
@@ -945,11 +1071,14 @@ class CommandesDetails
 
         $totalBrut = $this->calculerTotalBrut();
         $montantRemise = $this->calculerMontantRemise($totalBrut);
+        $this->montantPromotion = $this->calculerMontantPromotion($totalBrut, $this->calculerFacteur());
 
         $this->totalHt = max(
             0,
             $totalBrut - $montantRemise
         );
+        // Part du code promo de la commande (docs/promotions.md), après les remises de la ligne.
+        $this->totalHt -= $this->plafonnerRemiseCodePromo($this->totalHt);
 
         $montantTva = (int) round(
             $this->totalHt * $this->tva / 100
@@ -978,13 +1107,14 @@ class CommandesDetails
      * La remise est un montant par unité facturable (ex. 500 FCFA par
      * m²), pas un montant fixe sur toute la ligne : elle se multiplie
      * donc par le même facteur que le prix unitaire
-     * (calculerFacteur()), plafonné au total brut de la ligne.
+     * (calculerFacteur()), plafonné au total brut de la ligne. La remise
+     * de la promotion (docs/promotions.md) s'y ajoute.
      */
     private function calculerMontantRemise(int $totalBrut): int
     {
         return min(
             $totalBrut,
-            max(0, (int) round($this->remise * $this->calculerFacteur()))
+            max(0, (int) round(($this->remise + $this->remisePromotion) * $this->calculerFacteur()))
         );
     }
 
@@ -996,7 +1126,17 @@ class CommandesDetails
      */
     public function getMontantRemise(): int
     {
-        return $this->calculerMontantRemise($this->calculerTotalBrut());
+        $brut = $this->calculerTotalBrut();
+
+        // Total d'origine conservé : ce qui a vraiment été retiré du brut.
+        if ($this->totalFige) {
+            return max(0, $brut - $this->totalHt);
+        }
+
+        $remise = $this->calculerMontantRemise($brut);
+
+        // Avec la part du code promo de la commande : la ligne montre tout ce qui lui est retiré.
+        return $remise + min($this->getRemiseCodePromo(), max(0, $brut - $remise));
     }
 
     /**
@@ -1644,9 +1784,10 @@ public function validerModeCommande(
     ) {
         $context
             ->buildViolation(
-                'La largeur et la longueur sont obligatoires '
+                '{{ ligne }} : la largeur et la longueur sont obligatoires '
                 . 'pour un calcul au mètre carré.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('largeur')
             ->addViolation();
     }
@@ -1666,12 +1807,29 @@ public function validerModeCommande(
     ) {
         $context
             ->buildViolation(
-                'La longueur est obligatoire pour un calcul au mètre.'
+                '{{ ligne }} : la longueur est obligatoire pour un calcul au mètre.'
             )
+            ->setParameter('{{ ligne }}', $this->libelleLigneErreur())
             ->atPath('longueur')
             ->addViolation();
     }
 }
+    /**
+     * La ligne nommée dans un message d'erreur : sa place et sa désignation
+     * (« Ligne 2 « Bâche imprimée » »). L'erreur s'affiche aussi en haut du
+     * formulaire, loin du volet de la ligne, et deux lignes peuvent porter
+     * la même désignation.
+     */
+    private function libelleLigneErreur(): string
+    {
+        $lignes = $this->commande?->getCommandesDetails()->getValues() ?? [];
+        $rang = array_search($this, $lignes, true);
+        $place = false === $rang ? 'Ligne' : sprintf('Ligne %d', $rang + 1);
+        $designation = trim((string) $this->designation);
+
+        return '' === $designation ? $place : sprintf('%s « %s »', $place, $designation);
+    }
+
     /**
      * @return list<string>
      */
@@ -1736,6 +1894,19 @@ public function validerModeCommande(
     public function getProductionTermineeLe(): ?\DateTimeImmutable
     {
         return $this->productionTermineeLe;
+    }
+
+    public function getPreteLivraisonLe(): ?\DateTimeImmutable
+    {
+        return $this->preteLivraisonLe;
+    }
+
+    /** Synchronisation (site en ligne) : la date arrive de l'ERP. */
+    public function setPreteLivraisonLe(?\DateTimeImmutable $le): static
+    {
+        $this->preteLivraisonLe = $le;
+
+        return $this;
     }
 
     public function getProductionDebuteePar(): ?User
@@ -2015,6 +2186,45 @@ public function validerModeCommande(
     }
 
     /**
+     * « Refaire une pièce » au contrôle final (PD06) : la ligne terminée
+     * repart en production ; les pièces à refaire passent en rebut.
+     */
+    public function rouvrirPourRefaire(int $pieces): static
+    {
+        if (!$this->productionNecessaire || $this->statutProduction !== self::PRODUCTION_TERMINEE) {
+            throw new \LogicException('Seule une ligne terminée, pas encore prête, peut être refaite.');
+        }
+        if ($pieces < 1) {
+            throw new \InvalidArgumentException('Indiquez au moins une pièce à refaire.');
+        }
+        $this->quantiteRebut += $pieces;
+        $this->statutProduction = self::PRODUCTION_A_PRODUIRE;
+        $this->productionTermineeLe = null;
+        $this->productionTermineePar = null;
+
+        return $this;
+    }
+
+    /**
+     * Démarrage d'une pièce à refaire : sans remettre à zéro ce qui a déjà
+     * été produit (le BAT a été contrôlé au premier démarrage).
+     */
+    public function demarrerReprise(User $utilisateur, ?Machines $machine = null): static
+    {
+        if (!$this->productionNecessaire || $this->statutProduction !== self::PRODUCTION_A_PRODUIRE) {
+            throw new \LogicException('Cette production ne peut pas être reprise dans son état actuel.');
+        }
+        $this->statutProduction = self::PRODUCTION_EN_COURS;
+        $this->productionDebuteLe ??= new \DateTimeImmutable();
+        $this->productionDebuteePar ??= $utilisateur;
+        if ($machine !== null) {
+            $this->machine = $machine;
+        }
+
+        return $this;
+    }
+
+    /**
      * Terminer une production déjà démarrée.
      */
     public function terminerProduction(
@@ -2115,8 +2325,11 @@ public function validerModeCommande(
      *
      * 2. vente directe :
      *    aucune production ni étiquette de production obligatoire.
+     *
+     * $colisEtiquetes : le machiniste a imprimé les étiquettes des colis
+     * (poste machiniste, OP05), qui tiennent lieu d'étiquette de production.
      */
-    public function marquerPreteLivraison(): static
+    public function marquerPreteLivraison(bool $colisEtiquetes = false): static
     {
         /*
      * ========================================================
@@ -2141,6 +2354,7 @@ public function validerModeCommande(
 
             $this->statutProduction =
                 self::PRODUCTION_PRETE_LIVRAISON;
+            $this->preteLivraisonLe ??= new \DateTimeImmutable();
 
             return $this;
         }
@@ -2159,7 +2373,7 @@ public function validerModeCommande(
         /*
      * Pour une fabrication, l'étiquette reste obligatoire.
      */
-        if ($this->etiquettes->isEmpty()) {
+        if ($this->etiquettes->isEmpty() && !$colisEtiquetes) {
             throw new \LogicException(
                 'Une étiquette doit être associée à ce détail.'
             );
@@ -2167,6 +2381,7 @@ public function validerModeCommande(
 
         $this->statutProduction =
             self::PRODUCTION_PRETE_LIVRAISON;
+        $this->preteLivraisonLe = new \DateTimeImmutable();
 
         foreach ($this->etiquettes as $etiquette) {
             if (
@@ -2535,5 +2750,173 @@ public function validerModeCommande(
         $this->typeLigne = $typeLigne;
 
         return $this;
+    }
+
+    public function getDemandeClient(): ?string
+    {
+        return $this->demandeClient;
+    }
+
+    public function setDemandeClient(?string $demandeClient): static
+    {
+        $demandeClient = trim((string) $demandeClient);
+        $this->demandeClient = '' === $demandeClient ? null : mb_substr($demandeClient, 0, 1000);
+
+        return $this;
+    }
+
+    /**
+     * Même ligne pour une nouvelle commande (« Dupliquer », « Commander à
+     * nouveau ») : même produit, mêmes mesures, mêmes prix, remises et
+     * finitions, sans rien de la fabrication, des contrôles ni des fichiers
+     * (DuplicationCommande les reprend à part).
+     */
+    public function copiePourNouvelleCommande(): self
+    {
+        $copie = clone $this;
+        $copie->id = null;
+        $copie->commande = null;
+        $copie->initialiserPublicId();
+        $copie->finitions = new ArrayCollection();
+        $copie->fichiers = new ArrayCollection();
+        $copie->productions = new ArrayCollection();
+        $copie->stockSorties = new ArrayCollection();
+        $copie->controlesPrePresse = new ArrayCollection();
+        $copie->etiquettes = new ArrayCollection();
+        foreach ($this->finitions as $finition) {
+            $copie->addFinition($finition->copiePourNouvelleLigne());
+        }
+        $copie->jetonsFichiers = null;
+        $copie->batValide = false;
+        $copie->etat = true;
+        $copie->tempsReel = null;
+        $copie->statutProduction = self::PRODUCTION_NON_REQUISE === $this->statutProduction ? self::PRODUCTION_NON_REQUISE : self::PRODUCTION_A_PRODUIRE;
+        $copie->statutProductionAvantAnnulation = null;
+        $copie->productionDebuteLe = null;
+        $copie->productionTermineeLe = null;
+        $copie->preteLivraisonLe = null;
+        $copie->productionDebuteePar = null;
+        $copie->productionTermineePar = null;
+        $copie->quantiteProduite = 0;
+        $copie->quantiteRebut = 0;
+        $copie->observationProduction = null;
+        $copie->quantiteLivree = 0;
+        // Une ligne au total gardé (bascule) garde aussi son total dans la copie.
+        if ($this->isTotalFige()) {
+            $copie->figerTotal();
+        }
+
+        return $copie;
+    }
+
+    public function getRetirePrepresseLe(): ?\DateTimeImmutable
+    {
+        return $this->retirePrepresseLe;
+    }
+
+    public function getRetirePrepressePar(): ?string
+    {
+        return $this->retirePrepressePar;
+    }
+
+    public function retirerDePrepresse(\DateTimeImmutable $le, ?string $par): static
+    {
+        $this->retirePrepresseLe = $le;
+        $this->retirePrepressePar = null !== $par ? mb_substr($par, 0, 120) : null;
+
+        return $this;
+    }
+
+    public function remettreEnPrepresse(): static
+    {
+        $this->retirePrepresseLe = null;
+        $this->retirePrepressePar = null;
+
+        return $this;
+    }
+
+    public function getFichierDecoupeRequis(): ?bool
+    {
+        return $this->fichierDecoupeRequis;
+    }
+
+    public function setFichierDecoupeRequis(?bool $requis): static
+    {
+        $this->fichierDecoupeRequis = $requis;
+
+        return $this;
+    }
+
+    public function isDecoupeSansFichier(): bool
+    {
+        return $this->decoupeSansFichier;
+    }
+
+    public function setDecoupeSansFichier(bool $sansFichier): static
+    {
+        $this->decoupeSansFichier = $sansFichier;
+
+        return $this;
+    }
+
+    /** @return list<string> les noms des finitions de la ligne */
+    public function nomsFinitions(): array
+    {
+        $noms = [];
+        foreach ($this->finitions as $f) {
+            $noms[] = (string) ($f->getNomFinition() ?? $f->getFinition()?->getNom());
+        }
+
+        return $noms;
+    }
+
+    /** @return list<string> les finitions de découpe de la ligne (« Découpe à la forme ») */
+    public function finitionsDecoupe(): array
+    {
+        return array_values(array_filter($this->nomsFinitions(), \App\Service\Prepresse\RegleDecoupe::estFinitionDecoupe(...)));
+    }
+
+    /** Une finition de la ligne est une découpe (sans la case de la prépresse). */
+    public function aFinitionDecoupe(): bool
+    {
+        return \App\Service\Prepresse\RegleDecoupe::requis($this->nomsFinitions(), null);
+    }
+
+    /** La ligne demande-t-elle un fichier de découpe ? (finition de découpe, ou case de la prépresse) */
+    public function besoinFichierDecoupe(): bool
+    {
+        return \App\Service\Prepresse\RegleDecoupe::requis($this->nomsFinitions(), $this->fichierDecoupeRequis);
+    }
+
+    /**
+     * Fichiers de découpe reçus (actifs et complets), le plus récent d'abord.
+     *
+     * @return list<CommandeDetailFichier>
+     */
+    public function fichiersDecoupe(): array
+    {
+        $liste = array_values(array_filter($this->fichiers->toArray(), static fn (CommandeDetailFichier $f): bool => $f->estDecoupe() && $f->isActif() && $f->estUploadTermine()));
+        usort($liste, static fn (CommandeDetailFichier $a, CommandeDetailFichier $b): int => [$b->getCreeLe(), $b->getId()] <=> [$a->getCreeLe(), $a->getId()]);
+
+        return $liste;
+    }
+
+    /** Le fichier de découpe à transmettre : le plus récent, ou null. */
+    public function fichierDecoupe(): ?CommandeDetailFichier
+    {
+        return $this->fichiersDecoupe()[0] ?? null;
+    }
+
+    /**
+     * Où en est le fichier de découpe : RegleDecoupe::NON_REQUIS, PRESENT,
+     * MANQUANT ou SANS_FICHIER. Le fichier lié d'un produit du client
+     * (Mes produits) compte aussi.
+     */
+    public function etatDecoupe(): string
+    {
+        $decoupeLiee = \is_array($this->fichierLie['decoupe'] ?? null);
+        $sansFichierLie = (bool) ($this->fichierLie['decoupeSansFichier'] ?? false);
+
+        return \App\Service\Prepresse\RegleDecoupe::etat($this->besoinFichierDecoupe(), $decoupeLiee || null !== $this->fichierDecoupe(), $this->decoupeSansFichier || $sansFichierLie);
     }
 }

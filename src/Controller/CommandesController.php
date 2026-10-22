@@ -2,15 +2,20 @@
 
 namespace App\Controller;
 
+use App\Entity\CommandeDetailFichier;
 use App\Entity\Commandes;
+use App\Entity\Factures;
 use App\Entity\Paiements;
+use App\Entity\SoldeOuverture;
 use App\Entity\User;
 use App\Entity\MouvementTresorerie;
 use App\Form\CommandesType;
+use App\Security\AccesEnLigne;
 use App\Form\PaiementsType;
 use App\Repository\CommandesRepository;
 use App\Repository\ClientsRepository;
 use App\Repository\CommandeDetailFichierRepository;
+use App\Service\Http\Entree;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,16 +26,34 @@ use App\Entity\ProduitConfigurationFinition;
 use Symfony\Component\Form\FormError;
 use Symfony\Component\Form\FormInterface;
 use App\Entity\CommandesDetails;
+use App\Service\Corbeille\Corbeille;
+use App\Service\MontantFinitionSaisie;
 use App\Service\NotificationService;
-use App\Service\StockService;
+use App\Service\NotificationsEquipe\AccordsPlafond;
+use App\Service\Stock\ReservationsCommande;
+use App\Service\CalculateurCoutRevient;
+use App\Service\SuiviCommandeService;
+use App\Service\Commandes\FicheCommande;
+use App\Service\Commandes\SuiviCommercial;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use App\Repository\FacturesRepository;
 use App\Repository\ParametresPaiementRepository;
+use App\Service\Parametres\Parametres;
+use App\Service\Promotions\PromotionsSaisie;
+use App\Service\Paiement\ComptesOrangeMoney;
+use App\Service\Paiement\FraisOrangeMoney;
+use App\Service\Paiement\SoldeClient;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 
 #[Route('/commandes')]
 final class CommandesController extends AbstractController
 {
+    /** Paliers de prix, grille du client et prix négocié (docs/produits.md), posés à l'enregistrement. */
+    public function __construct(private readonly \App\Service\Catalogue\TarifClient $tarifClient)
+    {
+    }
+
     private const CLES_FILTRES_COMMANDES = [
         'q',
         'client',
@@ -43,6 +66,8 @@ final class CommandesController extends AbstractController
         'montant_max',
         'affichage',
         'tri',
+        'etape',
+        'pour',
     ];
 
     private const FILTRES_COMMANDES_PAR_DEFAUT = [
@@ -57,17 +82,114 @@ final class CommandesController extends AbstractController
         'montant_max' => '',
         'affichage' => 'actives',
         'tri' => 'recent',
+        'etape' => '',
+        'pour' => '',
     ];
 
+    /**
+     * Liste des commandes (maquette GC01) et tableau par étape (GC02) :
+     * même adresse, bascule « Liste / Tableau » retenue pour la session.
+     */
     #[Route('/', name: 'app_commandes_index', methods: ['GET'])]
     public function index(
         Request $request,
         CommandesRepository $commandesRepository,
-        ClientsRepository $clientsRepository
+        ClientsRepository $clientsRepository,
+        SuiviCommercial $suiviCommercial
     ): Response {
         $session = $request->getSession();
+        $filtres = $this->filtresCommandes($request);
+
+        $vue = (string) $request->query->get('vue', (string) $session->get('commandes_vue', 'liste'));
+        $vue = \in_array($vue, ['liste', 'tableau'], true) ? $vue : 'liste';
+        $session->set('commandes_vue', $vue);
+
+        $maintenant = new \DateTimeImmutable();
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
 
         /*
+         * Sans filtre, le repository affiche uniquement les commandes
+         * dont le paiement est en attente OU les travaux sont en cours.
+         */
+        $lignes = $suiviCommercial->lignes($commandesRepository->rechercherPourIndex($filtres), $maintenant);
+        $lignes = SuiviCommercial::filtrerPour($lignes, $filtres['pour'], $maintenant);
+        $compteurs = SuiviCommercial::compteurs($lignes);
+
+        // Les cartes du haut portent toujours sur les commandes actives, quels que soient les filtres.
+        $parDefaut = array_diff_key(self::FILTRES_COMMANDES_PAR_DEFAUT, ['etape' => 1, 'pour' => 1]);
+        $actives = array_diff_key($filtres, ['etape' => 1, 'pour' => 1]) == $parDefaut && '' === $filtres['pour']
+            ? $lignes
+            : $suiviCommercial->lignes($commandesRepository->rechercherPourIndex(self::FILTRES_COMMANDES_PAR_DEFAUT), $maintenant);
+
+        return $this->render('commandes/index.html.twig', [
+            'lignes' => SuiviCommercial::filtrerEtape($lignes, 'tableau' === $vue ? '' : $filtres['etape']),
+            'colonnes' => 'tableau' === $vue ? SuiviCommercial::colonnes($lignes) : [],
+            'compteurs' => $compteurs,
+            'cartes' => SuiviCommercial::cartes($actives, $maintenant, $voirPaiements),
+            'etapes' => SuiviCommercial::ETAPES,
+            'choixPour' => SuiviCommercial::POUR,
+            'vue' => $vue,
+            'clients' => $clientsRepository->findBy([], [
+                'nom' => 'ASC',
+            ]),
+            'filtres' => $filtres,
+        ]);
+    }
+
+    /**
+     * Les commandes de la liste, avec les mêmes filtres, en CSV (Excel).
+     * Payé et reste seulement avec le droit de voir les paiements.
+     */
+    #[Route('/export', name: 'app_commandes_export', methods: ['GET'], priority: 10)]
+    public function export(
+        Request $request,
+        CommandesRepository $commandesRepository,
+        SuiviCommercial $suiviCommercial
+    ): StreamedResponse {
+        $filtres = $this->filtresCommandes($request);
+        $maintenant = new \DateTimeImmutable();
+        $lignes = $suiviCommercial->lignes($commandesRepository->rechercherPourIndex($filtres), $maintenant);
+        $lignes = SuiviCommercial::filtrerEtape(SuiviCommercial::filtrerPour($lignes, $filtres['pour'], $maintenant), $filtres['etape']);
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+
+        $reponse = new StreamedResponse(static function () use ($lignes, $voirPaiements): void {
+            $sortie = fopen('php://output', 'wb');
+            // BOM pour qu'Excel lise les accents.
+            fwrite($sortie, "\xEF\xBB\xBF");
+            fputcsv($sortie, array_merge(
+                ['N°', 'Date', 'Client', 'Produit', 'Montant TTC'],
+                $voirPaiements ? ['Payé', 'Reste à payer', 'Payé %'] : [],
+                ['Étape', 'Pour le', 'En retard', 'Responsable', 'État']
+            ), ';', '"', '');
+            foreach ($lignes as $l) {
+                $commande = $l['commande'];
+                fputcsv($sortie, array_merge(
+                    [
+                        $commande->getNumero(),
+                        $commande->getDateCommande()?->format('d/m/Y'),
+                        $l['client']['nom'],
+                        $l['produit'].($l['autres'] > 0 ? \sprintf(' (+%d)', $l['autres']) : ''),
+                        $l['total'],
+                    ],
+                    $voirPaiements ? [$l['paye'], $l['reste'], $l['partPayee']] : [],
+                    [
+                        SuiviCommercial::ETAPES[$l['etape']]['libelle'],
+                        $l['pourLe']?->format('d/m/Y'),
+                        $l['enRetard'] ? 'oui' : 'non',
+                        $l['responsable']['complet'] ?? '',
+                        $l['etat'],
+                    ]
+                ), ';', '"', '');
+            }
+            fclose($sortie);
+        });
+        $reponse->headers->set('Content-Type', 'text/csv; charset=UTF-8');
+        $reponse->headers->set('Content-Disposition', \sprintf('attachment; filename="commandes-%s.csv"', $maintenant->format('Y-m-d')));
+
+        return $reponse;
+    }
+
+    /**
      * ============================================================
      * RECHERCHE GARDÉE EN SESSION
      * ============================================================
@@ -76,7 +198,13 @@ final class CommandesController extends AbstractController
      * (bouton "Réinitialiser", ?reset=1), on retrouve les derniers
      * filtres appliqués même en revenant sur la liste sans
      * paramètre d'URL (ex. via le menu).
+     *
+     * @return array<string, string>
      */
+    private function filtresCommandes(Request $request): array
+    {
+        $session = $request->getSession();
+
         if ($request->query->getBoolean('reset')) {
             $session->remove('commandes_filtres');
         }
@@ -92,80 +220,27 @@ final class CommandesController extends AbstractController
         }
 
         if ($requeteContientUnFiltre) {
-            $filtres = [
-                'q' => trim((string) $request->query->get('q', '')),
-                'client' => (string) $request->query->get('client', ''),
-                'statut' => (string) $request->query->get('statut', ''),
-                'etat' => (string) $request->query->get('etat', ''),
-                'paiement' => (string) $request->query->get('paiement', ''),
-                'date_debut' => (string) $request->query->get('date_debut', ''),
-                'date_fin' => (string) $request->query->get('date_fin', ''),
-                'montant_min' => (string) $request->query->get('montant_min', ''),
-                'montant_max' => (string) $request->query->get('montant_max', ''),
-                'affichage' => (string) $request->query->get(
-                    'affichage',
-                    'actives'
-                ),
-                'tri' => (string) $request->query->get('tri', 'recent'),
-            ];
+            $filtres = [];
+            foreach (self::FILTRES_COMMANDES_PAR_DEFAUT as $cle => $defaut) {
+                $filtres[$cle] = trim((string) $request->query->get($cle, $defaut));
+            }
 
             $session->set('commandes_filtres', $filtres);
         } else {
-            $filtres = $session->get(
-                'commandes_filtres',
-                self::FILTRES_COMMANDES_PAR_DEFAUT
-            );
+            $filtres = (array) $session->get('commandes_filtres', []) + self::FILTRES_COMMANDES_PAR_DEFAUT;
         }
 
-        /*
-         * Sans filtre, le repository affiche uniquement les commandes
-         * dont le paiement est en attente OU les travaux sont en cours.
-         */
-        $commandes = $commandesRepository->rechercherPourIndex($filtres);
-
-        $totalPaye = 0;
-        $totalReste = 0;
-        $totalCommandes = 0;
-
-        foreach ($commandes as $commande) {
-            /*
-         * Une commande entièrement annulée ne doit pas fausser les
-         * totaux affichés en haut de la liste (même règle que sur
-         * la fiche client).
-         */
-            if ($commande->getStatutTravaux() === 'annulee') {
-                continue;
-            }
-
-            $total = (int) ($commande->getTotalTtc() ?? 0);
-
-            $paye = 0;
-
-            foreach ($commande->getPaiements() as $paiement) {
-                $paye += (int) $paiement->getMontant();
-            }
-
-            $reste = max(
-                0,
-                $total - $paye
-            );
-
-            $totalCommandes += $total;
-            $totalPaye += $paye;
-            $totalReste += $reste;
+        $filtres = array_map('strval', array_intersect_key($filtres, self::FILTRES_COMMANDES_PAR_DEFAUT));
+        if (!isset(SuiviCommercial::ETAPES[$filtres['etape']]) && 'retard' !== $filtres['etape']) {
+            $filtres['etape'] = '';
+        }
+        if (!isset(SuiviCommercial::POUR[$filtres['pour']])) {
+            $filtres['pour'] = '';
         }
 
-        return $this->render('commandes/index.html.twig', [
-            'commandes' => $commandes,
-            'clients' => $clientsRepository->findBy([], [
-                'nom' => 'ASC',
-            ]),
-            'filtres' => $filtres,
-            'totalCommandes' => $totalCommandes,
-            'totalPaye' => $totalPaye,
-            'totalReste' => $totalReste,
-        ]);
+        return $filtres;
     }
+
 
 
     #[Route(
@@ -177,11 +252,21 @@ final class CommandesController extends AbstractController
         Request $request,
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
-        StockService $stockService,
+        ReservationsCommande $reservationsCommande,
         CommandesRepository $commandesRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        Parametres $parametres,
+        PromotionsSaisie $promotionsSaisie,
+        AccordsPlafond $accordsPlafond,
+        \App\Service\Prepresse\RelancesFichiers $relancesFichiers
     ): Response {
         $commande = new Commandes();
+        $plafondBloque = false;
+
+        // « + Commande » de la fiche client (docs/clients.md) : le client est déjà choisi.
+        if ($request->isMethod('GET') && Entree::entier($request->query, 'client') > 0) {
+            $commande->setClients($entityManager->find(\App\Entity\Clients::class, Entree::entier($request->query, 'client')));
+        }
 
         $form = $this->createForm(
             CommandesType::class,
@@ -213,11 +298,29 @@ final class CommandesController extends AbstractController
                 [
                     'commande' => $commande,
                     'form' => $form,
+                    'delaiPossible' => $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
                 ]
             );
         }
 
         $form->handleRequest($request);
+
+        /*
+         * Boutons de la saisie (maquette C01) : « Enregistrer en
+         * brouillon » ou « Confirmer la commande ».
+         */
+        if ($form->isSubmitted()) {
+            $action = $request->request->getString('action_saisie');
+
+            if ('confirmer' === $action || 'brouillon' === $action) {
+                $commande->setStatut('confirmer' === $action);
+            }
+            // Plafond de crédit dépassé (docs/notifications-equipe.md) : enregistrée en brouillon, fenêtre bloquante.
+            if ('confirmer' === $action && $accordsPlafond->bloquee($commande)) {
+                $commande->setStatut(false);
+                $plafondBloque = true;
+            }
+        }
 
         /*
      * ============================================================
@@ -240,6 +343,15 @@ final class CommandesController extends AbstractController
                     $commande,
                     $fichierRepository
                 );
+
+                // Palier, grille du client et prix négocié (docs/produits.md), avant la promotion qui s'y compare.
+                $this->tarifClient->appliquerCommande($commande, new \DateTimeImmutable());
+
+                // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+                $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+                $commande->recalculerTotaux();
 
                 /*
              * Contrôle du stock uniquement si
@@ -275,12 +387,15 @@ final class CommandesController extends AbstractController
                     $maintenant
                 );
 
-                $commande->setDateLivraison(
-                    $this->ajouterHeuresOuvrees(
-                        $maintenant,
-                        48
-                    )
-                );
+                // Date souhaitée par le client, sinon le délai standard.
+                if ($commande->getDateLivraison() === null) {
+                    $commande->setDateLivraison(
+                        $this->ajouterHeuresOuvrees(
+                            $maintenant,
+                            48
+                        )
+                    );
+                }
 
                 $utilisateur =
                     $this->getUser();
@@ -395,28 +510,13 @@ final class CommandesController extends AbstractController
                 );
 
                 /*
-             * ====================================================
-             * RÉSERVATION DU STOCK
-             * ====================================================
-             *
-             * Aucune réservation pour un brouillon.
-             */
-                if (
-                    $this->commandeEstValidee(
-                        $commande
-                    )
-                ) {
-                    $stockService
-                        ->reserverPourCommande(
-                            $commande
-                        );
-                }
-
-                /*
-             * Commande + détails + réservations
-             * sont enregistrés ensemble.
+             * Commande + détails enregistrés ensemble. Le stock
+             * est réservé au même moment, si la commande est
+             * validée (ReservationsCommandeListener) : jamais pour
+             * un brouillon, et sans bloquer la commande s'il manque.
              */
                 $entityManager->flush();
+                $this->avertirStockManquant($reservationsCommande, $commande);
 
                 /*
              * ====================================================
@@ -474,23 +574,65 @@ final class CommandesController extends AbstractController
                     }
                 }
 
+                /*
+                 * « Fichier à venir » coché à la caisse (docs/prepresse.md) :
+                 * le lien d'envoi part tout de suite sur WhatsApp (lien
+                 * wa.me, message avec les formats attendus) ; les relances
+                 * J+1, J+3, J+7 suivent si le fichier n'arrive pas.
+                 */
+                if ($request->request->getBoolean('fichier_a_venir')) {
+                    $commande->setFichierAVenir(true);
+                    $manquants = \App\Service\Prepresse\RelancesFichiers::manquants($commande);
+                    $whatsapp = [] !== $manquants && \App\Service\Prepresse\ListePrepresse::clientJoignable($commande->getClients())
+                        ? \App\Service\Prepresse\RelancesFichiers::whatsapp($commande->getClients(), $relancesFichiers->message($commande, $manquants))
+                        : null;
+                    if (null !== $whatsapp) {
+                        $this->addFlash('whatsapp', ['texte' => sprintf('Fichier à venir : envoyez au client le lien d\'envoi de la commande %s.', $commande->getNumero()), 'url' => $whatsapp]);
+                    }
+                }
+
                 $entityManager->flush();
 
                 $request->getSession()->remove('brouillon_commande');
 
-                $this->addFlash(
-                    'success',
-                    sprintf(
-                        'La commande %s a été enregistrée avec succès.',
-                        $commande->getNumero()
-                    )
-                );
+                if ($plafondBloque) {
+                    $this->addFlash('plafond_bloquant', $commande->getId());
+
+                    return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId(), 'creee' => 1]);
+                }
+
+                /*
+                 * Acompte choisi à la saisie : la caisse s'ouvre
+                 * avec le montant et le moyen déjà remplis.
+                 */
+                $modeAcompte = $request->request->getString('acompte_mode');
+                // Client dispensé d'acompte (fiche client) : rien à encaisser d'avance.
+                $sansAcompte = true === $commande->getClients()?->isSansAcompte();
+                $pourcentageAcompte = $commande->getClients()?->getAcompte() ?? (int) $parametres->valeur('paiements', 'acompte');
+
+                if (
+                    !$sansAcompte
+                    && $pourcentageAcompte > 0
+                    && $this->commandeEstValidee($commande)
+                    && \in_array($modeAcompte, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)
+                    && $this->isGranted('ROLE_PAIEMENT_ENCAISSER')
+                    && $commande->getMontantApayer() > 0
+                ) {
+                    $this->addFlash('success', sprintf('Commande %s créée. Encaissez l\'acompte.', $commande->getNumero()));
+
+                    return $this->redirectToRoute('app_commandes_paiement', [
+                        'id' => $commande->getId(),
+                        'montant' => (int) ceil($commande->getMontantApayer() * min(100, $pourcentageAcompte) / 100),
+                        'mode' => $modeAcompte,
+                    ]);
+                }
 
                 return $this->redirectToRoute(
                     'app_commandes_show',
                     [
                         'id' =>
                         $commande->getId(),
+                        'creee' => 1,
                     ]
                 );
             } catch (
@@ -514,15 +656,94 @@ final class CommandesController extends AbstractController
             [
                 'commande' => $commande,
                 'form' => $form,
+                'delaiPossible' => $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
             ]
         );
     }
 
     #[Route('/{id}', name: 'app_commandes_show', methods: ['GET'])]
-    public function show(Commandes $commande): Response
+    public function show(Commandes $commande, SuiviCommandeService $suiviCommandeService, CalculateurCoutRevient $calculateurCoutRevient, PromotionsSaisie $promotionsSaisie, EntityManagerInterface $entityManager, SuiviCommercial $suiviCommercial, FicheCommande $ficheCommande, ReservationsCommande $reservationsCommande): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            // Ce que le client devait au démarrage (docs/import-donnees.md) : un montant, pas une vente.
+            $this->denyAccessUnlessGranted('ROLE_PAIEMENT_VOIR');
+
+            return $this->render('commandes/solde_ouverture.html.twig', [
+                'commande' => $commande,
+                'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
+                'solde' => $entityManager->getRepository(SoldeOuverture::class)->findOneBy(['commande' => $commande]),
+            ]);
+        }
+
+        $lignes = [];
+        $voirCouts = $this->isGranted('ROLE_COUT_MARGE');
+        $marge = ['ht' => 0, 'cout' => 0, 'incomplet' => false];
+
+        foreach ($commande->getCommandesDetails() as $ligne) {
+            $cout = null;
+
+            if ($voirCouts && CommandesDetails::PRODUCTION_ANNULEE !== $ligne->getStatutProduction()) {
+                // Le cout enregistre a la saisie fait foi ; les anciennes
+                // lignes, saisies avant le calcul automatique, sont calculees.
+                $calcul = $calculateurCoutRevient->pourLigne($ligne);
+                $montant = $ligne->getCoutRevient() > 0 ? $ligne->getCoutRevient() : $calcul['total'];
+                $cout = [
+                    'montant' => $montant,
+                    'marge' => CalculateurCoutRevient::tauxMarge($ligne->getTotalHt(), $montant),
+                    'manquants' => $calcul['manquants'],
+                ];
+                $marge['ht'] += $ligne->getTotalHt();
+                $marge['cout'] += $montant;
+                $marge['incomplet'] = $marge['incomplet'] || [] !== $calcul['manquants'];
+            }
+
+            $lignes[] = ['detail' => $ligne, 'cout' => $cout] + $suiviCommandeService->ligne($ligne);
+        }
+
+        $factures = array_values(array_filter(
+            $commande->getFactures()->toArray(),
+            static fn (Factures $facture): bool => Factures::ETAT_ANNULEE !== $facture->getEtat()
+        ));
+
+        // Maquette DT02 : étape commerciale, fichiers et BAT, production, client, conversation.
+        $maintenant = new \DateTimeImmutable();
+        $voirPaiements = $this->isGranted('ROLE_PAIEMENT_VOIR');
+        $suivi = $suiviCommercial->pourCommande($commande, $maintenant);
+        $fiche = $ficheCommande->donnees($commande, $maintenant, $voirPaiements);
+        $historique = array_merge($suiviCommandeService->historique($commande, $voirPaiements), $fiche['evenementsBat']);
+        usort($historique, static fn (array $a, array $b): int => $b['date'] <=> $a['date']);
+        if (null !== $fiche['devis']) {
+            foreach ($historique as &$evenement) {
+                if (str_starts_with($evenement['texte'], 'Commande créée')) {
+                    $evenement['texte'] = 'Commande créée depuis '.$fiche['devis']->getNumero().substr($evenement['texte'], \strlen('Commande créée'));
+                }
+            }
+            unset($evenement);
+        }
+
         return $this->render('commandes/show.html.twig', [
             'commande' => $commande,
+            'etapes' => $suiviCommandeService->etapes($commande, SuiviCommercial::ACOMPTE === $suivi['etape']),
+            'suivi' => $suivi,
+            'fiche' => $fiche,
+            'lignes' => $lignes,
+            'paiementsValides' => $suiviCommandeService->paiementsValides($commande),
+            'historique' => \array_slice($historique, 0, 10),
+            'facture' => end($factures) ?: null,
+            'marge' => $voirCouts ? $marge + ['taux' => CalculateurCoutRevient::tauxMarge($marge['ht'], $marge['cout'])] : null,
+            // Revendeur au prix B2B : promotions qu'une exception permettrait, ligne par ligne.
+            'promotionsB2b' => $promotionsSaisie->possibilitesB2b($commande, new \DateTimeImmutable()),
+            // Stock réservé et déjà sorti (le stock est réservé aux administrateurs).
+            'stock' => $this->isGranted('ROLE_ADMIN') ? [
+                'articles' => $reservationsCommande->resume($commande),
+                'sansNomenclature' => array_values(array_filter(
+                    $commande->getCommandesDetails()->toArray(),
+                    static fn (CommandesDetails $l): bool => CommandesDetails::TYPE_PRODUIT === $l->getTypeLigne()
+                        && CommandesDetails::PRODUCTION_ANNULEE !== $l->getStatutProduction()
+                        && null !== $l->getProduit()
+                        && !$l->getProduit()->debiteLeStock()
+                )),
+            ] : null,
         ]);
     }
 
@@ -536,8 +757,14 @@ final class CommandesController extends AbstractController
         Commandes $commande,
         EntityManagerInterface $entityManager,
         CommandeDetailFichierRepository $fichierRepository,
-        StockService $stockService
+        ReservationsCommande $reservationsCommande,
+        PromotionsSaisie $promotionsSaisie,
+        AccordsPlafond $accordsPlafond
     ): Response {
+        $plafondBloque = false;
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
 
         /*
      * ============================================================
@@ -657,6 +884,20 @@ final class CommandesController extends AbstractController
             $request
         );
 
+        if ($form->isSubmitted()) {
+            $action = $request->request->getString('action_saisie');
+
+            // Une commande confirmée ne repasse pas en brouillon depuis la saisie.
+            if ('confirmer' === $action || ('brouillon' === $action && !$commandeEtaitValidee)) {
+                $commande->setStatut('confirmer' === $action);
+            }
+            // Plafond de crédit dépassé : la confirmation attend un acompte ou l'accord de la direction.
+            if ('confirmer' === $action && !$commandeEtaitValidee && $accordsPlafond->bloquee($commande)) {
+                $commande->setStatut(false);
+                $plafondBloque = true;
+            }
+        }
+
 
         /*
      * ============================================================
@@ -743,6 +984,15 @@ final class CommandesController extends AbstractController
                         $commande,
                         $fichierRepository
                     );
+
+                // Palier, grille du client et prix négocié (docs/produits.md), avant la promotion qui s'y compare.
+                $this->tarifClient->appliquerCommande($commande, new \DateTimeImmutable());
+
+                // Promotions des lignes : recalculées ici, jamais reprises du navigateur (docs/promotions.md).
+                $promotionsSaisie->appliquerCommande($commande, $form->get('codePromo')->getData(), new \DateTimeImmutable());
+
+                // Totaux refaits depuis les lignes et les frais de livraison : ceux du navigateur ne sont pas gardés.
+                $commande->recalculerTotaux();
             } catch (
                 \DomainException
                 | \RuntimeException
@@ -796,14 +1046,10 @@ final class CommandesController extends AbstractController
                             $commande
                         );
 
-
                     /*
-                 * Réservation du stock.
+                 * Le stock est réservé à l'enregistrement
+                 * (ReservationsCommandeListener).
                  */
-                    $stockService
-                        ->reserverPourCommande(
-                            $commande
-                        );
                 }
 
 
@@ -818,23 +1064,11 @@ final class CommandesController extends AbstractController
                 ) {
 
                     /*
-                 * Tant que le circuit n'a pas commencé,
-                 * les réservations peuvent être recalculées.
-                 */
-                    if (!$circuitDejaCommence) {
-
-                        $stockService
-                            ->reserverPourCommande(
-                                $commande
-                            );
-                    }
-
-                    /*
-                 * Si le circuit a déjà commencé :
-                 *
-                 * - pas de preparerCircuitCommande()
-                 * - pas de recréation des réservations
-                 * - pas de réinitialisation des statuts
+                 * Les réservations des lignes dont le stock n'a pas
+                 * encore commencé à sortir suivent les quantités
+                 * (ReservationsCommandeListener). Si le circuit a
+                 * déjà commencé : pas de preparerCircuitCommande(),
+                 * pas de réinitialisation des statuts.
                  */
                 }
 
@@ -856,14 +1090,10 @@ final class CommandesController extends AbstractController
                         );
                     }
 
-
                     /*
-                 * Libération des réservations.
+                 * Les réservations sont libérées à l'enregistrement
+                 * (ReservationsCommandeListener).
                  */
-                    $stockService
-                        ->libererReservationsCommande(
-                            $commande
-                        );
                 }
 
 
@@ -888,11 +1118,15 @@ final class CommandesController extends AbstractController
 
                 $entityManager->flush();
 
+                if ($plafondBloque) {
+                    $this->addFlash('plafond_bloquant', $commande->getId());
+                }
 
                 $this->addFlash(
-                    'success',
-                    'La commande a été modifiée avec succès.'
+                    $plafondBloque ? 'warning' : 'success',
+                    $plafondBloque ? 'Modifications enregistrées : la commande reste à confirmer (plafond de crédit).' : 'La commande a été modifiée avec succès.'
                 );
+                $this->avertirStockManquant($reservationsCommande, $commande);
 
 
                 return $this->redirectToRoute(
@@ -934,14 +1168,20 @@ final class CommandesController extends AbstractController
 
                 'circuitDejaCommence' =>
                 $circuitDejaCommence,
+
+                'delaiPossible' =>
+                $this->ajouterHeuresOuvrees(new \DateTimeImmutable(), 48),
             ]
         );
     }
 
     #[Route('/{id}', name: 'app_commandes_delete', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function delete(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function delete(Request $request, Commandes $commande, EntityManagerInterface $entityManager, Corbeille $corbeille): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         /*
          * Suppression douce (Commandes::$deleted) plutôt qu'un
          * remove() en base : une commande a en général déjà des
@@ -954,14 +1194,17 @@ final class CommandesController extends AbstractController
          * dans le même correctif pour l'exclure de la liste.
          */
         if ($this->isCsrfTokenValid('delete' . $commande->getId(), $request->getPayload()->getString('_token'))) {
+            // Corbeille (docs/corbeille.md) : récupérable pendant la durée réglée.
+            $corbeille->masquer($commande, 'deleted', false);
             $commande->setDeleted(true);
             $entityManager->flush();
 
             $this->addFlash(
                 'success',
                 sprintf(
-                    'La commande %s a été supprimée.',
-                    $commande->getNumero()
+                    'La commande %s a été supprimée. Elle reste %s dans la corbeille.',
+                    $commande->getNumero(),
+                    $corbeille->dureeTexte()
                 )
             );
         }
@@ -982,8 +1225,11 @@ final class CommandesController extends AbstractController
      * les régularisations éventuelles restent manuelles.
      */
     #[Route('/{id}/annuler', name: 'app_commandes_annuler', methods: ['POST'])]
-    public function annuler(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function annuler(Request $request, Commandes $commande, EntityManagerInterface $entityManager, ReservationsCommande $reservationsCommande): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         $user = $this->getUser();
 
         if (!$user instanceof User) {
@@ -1054,8 +1300,13 @@ final class CommandesController extends AbstractController
 
         $message = sprintf('La commande %s a été annulée.', $commande->getNumero() ?? ('#' . $commande->getId()));
 
-        if ($stockDejaConsomme) {
-            $message .= ' Attention : du stock avait déjà été consommé pour cette commande et n’a pas été recrédité automatiquement.';
+        // Les réservations sont libérées à l'enregistrement (ReservationsCommandeListener) ;
+        // ce qui est déjà sorti du stock reste sorti : la matière est consommée.
+        $sorties = array_filter($reservationsCommande->resume($commande), static fn (array $l): bool => $l['sorti'] > 0);
+        if ($stockDejaConsomme || [] !== $sorties) {
+            $message .= ' Attention : du stock avait déjà été consommé pour cette commande et n’a pas été recrédité automatiquement'
+                .([] !== $sorties ? ' ('.implode(', ', array_map(static fn (array $l): string => $l['article']->getDesignation().' : '.rtrim(rtrim(number_format($l['sorti'], 3, ',', ' '), '0'), ','), $sorties)).')' : '')
+                .'. Les réservations restantes ont été libérées.';
         }
 
         $this->addFlash('success', $message);
@@ -1078,8 +1329,11 @@ final class CommandesController extends AbstractController
      */
     #[Route('/{id}/restaurer', name: 'app_commandes_restaurer', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager): Response
+    public function restaurer(Request $request, Commandes $commande, EntityManagerInterface $entityManager, ReservationsCommande $reservationsCommande): Response
     {
+        if ($commande->estSoldeOuverture()) {
+            throw $this->createAccessDeniedException('Un solde d\'ouverture ne se modifie pas : annulez l\'import tant qu\'il n\'a pas servi (Réglages, Import de données).');
+        }
         $user = $this->getUser();
 
         if (!$user instanceof User) {
@@ -1149,6 +1403,7 @@ final class CommandesController extends AbstractController
         }
 
         $this->addFlash('success', $message);
+        $this->avertirStockManquant($reservationsCommande, $commande);
 
         return $this->redirectToRoute('app_commandes_show', ['id' => $commande->getId()], Response::HTTP_SEE_OTHER);
     }
@@ -1178,6 +1433,10 @@ final class CommandesController extends AbstractController
             );
 
             foreach ($jetons as $jeton) {
+                // « d:<jeton> » : le fichier de découpe de la ligne (docs/prepresse.md).
+                $decoupe = str_starts_with($jeton, 'd:');
+                $jeton = $decoupe ? substr($jeton, 2) : $jeton;
+
                 if (!preg_match('/^[a-f0-9]{64}$/', $jeton)) {
                     throw new \RuntimeException(
                         'Un jeton de fichier est invalide.'
@@ -1210,6 +1469,10 @@ final class CommandesController extends AbstractController
                 }
 
                 $detail->addFichier($fichier);
+
+                if ($decoupe) {
+                    $fichier->setRole(CommandeDetailFichier::ROLE_DECOUPE);
+                }
             }
 
             // Évite de retraiter les mêmes jetons lors d’une modification.
@@ -1710,9 +1973,16 @@ final class CommandesController extends AbstractController
             $modeCalcul = $finition->getModeCalcul()
                 ?: 'forfait';
 
-            $montant = $modeCalcul === 'forfait'
-                ? $prix
-                : $prix * $quantite;
+            // Finition enregistrée et inchangée : son montant ne bouge pas (MontantFinitionSaisie).
+            $montant = MontantFinitionSaisie::calculer(
+                [
+                    'finition' => $finition->getFinition()->getId(),
+                    'prixApplique' => $prix,
+                    'modeCalcul' => $modeCalcul,
+                    'quantite' => $quantite,
+                ],
+                MontantFinitionSaisie::origine($finition, $entityManager)
+            );
 
             $finition->setPrixApplique($prix);
             $finition->setQuantite($quantite);
@@ -1833,7 +2103,9 @@ final class CommandesController extends AbstractController
         EntityManagerInterface $entityManager,
         FacturesRepository $facturesRepository,
         ParametresPaiementRepository $parametresPaiementRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        AccesEnLigne $accesEnLigne,
+        SoldeClient $soldeClient
     ): Response {
         /*
      * ============================================================
@@ -1976,6 +2248,19 @@ final class CommandesController extends AbstractController
             new \DateTimeImmutable()
         );
 
+        /*
+         * Acompte choisi à la saisie de la commande : montant et
+         * moyen pré-remplis, jamais au-delà du reste à payer.
+         */
+        if ($request->isMethod('GET') && $request->query->has('montant')) {
+            $paiement->setMontant(min(max(0, Entree::entier($request->query, 'montant')), $resteAPayer));
+
+            $mode = $request->query->getString('mode');
+            if (\in_array($mode, [Paiements::MODE_ORANGE_MONEY, Paiements::MODE_ESPECES], true)) {
+                $paiement->setMode($mode);
+            }
+        }
+
 
         /*
      * ============================================================
@@ -2000,6 +2285,10 @@ final class CommandesController extends AbstractController
 
                 'utilisateur' =>
                 $user,
+
+                // Soldes des comptes : avec « Trésorerie et soldes » seulement.
+                'voir_soldes' =>
+                $this->isGranted('ROLE_TRESORERIE_VOIR'),
             ]
         );
 
@@ -2119,6 +2408,16 @@ final class CommandesController extends AbstractController
                             'Le numéro du chèque est obligatoire.'
                         )
                     );
+            } elseif (
+                null !== ($erreurMonnaie = $this->erreurMonnaie($request, $paiement, $montant, $accesEnLigne))
+            ) {
+                /*
+                 * « Garder la monnaie sur le compte du client » (caisse) :
+                 * espèces seulement, le client a remis plus que le montant.
+                 */
+                $form
+                    ->get('montant')
+                    ->addError(new FormError($erreurMonnaie));
             } else {
                 /*
              * ====================================================
@@ -2146,15 +2445,7 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                $modesMobileMoney = [
-                    Paiements::MODE_ORANGE_MONEY,
-                    Paiements::MODE_WAVE,
-                ];
-
-                if (!in_array($paiement->getMode(), $modesMobileMoney, true)) {
-                    $paiement->setFraisRetraitInclus(false);
-                    $paiement->setFondsSoutienInclus(false);
-                }
+                FraisOrangeMoney::appliquer($paiement, $parametresPaiement);
 
                 /*
                  * Chèque : le numéro saisi dans "Référence de
@@ -2164,18 +2455,6 @@ final class CommandesController extends AbstractController
                 if ($paiement->getMode() === Paiements::MODE_CHEQUE) {
                     $paiement->setNumeroCheque($paiement->getReference());
                 }
-
-                $paiement->setMontantFraisRetrait(
-                    $paiement->isFraisRetraitInclus()
-                        ? $parametresPaiement->calculerFraisRetrait($montant)
-                        : 0
-                );
-
-                $paiement->setMontantFondsSoutien(
-                    $paiement->isFondsSoutienInclus()
-                        ? $parametresPaiement->calculerFondsSoutien($montant)
-                        : 0
-                );
 
 
                 /*
@@ -2198,8 +2477,14 @@ final class CommandesController extends AbstractController
              */
 
                 try {
-                    if (
+                    // Saisi en ligne : opération provisoire, validée
+                    // ensuite sur le serveur de l'atelier (maquette 41).
+                    if ($accesEnLigne->estEnLigne()) {
+                        $this->addFlash('info', 'Opération provisoire : elle comptera après validation sur le serveur de l’atelier.');
+                    } elseif (
                         !$paiement->necessiteValidationManuelle()
+                        // Orange Money reçu à distance (maquette FD07) : à confirmer par la trésorière sur le relevé.
+                        && !($request->request->getBoolean('a_confirmer') && Paiements::MODE_ORANGE_MONEY === $paiement->getMode())
                     ) {
                         $paiement->validerPar(
                             $user
@@ -2216,7 +2501,7 @@ final class CommandesController extends AbstractController
                         $exception->getMessage()
                     );
 
-                    return $this->redirectToRoute(
+                    return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute(
                         'app_commandes_paiement',
                         [
                             'id' => $commande->getId(),
@@ -2254,7 +2539,7 @@ final class CommandesController extends AbstractController
                             'Veuillez sélectionner un compte de trésorerie.'
                         );
 
-                        return $this->redirectToRoute(
+                        return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute(
                             'app_commandes_paiement',
                             [
                                 'id' => $commande->getId(),
@@ -2602,12 +2887,12 @@ final class CommandesController extends AbstractController
                      * MOUVEMENT SÉPARÉ POUR LES FRAIS MOBILE MONEY
                      * =============================================
                      *
-                     * Classé en "Autre produit" (pas "Vente") pour
-                     * ne pas gonfler le chiffre d'affaires réel, tout
-                     * en restant compté dans le résultat -- c'est
-                     * bien de l'argent réellement encaissé, que la
-                     * boutique reversera ensuite en frais de retrait
-                     * mobile money.
+                     * Sur un compte Orange Money : « Frais Orange
+                     * Money à prélever », de passage (ni vente ni
+                     * produit) -- Orange les débite quand l'argent
+                     * sort du compte (retrait, chèque, transfert),
+                     * docs/finances.md. Ailleurs (Wave) : « Autre
+                     * produit », comme avant.
                      * =============================================
                      */
 
@@ -2631,7 +2916,7 @@ final class CommandesController extends AbstractController
                             );
 
                             $mouvementFrais->setCategorie(
-                                MouvementTresorerie::CATEGORIE_AUTRE_PRODUIT
+                                ComptesOrangeMoney::categorieFrais($compte)
                             );
 
                             $mouvementFrais->setConfidentiel(false);
@@ -2646,7 +2931,8 @@ final class CommandesController extends AbstractController
 
                             $mouvementFrais->setLibelle(
                                 sprintf(
-                                    'Frais mobile money - commande %s — %s',
+                                    '%s - commande %s — %s',
+                                    $compte->estOrangeMoney() ? 'Frais Orange Money à prélever' : 'Frais mobile money',
                                     $commande->getNumero() ?? '#' . $commande->getId(),
                                     $commande->getClients()?->getNomComplet() ?? 'Client inconnu'
                                 )
@@ -2856,7 +3142,7 @@ final class CommandesController extends AbstractController
                     $notificationService->notifierRoles(
                         ['ROLE_ADMIN', 'ROLE_TRESORERIE_VOIR'],
                         sprintf(
-                            'Paiement de %s FCFA encaissé sur la commande %s.',
+                            $commande->estSoldeOuverture() ? 'Paiement de %s FCFA encaissé sur le solde d\'ouverture %s.' : 'Paiement de %s FCFA encaissé sur la commande %s.',
                             number_format($montant, 0, ',', ' '),
                             $commande->getNumero()
                         ),
@@ -2883,7 +3169,29 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                $entityManager->flush();
+                /*
+                 * Monnaie gardée : le paiement et la monnaie sur le compte
+                 * du client s'enregistrent ensemble, ou pas du tout.
+                 */
+                $monnaie = $this->monnaieAGarder($request, $montant);
+                if ($monnaie > 0) {
+                    try {
+                        $entityManager->wrapInTransaction(function () use ($entityManager, $soldeClient, $paiement, $monnaie, $user): void {
+                            $entityManager->flush();
+                            $soldeClient->garderMonnaie($paiement, $monnaie, $user);
+                        });
+                    } catch (\DomainException|\LogicException|\InvalidArgumentException $exception) {
+                        $this->addFlash('error', 'Rien n’a été enregistré : '.$exception->getMessage());
+
+                        return $this->retourCaisse($request, $commande) ?? $this->redirectToRoute('app_commandes_paiement', ['id' => $commande->getId()]);
+                    }
+                    $this->addFlash('success', sprintf(
+                        'Monnaie de %s F gardée sur le compte du client (rien à lui rendre).',
+                        number_format($monnaie, 0, ',', ' ')
+                    ));
+                } else {
+                    $entityManager->flush();
+                }
 
 
                 /*
@@ -2943,7 +3251,7 @@ final class CommandesController extends AbstractController
              * ====================================================
              */
 
-                return $this->redirectToRoute(
+                return $this->retourCaisse($request, $commande, $paiement) ?? $this->redirectToRoute(
                     'app_commandes_show',
                     [
                         'id' => $commande->getId(),
@@ -2979,6 +3287,10 @@ final class CommandesController extends AbstractController
 
                 'parametresPaiement' =>
                 $parametresPaiement,
+
+                // Solde du client utilisable ici : moins l'avoir déjà engagé en ligne (compte du client).
+                'soldeDisponible' =>
+                null !== $commande->getClients() && !$accesEnLigne->estEnLigne() ? $soldeClient->disponiblePour($commande->getClients()) : 0,
             ]
         );
     }
@@ -2989,10 +3301,10 @@ final class CommandesController extends AbstractController
      * SOLDE CLIENT
      * ================================================================
      *
-     * Déduit tout ou partie du solde du client (monnaie non rendue,
-     * alimentée manuellement par la caissière) du reste à payer de
-     * cette commande. Aucun compte de trésorerie n'est crédité :
-     * l'argent est déjà entré en caisse lors d'un paiement antérieur.
+     * Paie tout ou partie du reste de cette commande avec le solde du
+     * compte du client (monnaie gardée, dépôts : docs/finances.md,
+     * « Compte du client »). Aucun compte de trésorerie n'est crédité :
+     * l'argent est déjà à l'imprimerie. Sans montant, le plus possible.
      * ================================================================
      */
     #[Route(
@@ -3004,9 +3316,10 @@ final class CommandesController extends AbstractController
     public function utiliserSoldeClient(
         Commandes $commande,
         Request $request,
+        SoldeClient $soldeClient,
         EntityManagerInterface $entityManager,
-        FacturesRepository $facturesRepository,
-        NotificationService $notificationService
+        NotificationService $notificationService,
+        AccesEnLigne $accesEnLigne
     ): Response {
         $user = $this->getUser();
 
@@ -3016,140 +3329,58 @@ final class CommandesController extends AbstractController
             );
         }
 
+        $retour = fn (): Response => $this->retourCaisse($request, $commande) ?? $this->redirectToRoute('app_commandes_paiement', [
+            'id' => $commande->getId(),
+        ]);
+
         if (!$this->isCsrfTokenValid(
             'utiliser_solde_client_' . $commande->getId(),
             $request->request->get('_token')
         )) {
             $this->addFlash('error', 'Jeton de sécurité invalide.');
 
-            return $this->redirectToRoute('app_commandes_paiement', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
 
-        if ($commande->getStatutTravaux() === 'annulee') {
-            $this->addFlash(
-                'error',
-                'Cette commande est annulée : aucun paiement ne peut plus y être enregistré.'
-            );
+        // Le solde est tenu au local : en ligne, il ne se dépense qu'avec un paiement « AV » à valider.
+        if ($accesEnLigne->estEnLigne()) {
+            $this->addFlash('warning', 'Le solde du client s’utilise à l\'imprimerie.');
 
-            return $this->redirectToRoute('app_commandes_show', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
 
         $client = $commande->getClients();
-        $soldeClient = (int) ($client?->getSoldeCredit() ?? 0);
+        $saisi = trim((string) $request->request->get('montant'));
+        $montant = '' === $saisi
+            ? min(null !== $client ? $soldeClient->disponiblePour($client) : 0, $commande->getResteAPayer())
+            : (int) preg_replace('/\D/', '', $saisi);
 
-        if ($client === null || $soldeClient <= 0) {
-            $this->addFlash(
-                'warning',
-                'Ce client ne dispose d’aucun solde à utiliser.'
-            );
+        try {
+            $paiement = $soldeClient->utiliser($commande, $montant, $user);
+        } catch (\DomainException|\LogicException $exception) {
+            $this->addFlash('warning', $exception->getMessage());
 
-            return $this->redirectToRoute('app_commandes_paiement', [
-                'id' => $commande->getId(),
-            ]);
+            return $retour();
         }
-
-        $totalCommande = (int) ($commande->getTotalTtc() ?? 0);
-
-        $totalPaye = 0;
-
-        foreach ($commande->getPaiements() as $paiementExistant) {
-            if (!$paiementExistant->estValide()) {
-                continue;
-            }
-
-            $totalPaye += (int) ($paiementExistant->getMontant() ?? 0);
-        }
-
-        $resteAPayer = max(0, $totalCommande - $totalPaye);
-
-        if ($resteAPayer <= 0) {
-            $this->addFlash(
-                'warning',
-                'Cette commande est déjà entièrement payée.'
-            );
-
-            return $this->redirectToRoute('app_commandes_show', [
-                'id' => $commande->getId(),
-            ]);
-        }
-
-        $montantAUtiliser = min($soldeClient, $resteAPayer);
-
-        $paiement = new Paiements();
-        $paiement->setCommande($commande);
-        $paiement->setEncaissePar($user);
-        $paiement->setDate(new \DateTimeImmutable());
-        $paiement->setMode(Paiements::MODE_SOLDE_CLIENT);
-        $paiement->setMontant($montantAUtiliser);
-        $paiement->setObservation(
-            'Déduit automatiquement du solde du client (monnaie non rendue lors d’un précédent paiement).'
-        );
-        $paiement->validerPar($user);
-
-        $commande->addPaiement($paiement);
-
-        $client->setSoldeCredit($soldeClient - $montantAUtiliser);
-
-        $nouveauTotalPaye = $totalPaye + $montantAUtiliser;
-        $nouveauReste = max(0, $totalCommande - $nouveauTotalPaye);
-
-        $commande->setTotalPaye($nouveauTotalPaye);
-        $commande->setResteAPayer($nouveauReste);
-
-        if ($nouveauReste <= 0 && $totalCommande > 0) {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_PAYE);
-        } elseif ($nouveauTotalPaye > 0) {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_PARTIEL);
-        } else {
-            $commande->setStatutPaiement(Commandes::PAIEMENT_IMPAYE);
-        }
-
-        $facture = $facturesRepository->findOneBy([
-            'commande' => $commande,
-            'comptabilisee' => true,
-        ]);
-
-        if ($facture !== null) {
-            $facture->synchroniserPaiementsDepuisCommande();
-
-            if ($paiement->getFacture() === null) {
-                $paiement->setFacture($facture);
-            }
-
-            $entityManager->persist($facture);
-        }
-
-        $entityManager->persist($paiement);
-        $entityManager->persist($commande);
-        $entityManager->persist($client);
 
         $notificationService->notifierRoles(
             ['ROLE_ADMIN', 'ROLE_TRESORERIE_VOIR'],
-            sprintf(
-                'Solde client de %s FCFA déduit sur la commande %s.',
-                number_format($montantAUtiliser, 0, ',', ' '),
-                $commande->getNumero()
-            ),
+            sprintf('Solde client utilisé pour payer la commande %s.', $commande->getNumero()),
             'app_commandes_show',
             ['id' => $commande->getId()],
             $user
         );
-
         $entityManager->flush();
 
         $this->addFlash(
             'success',
             sprintf(
-                'Solde client de %s FCFA appliqué au paiement de cette commande.',
-                number_format($montantAUtiliser, 0, ',', ' ')
+                '%s du solde du client appliqués au paiement de cette commande.',
+                number_format($montant, 0, ',', ' ') . ' F'
             )
         );
 
-        return $this->redirectToRoute('app_commandes_show', [
+        return $this->retourCaisse($request, $commande, $paiement) ?? $this->redirectToRoute('app_commandes_show', [
             'id' => $commande->getId(),
         ]);
     }
@@ -3159,6 +3390,21 @@ final class CommandesController extends AbstractController
         Commandes $commande
     ): bool {
         return $commande->isStatut();
+    }
+
+    /**
+     * La commande est enregistrée même s'il manque du stock : on le dit
+     * à l'agent, les responsables reçoivent aussi une notification.
+     */
+    private function avertirStockManquant(ReservationsCommande $reservations, Commandes $commande): void
+    {
+        if (!$this->commandeEstValidee($commande)) {
+            return;
+        }
+        $manquants = $reservations->manquants($commande);
+        if ([] !== $manquants) {
+            $this->addFlash('warning', 'Stock insuffisant, commande enregistrée quand même : '.implode(' ; ', $manquants).'.');
+        }
     }
 
 
@@ -3179,9 +3425,6 @@ final class CommandesController extends AbstractController
          * selon son circuit.
          */
             $detail->preparerApresValidationCommande();
-            dump([
-                'apres' => $detail->getStatutProduction(),
-            ]);
         }
     }
     private function commandeACommenceSonCircuit(
@@ -3351,5 +3594,65 @@ final class CommandesController extends AbstractController
             'sha256',
             serialize($donnees)
         );
+    }
+
+    /**
+     * Monnaie à garder sur le compte du client (case « Garder la monnaie
+     * sur le compte du client » de la caisse) : montant remis moins montant
+     * payé, 0 si la case n'est pas cochée.
+     */
+    private function monnaieAGarder(Request $request, int $montant): int
+    {
+        if (!$request->request->getBoolean('garder_monnaie')) {
+            return 0;
+        }
+
+        return SoldeClient::monnaie((int) preg_replace('/\D/', '', (string) $request->request->get('montant_remis')), $montant);
+    }
+
+    /** Ce qui empêche de garder la monnaie demandée, ou null. */
+    private function erreurMonnaie(Request $request, Paiements $paiement, int $montant, AccesEnLigne $accesEnLigne): ?string
+    {
+        if (!$request->request->getBoolean('garder_monnaie')) {
+            return null;
+        }
+        if ($accesEnLigne->estEnLigne()) {
+            return 'La monnaie se garde à la caisse de l\'imprimerie, pas en ligne.';
+        }
+        if (!$this->isGranted('ROLE_PAIEMENT_ENCAISSER')) {
+            return 'Vous ne pouvez pas garder de monnaie.';
+        }
+        try {
+            SoldeClient::verifierMonnaie($paiement, $this->monnaieAGarder($request, $montant));
+        } catch (\DomainException $exception) {
+            return $exception->getMessage();
+        }
+
+        return null;
+    }
+
+    /**
+     * Un encaissement lancé depuis la caisse (maquette 28) y revient, avec
+     * le reçu à imprimer quand le paiement est enregistré.
+     */
+    private function retourCaisse(Request $request, Commandes $commande, ?Paiements $paiement = null): ?Response
+    {
+        // Paiement saisi depuis la facture (maquette FD07) : retour à la facture, avec son reçu.
+        if ('facture' === $request->query->get('retour') && $request->query->getInt('facture') > 0) {
+            return $this->redirectToRoute('app_factures_show', array_filter([
+                'id' => $request->query->getInt('facture'),
+                'paiement' => $paiement?->getId(),
+                'envoyer' => $request->request->getBoolean('envoyer_recu') ? 1 : null,
+            ]));
+        }
+        if ('caisse' !== $request->query->get('retour')) {
+            return null;
+        }
+
+        return $this->redirectToRoute('app_caisse_index', array_filter([
+            'client' => $commande->getClients()?->getId(),
+            'commande' => $commande->getId(),
+            'recu' => $paiement?->getId(),
+        ]));
     }
 }

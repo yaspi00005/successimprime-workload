@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+{% import 'stock_articles/_macros.html.twig' as m %}
+
+{% block title %}Articles et stock{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_stock_articles_inventaire') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-clipboard-check me-1"></i>Inventaire</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_stock_articles_a_commander') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-file-invoice me-1"></i>Bon de commande{% if indicateurs.sousSeuil > 0 %} ({{ indicateurs.sousSeuil }}){% endif %}</a>
+	</li>
+{% endblock %}
+
+{% macro couleur_encre(nom, defaut) %}
+	{%- set n = nom|lower -%}
+	{%- if 'magenta' in n %}#E5559B{% elseif 'cyan' in n %}#3FA3E0{% elseif 'jaune' in n or 'yellow' in n %}#F7C948{% elseif 'noir' in n or 'black' in n %}#2B2B2B{% elseif 'blanc' in n or 'white' in n %}#CBD5E1{% else %}{{ defaut ?? '#94A3B8' }}{% endif -%}
+{% endmacro %}
+
+{% block body %}
+	<div class="row si-kpis">
+		<div class="col-xl-3 col-6">
+			<a href="{{ path('app_stock_articles_index') }}" class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Valeur du stock</span>
+				<div class="si-kpi-valeur">{{ m.f(indicateurs.valeur) }}</div>
+				<span class="si-tendance si-hausse">coût moyen pondéré</span>
+			</div></a>
+		</div>
+		<div class="col-xl-3 col-6">
+			<div class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Articles actifs</span>
+				<div class="si-kpi-valeur">{{ indicateurs.actifs }}</div>
+				<span class="si-tendance si-hausse">dans {{ indicateurs.familles }} famille{{ indicateurs.familles > 1 ? 's' }}</span>
+			</div></div>
+		</div>
+		<div class="col-xl-3 col-6">
+			<a href="{{ path('app_stock_articles_index', {filtre: 'sous-seuil'}) }}" class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Sous le seuil</span>
+				<div class="si-kpi-valeur">{{ indicateurs.sousSeuil }}</div>
+				<span class="si-tendance {{ indicateurs.sousSeuil > 0 ? 'si-baisse' }}">à commander</span>
+			</div></a>
+		</div>
+		<div class="col-xl-3 col-6">
+			<a href="{{ path('app_stock_articles_index', {filtre: 'dormants'}) }}" class="card si-kpi"><div class="card-body">
+				<span class="si-kpi-libelle">Articles dormants</span>
+				<div class="si-kpi-valeur">{{ indicateurs.dormants }}</div>
+				<span class="si-tendance {{ indicateurs.dormants > 0 ? 'si-baisse' }}">sans sortie depuis 90 j</span>
+			</div></a>
+		</div>
+	</div>
+
+	{% set encres = lignes_toutes|filter(l => l.article.actif and ('encre' in (l.article.famille.nom ?? '')|lower or 'encre' in l.article.designation|lower)) %}
+	{% if encres is not empty %}
+		<div class="si-encres">
+			{% for ligne in encres|slice(0, 6) %}
+				{% set a = ligne.article %}
+				<a href="{{ path('app_stock_articles_fiche', {id: a.id}) }}" class="card si-encre">
+					<span class="si-encre-tete"><strong>{{ a.designation }}</strong><small>{{ m.q(ligne.physique) }} {{ a.uniteCourte }}</small></span>
+					<span class="si-encre-bidon" style="--si-niveau: {{ ligne.niveau }}%; --si-encre: {{ _self.couleur_encre(a.designation, a.famille.couleur ?? null)|trim }}">
+						<span class="si-encre-pourcent">{{ ligne.niveau }} %</span>
+					</span>
+					{% if ligne.etat == 'commander' %}<span class="si-encre-alerte"><i class="fas fa-exclamation-triangle"></i> Sous le seuil</span>
+					{% elseif ligne.etat == 'bientot' %}<span class="si-encre-alerte si-encre-bientot">Bientôt</span>{% endif %}
+				</a>
+			{% endfor %}
+		</div>
+	{% endif %}
+
+	<div class="card si-bloc si-stock">
+		<div class="si-utilisateurs-tete">
+			<nav class="si-onglets si-onglets-carte" aria-label="Filtrer par famille">
+				<a href="{{ path('app_stock_articles_index', {q: recherche ?: null}) }}" class="{{ filtre == 'tous' ? 'actif' }}">Tous</a>
+				{% for famille in familles %}
+					<a href="{{ path('app_stock_articles_index', {filtre: famille.id, q: recherche ?: null}) }}" class="{{ filtre == famille.id ~ '' ? 'actif' }}">{{ famille.nom }}</a>
+				{% endfor %}
+				<a href="{{ path('app_stock_articles_index', {filtre: 'sous-seuil', q: recherche ?: null}) }}" class="{{ filtre == 'sous-seuil' ? 'actif' }}">Sous le seuil ({{ indicateurs.sousSeuil }})</a>
+			</nav>
+			<div class="si-stock-outils">
+			<a href="{{ path('app_stock_articles_nouveau') }}" class="btn btn-outline-primary btn-sm"><i class="fas fa-plus me-1"></i>Article</a>
+			<a href="{{ path('app_stock_articles_export') }}" class="btn btn-outline-secondary btn-sm si-masque-mobile">Export Excel</a>
+			<form method="get" class="si-recherche-liste">
+				<input type="hidden" name="filtre" value="{{ filtre }}">
+				<input type="search" name="q" value="{{ recherche }}" class="form-control form-control-sm" placeholder="Code, article ou nom commercial…" aria-label="Rechercher un article">
+			</form>
+			</div>
+		</div>
+
+		{% if lignes is empty %}
+			<p class="text-muted py-4 text-center mb-0">Aucun article ici.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr>
+							<th class="si-masque-mobile">Code</th>
+							<th>Article</th>
+							<th class="si-masque-mobile">Emplacement</th>
+							<th class="text-end">En stock</th>
+							<th class="si-masque-mobile">Niveau</th>
+							<th class="text-end si-masque-mobile">Seuil</th>
+							<th class="text-end si-masque-mobile">Conso. 30 j</th>
+							<th class="text-end si-masque-mobile">Coût moyen</th>
+							<th>État</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignes %}
+							{% set article = ligne.article %}
+							{% set fiche = path('app_stock_articles_fiche', {id: article.id}) %}
+							<tr class="{{ not article.actif ? 'si-ligne-eteinte' }}" data-lien="{{ fiche }}">
+								<td class="si-masque-mobile text-muted text-nowrap">
+									<span class="si-pastille-famille" style="background: {{ article.famille.couleur ?? '#94a3b8' }}" aria-hidden="true"></span>
+									{{ article.reference }}
+								</td>
+								<td>
+									<a href="{{ fiche }}" class="fw-semibold text-body d-block">{{ article.designation }}</a>
+									{% if article.nomCommercial %}<small class="d-block text-muted">{{ article.nomCommercial }}</small>{% endif %}
+									<small class="text-muted">
+										{{ article.famille.nom ?? 'Sans famille' }}
+										{% if article.uniteAchat and article.facteurConversion != 1 and ligne.physique > 0 %}
+											· {{ m.q(ligne.physique / article.facteurConversion) }} {{ article.uniteAchat }}
+										{% endif %}
+										{% if ligne.reserve > 0 %} · {{ m.q(ligne.reserve) }} réservé{% endif %}
+									</small>
+								</td>
+								<td class="si-masque-mobile text-muted">{{ article.emplacement ?? '—' }}</td>
+								<td class="text-end text-nowrap fw-semibold">{{ m.q(ligne.physique) }} {{ article.uniteCourte }}</td>
+								<td class="si-masque-mobile">
+									<span class="si-niveau si-niveau-{{ ligne.etat }}" title="{{ ligne.niveau }} %"><span style="width: {{ max(4, ligne.niveau) }}%"></span></span>
+								</td>
+								<td class="text-end text-nowrap si-masque-mobile">{{ article.stockMin > 0 ? m.q(article.stockMin) ~ ' ' ~ article.uniteCourte : '—' }}</td>
+								<td class="text-end text-nowrap si-masque-mobile">{{ ligne.conso30 > 0 ? m.q(ligne.conso30) ~ ' ' ~ article.uniteCourte : '—' }}</td>
+								<td class="text-end text-nowrap si-masque-mobile">{{ m.f(article.coutUnitaireStock) }}</td>
+								<td>{{ m.etat(ligne.etat) }}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}

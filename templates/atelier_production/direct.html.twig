@@ -1,0 +1,138 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Atelier › Vue en direct (maquette AT01, docs/atelier-production.md) :
+	toutes les machines visibles par la personne (le chef d'atelier et la
+	direction : toutes ; un opérateur : les siennes), le travail en cours,
+	l'avancement, la fin estimée, l'opérateur, l'encre, les alertes et les
+	travaux terminés aujourd'hui. Aucun montant. La page se recharge seule
+	chaque minute.
+#}
+
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
+{% block title %}Atelier · {{ jours[maintenant|date('w')] }} {{ maintenant|date('H:i') }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/atelier-production.css') }}" rel="stylesheet">
+	<meta http-equiv="refresh" content="60">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_atelier_tv') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-tv me-1" aria-hidden="true"></i><span class="si-masque-mobile">Afficher sur l'écran TV</span><span class="d-md-none">TV</span></a></li>
+	<li class="nav-item"><a href="{{ path('app_atelier_planning') }}" class="btn btn-light btn-sm si-btn-entete"><i class="far fa-calendar-alt me-1 d-md-none" aria-hidden="true"></i><span>Planning</span></a></li>
+{% endblock %}
+
+{% block body %}
+<div class="si-ap">
+	{% set k = indicateurs %}
+	<div class="si-ap-kpis" role="list">
+		<div class="si-ap-kpi" role="listitem">
+			<span>Machines actives</span>
+			<b>{{ k.actives }} / {{ k.machines }}</b>
+			<small>{{ k.pannes }} en panne · {{ k.pauses }} en pause</small>
+		</div>
+		<div class="si-ap-kpi" role="listitem">
+			<span>Travaux du jour</span>
+			<b>{{ k.termines + k.restants }}</b>
+			<small>{{ k.termines }} terminé{{ k.termines > 1 ? 's' }} · {{ k.restants }} restant{{ k.restants > 1 ? 's' }}</small>
+		</div>
+		<div class="si-ap-kpi" role="listitem">
+			<span>Imprimé aujourd'hui</span>
+			<b>{{ k.imprime|number_format(k.imprime < 100 ? 1 : 0, ',', ' ') }} m²</b>
+			<small>{% if k.pieces > 0 %}+ {{ k.pieces|number_format(0, ',', ' ') }} pièce{{ k.pieces > 1 ? 's' }} sans dimensions{% else %}travaux terminés, sans la gâche{% endif %}</small>
+		</div>
+		<div class="si-ap-kpi" role="listitem">
+			<span>En retard</span>
+			<b class="{{ k.retards > 0 ? 'si-ap-rouge' : 'si-ap-vert' }}">{{ k.retards }}</b>
+			<small>{% if k.premierRetard %}{{ k.premierRetard.numero }} · {{ k.premierRetard.travail|split(' × ')|first|lower }}{% else %}tout est dans les temps{% endif %}</small>
+		</div>
+		<div class="si-ap-kpi" role="listitem">
+			<span>Gâche semaine</span>
+			<b class="{{ k.gache is null ? '' : (k.gache < 3 ? 'si-ap-vert' : 'si-ap-orange') }}">{{ k.gache is null ? '—' : k.gache|number_format(1, ',', ' ') ~ ' %' }}</b>
+			<small>objectif &lt; 3 %</small>
+		</div>
+	</div>
+
+	{% if cartes is empty %}
+		<div class="si-ap-carte si-ap-vide">
+			<i class="fas fa-print" aria-hidden="true"></i>
+			{% if chef %}Aucune machine enregistrée : ajoutez-les dans Atelier › Machines et maintenance.{% else %}Aucune machine ne vous est affectée. Le chef d'atelier vous affecte vos machines dans Files d'attente.{% endif %}
+		</div>
+	{% else %}
+		<div class="si-ap-grille">
+			{% for c in cartes %}
+				{% set m = c.machine %}
+				<article class="si-ap-machine si-ap-e-{{ c.etat }}" aria-label="{{ m.nom }}">
+					<a class="si-ap-lien-carte" href="{{ path('app_atelier_files', {id: m.id}) }}" aria-label="File d'attente de {{ m.nom }}"></a>
+					<div class="si-ap-machine-tete">
+						<div><strong>{{ m.nom }}</strong><small>{{ c.sousTitre|default('—') }}</small></div>
+						<span class="si-ap-pastille si-ap-e-{{ c.etat }}">{{ {production: 'En production', pause: 'En pause', panne: 'En panne', maintenance: 'Entretien', attente: 'En attente', libre: 'Libre'}[c.etat] }}</span>
+					</div>
+					{% if c.etat == 'panne' %}
+						<div class="si-ap-etat-texte">en panne</div>
+						<div class="si-ap-travail"><span style="white-space: normal">{{ c.panne.titre }}{{ c.panne.suite ? ' · ' ~ c.panne.suite }}</span></div>
+						<div class="si-ap-gris si-ap-petit">depuis le {{ c.panne.signaleLe|date('d/m') }}{{ c.aFaire > 0 ? ' · ' ~ c.aFaire ~ ' travail' ~ (c.aFaire > 1 ? 'aux' : '') ~ ' en attente' }}</div>
+					{% elseif c.courant %}
+						{% set t = c.courant %}
+						<div class="si-ap-travail">
+							<b>{{ t.numero }}{{ t.client ? ' · ' ~ t.client }}</b>
+							<span>{{ t.travail }}{{ t.surface ? ' · ' ~ t.surface|number_format(1, ',', ' ') ~ ' m²' }}</span>
+						</div>
+						<div class="si-ap-barre" role="progressbar" aria-valuenow="{{ t.avancement.pourcent }}" aria-valuemin="0" aria-valuemax="100" aria-label="Avancement"><i style="width: {{ t.avancement.pourcent }}%"></i></div>
+						<div class="si-ap-barre-infos"><span>{{ t.avancement.pourcent }} %{{ c.etat == 'pause' ? ' · en pause' }}</span><span>fin {{ t.avancement.finEstimee ? t.avancement.finEstimee|date('H:i') : '—' }}</span></div>
+					{% elseif c.maintenance %}
+						<div class="si-ap-etat-texte">entretien</div>
+						<div class="si-ap-travail"><span>{{ c.maintenance.description|default(c.maintenance.type) }}</span></div>
+					{% elseif c.prochain %}
+						<div class="si-ap-etat-texte">prochain · {{ c.prochain.numero }}</div>
+						<div class="si-ap-travail"><span>{{ c.prochain.travail }}</span></div>
+						<div class="si-ap-gris si-ap-petit">démarrage {{ c.prochain.debut|date('d/m') == maintenant|date('d/m') ? c.prochain.debut|date('H:i') : c.prochain.debut|date('d/m H:i') }}{{ c.prochain.retardMinutes > 0 ? ' · en retard' }}</div>
+					{% else %}
+						<div class="si-ap-etat-texte">libre</div>
+						<div class="si-ap-gris si-ap-petit">aucun travail en attente</div>
+					{% endif %}
+					{% if c.surveille and c.etat != 'panne' %}
+						<div class="si-ap-petit" style="color: var(--ap-orange)"><i class="fas fa-eye" aria-hidden="true"></i> {{ c.surveille.titre }}</div>
+					{% endif %}
+					<div class="si-ap-machine-pied">
+						{% set qui = c.courant ? (c.courant.operateur ?: c.operateurs|first) : c.operateurs|first %}
+						<span class="si-ap-qui">{% if qui %}<span class="si-ap-avatar" aria-hidden="true">{{ qui|first|upper }}</span>{{ qui }}{% else %}<span class="si-ap-gris">—</span>{% endif %}</span>
+						{% include 'atelier_production/_encres.html.twig' with {encres: c.encres} %}
+					</div>
+				</article>
+			{% endfor %}
+			<section class="si-ap-alertes" aria-labelledby="titre-alertes">
+				<h2 id="titre-alertes">Alertes</h2>
+				{% if alertes is empty %}
+					<p>Rien à signaler : machines, encre et stock en ordre.</p>
+				{% else %}
+					<ul>
+						{% for a in alertes|slice(0, 7) %}
+							<li class="si-ap-{{ a.niveau }}">{{ a.texte }}</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			</section>
+		</div>
+	{% endif %}
+
+	<section class="si-ap-carte" aria-labelledby="titre-termines">
+		<h2 id="titre-termines"><span>Terminés aujourd'hui · {{ termines|length }}</span>{% if is_granted('ROLE_PRODUCTION_VOIR') %}<a href="{{ path('app_atelier_production') }}">Voir tout</a>{% endif %}</h2>
+		{% if termines is empty %}
+			<p class="si-ap-gris mb-0">Aucun travail terminé pour l'instant aujourd'hui.</p>
+		{% else %}
+			<div class="si-ap-termines">
+				{% for t in termines|slice(0, 10) %}
+					<div class="si-ap-termine">
+						<div>{{ t.numero }} <span><i class="fas fa-check" aria-hidden="true"></i> {{ t.ordre.termineLe|date('H:i') }}</span></div>
+						<p>{{ t.travail }}</p>
+						<small>{{ t.ordre.machine.nom|default('') }} · {{ t.suite }}{{ t.operateur ? ' · ' ~ t.operateur }}</small>
+					</div>
+				{% endfor %}
+			</div>
+		{% endif %}
+	</section>
+	<p class="si-ap-gris si-ap-petit mt-2 mb-0">Niveaux d'encre saisis à la main par les opérateurs (Files d'attente ou Mon travail) : les machines n'envoient aucune donnée. Mise à jour chaque minute.</p>
+</div>
+{% endblock %}

@@ -26,11 +26,11 @@ class ClientsType extends AbstractType
         array $options
     ): void {
         $typesClient = [
-            'Particulier (B2C)' => 'B2C',
+            'Prix normal (B2C)' => 'B2C',
         ];
 
         if ($this->security->isGranted('ROLE_ADMIN')) {
-            $typesClient['Entreprise (B2B)'] = 'B2B';
+            $typesClient['Revendeur, professionnel de l’impression (B2B)'] = 'B2B';
         }
 
         $builder
@@ -107,6 +107,10 @@ class ClientsType extends AbstractType
     'label_attr' => [
         'class' => 'custom-control-label',
     ],
+])
+->add('accepteMarketing', CheckboxType::class, [
+    'label' => 'Accepte de recevoir des offres',
+    'required' => false,
 ])
             ->add('telephone2', TelType::class, [
                 'label' => 'Deuxième téléphone',

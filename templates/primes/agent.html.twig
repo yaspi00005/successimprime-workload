@@ -1,0 +1,239 @@
+{#
+	Évaluation d'un agent pour un mois (maquette N02) : critères et poids
+	du barème de son rôle, mesures de l'ERP, appréciation du responsable,
+	score, palier et prime. « Valider l'évaluation » fige la photo ; un
+	recalcul fait une nouvelle version avec son motif. Réservé à son
+	responsable et à l'admin (PrimesVoter::AGENT).
+#}
+{% extends 'primes/_base.html.twig' %}
+{% import 'primes/_macros.html.twig' as p %}
+
+{% set jeton = csrf_token('prime-' ~ agent.id) %}
+{% set e = fiche ? fiche.evaluation : null %}
+{% set r = fiche ? fiche.resultat : null %}
+
+{% block title %}Évaluation {{ p.de_mois(mois) }} · {{ nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="#historique" class="btn btn-light btn-sm si-btn-entete">Historique</a>
+	</li>
+	{% if fiche and not fiche.fige %}
+		<li class="nav-item">
+			<form method="post" action="{{ path('app_primes_valider', {id: agent.id}) }}" data-confirmer="Valider l’évaluation {{ p.de_mois(mois) }} de {{ nom }} ? Les critères seront figés ; un changement demandera un recalcul avec motif.">
+				<input type="hidden" name="_token" value="{{ jeton }}">
+				<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+				<button class="btn btn-success btn-sm si-btn-entete" {{ not termine ? 'disabled' }} title="{{ not termine ? 'Le mois n’est pas terminé : l’évaluation se valide à partir du 1er du mois suivant.' }}">Valider l'évaluation</button>
+			</form>
+		</li>
+	{% elseif fiche %}
+		<li class="nav-item">
+			<a href="#recalcul" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-redo me-1"></i>Recalculer</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{# Montants des primes : Direction et RH seulement (demande de Yaya du 18/10/2026). #}
+	{% set voit_montants = is_granted('ROLE_RH') %}
+	<div class="si-fin si-pr">
+		<form method="get" class="si-pr-mois" aria-label="Mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_primes_index', {mois: mois|date('Y-m')}) }}"><i class="fas fa-arrow-left me-1"></i>Équipe</a>
+			<a class="btn btn-light btn-sm" href="{{ path('app_primes_agent', {id: agent.id, mois: mois|date_modify('-1 month')|date('Y-m')}) }}" aria-label="Mois précédent"><i class="fas fa-chevron-left"></i></a>
+			<input type="month" name="mois" value="{{ mois|date('Y-m') }}" class="form-control form-control-sm" onchange="this.form.submit()" aria-label="Mois">
+			<a class="btn btn-light btn-sm" href="{{ path('app_primes_agent', {id: agent.id, mois: mois|date_modify('+1 month')|date('Y-m')}) }}" aria-label="Mois suivant"><i class="fas fa-chevron-right"></i></a>
+			{% if fiche %}<span class="text-muted">{{ roles[fiche.role] ?? fiche.role }}{{ e and e.version > 1 ? ' · version ' ~ e.version }}</span>{% endif %}
+		</form>
+
+		{% if fiche is null %}
+			<section class="card">
+				<h2>Pas de rôle de prime</h2>
+				<p class="si-fin-note mt-0">{{ nom }} n'a pas de rôle de prime : son profil ne correspond à aucun barème{{ reglage and reglage.role == 'aucun' ? ', ou la direction l’a exclu des primes' }}. {{ is_granted('ROLE_ADMIN') ? 'Choisissez un rôle ci-dessous.' : 'La direction peut lui en donner un.' }}</p>
+			</section>
+		{% else %}
+			<div class="si-pr-grille">
+				<div class="si-pr-colonne">
+					<section class="card" aria-labelledby="titre-criteres">
+						<h2 id="titre-criteres">Critères et poids</h2>
+						<div class="table-responsive">
+							<table class="table si-fin-table si-pr-criteres">
+								<thead>
+									<tr><th scope="col">Critère</th><th scope="col">Poids</th><th scope="col">Mesure du mois</th><th scope="col" class="text-end">Note</th><th scope="col"><span class="visually-hidden">Origine</span></th></tr>
+								</thead>
+								<tbody>
+									{% for c in r.criteres %}
+										<tr class="{{ c.note is null ? 'si-pr-manquant' }}">
+											<td>{{ c.libelle }}</td>
+											<td class="si-pr-poids">
+												{{ c.poids }} %
+												{% if c.note is not null and c.poidsApplique != c.poids %}<small title="Poids après répartition des critères sans données">→ {{ c.poidsApplique|number_format(c.poidsApplique == c.poidsApplique|round ? 0 : 1, ',', ' ') }} %</small>{% endif %}
+											</td>
+											<td>{{ c.mesure }}</td>
+											<td class="si-pr-note">{{ c.note ?? '—' }}</td>
+											<td>
+												{% if c.note is null %}
+													<span class="si-pr-badge si-pr-badge-vide">{{ c.manuel ? 'à saisir' : 'pas de données' }}</span>
+												{% elseif c.manuel %}
+													<span class="si-pr-badge si-pr-badge-manuel">saisie manager</span>
+												{% else %}
+													<span class="si-pr-badge">calcul auto</span>
+												{% endif %}
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+						{% if r.manquants is not empty %}
+							<p class="si-pr-info"><b>Pas de données ce mois-ci :</b> {{ r.manquants|join(', ') }}. {{ r.manquants|length > 1 ? 'Ces critères ne comptent' : 'Ce critère ne compte' }} pas pour 0 : {{ r.manquants|length > 1 ? 'leur poids est réparti' : 'son poids est réparti' }} sur les autres critères, au prorata.</p>
+						{% endif %}
+						<p class="si-fin-note">Score = somme des notes × poids. Les données viennent de l'ERP : ventes, devis, avis, caisse, réimpressions, pointage, points du métier.{{ fiche.fige ? ' Évaluation validée : ce sont les mesures figées le jour de la validation.' : ' Calcul en direct, figé à la validation.' }}</p>
+					</section>
+
+					{% if not fiche.fige %}
+						<section class="card" aria-labelledby="titre-appreciation">
+							<h2 id="titre-appreciation">Appréciation du responsable</h2>
+							<form method="post" action="{{ path('app_primes_appreciation', {id: agent.id}) }}" class="si-pr-form row g-3">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+								<div class="col-sm-3">
+									<label for="pr-note" class="form-label">Note sur 100</label>
+									<input type="number" id="pr-note" name="note" min="0" max="100" step="1" class="form-control" value="{{ e ? e.appreciationNote }}" {{ appreciation_obligatoire ? 'required' }}>
+								</div>
+								<div class="col-sm-9">
+									<label for="pr-texte" class="form-label">Commentaire (visible par l'agent)</label>
+									<input type="text" id="pr-texte" name="texte" maxlength="255" class="form-control" value="{{ e ? e.appreciationTexte }}" placeholder="Très bonne relation client">
+								</div>
+								<div class="col-sm-4">
+									<div class="form-check mt-1">
+										<input class="form-check-input" type="checkbox" id="pr-suspendue" name="suspendue" value="1" {{ e and e.suspendue ? 'checked' }}>
+										<label class="form-check-label" for="pr-suspendue">Suspendre la prime du mois</label>
+									</div>
+								</div>
+								<div class="col-sm-8">
+									<input type="text" name="motif_suspension" maxlength="255" class="form-control" value="{{ e ? e.motifSuspension }}" placeholder="Motif : faute grave, écart de caisse non justifié…" aria-label="Motif de la suspension">
+								</div>
+								<div class="col-12">
+									<button class="btn btn-primary btn-sm">Enregistrer l'appréciation</button>
+									{% if appreciation_obligatoire %}<small class="text-muted ms-2">Obligatoire avant « Valider l'évaluation ».</small>{% endif %}
+								</div>
+							</form>
+						</section>
+					{% else %}
+						<section class="card" id="recalcul" aria-labelledby="titre-recalcul">
+							<h2 id="titre-recalcul">Recalculer l'évaluation</h2>
+							<p class="si-fin-note mt-0">L'évaluation validée ne change plus. Si une donnée était fausse (vente oubliée, pointage corrigé…), le recalcul crée la version {{ e.version + 1 }} avec les données du jour ; elle remplace la version {{ e.version }} une fois validée. Une prime déjà passée en paie est régularisée sur le bulletin suivant.</p>
+							<form method="post" action="{{ path('app_primes_recalculer', {id: agent.id}) }}" class="si-pr-form d-flex flex-wrap gap-2 align-items-end">
+								<input type="hidden" name="_token" value="{{ jeton }}">
+								<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+								<div class="flex-grow-1">
+									<label for="pr-motif" class="form-label">Motif du recalcul</label>
+									<input type="text" id="pr-motif" name="motif" minlength="5" maxlength="255" required class="form-control" placeholder="Facture du 28 saisie en retard">
+								</div>
+								<button class="btn btn-light">Recalculer en nouvelle version</button>
+							</form>
+						</section>
+					{% endif %}
+				</div>
+
+				<div class="si-pr-colonne">
+					<section class="card si-pr-carte-score {{ p.couleur(r.score) }}" aria-labelledby="titre-score">
+						<h2 id="titre-score">Score {{ p.de_mois(mois) }}</h2>
+						<span class="si-pr-gros">{{ r.score ?? '—' }}</span>
+						<span class="si-pr-sous">/ 100 · palier {{ palier }}</span>
+						<span class="si-pr-jauge"><span style="width: {{ r.score ?? 0 }}%"></span></span>
+						<dl class="si-pr-lignes">
+							{% if voit_montants %}<div><dt>Prime cible</dt><dd>{{ p.f(r.primeCible) }}</dd></div>{% endif %}
+							<div><dt>Taux appliqué</dt><dd>{{ r.taux }} %</dd></div>
+							{% if voit_montants %}<div class="si-pr-prime"><dt>Prime</dt><dd>{{ p.f(r.prime) }}</dd></div>{% endif %}
+						</dl>
+						{% if e and e.suspendue %}
+							<p class="si-pr-alerte"><b>Prime suspendue</b>{{ e.motifSuspension ? ' : ' ~ e.motifSuspension }}</p>
+						{% endif %}
+						<p class="si-pr-info">
+							{% if fiche.fige %}
+								Version {{ e.version }} validée le {{ e.valideeLe|date('d/m/Y') }}{{ e.valideePar ? ' par ' ~ e.valideePar|nom_pointage }}.
+								{% if e.primeEstValidee %}Prime validée par la direction le {{ e.primeValideeLe|date('d/m/Y') }}{{ e.bulletin ? ', reportée sur le bulletin de ' ~ p.mois(e.bulletin.mois) }}.{% else %}Prime en attente de validation par la direction.{% endif %}
+							{% elseif fiche.enVigueur %}
+								Nouvelle version {{ e.version }} en cours ({{ e.motif }}) ; la version {{ fiche.enVigueur.version }} reste en vigueur{{ voit_montants ? ' (' ~ fiche.enVigueur.prime|number_format(0, ',', ' ') ~ ' F)' }} jusqu'à sa validation.
+							{% elseif termine %}
+								Mois terminé : saisissez l'appréciation puis validez l'évaluation.
+							{% else %}
+								Mois en cours : estimation du jour, elle bouge avec les données de l'ERP.
+							{% endif %}
+						</p>
+					</section>
+
+					<section class="card" aria-labelledby="titre-six">
+						<h2 id="titre-six">6 derniers mois</h2>
+						<div class="si-pr-six">
+							{% for s in six %}
+								<div>
+									<small>{{ s.score ?? '' }}</small>
+									<span class="si-pr-barre {{ loop.last ? 'si-pr-barre-courant' }} {{ s.score is null ? 'si-pr-barre-vide' }}" style="height: {{ s.score is null ? 3 : max(s.score, 3) }}%"></span>
+									<span class="si-pr-lettre" title="{{ p.mois(s.mois) }}">{{ p.mois(s.mois)|slice(0, 1) }}</span>
+								</div>
+							{% endfor %}
+						</div>
+					</section>
+
+					<section class="card" id="historique" aria-labelledby="titre-historique">
+						<h2 id="titre-historique">Historique</h2>
+						{% if fiche.versions|length > 1 %}
+							<h3>Versions {{ p.de_mois(mois) }}</h3>
+							<ul class="si-pr-versions mb-3">
+								{% for v in fiche.versions %}
+									<li>
+										<strong>Version {{ v.version }}</strong> · score {{ v.score ?? '—' }}{% if voit_montants %} · {{ p.f(v.prime) }}{% endif %}
+										· <span class="si-fin-statut si-fin-statut-{{ v.statut == 'validee' ? 'vert' : (v.statut == 'remplacee' ? 'gris' : 'orange') }}">{{ v.statut == 'validee' ? 'en vigueur' : (v.statut == 'remplacee' ? 'remplacée' : 'brouillon') }}</span>
+										<small>{{ v.motif ? 'Motif : ' ~ v.motif ~ ' · ' }}créée le {{ v.creeLe|date('d/m/Y') }}{{ v.creePar ? ' par ' ~ v.creePar|nom_pointage }}{{ v.valideeLe ? ' · validée le ' ~ v.valideeLe|date('d/m/Y') }}</small>
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+						{% if historique is empty %}
+							<p class="si-fin-note mt-0">Aucune évaluation validée pour l'instant.</p>
+						{% else %}
+							<ul class="si-pr-versions">
+								{% for cle, v in historique %}
+									<li>
+										<a href="{{ path('app_primes_agent', {id: agent.id, mois: cle}) }}"><strong>{{ p.mois(v.mois)|capitalize }} {{ v.mois|date('Y') }}</strong></a> · score {{ v.score ?? '—' }}{% if voit_montants %} · {{ p.f(v.prime) }}{% endif %}
+										<small>version {{ v.version }} validée le {{ v.valideeLe|date('d/m/Y') }}{{ v.primeEstValidee ? ' · prime validée le ' ~ v.primeValideeLe|date('d/m/Y') : ' · prime en attente' }}{{ v.suspendue ? ' · prime suspendue' }}</small>
+									</li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+					</section>
+				</div>
+			</div>
+		{% endif %}
+
+		{% if is_granted('ROLE_ADMIN') %}
+			<section class="card" aria-labelledby="titre-reglage">
+				<h2 id="titre-reglage">Rôle de prime et prime cible</h2>
+				<form method="post" action="{{ path('app_primes_reglage', {id: agent.id}) }}" class="si-pr-form row g-3 align-items-end">
+					<input type="hidden" name="_token" value="{{ jeton }}">
+					<input type="hidden" name="mois" value="{{ mois|date('Y-m') }}">
+					<div class="col-sm-5">
+						<label for="pr-role" class="form-label">Rôle de prime</label>
+						<select id="pr-role" name="role" class="form-select">
+							<option value="" {{ reglage is null or reglage.role is null ? 'selected' }}>Selon son profil ({{ role_profil ? roles[role_profil] : 'aucun' }})</option>
+							{% for cle, libelle in roles %}
+								<option value="{{ cle }}" {{ reglage and reglage.role == cle ? 'selected' }}>{{ libelle }}</option>
+							{% endfor %}
+							<option value="aucun" {{ reglage and reglage.role == 'aucun' ? 'selected' }}>Pas de prime</option>
+						</select>
+					</div>
+					<div class="col-sm-4">
+						<label for="pr-cible" class="form-label">Prime cible propre à la personne</label>
+						<input type="text" inputmode="numeric" id="pr-cible" name="prime_cible" class="form-control" value="{{ reglage and reglage.primeCible is not null ? reglage.primeCible }}" placeholder="{{ prime_bareme is not null ? 'barème : ' ~ prime_bareme|number_format(0, ',', ' ') ~ ' F' : 'barème du rôle' }}">
+					</div>
+					<div class="col-sm-3">
+						<button class="btn btn-light w-100">Enregistrer</button>
+					</div>
+				</form>
+				<p class="si-fin-note">Le nouveau réglage vaut pour les évaluations en brouillon ; une évaluation validée garde son rôle et sa prime cible.</p>
+			</section>
+		{% endif %}
+	</div>
+{% endblock %}

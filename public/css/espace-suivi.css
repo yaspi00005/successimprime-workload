@@ -1,0 +1,153 @@
+/*
+ * Page d'une commande dans l'espace client (maquettes CO05 et CO06) :
+ * « Où en est ma commande ? », résumé, carte du BAT à valider et messages
+ * de la commande. Téléphone d'abord : le BAT qui attend le client vient
+ * en premier ; sur ordinateur, suivi et résumé à gauche, BAT et messages à
+ * droite. Chargé seulement par commande.html.twig et bat.html.twig.
+ */
+
+.cs-entete-actions { display: flex; gap: .6rem; flex: none; }
+.cs-bouton-entete { display: inline-flex; align-items: center; height: 40px; padding: 0 1.1rem; border-radius: 12px; background: #fff; color: var(--encre); font-weight: 700; font-size: .9rem; border: 1px solid var(--trait); box-shadow: 0 1px 2px rgba(18,33,58,.06); white-space: nowrap; }
+.cs-bouton-entete:hover { border-color: #C9D3E4; }
+
+.cs-pilule-action { display: inline-block; padding: .22rem .65rem; border-radius: 999px; background: #FFF1E6; color: #C2410C; font-size: .76rem; font-weight: 800; white-space: nowrap; }
+
+/* Grille : une colonne sur téléphone, dans l'ordre de la maquette CO06. */
+.cs-grille { display: flex; flex-direction: column; }
+.cs-gauche, .cs-droite { display: contents; }
+.cs-grille > * > * { order: 5; }
+.cs-grille .cs-suivi { order: 2; }
+.cs-grille .cs-resume { order: 3; }
+.cs-grille .cs-bat { order: 4; }
+.cs-grille .cs-bat-attente { order: 1; }
+.cs-grille .cs-messages { order: 6; }
+.cs-grille .cs-fin { order: 7; }
+
+@media (min-width: 900px) {
+  .ec-page-large .ec-entete { gap: 1rem; }
+  .cs-grille { display: grid; grid-template-columns: minmax(280px, 340px) minmax(0, 1fr); gap: 0 1.1rem; align-items: start; }
+  .cs-gauche, .cs-droite { display: block; min-width: 0; }
+}
+
+/* ---------- Où en est ma commande ? ---------- */
+.cs-suivi-tete { display: flex; align-items: center; justify-content: space-between; gap: .6rem; margin-bottom: .8rem; }
+.cs-suivi-tete h2 { margin: 0; }
+.cs-frise { list-style: none; margin: 0; padding: 0; }
+.cs-frise li { position: relative; display: grid; grid-template-columns: 1fr auto; column-gap: .75rem; align-items: baseline; padding: 0 0 .95rem 2.1rem; min-height: 22px; }
+.cs-frise li:last-child { padding-bottom: 0; }
+.cs-frise b { font-size: .95rem; font-weight: 800; line-height: 1.3; }
+.cs-frise small { color: var(--gris); font-size: .82rem; text-align: right; line-height: 1.35; }
+/* Le rond : vert coché (fait), anneau orange (le client a la main), anneau bleu (en cours), gris (à venir). */
+.cs-frise li::before { content: ""; position: absolute; left: 0; top: 0; width: 20px; height: 20px; border-radius: 50%; box-sizing: border-box; background: #E3E8F0; }
+.cs-frise li::after { content: ""; position: absolute; left: 9px; top: 22px; bottom: 2px; width: 2px; background: #E3E8F0; }
+.cs-frise li:last-child::after { display: none; }
+.cs-frise li.faite::before { background: var(--vert) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='M5.5 10.5l3 3 6-6.5' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center / 100% no-repeat; }
+.cs-frise li.faite::after { background: var(--vert); }
+.cs-frise li.action::before { background: #fff; border: 3.5px solid #F2611D; }
+.cs-frise li.en_cours::before { background: #fff; border: 3.5px solid var(--bleu); }
+.cs-frise li.a_venir b { color: #8A93A6; font-weight: 600; }
+.cs-frise li.action b { color: var(--encre); }
+@media (min-width: 900px) {
+  /* Sur ordinateur, le détail passe sous le libellé (maquette CO05). */
+  .cs-frise li { grid-template-columns: 1fr; }
+  .cs-frise small { text-align: left; font-size: .8rem; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cs-frise li.faite::after { transform-origin: 50% 0; animation: ec-frise-remplit .45s calc(var(--i, 0) * .14s + .12s) ease-out both; }
+  .cs-frise li.faite::before, .cs-frise li.action::before, .cs-frise li.en_cours::before { animation: ec-frise-point .35s calc(var(--i, 0) * .14s) cubic-bezier(.2, .9, .3, 1.4) both; }
+}
+.cs-frise li.ec-frise-fete b { transform-origin: 0 50%; animation: ec-fete-titre .6s .9s ease-out both; }
+
+/* ---------- Résumé ---------- */
+.cs-lignes { margin: 0; }
+.cs-lignes > div { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; padding: .5rem 0; border-top: 1px solid var(--trait); }
+.cs-lignes > div:first-child { border-top: 0; padding-top: 0; }
+.cs-lignes dt { color: var(--gris); font-size: .86rem; flex: none; }
+.cs-lignes dd { margin: 0; text-align: right; font-weight: 700; font-size: .9rem; min-width: 0; overflow-wrap: anywhere; }
+.cs-lignes dd small { display: block; font-weight: 500; color: var(--gris); font-size: .78rem; }
+.cs-lignes dd .cs-produit + .cs-produit { margin-top: .45rem; }
+.cs-lignes .cs-reste dd { color: var(--bleu); }
+.cs-resume .ec-boutons { margin-top: .9rem; }
+.cs-resume-liens { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; margin-top: .8rem; }
+
+/* ---------- Carte du BAT ---------- */
+.cs-bat { scroll-margin-top: 90px; }
+.cs-bat-tete { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: .3rem .8rem; margin-bottom: .75rem; }
+.cs-bat-titre { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .6rem; min-width: 0; }
+.cs-bat-titre h2 { margin: 0; }
+.cs-bat-delai { margin: 0; color: var(--gris); font-size: .8rem; }
+.cs-bat-ligne { margin: -.4rem 0 .7rem; color: var(--gris); font-size: .82rem; }
+/* minmax(0, 1fr) : un long nom de fichier (coupé par « … ») ne doit pas élargir la carte sur téléphone. */
+.cs-bat-corps { display: grid; grid-template-columns: minmax(0, 1fr); gap: .9rem; }
+.cs-bat-corps > * { min-width: 0; }
+.cs-bat-visuel { min-width: 0; text-align: center; }
+.cs-bat-visuel .ec-bat-image img { max-width: 100%; max-height: 38vh; border-radius: 6px; box-shadow: 0 6px 18px rgba(18,33,58,.15); }
+.cs-bat-visuel iframe { width: 100%; height: 52vh; border: 0; border-radius: 8px; background: var(--fond); }
+.cs-bat-visuel + .cs-bat-visuel { margin-top: .6rem; }
+.cs-bat-note { margin: .5rem 0 0; color: var(--gris); font-size: .78rem; text-align: left; }
+.cs-bat-fichier { display: flex; justify-content: space-between; gap: .8rem; margin-top: .35rem; font-size: .78rem; color: var(--gris); text-align: left; }
+.cs-bat-fichier span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-bat-fichier a { flex: none; }
+.cs-bat-valide .ec-bat-image img, .cs-bat-correction .ec-bat-image img { max-height: 200px; }
+.cs-bat-vide { color: var(--gris); font-size: .88rem; padding: 1rem; border-radius: 12px; background: var(--fond); }
+
+.cs-verif { margin: 0; padding: 0; border: 0; min-width: 0; }
+.cs-verif legend { padding: 0; margin-bottom: .45rem; font-weight: 800; font-size: .92rem; }
+.cs-verif label { display: flex; align-items: flex-start; gap: .55rem; padding: .32rem 0; font-size: .9rem; cursor: pointer; }
+.cs-verif input { flex: none; width: 20px; height: 20px; margin: 0; accent-color: var(--bleu); }
+.cs-verif-note { margin: .4rem 0 0; color: #C2410C; font-size: .8rem; }
+
+.cs-bat-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .9rem; align-items: start; }
+.cs-bat-actions .ec-bouton { padding: .85rem .8rem; }
+.cs-bat-actions .ec-bouton[disabled] { opacity: .45; box-shadow: none; }
+.cs-bat-actions details.cs-corriger[open] { grid-column: 1 / -1; }
+details.cs-corriger summary { list-style: none; }
+details.cs-corriger summary::-webkit-details-marker { display: none; }
+details.cs-corriger[open] summary { display: none; }
+.cs-corriger-panneau { margin-top: .2rem; padding: .9rem; border-radius: 14px; background: var(--fond); }
+.cs-corriger-panneau .ec-astuce { background: #fff; }
+.cs-corriger-panneau .ec-champ { background: #fff; }
+.cs-payante { margin: .5rem 0 .7rem; padding: .6rem .8rem; border-radius: 12px; background: #FFF1E6; color: #9A3412; font-size: .84rem; }
+.cs-gratuites { margin: .45rem 0 0; color: var(--gris); font-size: .78rem; text-align: center; }
+.cs-horodate { margin: .55rem 0 0; text-align: center; }
+.cs-verifiees { margin: .5rem 0 0; color: var(--gris); font-size: .8rem; }
+.cs-bat-etat { margin: .8rem 0 0; }
+
+/* Repères posés sur l'image du BAT (maquette 16) : seulement sur la carte en cours de correction. */
+.cs-placer .ec-bat-image { cursor: crosshair; }
+.cs-placer .ec-bat-image img { outline: 2px dashed var(--bleu); outline-offset: 4px; }
+.cs-placer .ec-repere.ancien, .cs-placer .cs-reperes-precedents { display: none; }
+
+.cs-histo { margin-top: .8rem; border-top: 1px solid var(--trait); padding-top: .6rem; }
+.cs-histo summary { cursor: pointer; color: var(--bleu); font-weight: 700; font-size: .85rem; }
+.cs-histo ul { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .45rem; }
+.cs-histo li { font-size: .85rem; }
+.cs-histo li small { color: var(--gris); }
+
+@media (min-width: 900px) {
+  .cs-bat-attente .cs-bat-corps { grid-template-columns: minmax(0, 1.75fr) minmax(200px, 1fr); align-items: start; }
+  .cs-bat-attente .cs-bat-visuel .ec-bat-image img { max-height: 52vh; }
+  .cs-bat-actions { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
+}
+
+/* ---------- Messages de la commande ---------- */
+.cs-messages { scroll-margin-top: 90px; }
+.cs-messages .ec-messages { margin-bottom: .8rem; }
+.cs-messages .ec-bulle-tete { font-weight: 700; }
+.cs-messages .ec-bulle.atelier .ec-bulle-tete { color: var(--encre); }
+.cs-messages-vide { color: var(--gris); font-size: .88rem; margin: 0 0 .8rem; }
+.cs-ecrire { display: flex; gap: .5rem; align-items: flex-end; }
+.cs-ecrire .ec-champ { min-height: 46px; height: 46px; padding: .65rem .85rem; resize: vertical; }
+.cs-ecrire .ec-bouton { width: auto; flex: none; padding: .75rem 1.1rem; }
+
+.cs-fin { display: grid; gap: .6rem; margin-bottom: .85rem; }
+.cs-fin .ec-lien { text-align: center; }
+
+/* Téléphone (maquette DT04) : étape en tête du résumé, acompte payé en vert, dû en rouge, lien vers la conversation. */
+.cs-statut-telephone { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem .6rem; margin: 0 0 .7rem; font-size: .86rem; color: var(--gris); }
+.cs-statut-pastille { display: inline-block; padding: .2rem .6rem; border-radius: .5rem; background: #E5EEFA; color: #0F4590; font-weight: 800; font-size: .82rem; }
+.cs-statut-pastille.action { background: #FFF1DC; color: #C46A00; }
+.cs-lignes .cs-paye dd { color: #178444; }
+.cs-lignes .cs-reste.du dd { color: #C40D22; }
+.cs-lien-conversation { display: flex; justify-content: space-between; align-items: center; margin-top: .8rem; padding: .75rem .9rem; border-radius: .8rem; background: #F4F6FA; color: inherit; font-weight: 700; text-decoration: none; }
+.cs-lien-conversation span { color: var(--bleu); font-size: 1.2rem; line-height: 1; }

@@ -1,0 +1,91 @@
+{#
+	Conseils d'imprimeur (maquette 12) : le dernier conseil en grand, les
+	suivants à côté, les plus anciens en dessous. Seuls les conseils
+	publiés dont la date est passée sont montrés.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set une = articles|first %}
+{% set cote = articles|slice(1, 4) %}
+{% set suite = articles|slice(5) %}
+
+{% block title %}{{ 'Conseils d\'imprimeur'|site_titre }}{% endblock %}
+{% block description %}Bien choisir sa bâche, préparer son fichier, réussir son roll-up ou sa vitrine : les conseils de l'atelier Succès Imprim à Bamako.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-contenu.css') }}
+{% endblock %}
+
+{% macro visuel(article, taille, id) %}
+	{% set image = site_image(article.image, taille) %}
+	{% if image %}
+		<img src="{{ asset(image.chemin) }}" width="{{ image.largeur }}" height="{{ image.hauteur }}" alt="" loading="{{ taille == 'grande' ? 'eager' : 'lazy' }}">
+	{% else %}
+		{{ include('site/_illustration_contenu.svg.twig', {famille: (article.rubrique ?? '') matches '/[ée]v[ée]nement|vitrine/i' ? 'evenement' : site_famille(article.rubrique ?? article.titre, article.id), id: id}) }}
+	{% endif %}
+{% endmacro %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Conseils d\'imprimeur', accroche: 'Pour bien choisir vos supports et réussir vos impressions.', ariane: 'Conseils'}) }}
+
+	<section class="sc-section">
+		<div class="si-cadre">
+			{% if une is empty %}
+				<div class="sc-vide"><p>Nos premiers conseils arrivent bientôt.</p></div>
+			{% else %}
+				<div class="sc-conseils{{ cote is empty ? ' sc-conseils-seul' }}">
+					<article class="sc-conseil-une">
+						<a href="{{ path('app_site_conseil', {slug: une.slug}) }}">
+							{% set image_une = site_image(une.image) %}
+							<span class="sc-conseil-visuel">
+								{% if image_une %}
+									<img src="{{ asset(image_une.chemin) }}" width="{{ image_une.largeur }}" height="{{ image_une.hauteur }}" alt="">
+								{% else %}
+									{# Sans image : le titre en grand sur un dégradé chaud, comme la maquette. #}
+									<span class="sc-conseil-degrade"><span class="sc-conseil-accroche" aria-hidden="true">{{ une.titre|site_sans_demo }}</span></span>
+								{% endif %}
+							</span>
+							<span class="sc-conseil-corps">
+								{% if une.rubrique %}<span class="sc-etiquette sc-rubrique-{{ site_famille(une.rubrique) }}">{{ une.rubrique }}</span>{% endif %}
+								<h2>{{ une.titre }}</h2>
+								<p>{{ une.resume }}</p>
+							</span>
+						</a>
+					</article>
+
+					{% if cote is not empty %}
+						<ul class="sc-conseils-liste">
+							{% for a in cote %}
+								<li>
+									<a href="{{ path('app_site_conseil', {slug: a.slug}) }}">
+										<span class="sc-conseil-vignette">{{ _self.visuel(a, 'petite', 'c' ~ a.id) }}</span>
+										<span>
+											{% if a.rubrique %}<span class="sc-etiquette sc-rubrique-{{ site_famille(a.rubrique) }}">{{ a.rubrique }}</span>{% endif %}
+											<h2>{{ a.titre }}</h2>
+										</span>
+									</a>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</div>
+
+				{% if suite is not empty %}
+					<h2 class="sc-titre-section sc-conseils-suite-titre">Tous les conseils</h2>
+					<ul class="sc-conseils-grille">
+						{% for a in suite %}
+							<li>
+								<a href="{{ path('app_site_conseil', {slug: a.slug}) }}">
+									<span class="sc-conseil-vignette">{{ _self.visuel(a, 'petite', 's' ~ a.id) }}</span>
+									{% if a.rubrique %}<span class="sc-etiquette sc-rubrique-{{ site_famille(a.rubrique) }}">{{ a.rubrique }}</span>{% endif %}
+									<h3>{{ a.titre }}</h3>
+									<p>{{ a.resume }}</p>
+								</a>
+							</li>
+						{% endfor %}
+					</ul>
+				{% endif %}
+			{% endif %}
+		</div>
+	</section>
+{% endblock %}

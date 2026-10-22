@@ -1,0 +1,95 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Recherche{% endblock %}
+
+{% macro bloc(titre, icone, nombre) %}
+	<div class="card-header border-0 pb-0">
+		<h4 class="card-title"><i class="{{ icone }} me-2 text-primary"></i>{{ titre }} <span class="badge badge-light ms-1">{{ nombre }}</span></h4>
+	</div>
+{% endmacro %}
+{% import _self as m %}
+
+{% block body %}
+	{% set total = resultats.clients|length + resultats.commandes|length + resultats.devis|length + resultats.factures|length %}
+
+	{% if q|length < 2 %}
+		<div class="card"><div class="card-body text-muted">Tapez au moins 2 caractères : nom, téléphone, n° de commande, de devis ou de facture.</div></div>
+	{% elseif total == 0 %}
+		<div class="card"><div class="card-body">Aucun résultat pour « {{ q }} ».</div></div>
+	{% else %}
+		<p class="text-muted mb-3">{{ total }} résultat{{ total > 1 ? 's' }} pour « {{ q }} » (10 au plus par rubrique).</p>
+		<div class="row">
+			{% if resultats.clients is not empty %}
+				<div class="col-xl-6">
+					<div class="card">
+						{{ m.bloc('Clients', 'fas fa-user', resultats.clients|length) }}
+						<div class="card-body">
+							<div class="list-group list-group-flush">
+								{% for client in resultats.clients %}
+									<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+										<span>{{ client.nomComplet }}</span>
+										<span class="text-muted">{{ client.telephone }}</span>
+									</a>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</div>
+			{% endif %}
+
+			{% if resultats.commandes is not empty %}
+				<div class="col-xl-6">
+					<div class="card">
+						{{ m.bloc('Commandes', 'fas fa-shopping-cart', resultats.commandes|length) }}
+						<div class="card-body">
+							<div class="list-group list-group-flush">
+								{% for commande in resultats.commandes %}
+									<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+										<span><strong>{{ commande.numero }}</strong> · {{ commande.clients ? commande.clients.nomComplet : '—' }}</span>
+										<span class="text-muted">{{ commande.totalTtc|number_format(0, ',', ' ') }} F</span>
+									</a>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</div>
+			{% endif %}
+
+			{% if resultats.devis is not empty %}
+				<div class="col-xl-6">
+					<div class="card">
+						{{ m.bloc('Devis', 'fas fa-file-signature', resultats.devis|length) }}
+						<div class="card-body">
+							<div class="list-group list-group-flush">
+								{% for devis in resultats.devis %}
+									<a href="{{ path('app_devis_show', {id: devis.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+										<span><strong>{{ devis.numero }}</strong> · {{ devis.clients ? devis.clients.nomComplet : '—' }}</span>
+										<span class="text-muted">{{ devis.totalTtc|number_format(0, ',', ' ') }} F</span>
+									</a>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</div>
+			{% endif %}
+
+			{% if resultats.factures is not empty %}
+				<div class="col-xl-6">
+					<div class="card">
+						{{ m.bloc('Factures', 'fas fa-file-invoice', resultats.factures|length) }}
+						<div class="card-body">
+							<div class="list-group list-group-flush">
+								{% for facture in resultats.factures %}
+									<a href="{{ path('app_factures_show', {id: facture.id}) }}" class="list-group-item list-group-item-action d-flex justify-content-between">
+										<span><strong>{{ facture.numero }}</strong> · {{ facture.commande.clients ? facture.commande.clients.nomComplet : '—' }}</span>
+										<span class="text-muted">{{ facture.totalTtc|number_format(0, ',', ' ') }} F</span>
+									</a>
+								{% endfor %}
+							</div>
+						</div>
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	{% endif %}
+{% endblock %}

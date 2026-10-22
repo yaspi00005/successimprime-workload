@@ -5,6 +5,8 @@ namespace App\Controller;
 use App\Entity\TypesImpression;
 use App\Repository\FinitionRepository;
 use App\Repository\TypesImpressionRepository;
+use App\Security\JetonJson;
+use App\Service\Parametres\LongueursCatalogue;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -93,6 +95,19 @@ final class TypesImpressionController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        // Au-delà de leur colonne, la base refuserait le texte (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du type d’impression' => [$nom, LongueursCatalogue::TYPE_IMPRESSION_NOM],
+            'Description' => [$description, LongueursCatalogue::TYPE_IMPRESSION_DESCRIPTION],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
         if ($repository->findOneBy(['nom' => $nom])) {
             return $this->json([
                 'success' => false,
@@ -115,9 +130,7 @@ final class TypesImpressionController extends AbstractController
 
         $typeImpression = new TypesImpression();
         $typeImpression->setNom($nom);
-        $typeImpression->setDescription(
-            $description !== '' ? $description : null
-        );
+        $typeImpression->setDescription($description);
         $typeImpression->setPublie($actif);
         $typeImpression->setOrdre($prochainOrdre);
 
@@ -186,6 +199,14 @@ final class TypesImpressionController extends AbstractController
     ): JsonResponse {
         $data = json_decode($request->getContent(), true);
 
+        // Jeton de la page (en-tête X-CSRF-TOKEN ou « _token »), audit D6.
+        if (!$this->isCsrfTokenValid('update_type_impression', JetonJson::lire($request, $data))) {
+            return $this->json([
+                'success' => false,
+                'message' => JetonJson::MESSAGE,
+            ], Response::HTTP_FORBIDDEN);
+        }
+
         if (!is_array($data)) {
             return $this->json([
                 'success' => false,
@@ -205,6 +226,19 @@ final class TypesImpressionController extends AbstractController
             ], Response::HTTP_BAD_REQUEST);
         }
 
+        // Au-delà de leur colonne, la base refuserait le texte (erreur 500).
+        $tropLong = LongueursCatalogue::erreur([
+            'Nom du type d’impression' => [$nom, LongueursCatalogue::TYPE_IMPRESSION_NOM],
+            'Description' => [$description, LongueursCatalogue::TYPE_IMPRESSION_DESCRIPTION],
+        ]);
+
+        if ($tropLong !== null) {
+            return $this->json([
+                'success' => false,
+                'message' => $tropLong,
+            ], Response::HTTP_BAD_REQUEST);
+        }
+
         $existant = $repository->findOneBy(['nom' => $nom]);
 
         if (
@@ -218,9 +252,8 @@ final class TypesImpressionController extends AbstractController
         }
 
         $typeImpression->setNom($nom);
-        $typeImpression->setDescription(
-            $description !== '' ? $description : null
-        );
+        // Colonne obligatoire (NOT NULL) : une description effacée s'enregistre vide.
+        $typeImpression->setDescription($description);
         $typeImpression->setPublie($actif);
 
         foreach ($typeImpression->getFinitions()->toArray() as $finition) {

@@ -22,22 +22,24 @@ schtasks /create ^
     /f
 
 echo.
-echo Installation de la tache "sauvegarde toutes les 6h"...
+echo Installation de la tache "sauvegarde chaque heure"...
+echo (l'application decide : complete une fois par jour, base toutes les N heures, ou rien)
+schtasks /delete /tn "SuccessImprim_Sauvegarde_6h" /f >nul 2>&1
 schtasks /create ^
-    /tn "SuccessImprim_Sauvegarde_6h" ^
+    /tn "SuccessImprim_Sauvegarde" ^
     /tr "\"%SCRIPT_SAUVEGARDE%\"" ^
     /sc hourly ^
-    /mo 6 ^
+    /mo 1 ^
     /ru SYSTEM ^
     /f
 
 echo.
 echo Termine. Verification :
 schtasks /query /tn "SuccessImprim_Sauvegarde_Demarrage"
-schtasks /query /tn "SuccessImprim_Sauvegarde_6h"
+schtasks /query /tn "SuccessImprim_Sauvegarde"
 
 echo.
 echo Pour tester une sauvegarde immediatement :
-echo   schtasks /run /tn "SuccessImprim_Sauvegarde_6h"
+echo   schtasks /run /tn "SuccessImprim_Sauvegarde"
 echo.
 pause

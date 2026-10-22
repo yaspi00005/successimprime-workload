@@ -1,0 +1,19 @@
+{#
+	Recommander rapidement (maquette EC01) : prix d'aujourd'hui, « + Panier »
+	ouvre la commande pré-remplie (rien n'est commandé ici). Un demandeur ne
+	reçoit pas le prix (RecommanderClient, CompteClient::montantsVisibles).
+#}
+{% if recommander is not empty %}
+	<section class="ec-carte ec-bloc">
+		<h2>Recommander rapidement</h2>
+		<ul class="ec-liste ec-reco">
+			{% for r in recommander %}
+				<li>
+					<span><b>{{ r.titre }}</b><span class="ec-petit">dernière fois {{ r.derniere|date('d/m') }}</span></span>
+					{% if r.prix is not null %}<span class="ec-reco-prix">{{ r.prix|number_format(0, ',', ' ') }} F</span>{% else %}<span class="ec-petit ec-reco-sans-prix">prix confirmé par votre valideur</span>{% endif %}
+					<a class="ec-reco-panier" href="{{ path(r.lien[0], r.lien[1]) }}" aria-label="Recommander {{ r.titre }}">+ Panier</a>
+				</li>
+			{% endfor %}
+		</ul>
+	</section>
+{% endif %}

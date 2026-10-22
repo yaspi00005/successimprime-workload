@@ -1,0 +1,19 @@
+{#
+	Barre d'onglets en bas d'ecran sur telephone (maquettes 41 et R05),
+	selon le role : la Direction a ses sections, la caisse ses ecrans du
+	jour, le livreur sa tournee. « Plus » ouvre le menu complet.
+#}
+{% set barre = barre_mobile_admin(routeCourante) %}
+<nav class="si-barre-mobile" aria-label="Navigation principale">
+	{% for entree in barre.entrees %}
+		<a href="{{ path(entree.route, entree.parametres|default({})) }}" class="{{ entree.actif ? 'actif' }}" {% if entree.actif %}aria-current="page"{% endif %}>
+			<i class="{{ entree.icone }}" aria-hidden="true"></i><span>{{ entree.libelle }}</span>
+			{% if entree.pastille|default(0) > 0 %}<b class="si-menu-compte">{{ entree.pastille }}</b>{% endif %}
+		</a>
+	{% endfor %}
+	{% if barre.fin.route %}
+		<a href="{{ path(barre.fin.route) }}" class="{{ barre.fin.actif ? 'actif' }}"><i class="{{ barre.fin.icone }}" aria-hidden="true"></i><span>{{ barre.fin.libelle }}</span></a>
+	{% else %}
+		<button type="button" data-ouvrir-menu><i class="{{ barre.fin.icone }}" aria-hidden="true"></i><span>{{ barre.fin.libelle }}</span></button>
+	{% endif %}
+</nav>

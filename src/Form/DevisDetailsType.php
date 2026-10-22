@@ -24,6 +24,7 @@ use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use App\Repository\ProduitConfigurationRepository;
+use App\Service\PiecesParMetreCarre;
 use Symfony\Component\Form\Extension\Core\Type\HiddenType;
 use Symfony\Component\Form\FormEvent;
 use Symfony\Component\Form\FormEvents;
@@ -35,13 +36,15 @@ use Symfony\Component\Form\FormError;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Entity\Articles;
 use App\Repository\ArticlesRepository;
+use App\Service\Catalogue\NomCommercial;
 
 
 class DevisDetailsType extends AbstractType
 {
     public function __construct(
         private readonly ProduitConfigurationRepository $configurationRepository,
-        private readonly EntityManagerInterface $entityManager
+        private readonly EntityManagerInterface $entityManager,
+        private readonly ?PiecesParMetreCarre $piecesM2 = null,
     ) {}
 
     public function buildForm(
@@ -72,6 +75,7 @@ class DevisDetailsType extends AbstractType
             ])
             ->add('article', EntityType::class, [
                 'class' => Articles::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
 
                 'choice_label' => static function (
                     Articles $article
@@ -79,7 +83,7 @@ class DevisDetailsType extends AbstractType
                     return sprintf(
                         '%s — %s',
                         $article->getReference(),
-                        $article->getDesignation()
+                        NomCommercial::texteInterne($article->getNomCommercial(), $article->getDesignation())
                     );
                 },
 
@@ -131,7 +135,11 @@ class DevisDetailsType extends AbstractType
 
             ->add('produit', EntityType::class, [
                 'class' => Produits::class,
-                'choice_label' => 'nom',
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Produits $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
+                // La désignation de la ligne reste le nom technique seul (le nom commercial s'affiche à côté).
+                'choice_attr' => static fn (Produits $e): array => ['data-designation' => (string) $e->getNom()],
                 'label' => 'Produit',
                 'placeholder' => 'Sélectionnez un produit',
                 'required' => false,
@@ -145,6 +153,9 @@ class DevisDetailsType extends AbstractType
 
             ->add('produitConfiguration', EntityType::class, [
                 'class' => ProduitConfiguration::class,
+                'code_id' => true, // data-code : URL sans numéro lisible (docs/ids-chiffres.md)
+                // Désignations et noms commerciaux : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (ProduitConfiguration $c): string => NomCommercial::texteConfigurationInterne($c),
                 'choice_attr' => static function (
                     ProduitConfiguration $configuration
                 ): array {
@@ -191,7 +202,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('typeImpression', EntityType::class, [
                 'class' => TypesImpression::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (TypesImpression $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Type d’impression',
                // 'placeholder' => 'Sélectionnez un type d’impression',
                 'required' => false,
@@ -204,7 +216,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('support', EntityType::class, [
                 'class' => Supports::class,
-                'choice_label' => 'nom',
+                // Désignation et nom commercial : la recherche trouve l'un ou l'autre (docs/noms-commerciaux.md).
+                'choice_label' => static fn (Supports $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Support',
                 'placeholder' => 'Sélectionnez un support',
                 'required' => false,
@@ -216,7 +229,8 @@ class DevisDetailsType extends AbstractType
 
             ->add('format', EntityType::class, [
                 'class' => Format::class,
-                'choice_label' => 'nom',
+                // Nom commercial entre parenthèses (Yaya, 18/10/2026) : la recherche trouve l'un ou l'autre.
+                'choice_label' => static fn (Format $e): string => NomCommercial::texteInterne($e->getNomCommercial(), $e->getNom()),
                 'label' => 'Format',
                 'placeholder' => 'Sélectionnez un format',
                 'required' => false,
@@ -395,6 +409,20 @@ class DevisDetailsType extends AbstractType
                 ],
                 'constraints' => [
                     new PositiveOrZero(),
+                ],
+            ])
+
+            /*
+             * Promotion de la ligne (docs/promotions.md) : le serveur la
+             * calcule à l'enregistrement ; l'agent peut seulement la
+             * retirer (elle ne revient alors pas toute seule).
+             */
+            ->add('promotionRetiree', CheckboxType::class, [
+                'label' => 'Promotion retirée',
+                'required' => false,
+                'attr' => [
+                    'class' => 'js-promotion-retiree',
+                    'data-detail-field' => 'promotionRetiree',
                 ],
             ])
 
@@ -604,9 +632,8 @@ class DevisDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     $prix = $configurationFinition->getPrix();
 
@@ -640,7 +667,16 @@ class DevisDetailsType extends AbstractType
                         return;
                     }
 
-                    $mode = $data['modeConfiguration'] ?? 'automatique';
+                    /*
+                     * Toujours "manuel" (ou l'ancien "libre") : le choix du
+                     * mode n'est plus propose, et une ancienne ligne
+                     * enregistree en "automatique" renvoie son radio coche,
+                     * qu'il ne faut plus suivre (voir ModeConfigurationLigne).
+                     * Sans cle envoyee, le repli valait "automatique" et
+                     * vidait les finitions de la ligne.
+                     */
+                    $mode = ModeConfigurationLigne::soumis($data);
+                    $data['modeConfiguration'] = $mode;
 
                     /*
          * En mode automatique, on ne doit pas envoyer
@@ -774,9 +810,7 @@ class DevisDetailsType extends AbstractType
             $data['typeLigne']
             ?? DevisDetails::TYPE_PRODUIT;
 
-        $mode =
-            $data['modeConfiguration']
-            ?? 'automatique';
+        $mode = ModeConfigurationLigne::soumis($data);
 
 
         /*
@@ -1037,6 +1071,9 @@ class DevisDetailsType extends AbstractType
                 }
             }
         );
+        // Case « Pièces au m² » (docs/saisie-devis-commandes.md).
+        ChampPiecesAuM2::ajouter($builder, $this->piecesM2);
+
         /*
          * La devis n’apparaît que lorsque ce formulaire
          * est utilisé seul.
@@ -1197,9 +1234,8 @@ class DevisDetailsType extends AbstractType
                 'choice_label' => function (
                     ProduitConfigurationFinition $configurationFinition
                 ): string {
-                    $nom = $configurationFinition
-                        ->getFinition()
-                        ?->getNom() ?? 'Finition';
+                    $finition = $configurationFinition->getFinition();
+                    $nom = null !== $finition ? NomCommercial::texteInterne($finition->getNomCommercial(), $finition->getNom()) : 'Finition';
 
                     return sprintf(
                         '%s — %s FCFA',

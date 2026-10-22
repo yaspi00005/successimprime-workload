@@ -1,0 +1,122 @@
+{% extends 'immobilisations/_base.html.twig' %}
+
+{% block title %}Immobilisations › Registre{% endblock %}
+{% block page_title %}{{ comptable ? 'Registre des immobilisations' : 'Biens qui me sont confiés' }}{% endblock %}
+
+{% block header_actions %}
+	{% if comptable %}
+		<li class="nav-item">
+			<form method="get" action="{{ path('app_immobilisations_registre') }}" class="si-imm-filtre">
+				<label class="visually-hidden" for="filtre-categorie">Catégorie</label>
+				<select id="filtre-categorie" name="categorie" class="form-select form-select-sm" onchange="this.form.submit()">
+					<option value="">Toutes catégories</option>
+					{% for cle, c in constant('App\\Entity\\Immobilisation::CATEGORIES') %}
+						<option value="{{ cle }}" {{ cle == categorie ? 'selected' }}>{{ c.libelle }}</option>
+					{% endfor %}
+				</select>
+				{% if sortis %}<input type="hidden" name="sortis" value="1">{% endif %}
+			</form>
+		</li>
+		<li class="nav-item si-masque-mobile">
+			<a href="{{ path('app_immobilisations_etiquettes', {categorie: categorie}) }}" class="btn btn-light btn-sm si-btn-entete si-imm-btn-court" target="_blank" rel="noopener"><i class="fas fa-qrcode me-1"></i>Étiquettes QR</a>
+		</li>
+		<li class="nav-item">
+			<a href="{{ path('app_immobilisations_export') }}" class="btn btn-primary btn-sm si-btn-entete si-imm-btn-court"><i class="fas fa-download me-1"></i>Export<span class="si-masque-mobile"> cabinet</span></a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-fin si-imm">
+		<section class="card">
+			{% if lignes is empty %}
+				<p class="si-fin-vide mb-0">{{ comptable ? 'Aucun bien dans cette catégorie.' : 'Aucun bien ne vous est confié pour l\'instant.' }}</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table si-fin-table si-imm-registre">
+						<thead>
+							<tr>
+								<th scope="col">Code</th>
+								<th scope="col">Bien</th>
+								<th scope="col">Catégorie</th>
+								<th scope="col">Mise en service</th>
+								{% if comptable %}
+									<th scope="col" class="text-end">Valeur</th>
+									<th scope="col">Méthode</th>
+									<th scope="col" class="text-end">Amort. cumulé</th>
+									<th scope="col" class="text-end">Valeur nette</th>
+								{% endif %}
+								<th scope="col">Lieu · affecté à</th>
+								<th scope="col">État</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set i = l.bien %}
+								<tr>
+									<td class="si-imm-code"><a href="{{ path('app_immobilisations_bien', {id: i.id}) }}">{{ i.code }}</a></td>
+									<td>{{ i.designation }}{% if i.quantite > 1 and comptable %}<small>{{ i.quantite }} unités</small>{% endif %}</td>
+									<td>{{ i.libelleCourt }}</td>
+									<td>{{ i.dateMiseService ? i.dateMiseService|date('m/Y') : '—' }}</td>
+									{% if comptable %}
+										{% set c = l.calcul %}
+										<td class="text-end si-fin-f">{{ c.valeurAchat|number_format(0, ',', ' ') }}</td>
+										<td>{{ c.libelleMethode }}</td>
+										<td class="text-end si-fin-f">{{ c.cumul|number_format(0, ',', ' ') }}</td>
+										<td class="text-end si-fin-f"><strong>{{ c.valeurNette|number_format(0, ',', ' ') }}</strong></td>
+									{% endif %}
+									<td>{{ i.lieu ?? '—' }}{% if i.confieA %} · {{ i.confieA.employe ? i.confieA.employe.prenom ~ ' ' ~ i.confieA.employe.nom|slice(0, 1) ~ '.' : i.confieA.userIdentifier }}{% endif %}</td>
+									<td>
+										{% if i.estSorti %}
+											<span class="si-fin-statut si-fin-statut-gris">{{ constant('App\\Entity\\Immobilisation::SORTIES')[i.sortieMotif] }}</span>
+										{% else %}
+											<span class="si-fin-statut si-fin-statut-{{ i.couleurEtat }}">{{ i.libelleEtat }}</span>
+										{% endif %}
+									</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+						{% if comptable %}
+							<tfoot>
+								<tr class="si-imm-total">
+									<td colspan="4">{{ lignes|length }} bien{{ lignes|length > 1 ? 's' }}</td>
+									<td class="text-end si-fin-f">{{ lignes|reduce((t, l) => t + l.calcul.valeurAchat, 0)|number_format(0, ',', ' ') }}</td>
+									<td></td>
+									<td class="text-end si-fin-f">{{ lignes|reduce((t, l) => t + l.calcul.cumul, 0)|number_format(0, ',', ' ') }}</td>
+									<td class="text-end si-fin-f">{{ lignes|reduce((t, l) => t + l.calcul.valeurNette, 0)|number_format(0, ',', ' ') }}</td>
+									<td colspan="2"></td>
+								</tr>
+							</tfoot>
+						{% endif %}
+					</table>
+				</div>
+			{% endif %}
+
+			{% if comptable %}
+				<div class="si-imm-explications">
+					<div>
+						<h3>Méthodes</h3>
+						Machines : selon l'usage réel (unités). Autres biens : linéaire sur leur durée de vie.
+					</div>
+					<div>
+						<h3>Écritures</h3>
+						Dotation mensuelle passée chaque matin pour le mois précédent, en comptabilité SYSCOHADA (comptes 28 et 681).
+						<form method="post" action="{{ path('app_immobilisations_dotations') }}" class="d-flex gap-2 mt-2">
+							<input type="hidden" name="_token" value="{{ csrf_token('dotations') }}">
+							<label class="visually-hidden" for="mois-dotation">Mois</label>
+							<input type="month" id="mois-dotation" name="mois" class="form-control form-control-sm" value="{{ 'first day of last month'|date('Y-m') }}" max="{{ 'first day of last month'|date('Y-m') }}">
+							<button class="btn btn-sm btn-outline-primary text-nowrap">Passer</button>
+						</form>
+					</div>
+					<div>
+						<h3>Sortie d'un bien</h3>
+						Vente, mise au rebut ou vol : motif, date et calcul de la plus ou moins-value, depuis la fiche du bien.
+						<a class="d-block mt-2" href="{{ path('app_immobilisations_registre', {categorie: categorie, sortis: sortis ? null : 1}) }}">{{ sortis ? 'Masquer les biens sortis' : 'Voir aussi les biens sortis' }}</a>
+					</div>
+				</div>
+			{% else %}
+				<p class="si-fin-note">Un bien abîmé ou perdu ? Prévenez la direction : elle met à jour son état.</p>
+			{% endif %}
+		</section>
+	</div>
+{% endblock %}

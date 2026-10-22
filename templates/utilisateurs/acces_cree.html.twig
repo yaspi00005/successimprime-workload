@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Accès créé{% endblock %}
+
+{% block body %}
+	{% set message = 'Bonjour ' ~ (utilisateur.employe.prenom ?: nom) ~ ', votre accès à Succès Imprim est prêt.\nAdresse : ' ~ adresse ~ '\nIdentifiant : ' ~ utilisateur.username ~ '\nMot de passe : ' ~ motDePasse ~ (utilisateur.mustChangePassword ? '\nVous choisirez votre mot de passe à la première connexion.' : '') %}
+	<div class="row">
+		<div class="col-xl-7">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Accès de {{ nom }} créé</h4></div>
+				<p>Rôle : <strong>{{ utilisateur.profil.nom }}</strong>. Notez ou envoyez ce mot de passe maintenant : il ne s'affichera plus.</p>
+				<dl class="si-infos si-acces">
+					<dt>Identifiant</dt><dd>{{ utilisateur.username }}</dd>
+					<dt>Mot de passe temporaire</dt><dd><code class="fs-5">{{ motDePasse }}</code></dd>
+				</dl>
+				<div class="d-flex flex-wrap gap-2">
+					<a class="btn btn-success" href="https://wa.me/{{ whatsapp }}?text={{ message|url_encode }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Envoyer par WhatsApp</a>
+					<a class="btn si-btn-discret" href="sms:+{{ whatsapp }}?body={{ message|url_encode }}">Envoyer par SMS</a>
+					<a class="btn si-btn-discret" href="{{ path('app_utilisateurs_fiche', {id: utilisateur.id}) }}">Voir ses droits</a>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

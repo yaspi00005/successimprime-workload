@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\CommandeDetailFichierRepository;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -9,6 +10,9 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'commande_detail_fichier')]
 class CommandeDetailFichier
 {
+    use Trait\ConservationFichierTrait;
+    use PublicIdTrait;
+
     public const STATUT_EN_ATTENTE = 'EN_ATTENTE';
     public const STATUT_EN_COURS = 'EN_COURS';
     public const STATUT_TERMINE = 'TERMINE';
@@ -24,6 +28,10 @@ class CommandeDetailFichier
     public const ETAT_TRAITE = 'traite';
     public const ETAT_PRET_IMPRESSION = 'pret_impression';
     public const ETAT_REJETE = 'rejete';
+
+    /** Rôle du fichier sur la ligne : à imprimer, ou à découper (contour pour le plotter, docs/prepresse.md). */
+    public const ROLE_IMPRESSION = 'impression';
+    public const ROLE_DECOUPE = 'decoupe';
 
     #[ORM\Id]
     #[ORM\GeneratedValue]
@@ -68,6 +76,11 @@ class CommandeDetailFichier
     #[ORM\Column(length: 255)]
     private ?string $nomStockage = null;
 
+    /**
+     * Fichier traité en pré-presse : « uploads/prepresse/commande_X/detail_Y/… »,
+     * relatif à var/ (hors de public/, FichiersPrives). Vide pour les
+     * fichiers rangés à plat dans var/uploads/commandes.
+     */
     #[ORM\Column(length: 500, nullable: true)]
     private ?string $chemin = null;
 
@@ -98,6 +111,13 @@ class CommandeDetailFichier
      */
     #[ORM\Column(length: 30)]
     private string $etat = self::ETAT_ORIGINAL;
+
+    /*
+     * Rôle sur la ligne : impression (le fichier à imprimer) ou découpe
+     * (le fichier du contour, envoyé à la découpe avec l'impression).
+     */
+    #[ORM\Column(length: 20, options: ['default' => self::ROLE_IMPRESSION])]
+    private string $role = self::ROLE_IMPRESSION;
 
     /*
      * Indique que le fichier était déjà prêt
@@ -144,15 +164,65 @@ class CommandeDetailFichier
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $observation = null;
 
+    /**
+     * Données d'un montage d'impression : poses, feuille, feuilles à
+     * sortir, gâche, machine. Sert au coût de revient et aux compteurs.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $montage = null;
+
+    /**
+     * Réglages d'une retouche prépresse (redimensionnement, contour, sortie,
+     * contrôles), docs/prepresse-retouche.md. Reste au local.
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $retouche = null;
+
+    /**
+     * Remarque de l'atelier montrée au client avec le BAT : la raison d'une
+     * validation malgré une alerte (image trop petite, déformation).
+     */
+    #[ORM\Column(length: 500, nullable: true)]
+    private ?string $remarqueBat = null;
+
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
     private ?User $ajoutePar = null;
+
+    /**
+     * Client qui a envoyé le fichier depuis son espace (« Mes fichiers »),
+     * avant ou sans commande.
+     */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'CASCADE')]
+    private ?Clients $client = null;
+
+    /** Logo gardé par le client pour ses prochaines commandes. */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $logo = false;
+
+    /**
+     * Contrôle automatique fait à l'arrivée (AnalyseFichierImpression).
+     *
+     * @var list<array{libelle: string, valeur: string, etat: string}>|null
+     */
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $analyse = null;
+
+    /** SHA-256 du fichier complet : sert à le recopier entre le site et le local. */
+    #[ORM\Column(length: 64, nullable: true)]
+    private ?string $empreinte = null;
 
     #[ORM\Column]
     private \DateTimeImmutable $creeLe;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->creeLe = new \DateTimeImmutable();
     }
 
@@ -402,6 +472,27 @@ class CommandeDetailFichier
         return $this;
     }
 
+    public function getRole(): string
+    {
+        return $this->role;
+    }
+
+    public function setRole(string $role): static
+    {
+        if (!\in_array($role, [self::ROLE_IMPRESSION, self::ROLE_DECOUPE], true)) {
+            throw new \InvalidArgumentException(sprintf('Rôle de fichier invalide : %s.', $role));
+        }
+        $this->role = $role;
+
+        return $this;
+    }
+
+    /** Fichier de découpe (le contour), pas le fichier à imprimer. */
+    public function estDecoupe(): bool
+    {
+        return self::ROLE_DECOUPE === $this->role;
+    }
+
     public function isDejaTraite(): bool
     {
         return $this->dejaTraite;
@@ -573,6 +664,20 @@ class CommandeDetailFichier
         return $this;
     }
 
+    /**
+     * PDF reconnu par son type ou, à défaut, par l'extension de son nom :
+     * certains navigateurs et les anciens envois notent
+     * « application/octet-stream » ou « application/x-pdf ».
+     */
+    public function estPdf(): bool
+    {
+        if (\in_array(strtolower((string) $this->typeMime), ['application/pdf', 'application/x-pdf', 'application/acrobat', 'applications/vnd.pdf', 'text/pdf'], true)) {
+            return true;
+        }
+
+        return str_ends_with(strtolower(trim((string) ($this->nomOriginal ?? $this->nomStockage))), '.pdf');
+    }
+
     public function estUploadTermine(): bool
     {
         return $this->statut === self::STATUT_TERMINE
@@ -605,5 +710,117 @@ class CommandeDetailFichier
         $this->etat = self::ETAT_PRET_IMPRESSION;
 
         return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getMontage(): ?array
+    {
+        return $this->montage;
+    }
+
+    /** @param array<string, mixed>|null $montage */
+    public function setMontage(?array $montage): static
+    {
+        $this->montage = $montage;
+
+        return $this;
+    }
+
+    public function getClient(): ?Clients
+    {
+        return $this->client;
+    }
+
+    public function setClient(?Clients $client): static
+    {
+        $this->client = $client;
+
+        return $this;
+    }
+
+    public function isLogo(): bool
+    {
+        return $this->logo;
+    }
+
+    public function setLogo(bool $logo): static
+    {
+        $this->logo = $logo;
+
+        return $this;
+    }
+
+    /** @return list<array{libelle: string, valeur: string, etat: string}>|null */
+    public function getAnalyse(): ?array
+    {
+        return $this->analyse;
+    }
+
+    /** @param list<array{libelle: string, valeur: string, etat: string}>|null $analyse */
+    public function setAnalyse(?array $analyse): static
+    {
+        $this->analyse = $analyse;
+
+        return $this;
+    }
+
+    public function getEmpreinte(): ?string
+    {
+        return $this->empreinte;
+    }
+
+    public function setEmpreinte(?string $empreinte): static
+    {
+        $this->empreinte = $empreinte;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getRetouche(): ?array
+    {
+        return $this->retouche;
+    }
+
+    /** @param array<string, mixed>|null $retouche */
+    public function setRetouche(?array $retouche): static
+    {
+        $this->retouche = $retouche;
+
+        return $this;
+    }
+
+    public function getRemarqueBat(): ?string
+    {
+        return $this->remarqueBat;
+    }
+
+    public function setRemarqueBat(?string $remarqueBat): static
+    {
+        $this->remarqueBat = null !== $remarqueBat && '' !== trim($remarqueBat) ? mb_substr(trim($remarqueBat), 0, 500) : null;
+
+        return $this;
+    }
+
+
+    /**
+     * Le même fichier sur la ligne d'une commande dupliquée : une nouvelle
+     * fiche qui pointe vers les mêmes octets (rien n'est recopié sur le
+     * disque ; ConservationFichiers ne les efface qu'une fois toutes les
+     * fiches effacées).
+     */
+    public function copiePourLigne(CommandesDetails $ligne, ?User $par): self
+    {
+        $copie = clone $this;
+        $copie->id = null;
+        $copie->initialiserPublicId();
+        $copie->jetonUpload = bin2hex(random_bytes(32));
+        $copie->fichierSource = $this;
+        $copie->creeLe = new \DateTimeImmutable();
+        $copie->ajoutePar = $par ?? $this->ajoutePar;
+        $copie->annulerGarde();
+        $ligne->addFichier($copie);
+
+        return $copie;
     }
 }

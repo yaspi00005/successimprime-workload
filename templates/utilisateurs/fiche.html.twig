@@ -1,0 +1,188 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<button type="button" class="btn btn-light btn-sm si-btn-entete js-mdp" data-url="{{ path('app_user_reset_password', {id: utilisateur.id}) }}" data-token="{{ csrf_token('reset_password_' ~ utilisateur.id) }}" data-nom="{{ nom }}" data-confirmer="Réinitialiser le mot de passe de {{ nom }} ?" data-confirmer-detail="Un mot de passe temporaire s'affichera ; il devra le changer à sa prochaine connexion." data-confirmer-bouton="Réinitialiser">Réinitialiser le mot de passe</button>
+	</li>
+	{% if utilisateur != app.user %}
+		<li class="nav-item">
+			{% if utilisateur.actif %}
+				<a href="{{ path('app_utilisateurs_desactiver', {id: utilisateur.id}) }}" class="btn btn-light btn-sm si-btn-entete">Désactiver</a>
+			{% else %}
+				<button type="button" class="btn btn-light btn-sm si-btn-entete js-reactiver" data-url="{{ path('app_user_toggle_status', {id: utilisateur.id}) }}" data-token="{{ csrf_token('toggle_user_' ~ utilisateur.id) }}">Réactiver</button>
+			{% endif %}
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% set libellesEtat = {herite: 'hérité du rôle', ajoute: 'ajouté pour cette personne', retire: 'retiré pour cette personne', non: 'non accordé'} %}
+
+{% block body %}
+	<form method="post" id="form-droits" class="si-fiche-utilisateur">
+		<input type="hidden" name="_token" value="{{ csrf_token('droits-utilisateur-' ~ utilisateur.id) }}">
+
+		<div class="row">
+			<div class="col-xl-3 col-lg-4">
+				<div class="card si-bloc si-carte-personne">
+					<span class="si-initiales si-initiales-grand si-initiales-{{ utilisateur.id % 6 }}" aria-hidden="true">{% for mot in nom|split(' ')|slice(0, 2) %}{{ mot|first|upper }}{% endfor %}</span>
+					<h4 class="mb-1">{{ nom }}</h4>
+					<p class="mb-3">
+						{% if utilisateur.actif %}
+							<span class="si-pastille si-pastille-vert">Compte actif</span>
+						{% else %}
+							<span class="si-pastille si-pastille-gris">Désactivé{{ utilisateur.disabledAt ? ' le ' ~ utilisateur.disabledAt|date('d/m/Y') }}</span>
+						{% endif %}
+					</p>
+
+					<label class="si-libelle-champ" for="profil">Rôle de base</label>
+					<select name="profil" id="profil" class="form-select form-select-sm mb-1" {{ utilisateur == app.user ? 'disabled' }}>
+						{% for role in roles %}
+							<option value="{{ role.id }}" {{ utilisateur.profil == role ? 'selected' }}>{{ role.nom }}</option>
+						{% endfor %}
+					</select>
+					{% if utilisateur == app.user %}<input type="hidden" name="profil" value="{{ utilisateur.profil.id ?? '' }}">{% endif %}
+					<p class="mb-3"><span class="si-pastille si-pastille-orange js-nombre-perso {{ utilisateur.nombreDroitsPersonnalises == 0 ? 'd-none' }}">{{ utilisateur.nombreDroitsPersonnalises }} personnalisé{{ utilisateur.nombreDroitsPersonnalises > 1 ? 's' }}</span></p>
+
+					<label class="si-libelle-champ" for="objectif">Objectif de ventes du mois (F)</label>
+					<input type="text" inputmode="numeric" id="objectif" name="objectif" class="form-control form-control-sm mb-1" value="{{ utilisateur.objectifVentesMois }}" placeholder="Aucun">
+					<p class="mb-3"><a href="{{ path('app_mes_statistiques', {utilisateur: utilisateur.id}) }}" class="small">Voir ses statistiques</a></p>
+
+					<dl class="si-infos mb-0">
+						<dt>Identifiant</dt><dd>{{ utilisateur.username }}</dd>
+						{% if utilisateur.employe and utilisateur.employe.telephone %}<dt>Téléphone</dt><dd>{{ utilisateur.employe.telephone }}</dd>{% endif %}
+						{% if utilisateur.employe and utilisateur.employe.fonction %}<dt>Fonction</dt><dd>{{ utilisateur.employe.fonction }}</dd>{% endif %}
+						<dt>Dernière connexion</dt><dd>{{ utilisateur.lastLoginAt ? utilisateur.lastLoginAt|date('d/m/Y à H:i') : 'Jamais' }}</dd>
+						{% if utilisateur.motifDesactivation %}<dt>Motif</dt><dd>{{ utilisateur.motifDesactivation }}</dd>{% endif %}
+					</dl>
+				</div>
+
+				<div class="card si-bloc si-masque-mobile">
+					<h5 class="mb-2">Légende</h5>
+					<ul class="si-legende-droits">
+						<li><span class="si-case si-case-herite"></span> hérité du rôle</li>
+						<li><span class="si-case si-case-ajoute"></span> ajouté pour cette personne</li>
+						<li><span class="si-case si-case-retire"></span> retiré pour cette personne</li>
+						<li><span class="si-case si-case-non"></span> non accordé</li>
+					</ul>
+				</div>
+			</div>
+
+			<div class="col-xl-9 col-lg-8">
+				{% set estAdmin = utilisateur.profil and utilisateur.profil.estAdmin %}
+				<p class="alert alert-light border js-admin-tout {{ not estAdmin ? 'd-none' }}">L'administrateur a tous les droits, y compris le stock, les achats, les réglages et la gestion des utilisateurs.</p>
+
+				<div class="row js-droits {{ estAdmin ? 'si-droits-admin' }}">
+					{% for groupe, droits in droitsParGroupe %}
+						<div class="col-xl-6">
+							<div class="card si-bloc">
+								<div class="si-bloc-tete">
+									<h4>{{ groupe }}</h4>
+								</div>
+								<ul class="si-liste-droits">
+									{% for role, droit in droits %}
+										{% set etat = utilisateur.etatDroit(role) %}
+										<li>
+											<label class="si-droit si-droit-{{ etat }}" data-droit="{{ role }}">
+												<span>
+													<strong>{{ droit.libelle }}</strong>
+													<small class="d-block text-muted">{{ droit.detail }}</small>
+												</span>
+												<span class="si-droit-etat js-etat">{{ libellesEtat[etat] }}</span>
+												<input type="checkbox" name="droits[]" value="{{ role }}" class="si-case-droit" {{ etat in ['herite', 'ajoute'] or estAdmin ? 'checked' }} {{ estAdmin ? 'disabled' }}>
+											</label>
+										</li>
+									{% endfor %}
+								</ul>
+							</div>
+						</div>
+					{% endfor %}
+				</div>
+
+				<div class="card si-bloc" id="journal">
+					<div class="si-bloc-tete"><h4>Historique des droits</h4></div>
+					{% if historique is empty %}
+						<p class="text-muted mb-0">Aucun changement de droits enregistré.</p>
+					{% else %}
+						<ul class="si-historique-droits">
+							{% for ligne in historique %}
+								{% set apres = ligne.donneesApres ?? {} %}
+								<li>
+									<span class="text-muted">{{ ligne.createdAt|date('d/m/Y H:i') }}{{ ligne.utilisateur ? ' · ' ~ ligne.utilisateur.username }}</span>
+									Rôle {{ apres.role ?? '—' }}
+									{% if apres.ajoutes|default([]) is not empty %}, en plus : {{ apres.ajoutes|map(d => (catalogue[d].libelle ?? d))|join(', ') }}{% endif %}
+									{% if apres.retires|default([]) is not empty %}, retiré : {{ apres.retires|map(d => (catalogue[d].libelle ?? d))|join(', ') }}{% endif %}
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+
+		<div class="si-barre-enregistrer">
+			<a href="{{ path('app_utilisateurs_index') }}" class="btn si-btn-discret">Retour</a>
+			<button type="submit" class="btn btn-danger"><i class="fas fa-save me-1"></i>Enregistrer</button>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+		(function () {
+			const droitsDesRoles = {{ droitsDesRoles|json_encode|raw }};
+			const libelles = {{ libellesEtat|json_encode|raw }};
+			const choix = document.getElementById('profil');
+			const nombre = document.querySelector('.js-nombre-perso');
+			const adminId = {{ (roles|filter(r => r.estAdmin)|first).id ?? 0 }};
+
+			function actualiser(depuisRole) {
+				const duRole = droitsDesRoles[choix.value] || [];
+				const estAdmin = Number(choix.value) === adminId;
+				let perso = 0;
+
+				document.querySelector('.js-admin-tout').classList.toggle('d-none', !estAdmin);
+				document.querySelectorAll('.si-droit').forEach(function (ligne) {
+					const caseDroit = ligne.querySelector('input');
+					const herite = duRole.includes(ligne.dataset.droit);
+					if (depuisRole) { caseDroit.checked = estAdmin || herite; }
+					caseDroit.disabled = estAdmin;
+					const etat = estAdmin || (herite && caseDroit.checked) ? 'herite' : herite ? 'retire' : caseDroit.checked ? 'ajoute' : 'non';
+					if (!estAdmin && (etat === 'ajoute' || etat === 'retire')) { perso++; }
+					ligne.className = 'si-droit si-droit-' + etat;
+					ligne.querySelector('.js-etat').textContent = libelles[etat];
+				});
+
+				nombre.classList.toggle('d-none', perso === 0);
+				nombre.textContent = perso + ' personnalisé' + (perso > 1 ? 's' : '');
+			}
+
+			async function envoyer(url, donnees) {
+				const reponse = await fetch(url, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest'}, body: JSON.stringify(donnees)});
+				const json = await reponse.json().catch(function () { return {success: false, message: 'Réponse invalide.'}; });
+				if (!reponse.ok || !json.success) { throw new Error(json.message || 'Action impossible.'); }
+				return json;
+			}
+
+			document.querySelectorAll('.js-mdp').forEach(function (bouton) {
+				bouton.addEventListener('click', async function () {
+					// Confirmé avant (data-confirmer, public/js/confirmation.js).
+					try {
+						const json = await envoyer(bouton.dataset.url, {_token: bouton.dataset.token});
+						window.prompt('Mot de passe temporaire de ' + json.username + ' (à changer à la connexion) :', json.temporaryPassword);
+					} catch (erreur) { window.alert(erreur.message); }
+				});
+			});
+
+			document.querySelectorAll('.js-reactiver').forEach(function (bouton) {
+				bouton.addEventListener('click', async function () {
+					try { await envoyer(bouton.dataset.url, {_token: bouton.dataset.token}); window.location.reload(); } catch (erreur) { window.alert(erreur.message); }
+				});
+			});
+
+			choix.addEventListener('change', function () { actualiser(true); });
+			document.querySelectorAll('.si-case-droit').forEach(function (c) { c.addEventListener('change', function () { actualiser(false); }); });
+		})();
+	</script>
+{% endblock %}

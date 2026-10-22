@@ -1,0 +1,155 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Éditeur du brouillon (maquette FD02) : documents liés, client et
+	plafond, date, échéance, entreprise, lignes reprises de la commande,
+	aperçu PDF en direct. Le numéro n'est donné qu'à « Valider et
+	numéroter » ; ensuite la facture ne se modifie plus.
+#}
+
+{% set nom = facture.estAcompte ? 'Facture d\'acompte' : (facture.estProforma ? 'Proforma' : 'Facture') %}
+{% block title %}{{ nom }} · brouillon{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<form method="post" action="{{ path('app_factures_brouillon', {id: facture.id}) }}" class="fd-page" id="fd-editeur">
+		<input type="hidden" name="_token" value="{{ csrf_token('brouillon-facture-' ~ facture.id) }}">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › {{ facture.numero ? facture.numero : 'Nouveau document' }}</div>
+				<h1>{{ nom }} · brouillon</h1>
+			</div>
+			<div class="fd-actions">
+				<button type="submit" name="action" value="enregistrer" class="btn fd-btn-blanc">Enregistrer le brouillon</button>
+				<a href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank" class="btn fd-btn-blanc">Aperçu PDF</a>
+				<button type="submit" name="action" value="valider" class="btn btn-danger" data-confirmer="Valider et numéroter ?" data-confirmer-detail="{{ facture.estProforma ? 'La proforma passe à l’état émis.' : 'Elle reçoit son numéro définitif et ne se modifie plus : toute correction passera par un avoir.' }}" data-confirmer-bouton="Valider">Valider et numéroter</button>
+			</div>
+		</div>
+
+		{% include 'facturation/_chaine.html.twig' %}
+
+		<div class="fd-grille large">
+			<div>
+				<div class="row g-3 mb-0">
+					<div class="col-lg-6">
+						<div class="fd-carte h-100">
+							<h2>Client</h2>
+							{% if client %}
+								<div class="fd-client">
+									<span class="fd-avatar">{{ client.nomComplet|slice(0, 1)|upper }}</span>
+									<div class="flex-grow-1">
+										<b>{{ client.nomComplet }}</b>
+										<div class="fd-muet">{{ client.isOrganisation ? 'compte pro' : 'particulier' }}{{ client.telephone ? ' · ' ~ client.telephone }}</div>
+									</div>
+									<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="fd-lien small">Commande</a>
+								</div>
+								{% if plafond and plafond.plafond > 0 and plafond.niveau == 'alerte' %}
+									<div class="fd-alerte mt-2"><i class="fa fa-exclamation-triangle me-1"></i>Le client doit <b>{{ plafond.encours|number_format(0, ',', ' ') }} F</b> au total{% if plafond.depassement > 0 %} : <b>{{ plafond.depassement|number_format(0, ',', ' ') }} F</b> au-dessus{% else %}, proche{% endif %} du plafond de {{ plafond.plafond|number_format(0, ',', ' ') }} F.</div>
+								{% endif %}
+							{% else %}
+								<div class="fd-muet">Vente au comptoir, sans client.</div>
+							{% endif %}
+						</div>
+					</div>
+					<div class="col-lg-6">
+						<div class="fd-carte h-100">
+							<div class="row g-2">
+								<div class="col-6 fd-champ"><label for="fd-date">Date</label><input type="date" id="fd-date" name="date" value="{{ facture.dateFacture|date('Y-m-d') }}" class="form-control form-control-sm" data-apercu></div>
+								<div class="col-6 fd-champ"><label for="fd-delai">Échéance</label>
+									<select id="fd-delai" name="delai" class="form-select form-select-sm" data-apercu>
+										{% for j in [0, 7, 15, 30, 45, 60]|merge(delai in [0, 7, 15, 30, 45, 60] ? [] : [delai]) %}<option value="{{ j }}" {{ j == delai ? 'selected' }}>{{ j == 0 ? 'Au comptant' : j ~ ' jours' }}</option>{% endfor %}
+									</select></div>
+								<div class="col-6 fd-champ"><label for="fd-emetteur">Entreprise</label>
+									<select id="fd-emetteur" name="emetteur" class="form-select form-select-sm" data-apercu>
+										{% for libelle, code in emetteurs %}<option value="{{ code }}" {{ code == facture.emetteur ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+									</select></div>
+								<div class="col-6 fd-champ"><label>Numéro</label><input type="text" class="form-control form-control-sm fst-italic" value="{{ facture.numero ?: 'attribué à la validation' }}" disabled></div>
+							</div>
+						</div>
+					</div>
+				</div>
+
+				<div class="fd-carte mt-3">
+					<div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+						<h2 class="mb-0">Lignes <span class="fd-vert text-none" style="text-transform:none;letter-spacing:0">{{ facture.estAcompte ? 'acompte de ' ~ facture.pourcentageAcompte ~ ' % de ' ~ commande.numero : 'reprises de ' ~ commande.numero }}</span></h2>
+						<div class="d-flex gap-3">
+							<a href="{{ path('app_commandes_show', {id: commande.id}) }}" class="fd-lien small">Modifier les lignes dans la commande</a>
+							<button type="submit" name="action" value="recharger" class="btn btn-link fd-lien small p-0">Reprendre les montants</button>
+						</div>
+					</div>
+					<table class="fd-table">
+						<thead><tr><th>Désignation</th><th class="num">Qté</th><th class="num">Prix unitaire</th><th class="num">Total</th></tr></thead>
+						<tbody>
+							{% if facture.estAcompte %}
+								<tr><td><b>Acompte de {{ facture.pourcentageAcompte }} % sur la commande {{ commande.numero }}</b><div class="fd-muet">commande de {{ commande.totalTtc|number_format(0, ',', ' ') }} F TTC, acompte déduit de la facture finale</div></td><td class="num">1</td><td class="num">{{ facture.totalHt|number_format(0, ',', ' ') }} F</td><td class="num"><b>{{ facture.totalHt|number_format(0, ',', ' ') }} F</b></td></tr>
+							{% else %}
+								{% for d in commande.commandesDetails|filter(d => d.statutProduction != 'annulee') %}
+									<tr><td><b>{{ d.designation }}</b></td><td class="num">{{ d.quantite }}</td><td class="num">{{ d.prixUnitaire > 0 ? d.prixUnitaire|number_format(0, ',', ' ') ~ ' F' : '—' }}</td><td class="num"><b>{{ d.totalTtc|number_format(0, ',', ' ') }} F</b></td></tr>
+								{% endfor %}
+								{% if facture.fraisLivraison > 0 %}<tr><td><b>Livraison</b></td><td class="num">1</td><td class="num">{{ facture.fraisLivraison|number_format(0, ',', ' ') }} F</td><td class="num"><b>{{ facture.fraisLivraison|number_format(0, ',', ' ') }} F</b></td></tr>{% endif %}
+								{% if facture.remise > 0 %}<tr class="fd-remise"><td colspan="3">Remise</td><td class="num">− {{ facture.remise|number_format(0, ',', ' ') }} F</td></tr>{% endif %}
+							{% endif %}
+						</tbody>
+					</table>
+					<div class="d-flex flex-wrap gap-3 mt-3">
+						<div class="flex-grow-1" style="min-width: 240px">
+							<div class="fd-muet mb-1"><i class="fa fa-percent me-1"></i>{% if facture.montantTva > 0 %}TVA {{ facture.tva ? facture.tva ~ ' %' }} appliquée{% else %}TVA non applicable{% endif %} · elle se choisit sur les lignes de la commande, pour que la facture garde le montant que le client paie.</div>
+							<textarea name="observation" rows="2" class="form-control form-control-sm" maxlength="1000" placeholder="Note sur la facture : « Merci pour votre confiance. »" data-apercu>{{ facture.observation }}</textarea>
+						</div>
+						<div class="fd-totaux">
+							{% if not facture.estAcompte %}
+								<div><span>Sous-total</span><span>{{ facture.totalHt|number_format(0, ',', ' ') }} F</span></div>
+								{% if facture.remise > 0 %}<div class="fd-vert"><span>Remise</span><span>− {{ facture.remise|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+							{% endif %}
+							<div><span>TVA</span><span>{{ facture.montantTva > 0 ? facture.montantTva|number_format(0, ',', ' ') ~ ' F' : 'non applicable' }}</span></div>
+							{% if facture.montantPaye > 0 %}<div><span>Déjà payé</span><span>− {{ facture.montantPaye|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+							<div class="grand"><span>Total{{ facture.estProforma ? '' : ' à payer' }}</span><span>{{ facture.totalTtc|number_format(0, ',', ' ') }} F</span></div>
+							<div class="fd-muet justify-content-end">{{ lettres }} francs CFA</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="fd-apercu">
+				<div class="fd-titre-bloc d-flex justify-content-between">Aperçu en direct <span data-etat-apercu></span></div>
+				<iframe src="{{ path('app_factures_apercu', {id: facture.id}) }}" title="Aperçu de la facture" data-apercu-cadre data-ajuster></iframe>
+			</div>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	// Aperçu A4 réduit à la largeur du cadre.
+	document.querySelectorAll('iframe[data-ajuster]').forEach(function (f) {
+		function ajuster() { try { var d = f.contentDocument; if (!d || !d.body) return; var e = Math.min(1, (f.clientWidth - 8) / 808); d.documentElement.style.zoom = e; f.style.height = Math.ceil((d.body.scrollHeight + 60) * e) + 'px'; } catch (x) {} }
+		f.addEventListener('load', ajuster); window.addEventListener('resize', ajuster); ajuster();
+	});
+	</script>
+
+	<script>
+	(function () {
+		// Aperçu en direct : chaque changement est enregistré dans le brouillon, puis le PDF est rechargé.
+		var form = document.getElementById('fd-editeur');
+		if (!form) return;
+		var cadre = form.querySelector('[data-apercu-cadre]'), etat = form.querySelector('[data-etat-apercu]'), minuterie = null;
+		function rafraichir() {
+			var donnees = new FormData(form);
+			donnees.set('action', 'apercu');
+			etat.textContent = 'mise à jour…';
+			fetch(form.action, {method: 'POST', body: donnees, credentials: 'same-origin'}).then(function () {
+				cadre.src = cadre.src.split('?')[0] + '?t=' + Date.now();
+				etat.textContent = 'à jour';
+			}).catch(function () { etat.textContent = 'hors ligne'; });
+		}
+		form.querySelectorAll('[data-apercu]').forEach(function (c) {
+			c.addEventListener(c.tagName === 'TEXTAREA' ? 'input' : 'change', function () { clearTimeout(minuterie); minuterie = setTimeout(rafraichir, c.tagName === 'TEXTAREA' ? 900 : 100); });
+		});
+	}());
+	</script>
+{% endblock %}

@@ -1,0 +1,422 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Réglages › Site vitrine : contenu du site public, saisi à l'atelier
+	et descendu au site par la synchronisation (SiteContenuController).
+#}
+
+{% block title %}Site vitrine{% endblock %}
+
+{% block stylesheets %}
+	<link href="{{ asset('css/reglages-site.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_site_accueil') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener">Voir le site</a>
+	</li>
+	{% if not ferme and onglet in ['realisations', 'avis', 'conseils', 'partenaires', 'annonces', 'equipe', 'actions'] %}
+		<li class="nav-item">
+			<a href="{{ path('app_site_contenu_nouveau', {type: onglet}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>{{ onglets[onglet].nouveau }}</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% macro etat(publie, libelleOui = 'Publié', libelleNon = 'Brouillon') %}
+	<span class="si-pastille {{ publie ? 'si-pastille-vert' : 'si-pastille-gris' }}">{{ publie ? libelleOui : libelleNon }}</span>
+{% endmacro %}
+
+{% macro vignette(image, fond = '') %}
+	{% set fichier = site_image(image, 'petite') %}
+	{% if fichier %}
+		<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-vignette {{ fond }}" loading="lazy">
+	{% else %}
+		<span class="si-sv-vignette si-sv-vignette-vide {{ fond }}" aria-hidden="true"><i class="far fa-image"></i></span>
+	{% endif %}
+{% endmacro %}
+
+{% block body %}
+	<div class="si-sv">
+		{% if ferme %}
+			<div class="card si-bloc si-sv-ferme">
+				<i class="fas fa-lock" aria-hidden="true"></i>
+				<div>
+					<h2>Le contenu du site se modifie à l'atelier</h2>
+					<p class="mb-0">Pages, réalisations, avis, conseils, partenaires, équipe et annonces se saisissent sur le serveur local de l'atelier, puis descendent au site avec la synchronisation. En ligne, cet écran est fermé.</p>
+				</div>
+			</div>
+		{% else %}
+			<p class="si-sv-intro">
+				Ce que vous enregistrez ici part sur le site à la prochaine synchronisation.
+				<strong>Noms de clients, avis, logos, photos et noms de l'équipe : seulement avec l'accord de la personne.</strong>
+			</p>
+
+			<nav class="si-sv-onglets" aria-label="Contenu du site">
+				{% for cle, o in onglets %}
+					<a href="{{ path('app_site_contenu_index', {onglet: cle}) }}" class="{{ cle == onglet ? 'active' }}" {{ cle == onglet ? 'aria-current="page"' }}>
+						{{- o.libelle -}}
+						{% if cle == onglet and cle not in ['pages', 'chiffres', 'referencement', 'soutien'] %} <small>{{ elements|length }}</small>{% endif %}
+					</a>
+				{% endfor %}
+			</nav>
+
+			<section class="card si-bloc si-sv-carte">
+				{% if onglet == 'pages' %}
+					<p class="si-sv-aide">Une page non publiée n'est pas montrée sur le site (le lien mène à une page « introuvable »). Le texte s'écrit en Markdown simplifié, expliqué dans chaque fiche.</p>
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead>
+								<tr><th>Page</th><th class="si-masque-mobile">Adresse</th><th>État</th><th class="si-masque-mobile">Modifiée le</th><th class="text-end"></th></tr>
+							</thead>
+							<tbody>
+								{% for p in elements %}
+									<tr class="{{ p.page is null ? 'si-ligne-eteinte' }}">
+										<td><strong>{{ p.page ? p.page.titre : p.libelle }}</strong><small class="d-block text-muted">Maquette {{ p.maquette }}</small></td>
+										<td class="si-masque-mobile"><code>{{ path(p.route) }}</code></td>
+										<td>{% if p.page %}{{ _self.etat(p.page.publie, 'Publiée') }}{% else %}<span class="si-pastille si-pastille-orange">À écrire</span>{% endif %}</td>
+										<td class="si-masque-mobile text-nowrap">{{ p.page ? p.page.modifieLe|date('d/m/Y') : '—' }}</td>
+										<td class="text-end text-nowrap">
+											{% if p.page and p.page.publie %}<a href="{{ path(p.route) }}" class="btn btn-sm si-btn-discret si-masque-mobile" target="_blank" rel="noopener">Voir</a>{% endif %}
+											{% if p.page %}
+												<a href="{{ path('app_site_contenu_fiche', {type: 'pages', id: p.page.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a>
+											{% else %}
+												<a href="{{ path('app_site_contenu_nouveau', {type: 'pages', page: p.slug}) }}" class="btn btn-sm si-btn-discret">Écrire</a>
+											{% endif %}
+										</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+				{% elseif onglet == 'realisations' %}
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucune réalisation. Ajoutez une photo d'un travail livré : la page Réalisations du site se remplit au fur et à mesure.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th></th><th>Réalisation</th><th class="si-masque-mobile">Client</th><th class="si-masque-mobile">Date</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for r in elements %}
+										<tr>
+											<td class="si-sv-col-vignette">{{ _self.vignette(r.imagePrincipale) }}</td>
+											<td>
+												<strong>{{ r.titre }}</strong>
+												<small class="d-block text-muted">{{ r.categorie ? r.categorie.nom : 'Sans catégorie' }} · {{ r.images|length }} photo{{ r.images|length > 1 ? 's' }}</small>
+											</td>
+											<td class="si-masque-mobile">
+												{% if r.nomClient is null %}
+													<span class="text-muted">—</span>
+												{% elseif r.accordClient %}
+													{{ r.nomClient }} <span class="si-pastille si-pastille-vert">accord</span>
+												{% else %}
+													{{ r.nomClient }} <span class="si-pastille si-pastille-gris" title="Le nom ne quitte pas l'atelier sans l'accord du client">non affiché</span>
+												{% endif %}
+											</td>
+											<td class="si-masque-mobile text-nowrap">{{ r.dateRealisation|date('d/m/Y') }}</td>
+											<td>{{ _self.etat(r.publie, 'Publiée') }}</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'realisations', id: r.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'avis' %}
+					<p class="si-sv-aide">Recopiez un avis reçu à l'imprimerie, sur WhatsApp ou sur la fiche Google. Il n'est montré qu'avec l'accord du client ; sans accord, ni son texte ni son nom ne quittent l'atelier.</p>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucun avis pour le moment.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th>Avis</th><th class="si-masque-mobile">Note</th><th class="si-masque-mobile">Source</th><th>Accord</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for a in elements %}
+										<tr>
+											<td><strong>{{ a.nomAffiche }}</strong><small class="d-block text-muted si-sv-extrait">« {{ a.texte }} »</small></td>
+											<td class="si-masque-mobile text-nowrap si-sv-etoiles" aria-label="{{ a.note }} sur 5">{{ '★★★★★'|slice(0, a.note) }}<span>{{ '★★★★★'|slice(a.note) }}</span></td>
+											<td class="si-masque-mobile">{{ a.source ?? '—' }}</td>
+											<td><span class="si-pastille {{ a.accordClient ? 'si-pastille-vert' : 'si-pastille-orange' }}">{{ a.accordClient ? 'Oui' : 'À obtenir' }}</span></td>
+											<td>{{ _self.etat(a.estVisible) }}</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'avis', id: a.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'conseils' %}
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucun conseil. Un article court (choisir sa bâche, préparer son fichier…) aide les clients et le référencement du site.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th></th><th>Conseil</th><th class="si-masque-mobile">Publication</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for c in elements %}
+										<tr>
+											<td class="si-sv-col-vignette">{{ _self.vignette(c.image) }}</td>
+											<td><strong>{{ c.titre }}</strong><small class="d-block text-muted">{{ c.rubrique ?? 'Sans rubrique' }} · /conseils/{{ c.slug }}</small></td>
+											<td class="si-masque-mobile text-nowrap">{{ c.publieLe|date('d/m/Y') }}</td>
+											<td>
+												{% if c.publie and c.publieLe > maintenant %}
+													<span class="si-pastille si-pastille-bleu">Programmé</span>
+												{% else %}
+													{{ _self.etat(c.publie) }}
+												{% endif %}
+											</td>
+											<td class="text-end text-nowrap">
+												{% if c.estVisible(maintenant) %}<a href="{{ path('app_site_conseil', {slug: c.slug}) }}" class="btn btn-sm si-btn-discret si-masque-mobile" target="_blank" rel="noopener">Voir</a>{% endif %}
+												<a href="{{ path('app_site_contenu_fiche', {type: 'conseils', id: c.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a>
+											</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'partenaires' %}
+					<p class="si-sv-aide">Bande « Ils nous font confiance » de l'accueil et de la page À propos. Un logo n'est montré qu'une fois « accord obtenu » coché ; sans partenaire visible, la bande n'apparaît pas.</p>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucun partenaire.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th></th><th>Partenaire</th><th class="si-masque-mobile">Ordre</th><th>Accord</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for p in elements %}
+										<tr>
+											<td class="si-sv-col-vignette">{{ _self.vignette(p.logo, 'si-sv-vignette-logo') }}</td>
+											<td><strong>{{ p.nom }}</strong>{% if p.lien %}<small class="d-block text-muted si-sv-extrait">{{ p.lien }}</small>{% endif %}</td>
+											<td class="si-masque-mobile">{{ p.ordre }}</td>
+											<td><span class="si-pastille {{ p.accordObtenu ? 'si-pastille-vert' : 'si-pastille-orange' }}">{{ p.accordObtenu ? 'Obtenu' : 'À obtenir' }}</span></td>
+											<td>{{ _self.etat(p.estVisible, 'Visible', 'Masqué') }}</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'partenaires', id: p.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'annonces' %}
+					<p class="si-sv-aide">Une phrase courte en haut du site public, de l'espace client, ou des deux : fermeture exceptionnelle, promotion du mois, retard… Montrée pendant sa période, dates comprises. Plusieurs annonces actives défilent l'une après l'autre ; le visiteur peut les fermer pour sa visite.</p>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Aucune annonce.</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th>Annonce</th><th class="si-masque-mobile">Où</th><th class="si-masque-mobile">Période</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for a in elements %}
+										{% set etat = a.etat(maintenant) %}
+										<tr>
+											<td>
+												<span class="si-sv-annonce-style si-sv-annonce-{{ a.style }}" aria-hidden="true"></span>
+												<strong>{{ a.texte }}</strong>
+												<small class="d-block text-muted">{{ a.styleLibelle }}{% if a.lien %} · lien {{ a.lien }}{% endif %}<span class="d-md-none"> · {{ a.cibleLibelle|lower }}</span></small>
+											</td>
+											<td class="si-masque-mobile">{{ a.cibleLibelle }}</td>
+											<td class="si-masque-mobile text-nowrap">
+												{%- if a.debut and a.fin -%}du {{ a.debut|date('d/m') }} au {{ a.fin|date('d/m/Y') }}
+												{%- elseif a.debut -%}à partir du {{ a.debut|date('d/m/Y') }}
+												{%- elseif a.fin -%}jusqu'au {{ a.fin|date('d/m/Y') }}
+												{%- else -%}sans date{%- endif -%}
+											</td>
+											<td>
+												{% if etat == 'active' %}<span class="si-pastille si-pastille-vert">Affichée</span>
+												{% elseif etat == 'programmee' %}<span class="si-pastille si-pastille-bleu">Programmée</span>
+												{% elseif etat == 'terminee' %}<span class="si-pastille si-pastille-gris">Terminée</span>
+												{% else %}<span class="si-pastille si-pastille-gris">Inactive</span>{% endif %}
+											</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'annonces', id: a.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'equipe' %}
+					<p class="si-sv-aide">Section « Notre équipe » de la page « Qui sommes-nous ? » : photo, nom et poste. Une personne n'apparaît que si « Visible » est coché <strong>et</strong> qu'elle a accepté que sa photo et son nom paraissent sur le site. Tant que personne n'est affiché, la page garde ses cartes Direction, Atelier, PAO.</p>
+					{# Le mot du gérant : la personne cochée « Gérant », avant l'équipe sur la page. #}
+					{% set gerant = elements|filter(m => m.gerant)|first %}
+					<div class="si-sv-gerant {{ gerant and gerant.estMotVisible ? 'si-sv-gerant-ok' }}">
+						{% if gerant %}
+							{% set fichier = site_image(gerant.photo, 'petite') %}
+							{% if fichier %}
+								<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-vignette si-sv-vignette-rond" loading="lazy">
+							{% else %}
+								<span class="si-sv-vignette si-sv-vignette-rond si-sv-initiales" aria-hidden="true">{{ gerant.initiales }}</span>
+							{% endif %}
+							<div class="si-sv-gerant-texte">
+								<strong>{{ gerant.titreMot }}</strong> · {{ gerant.nom }}{{ gerant.poste ? ', ' ~ gerant.poste }}
+								{% if gerant.estMotVisible %}
+									<small class="d-block">{{ _self.etat(true, 'Sur le site') }} en haut de « Qui sommes-nous ? », avant l'équipe ; {{ gerant.aussiDansEquipe ? 'montré aussi dans « Notre équipe »' : 'pas répété dans « Notre équipe »' }}.</small>
+									<q class="si-sv-gerant-extrait">{{ gerant.motGerant|length > 160 ? gerant.motGerant|slice(0, 160)|trim ~ '…' : gerant.motGerant }}</q>
+								{% else %}
+									<small class="d-block">{{ _self.etat(false, '', 'Caché') }} il manque {{ gerant.manquesDuMot|join(', ', ' et ') }}.</small>
+								{% endif %}
+							</div>
+							<a href="{{ path('app_site_contenu_fiche', {type: 'equipe', id: gerant.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a>
+						{% else %}
+							<span class="si-sv-gerant-icone" aria-hidden="true"><i class="fas fa-quote-left"></i></span>
+							<div class="si-sv-gerant-texte">
+								<strong>Le mot du gérant</strong>
+								<small class="d-block">Quelques phrases du gérant, avec sa photo, son nom et son poste, en haut de « Qui sommes-nous ? », avant l'équipe. Caché tant que la photo et le texte ne sont pas remplis, et sans son accord. Déjà dans la liste ? Ouvrez sa fiche et cochez « Gérant ».</small>
+							</div>
+							<a href="{{ path('app_site_contenu_nouveau', {type: 'equipe', gerant: 1}) }}" class="btn btn-sm btn-outline-primary">Rédiger le mot du gérant</a>
+						{% endif %}
+					</div>
+					{% if elements is empty %}
+						<p class="si-sv-vide">Personne pour le moment. Demandez d'abord à chacun s'il accepte de paraître sur le site, avec quelle photo et sous quel nom (un prénom suffit).</p>
+					{% else %}
+						<div class="table-responsive">
+							<table class="table si-table align-middle mb-0">
+								<thead>
+									<tr><th></th><th>Personne</th><th class="si-masque-mobile">Ordre</th><th>Accord</th><th>État</th><th class="text-end"></th></tr>
+								</thead>
+								<tbody>
+									{% for m in elements %}
+										{% set fichier = site_image(m.photo, 'petite') %}
+										<tr>
+											<td class="si-sv-col-vignette">
+												{% if fichier %}
+													<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" class="si-sv-vignette si-sv-vignette-rond" loading="lazy">
+												{% else %}
+													<span class="si-sv-vignette si-sv-vignette-rond si-sv-initiales" aria-hidden="true">{{ m.initiales }}</span>
+												{% endif %}
+											</td>
+											<td><strong>{{ m.nom }}</strong>{% if m.gerant %} <span class="si-pastille si-pastille-bleu">{{ 'gérante' in m.poste|lower ? 'Gérante' : 'Gérant' }}</span>{% endif %}<small class="d-block text-muted">{{ m.poste }}{{ m.photo ? '' : ' · sans photo' }}</small></td>
+											<td class="si-masque-mobile">{{ m.ordre }}</td>
+											<td><span class="si-pastille {{ m.accordPersonne ? 'si-pastille-vert' : 'si-pastille-orange' }}">{{ m.accordPersonne ? 'Donné' : 'À obtenir' }}</span></td>
+											<td>{{ _self.etat(m.estVisible, 'Visible', 'Masquée') }}</td>
+											<td class="text-end"><a href="{{ path('app_site_contenu_fiche', {type: 'equipe', id: m.id}) }}" class="btn btn-sm si-btn-discret">Modifier</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					{% endif %}
+
+				{% elseif onglet == 'actions' %}
+					{{ include('site_contenu/_onglet_actions.html.twig') }}
+
+				{% elseif onglet == 'soutien' %}
+					{{ include('site_contenu/_onglet_soutien.html.twig') }}
+
+				{% elseif onglet == 'chiffres' %}
+					<div class="row g-4">
+						<div class="col-lg-6">
+							<form method="post" action="{{ path('app_site_contenu_chiffres') }}" class="si-sv-chiffres-form">
+								<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-chiffres') }}">
+								<div class="si-sv-ligne-interrupteur">
+									<label class="si-interrupteur">
+										<input type="checkbox" name="afficher" value="1" {{ reglagesChiffres.afficher ? 'checked' }} aria-describedby="aide-afficher">
+										<span></span>
+									</label>
+									<div>
+										<strong>Montrer les chiffres sur le site</strong>
+										<small id="aide-afficher" class="d-block text-muted">Accueil et page À propos : des volumes seulement, jamais un montant ni un nom.</small>
+									</div>
+								</div>
+								<label class="si-libelle-champ mt-3" for="chiffres-projets">« Projets réalisés » compte</label>
+								<select name="projets" id="chiffres-projets" class="form-select form-select-sm">
+									{% for cle, libelle in constant('App\\Service\\Site\\ChiffresSite::REGLES') %}
+										<option value="{{ cle }}" {{ reglagesChiffres.projets == cle ? 'selected' }}>{{ libelle }}</option>
+									{% endfor %}
+								</select>
+								<label class="si-libelle-champ mt-3" for="chiffres-seuil">Ne pas montrer un chiffre plus petit que</label>
+								<input type="number" name="seuil" id="chiffres-seuil" value="{{ reglagesChiffres.seuil }}" min="1" max="1000000" class="form-control form-control-sm si-sv-seuil">
+								<div class="form-text">Un « 3 clients servis » fait plus de tort que de bien : réglez un seuil, la bande se cache sous ce nombre.</div>
+								<button type="submit" class="btn btn-danger btn-sm mt-3">Enregistrer</button>
+							</form>
+						</div>
+						<div class="col-lg-6">
+							<h2 class="si-sv-sous-titre">Ce que le site afficherait aujourd'hui</h2>
+							<ul class="si-sv-chiffres">
+								{% for cle, libelle in constant('App\\Service\\Site\\ChiffresSite::LIBELLES') %}
+									{% set valeur = valeursChiffres[cle] ?? 0 %}
+									{% set montre = reglagesChiffres.afficher and valeur > 0 and valeur >= reglagesChiffres.seuil %}
+									<li class="{{ not montre ? 'si-sv-chiffre-masque' }}">
+										<strong>{{ valeur|number_format(0, ',', ' ') }}</strong>
+										<span>{{ libelle }}</span>
+										{% if not montre %}<small>non affiché</small>{% endif %}
+									</li>
+								{% endfor %}
+							</ul>
+							<p class="form-text mb-0">Calculés sur les commandes livrées (comme l'écran TV) et gardés une heure par le serveur qui affiche la page.</p>
+						</div>
+					</div>
+
+				{% elseif onglet == 'referencement' %}
+					{% set r = referencement.reglages %}
+					<div class="row g-4">
+						<div class="col-lg-6">
+							<form method="post" action="{{ path('app_site_contenu_referencement') }}" class="si-sv-referencement-form">
+								<input type="hidden" name="_token" value="{{ csrf_token('site-contenu-referencement') }}">
+								<h2 class="si-sv-sous-titre">Moteurs de recherche</h2>
+								<label class="si-libelle-champ" for="ref-google">Code de vérification Google Search Console</label>
+								<input type="text" name="google" id="ref-google" value="{{ r.google }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-google">
+								<div id="aide-ref-google" class="form-text">Search Console › Ajouter une propriété › « Préfixe de l'URL » › Balise HTML : collez la balise entière ou seulement le code. Ce n'est pas un secret.</div>
+								<label class="si-libelle-champ mt-3" for="ref-bing">Code de vérification Bing (facultatif)</label>
+								<input type="text" name="bing" id="ref-bing" value="{{ r.bing }}" maxlength="300" class="form-control form-control-sm" autocomplete="off" spellcheck="false" aria-describedby="aide-ref-bing">
+								<div id="aide-ref-bing" class="form-text">Bing Webmaster Tools › Balise meta (msvalidate.01). Bing peut aussi reprendre la propriété Google.</div>
+
+								<h2 class="si-sv-sous-titre mt-4">Mesure d'audience</h2>
+								<label class="si-libelle-champ" for="ref-mesure">Identifiant de mesure Google Analytics</label>
+								<input type="text" name="mesure" id="ref-mesure" value="{{ r.mesure }}" maxlength="600" class="form-control form-control-sm" autocomplete="off" spellcheck="false" placeholder="G-XXXXXXXXXX" aria-describedby="aide-ref-mesure">
+								<div id="aide-ref-mesure" class="form-text">Analytics › Administration › Flux de données › le site : identifiant « G-… », ou la balise Google (gtag.js) entière. Laissez vide pour couper la mesure. Elle passe seulement sur les pages publiques du site en ligne, pour les visiteurs : jamais dans l'espace client, l'administration, les pages de connexion ni les liens à code (factures, sondages, paiements). Aucune donnée de client n'est envoyée.</div>
+
+								<h2 class="si-sv-sous-titre mt-4">Fiche Google</h2>
+								<label class="si-libelle-champ" for="ref-fiche">Lien de la fiche Google (Google Business Profile)</label>
+								<input type="url" name="fiche_google" id="ref-fiche" value="{{ r.fiche_google }}" maxlength="500" class="form-control form-control-sm" placeholder="https://maps.app.goo.gl/…" aria-describedby="aide-ref-fiche">
+								<div id="aide-ref-fiche" class="form-text">Sur la fiche, bouton « Partager » › copier le lien. Il apparaît sur la page Contact (« Voir notre fiche Google ») et dans les données pour Google.</div>
+
+								<h2 class="si-sv-sous-titre mt-4" id="reseaux-sociaux">Réseaux sociaux</h2>
+								<p class="form-text mt-0">Collez l'adresse de chaque page de l'imprimerie. Un champ vide n'est pas affiché. Les pages réglées apparaissent en icônes dans le pied de page du site, sur la page Contact et dans l'espace client (bas du menu, bas de page sur téléphone), s'ouvrent dans un nouvel onglet, et sont reliées à la fiche de l'imprimerie pour Google (sauf WhatsApp).</p>
+								{% for cle, reseau in constant('App\\Service\\Site\\ReferencementSite::RESEAUX') %}
+									<label class="si-libelle-champ mt-3" for="ref-{{ cle }}">{{ cle == 'whatsapp' ? 'WhatsApp (numéro, lien wa.me ou chaîne)' : 'Page ' ~ reseau.libelle }}</label>
+									<input type="{{ cle == 'whatsapp' ? 'text' : 'url' }}" name="{{ cle }}" id="ref-{{ cle }}" value="{{ r[cle] }}" maxlength="500" class="form-control form-control-sm" placeholder="{{ cle == 'whatsapp' ? 'https://wa.me/223… ou +223 …' : 'https://www.' ~ reseau.domaines|first ~ '/…' }}"{% if r[cle] %} aria-describedby="voir-ref-{{ cle }}"{% endif %}>
+									{% if r[cle] %}<div id="voir-ref-{{ cle }}" class="form-text"><a href="{{ r[cle] }}" target="_blank" rel="noopener">Vérifier le lien</a></div>{% endif %}
+								{% endfor %}
+								<button type="submit" class="btn btn-danger btn-sm mt-3">Enregistrer</button>
+							</form>
+						</div>
+						<div class="col-lg-6">
+							<h2 class="si-sv-sous-titre">Adresses à donner à Google</h2>
+							<dl class="si-sv-adresses">
+								<dt>Site</dt><dd><code>{{ referencement.adresse }}/</code></dd>
+								<dt>Plan du site</dt><dd><code>{{ referencement.adresse }}/sitemap.xml</code></dd>
+								<dt>Consignes aux robots</dt><dd><code>{{ referencement.adresse }}/robots.txt</code></dd>
+							</dl>
+							<p class="form-text">Adresse prise dans Réglages › Entités et en-têtes › Succès Imprim, champ « Site ». Les adresses canoniques des pages, le plan du site et les images de partage l'utilisent, jamais l'adresse de ce serveur.</p>
+							<h2 class="si-sv-sous-titre mt-4">Ce qui manque encore pour Google</h2>
+							{% if referencement.manques is empty %}
+								<p class="mb-0"><span class="si-pastille si-pastille-vert">Complet</span> Tout ce que le site peut dire de l'imprimerie est renseigné.</p>
+							{% else %}
+								<ul class="si-sv-manques">
+									{% for manque in referencement.manques %}<li>{{ manque }}</li>{% endfor %}
+								</ul>
+							{% endif %}
+							<p class="form-text mb-0">Rien n'est inventé : un renseignement absent n'est pas donné à Google. Règles pour une nouvelle page : docs/referencement.md.</p>
+						</div>
+					</div>
+				{% endif %}
+			</section>
+		{% endif %}
+	</div>
+{% endblock %}

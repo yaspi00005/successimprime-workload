@@ -1,0 +1,134 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Livraisons (maquette DB08) : en route maintenant (carte, livreur, code de
+	réception), à programmer (retrait ou livraison), programmées, puis les
+	livrées avec leur preuve et les commandes retirées à l'imprimerie.
+	page : LivraisonsClient::page.
+#}
+{% set lecture = app.user.estLectureSeule() %}
+{% block title %}Livraisons{% endblock %}
+{% block page_classe %} ec-page-large cd-page db-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+	<link href="{{ asset('vendor/leaflet/leaflet.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Livraisons</a>{% endblock %}
+
+{% block contenu %}
+	<div class="cd-tete">
+		<h1 class="ec-bureau">Livraisons</h1>
+		<a class="ec-bouton-blanc" href="{{ path('app_espace_adresses') }}">📍 Mes adresses</a>
+	</div>
+
+	{% if page.route is empty and page.aProgrammer is empty and page.programmees is empty and page.livrees is empty and page.retirees is empty %}
+		<div class="ec-carte ec-vide">Aucune livraison pour le moment. Vos commandes à livrer apparaissent ici : vous choisissez le jour et l'heure, puis vous suivez le livreur.</div>
+	{% endif %}
+
+	{% if page.route is not empty or page.aProgrammer is not empty or page.programmees is not empty %}
+		<div class="db-lv-haut">
+			{% for r in page.route %}
+				{% set b = r.bon %}
+				<section class="ec-carte db-lv-route">
+					<div class="db-lv-route-tete">
+						<h2><span class="db-point-vert" aria-hidden="true"></span>En route maintenant</h2>
+						{% if r.eta.heure %}<span class="db-lv-eta">arrivée vers {{ r.eta.heure|date('H:i') }} · {{ r.eta.minutes }} min</span>{% elseif b.creneau %}<span class="db-lv-eta">créneau {{ b.creneau }}</span>{% endif %}
+					</div>
+					<div class="db-lv-route-corps">
+						<div class="db-lv-mini-carte" data-carte data-livreur="{{ r.eta.livreur|json_encode|e('html_attr') }}" data-destination="{{ r.eta.destination|json_encode|e('html_attr') }}" aria-label="Carte du livreur">
+							<span class="db-lv-carte-vide">🛵 Position du livreur dès qu'il la partage</span>
+						</div>
+						<div>
+							<b>{{ r.titre }}</b>
+							<small class="db-lv-gris">{{ r.commande.numero }}{{ b.adresseLivraison ? ' · ' ~ b.adresseLivraison }}</small>
+							{% if b.livreurNom %}<p class="db-lv-livreur"><span class="ec-avatar" aria-hidden="true">{{ b.livreurNom|slice(0, 1)|upper }}</span><span><b>{{ b.livreurNom }}</b><small>votre livreur</small></span></p>{% endif %}
+							{% if b.codeReception %}<p class="db-lv-code">Code de réception : <b>{{ b.codeReception|split('')|join(' ') }}</b><small>à donner à {{ b.livreurNom ?: 'votre livreur' }} à la remise</small></p>{% endif %}
+							<a class="ec-bouton bleu" href="{{ path('app_espace_livraison', {id: b.publicId}) }}">Suivre en direct</a>
+						</div>
+					</div>
+				</section>
+			{% endfor %}
+
+			{% for p in page.aProgrammer|slice(0, 3) %}
+				{% set c = p.commande %}
+				<section class="ec-carte db-lv-programmer" data-lv-choix>
+					<h2>À programmer</h2>
+					<div class="db-lv-cmd">
+						<span class="db-lv-vignette" aria-hidden="true">{{ p.titre|slice(0, 3)|upper }}</span>
+						<p><b>{{ p.titre }}</b><small>{{ c.numero }}{{ p.pret ? ' · prête ' ~ jour_court(p.pret) }}</small></p>
+					</div>
+					{% if lecture %}
+						<p class="ec-petit">Une personne de votre entreprise choisit le jour et l'heure.</p>
+					{% else %}
+						<p class="db-lv-question">Comment voulez-vous la recevoir ?</p>
+						<form method="post" action="{{ path('app_espace_livraison_programmer', {id: c.publicId}) }}" class="db-lv-modes">
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+							<label class="db-mode"><input type="radio" name="mode" value="retrait" data-lv-mode><span><b>🏪 Retrait</b><small>à l'imprimerie · gratuit</small></span></label>
+							<label class="db-mode"><input type="radio" name="mode" value="livraison" data-lv-mode checked><span><b>🛵 Livraison</b><small>Bamako{{ frais > 0 and espace_coque().montants ? ' · ' ~ frais|number_format(0, ',', ' ') ~ ' F' }}</small></span></label>
+							<a class="ec-bouton orange" href="{{ path('app_espace_livraison_programmer', {id: c.publicId}) }}" data-lv-livraison>Choisir le jour et l'heure</a>
+							<button type="submit" class="ec-bouton bleu" data-lv-retrait hidden>Je viendrai la chercher</button>
+						</form>
+					{% endif %}
+				</section>
+			{% endfor %}
+
+			{% if page.programmees is not empty %}
+				<section class="ec-carte db-lv-prevues">
+					<h2>Programmées</h2>
+					<ul class="ec-liste">
+						{% for p in page.programmees %}
+							<li class="ec-ligne">
+								<span><b>{{ p.titre }}</b><small class="db-lv-gris">{{ p.commande.numero }} · {{ p.quand ?: 'date à confirmer par l\'imprimerie' }}{{ p.bon and p.bon.echecEnCours ? ' · reportée' }}</small></span>
+								{% if p.bon %}<a class="ec-lien" href="{{ path('app_espace_livraison', {id: p.bon.publicId}) }}">Voir</a>{% endif %}
+								{% if not lecture %}<a class="ec-lien" href="{{ path('app_espace_livraison_programmer', {id: p.commande.publicId}) }}">Changer</a>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				</section>
+			{% endif %}
+		</div>
+	{% endif %}
+
+	{% if page.livrees is not empty or page.retirees is not empty %}
+		<section class="ec-carte db-lv-historique">
+			<nav class="cd-onglets db-onglets" aria-label="Historique">
+				<a class="cd-onglet{{ vue == 'livrees' ? ' actif' }}" href="{{ path('app_espace_livraisons') }}">Livrées · {{ page.livrees|length }}</a>
+				<a class="cd-onglet{{ vue == 'retirees' ? ' actif' }}" href="{{ path('app_espace_livraisons', {vue: 'retirees'}) }}">Retirées · {{ page.retirees|length }}</a>
+			</nav>
+			{% if vue == 'livrees' %}
+				<table class="db-table">
+					<thead><tr><th>Commande</th><th class="ec-bureau">Adresse</th><th>Livrée le</th><th class="ec-bureau">Remise à</th><th>Preuve</th><th><span class="cd-masque">Voir</span></th></tr></thead>
+					<tbody>
+						{% for l in page.livrees|slice(0, 40) %}
+							{% set b = l.bon %}
+							<tr>
+								<td><b>{{ l.titre }}</b><small class="db-lv-gris db-bloc">{{ l.commande.numero }}</small></td>
+								<td class="ec-bureau db-lv-gris">{{ b.adresseLivraison ?: '—' }}</td>
+								<td>{{ b.livreLe ? b.livreLe|date('d/m · H:i') }}</td>
+								<td class="ec-bureau">{{ b.signataire ?: b.nomReceptionnaire ?: '—' }}<small class="db-lv-gris">{{ b.codeVerifieLe ? ' · code ✓' : (b.signataire ? ' · signature' : '') }}</small></td>
+								<td>{% if b.photoClient or b.codeVerifieLe %}<span class="db-badge vert">{{ b.photoClient ? '📷 photo' }}{{ b.photoClient and b.codeVerifieLe ? ' + ' }}{{ b.codeVerifieLe ? 'code' }}</span>{% else %}<span class="db-badge gris">signature</span>{% endif %}</td>
+								<td><a class="ec-lien" href="{{ path('app_espace_livraison', {id: b.publicId}) }}">Voir</a></td>
+							</tr>
+						{% else %}
+							<tr><td colspan="6" class="ec-petit">Aucune livraison terminée.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% else %}
+				<ul class="ec-liste">
+					{% for r in page.retirees|slice(0, 40) %}
+						<li class="ec-ligne"><a href="{{ path('app_espace_commande', {id: r.commande.publicId}) }}" style="color:inherit"><b>{{ r.titre }}</b><small class="db-lv-gris db-bloc">{{ r.commande.numero }}</small></a><span class="db-badge vert">Retirée</span></li>
+					{% else %}
+						<li class="ec-petit">Aucune commande retirée à l'imprimerie.</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+		</section>
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('vendor/leaflet/leaflet.js') }}" defer></script>
+	<script src="{{ asset('js/espace-livraison.js') }}" defer></script>
+{% endblock %}

@@ -2,9 +2,11 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\MouvementTresorerieRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
+use Doctrine\ORM\QueryBuilder;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
@@ -39,8 +41,10 @@ use Symfony\Component\Validator\Context\ExecutionContextInterface;
     columns: ['confidentiel']
 )]
 #[ORM\HasLifecycleCallbacks]
-class MouvementTresorerie
+class MouvementTresorerie implements AppartientASociete
 {
+    use SocieteTrait;
+
     /*
      * ============================================================
      * TYPES DE MOUVEMENT
@@ -101,6 +105,9 @@ class MouvementTresorerie
      *
      * transfert_interne
      * ajustement
+     * frais_orange (fonds de soutien et frais de retrait payés par le
+     *   client sur un compte Orange Money : ils traversent le compte et
+     *   Orange les débite quand l'argent en sort ; ni produit ni charge)
      * ============================================================
      */
 
@@ -146,6 +153,25 @@ class MouvementTresorerie
     public const CATEGORIE_REMBOURSEMENT_CREDIT =
         'remboursement_credit';
 
+    /*
+     * Frais Orange Money à prélever : compte de passage. Entrée à la
+     * réception d'un paiement Orange Money (frais payés par le client),
+     * sortie quand Orange les débite au retrait, au chèque ou au
+     * transfert. docs/finances.md.
+     */
+    public const CATEGORIE_FRAIS_ORANGE =
+        'frais_orange';
+
+    /*
+     * Argent laissé par un client sur son compte à l'imprimerie
+     * (monnaie gardée, dépôt) et rendu plus tard : une avance du
+     * client (compte 4191), ni vente ni produit. Il entre bien dans
+     * la caisse : compté dans les encaissements, jamais dans le
+     * chiffre d'affaires. docs/finances.md, « Compte du client ».
+     */
+    public const CATEGORIE_AVANCE_CLIENT =
+        'avance_client';
+
 
     public const CATEGORIES = [
         self::CATEGORIE_VENTE,
@@ -162,6 +188,29 @@ class MouvementTresorerie
         self::CATEGORIE_AJUSTEMENT,
         self::CATEGORIE_FRAIS_BANCAIRE,
         self::CATEGORIE_REMBOURSEMENT_CREDIT,
+        self::CATEGORIE_FRAIS_ORANGE,
+        self::CATEGORIE_AVANCE_CLIENT,
+    ];
+
+
+    /*
+     * Catégories sans effet sur le résultat : jamais produit ni charge.
+     */
+    public const CATEGORIES_NEUTRES = [
+        self::CATEGORIE_TRANSFERT_INTERNE,
+        self::CATEGORIE_AJUSTEMENT,
+        self::CATEGORIE_FRAIS_ORANGE,
+        self::CATEGORIE_AVANCE_CLIENT,
+    ];
+
+
+    /*
+     * Argent qui ne fait que traverser un compte : hors encaissements,
+     * décaissements, chiffre d'affaires et dépenses des tableaux de
+     * bord et statistiques (les soldes, eux, en tiennent compte).
+     */
+    public const CATEGORIES_HORS_ACTIVITE = [
+        self::CATEGORIE_FRAIS_ORANGE,
     ];
 
 
@@ -208,6 +257,12 @@ class MouvementTresorerie
 
         self::CATEGORIE_REMBOURSEMENT_CREDIT =>
             'Remboursement de crédit',
+
+        self::CATEGORIE_FRAIS_ORANGE =>
+            'Frais Orange Money à prélever',
+
+        self::CATEGORIE_AVANCE_CLIENT =>
+            'Avance client (argent laissé sur son compte)',
     ];
 
 
@@ -1022,10 +1077,7 @@ class MouvementTresorerie
         if (
             in_array(
                 $categorie,
-                [
-                    self::CATEGORIE_TRANSFERT_INTERNE,
-                    self::CATEGORIE_AJUSTEMENT,
-                ],
+                self::CATEGORIES_NEUTRES,
                 true
             )
         ) {
@@ -1064,10 +1116,23 @@ class MouvementTresorerie
     }
 
 
+    /*
+     * Les frais Orange Money à prélever ne se choisissent pas à la
+     * main : l'application les pose à la réception d'un paiement et à
+     * la sortie d'argent d'un compte Orange Money. Les avances des
+     * clients non plus : elles passent par le compte du client (fiche
+     * client, caisse), qui tient son solde.
+     */
     public static function getCategoriesPourFormulaire(): array
     {
         return array_flip(
-            self::CATEGORIES_LABELS
+            array_diff_key(
+                self::CATEGORIES_LABELS,
+                [
+                    self::CATEGORIE_FRAIS_ORANGE => true,
+                    self::CATEGORIE_AVANCE_CLIENT => true,
+                ]
+            )
         );
     }
 
@@ -1124,6 +1189,32 @@ class MouvementTresorerie
             self::CATEGORIE_LOYER,
             self::CATEGORIE_AUTRE_CHARGE,
         ];
+    }
+
+
+    /**
+     * Retire d'une requête sur les mouvements (alias $alias) l'argent
+     * qui ne fait que traverser un compte (CATEGORIES_HORS_ACTIVITE) :
+     * pour les encaissements, décaissements, chiffre d'affaires et
+     * dépenses, jamais pour les soldes.
+     */
+    public static function exclureHorsActivite(
+        QueryBuilder $qb,
+        string $alias = 'm'
+    ): QueryBuilder {
+        return $qb
+            ->andWhere(sprintf('%s.categorie NOT IN (:horsActivite)', $alias))
+            ->setParameter('horsActivite', self::CATEGORIES_HORS_ACTIVITE);
+    }
+
+
+    public function estHorsActivite(): bool
+    {
+        return in_array(
+            $this->categorie,
+            self::CATEGORIES_HORS_ACTIVITE,
+            true
+        );
     }
 
 
@@ -1209,10 +1300,7 @@ class MouvementTresorerie
         if (
             in_array(
                 $this->categorie,
-                [
-                    self::CATEGORIE_TRANSFERT_INTERNE,
-                    self::CATEGORIE_AJUSTEMENT,
-                ],
+                self::CATEGORIES_NEUTRES,
                 true
             )
         ) {

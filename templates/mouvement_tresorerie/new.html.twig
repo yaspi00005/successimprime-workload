@@ -16,12 +16,29 @@
 
 
 	{% set peutSaisir =
-		is_granted('ROLE_TRESORERIE_SAISIR')
+		peutSaisir|default(
+			is_granted('ROLE_TRESORERIE_SAISIR')
+		)
 	%}
 
 
 	{% set peutTransferer =
-		is_granted('ROLE_TRESORERIE_TRANSFERER')
+		peutTransferer|default(
+			is_granted('ROLE_TRESORERIE_TRANSFERER')
+		)
+	%}
+
+
+	{# Sans « Trésorerie et soldes » : ni liens vers les comptes et
+	   les mouvements, ni solde ; retour à la caisse ou aux dépenses. #}
+	{% set voirSoldes =
+		voirSoldes|default(
+			is_granted('ROLE_TRESORERIE_VOIR')
+		)
+	%}
+
+	{% set retour =
+		retour|default('app_mouvement_tresorerie_index')
 	%}
 
 
@@ -65,22 +82,36 @@
 				</li>
 
 
-				<li class="breadcrumb-item">
+				{% if voirSoldes %}
 
-					<a href="{{ path( 'app_compte_tresorerie_index' ) }}">
-						Trésorerie
-					</a>
+					<li class="breadcrumb-item">
 
-				</li>
+						<a href="{{ path( 'app_compte_tresorerie_index' ) }}">
+							Trésorerie
+						</a>
+
+					</li>
 
 
-				<li class="breadcrumb-item">
+					<li class="breadcrumb-item">
 
-					<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}">
-						Mouvements
-					</a>
+						<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}">
+							Mouvements
+						</a>
 
-				</li>
+					</li>
+
+				{% else %}
+
+					<li class="breadcrumb-item">
+
+						<a href="{{ path( retour ) }}">
+							{{ retour == 'app_caisse_index' ? 'Caisse' : (retour == 'app_finances_depenses' ? 'Dépenses' : 'Accueil') }}
+						</a>
+
+					</li>
+
+				{% endif %}
 
 
 				<li class="breadcrumb-item active">
@@ -94,11 +125,11 @@
 
 			<div>
 
-				<a href="{{ path( 'app_mouvement_tresorerie_index' ) }}" class="btn btn-secondary">
+				<a href="{{ path( retour ) }}" class="btn btn-secondary">
 
 					<i class="fa fa-arrow-left mr-1"></i>
 
-					Retour aux mouvements
+					{{ voirSoldes ? 'Retour aux mouvements' : 'Retour' }}
 
 				</a>
 
@@ -111,7 +142,7 @@
 				   CONTRÔLE DE PERMISSION
 				   ============================================================ #}
 
-		{% if not peutSaisir %}
+		{% if not peutSaisir and not peutTransferer %}
 
 			<div class="alert alert-danger">
 
@@ -158,42 +189,48 @@
 						<i class="fa fa-info-circle mr-1"></i>
 
 
-						<strong>
-							Encaissement :
-						</strong>
+						{% if peutSaisir %}
 
-						crédite un compte opérationnel.
+							<strong>
+								Encaissement :
+							</strong>
 
-						{% if not estAdmin %}
+							crédite un compte opérationnel.
 
-							<span class="text-muted">
-								Caisse, Orange Money ou Wave.
-							</span>
+							{% if not estAdmin %}
 
-						{% endif %}
+								<span class="text-muted">
+									Caisse, Orange Money ou Wave.
+								</span>
+
+							{% endif %}
 
 
-						<br>
+							<br>
 
 
-						<strong>
-							Décaissement :
-						</strong>
+							<strong>
+								Décaissement :
+							</strong>
 
-						débite un compte opérationnel.
+							débite un compte opérationnel.
 
-						{% if not estAdmin %}
+							{% if not estAdmin %}
 
-							<span class="text-muted">
-								Caisse, Orange Money ou Wave.
-							</span>
+								<span class="text-muted">
+									Caisse, Orange Money ou Wave.
+								</span>
+
+							{% endif %}
 
 						{% endif %}
 
 
 						{% if peutTransferer %}
 
-							<br>
+							{% if peutSaisir %}
+								<br>
+							{% endif %}
 
 
 							<strong>
@@ -237,15 +274,19 @@
 
 							<ul class="mb-0 mt-2">
 
-								<li>
-									Les encaissements peuvent être enregistrés
-																		sur la Caisse, Orange Money ou Wave.
-								</li>
+								{% if peutSaisir %}
 
-								<li>
-									Les décaissements peuvent être effectués
-																		depuis la Caisse, Orange Money ou Wave.
-								</li>
+									<li>
+										Les encaissements peuvent être enregistrés
+																				sur la Caisse, Orange Money ou Wave.
+									</li>
+
+									<li>
+										Les décaissements peuvent être effectués
+																				depuis la Caisse, Orange Money ou Wave.
+									</li>
+
+								{% endif %}
 
 								{% if peutTransferer %}
 
@@ -258,9 +299,14 @@
 								{% endif %}
 
 								<li>
-									Le nom du compte bancaire peut être
-																		visible comme destination, mais son
-																		solde reste masqué.
+									{% if voirSoldes %}
+										Le nom du compte bancaire peut être
+																				visible comme destination, mais son
+																				solde reste masqué.
+									{% else %}
+										Les comptes sont proposés par leur nom :
+																				aucun solde n’est affiché.
+									{% endif %}
 								</li>
 
 								<li>
@@ -284,7 +330,8 @@
 						form: form,
 						bouton_label: 'Enregistrer le mouvement',
 						estAdmin: estAdmin,
-						peutTransferer: peutTransferer
+						peutTransferer: peutTransferer,
+						retour: retour
 					} only %}
 
 
@@ -308,12 +355,13 @@
 	{# ================================================================
 		   SWEETALERT
 		   ================================================================
-		   
-		   SweetAlert est déjà chargé dans base.html.twig.
-		   On ne recharge donc PAS :
-		   
-		   assets/plugins/sweet-alert/sweetalert2.all.min.js
+
+		   base.html.twig ne le charge pas : sans lui, la confirmation
+		   du formulaire (_form.html.twig) bloquait l'enregistrement.
+		   Copie locale, comme les autres écrans (pas d'Internet requis).
 		   ================================================================ #}
+
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 
 	<script>

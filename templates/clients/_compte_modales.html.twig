@@ -1,0 +1,106 @@
+{#
+	Fenêtres « Dépôt » et « Rendre l'argent » du compte du client (fiche
+	client, caisse), hors de l'onglet (une fenêtre dans un panneau caché ne
+	s'ouvre pas). Attend client et compte (comptes, disponible, en_ligne) ;
+	le serveur refait tous les contrôles (SoldeClientController).
+#}
+{% set gerer = is_granted('ROLE_PAIEMENT_ENCAISSER') and not compte.en_ligne and not module_en_lecture('app_caisse_solde_depot') %}
+{% set rendre = gerer and is_granted('ROLE_SOLDE_CLIENT_REMBOURSER') and compte.disponible > 0 %}
+{% set retour = retour_compte|default('fiche') %}
+{% if gerer %}
+	{% set modes = {especes: 'Espèces', orange_money: 'Orange Money', wave: 'Wave'} %}
+	{% set types = {especes: 'caisse', orange_money: 'orange_money', wave: 'wave'} %}
+	<div class="modal fade" id="modale-depot" tabindex="-1" aria-labelledby="titre-depot" aria-hidden="true">
+		<div class="modal-dialog">
+			<form method="post" action="{{ path('app_caisse_solde_depot', {id: client.id}) }}" class="modal-content si-cc-form" data-si-cc-form>
+				<input type="hidden" name="_token" value="{{ csrf_token('solde-depot-' ~ client.id) }}">
+				<input type="hidden" name="retour" value="{{ retour }}">
+				<div class="modal-header">
+					<h2 class="modal-title fs-5" id="titre-depot">Dépôt sur le compte de {{ client.nomComplet }}</h2>
+					<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+				</div>
+				<div class="modal-body row g-3">
+					<p class="col-12 si-cc-aide mb-0">Le client laisse de l'argent sans rien payer : il ira à ses prochaines commandes, ou lui sera rendu.</p>
+					<div class="col-12">
+						<label class="form-label" for="depot-montant">Montant déposé (F)</label>
+						<input class="form-control" id="depot-montant" name="montant" inputmode="numeric" autocomplete="off" required>
+					</div>
+					<fieldset class="col-12">
+						<legend class="form-label fs-6">Mode</legend>
+						<div class="si-cc-modes">
+							{% for valeur, libelle in modes %}
+								<label><input type="radio" name="mode" value="{{ valeur }}" data-type="{{ types[valeur] }}" {{ loop.first ? 'checked' }}> {{ libelle }}</label>
+							{% endfor %}
+						</div>
+					</fieldset>
+					<div class="col-md-6">
+						<label class="form-label" for="depot-compte">Compte qui reçoit</label>
+						<select class="form-select" id="depot-compte" name="compte" required data-si-cc-comptes>
+							{% for c in compte.comptes %}
+								<option value="{{ c.id }}" data-type="{{ c.type }}">{{ c.nom }}</option>
+							{% endfor %}
+						</select>
+					</div>
+					<div class="col-md-6" data-si-cc-reference hidden>
+						<label class="form-label" for="depot-reference">Référence de la transaction</label>
+						<input class="form-control" id="depot-reference" name="reference" maxlength="100">
+					</div>
+					<label class="col-12 si-cc-case" data-si-cc-frais hidden>
+						<input type="checkbox" class="form-check-input" name="frais" value="1" checked>
+						Le client paie les frais Orange Money ou Wave en plus (ils ne vont pas sur son solde)
+					</label>
+					<div class="col-12">
+						<label class="form-label" for="depot-note">Note interne <span class="text-muted">(facultatif)</span></label>
+						<input class="form-control" id="depot-note" name="note" maxlength="255">
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+					<button class="btn btn-success"><i class="fas fa-print me-1"></i>Enregistrer le dépôt</button>
+				</div>
+			</form>
+		</div>
+	</div>
+
+	{% if rendre %}
+		<div class="modal fade" id="modale-rendre" tabindex="-1" aria-labelledby="titre-rendre" aria-hidden="true">
+			<div class="modal-dialog">
+				<form method="post" action="{{ path('app_caisse_solde_rembourser', {id: client.id}) }}" class="modal-content si-cc-form" data-si-cc-form>
+					<input type="hidden" name="_token" value="{{ csrf_token('solde-rembourser-' ~ client.id) }}">
+					<input type="hidden" name="retour" value="{{ retour }}">
+					<div class="modal-header">
+						<h2 class="modal-title fs-5" id="titre-rendre">Rendre l'argent à {{ client.nomComplet }}</h2>
+						<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+					</div>
+					<div class="modal-body row g-3">
+						<div class="col-12">
+							<label class="form-label" for="rendre-montant">Montant rendu (F)</label>
+							<input class="form-control" id="rendre-montant" name="montant" inputmode="numeric" autocomplete="off" value="{{ compte.disponible }}" required>
+							<small class="text-muted">Au plus {{ compte.disponible|number_format(0, ',', ' ') }} F.</small>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="rendre-compte">Compte d'où sort l'argent</label>
+							<select class="form-select" id="rendre-compte" name="compte" required>
+								{% for c in compte.comptes %}
+									<option value="{{ c.id }}">{{ c.nom }}</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="rendre-motif">Motif</label>
+							<input class="form-control" id="rendre-motif" name="motif" maxlength="255" required placeholder="Le client reprend son argent">
+						</div>
+						<label class="col-12 si-cc-case">
+							<input type="checkbox" class="form-check-input" name="confirme" value="1" required>
+							Je confirme avoir remis cet argent au client : son solde baisse d'autant.
+						</label>
+					</div>
+					<div class="modal-footer">
+						<button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+						<button class="btn btn-danger"><i class="fas fa-print me-1"></i>Rendre l'argent</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	{% endif %}
+{% endif %}

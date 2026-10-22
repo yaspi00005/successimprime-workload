@@ -1,0 +1,43 @@
+{#
+	Clients › Assistant du site (docs/assistant-client.md). Chaque écran
+	remplit « contenu » ; « sous_ecran » allume le bon bouton du sous-menu.
+	Seulement avec le droit « Assistant du site ».
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/assistant-admin.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="as-ad">
+		<nav class="as-ad-sousnav" aria-label="Assistant du site">
+			{% for cle, lien in {
+				conversations: {libelle: 'Conversations', route: 'app_assistant_conversations', parametres: {}},
+				analyse: {libelle: 'Analyse', route: 'app_assistant_analyse', parametres: {}},
+				reglages: {libelle: 'Réglages', route: 'app_reglages_parametres_index', parametres: {tuile: 'assistant'}},
+			} %}
+				<a href="{{ path(lien.route, lien.parametres) }}" class="{{ cle == block('sous_ecran') ? 'actif' }}" {% if cle == block('sous_ecran') %}aria-current="page"{% endif %}>{{ lien.libelle }}</a>
+			{% endfor %}
+		</nav>
+		{% block contenu %}{% endblock %}
+	</div>
+{% endblock %}
+
+{% block sous_ecran %}{% endblock %}
+
+{# Choix de la période dans l'entête, en gardant les autres filtres. #}
+{% macro periode(periodes, periode, route, extra) %}
+	<li class="nav-item">
+		<form method="get" action="{{ path(route) }}" class="as-ad-periode">
+			{% for cle, valeur in extra %}{% if valeur is not same as('') %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endif %}{% endfor %}
+			<label class="visually-hidden" for="as-ad-periode">Période</label>
+			<select id="as-ad-periode" name="periode" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for cle, libelle in periodes %}
+					<option value="{{ cle }}" {{ cle == periode ? 'selected' }}>Période : {{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+{% endmacro %}

@@ -1,0 +1,32 @@
+{#
+	Quantité en pièces ou en m² d'une ligne de devis ou de commande au m²
+	(docs/saisie-devis-commandes.md, réponse de Yaya du 18/10). Montrée par
+	public/js/pieces-m2.js (SiPiecesM2.ligne, appelé par le calcul de la
+	ligne) pour une ligne produit au m² dont la pièce tient sur 1 m.
+
+	Deux boutons, aucun choisi d'office : sans choix, calcul au m² habituel ;
+	« en pièces » ou « en m² » facture les pièces au m² (espacement compris),
+	et les deux recalculent le prix tout de suite. Le champ caché piecesAuM2
+	(« 1 » / « 0 ») est le seul envoyé : le choix de l'unité et la surface
+	tapée n'ont pas de nom. Le serveur refait le calcul (PiecesAuM2Trait).
+
+	Variables : detail (formulaire de la ligne). La page charge une fois
+	public/js/pieces-m2.js et public/css/pieces-m2.css.
+#}
+{% set ligne = detail.vars.data %}
+<div class="si-pm2-ligne js-pm2-ligne" data-espacement="{{ ligne and ligne.espacementPiecesM2 is not null ? ligne.espacementPiecesM2 : pieces_m2_espacement() }}" hidden>
+	{{ form_widget(detail.piecesAuM2) }}
+	<div class="si-pm2-ligne-tete">
+		<span class="si-pm2-ligne-libelle" id="{{ detail.vars.id }}_pm2">Quantité en</span>
+		<div class="btn-group btn-group-sm si-pm2-bascule" role="group" aria-labelledby="{{ detail.vars.id }}_pm2">
+			<button type="button" class="btn btn-outline-primary js-pm2-unite" data-unite="piece" aria-pressed="false">pièces</button>
+			<button type="button" class="btn btn-outline-primary js-pm2-unite" data-unite="m2" aria-pressed="false">m²</button>
+		</div>
+		<label class="si-pm2-ligne-m2 js-pm2-zone-m2" hidden>
+			<input type="text" inputmode="decimal" class="form-control form-control-sm js-pm2-m2" aria-label="Surface voulue en m²" placeholder="2,5" autocomplete="off">
+			<span>m²</span>
+		</label>
+		<span class="si-pm2-ligne-info js-pm2-info"></span>
+	</div>
+	<p class="si-pm2-ligne-resultat js-pm2-resultat" aria-live="polite"></p>
+</div>

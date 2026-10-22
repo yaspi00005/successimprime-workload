@@ -1,0 +1,14 @@
+{# Commandes demandées dans l'entreprise, à valider par la personne connectée (maquette 19). #}
+{% if aValider is not empty %}
+	<div class="ec-carte ec-a-valider">
+		<h2>{{ aValider|length }} demande{{ aValider|length > 1 ? 's' }} à valider</h2>
+		<ul class="ec-liste">
+			{% for carte in aValider %}
+				<li class="ec-ligne">
+					<a href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}" style="color:inherit"><b>{{ carte.titre }}</b><span class="ec-petit" style="display:block">{{ carte.commande.demandeePar ?? 'Demande' }}{% if coque.montants %} · {{ carte.commande.totalTtc|number_format(0, ',', ' ') }} F indicatif{% endif %}</span></a>
+					<a class="ec-lien" href="{{ path('app_espace_commande', {id: carte.commande.publicId}) }}">Voir</a>
+				</li>
+			{% endfor %}
+		</ul>
+	</div>
+{% endif %}

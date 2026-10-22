@@ -1,0 +1,142 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Une promotion et son suivi (docs/promotions.md). Les montants ne sont
+	calculés et affichés qu'avec le droit qui va avec : ventes (CA, coût,
+	effet), marges (marge restante).
+#}
+
+{% import 'promotions/_macros.html.twig' as pr %}
+
+{% block title %}{{ promotion.nom }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_promotions_index') }}" class="btn btn-light btn-sm si-btn-entete">Promotions</a></li>
+	{% if gestion and not en_ligne and not promotion.estAnniversaire %}
+		<li class="nav-item"><a href="{{ path('app_promotions_modifier', {id: promotion.id}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fa fa-edit me-1"></i>Modifier</a></li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set c = suivi.comptes %}
+	{% set ch = suivi.chiffres %}
+	<div class="row">
+		<div class="col-xl-8">
+			<section class="card si-bloc">
+				<div class="si-bloc-tete">
+					<h4>{{ promotion.nom }}</h4>
+					{{ pr.etat(promotion, jour) }}
+				</div>
+				<dl class="si-pr-fiche">
+					{% if promotion.aUnAvantageLignes or not promotion.aUnAvantageCommande %}
+						<dt>Avantage</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantage }}</span></dd>
+						<dt>Articles</dt><dd>{{ promotion.libelleArticles }}</dd>
+					{% endif %}
+					{% if promotion.aUnAvantageCommande %}
+						<dt>Sur la commande</dt><dd><span class="si-pr-avantage">{{ promotion.libelleAvantageCommande }}</span> <small class="text-muted">hors TVA, sur les lignes sans autre promotion</small></dd>
+					{% endif %}
+					<dt>Période</dt><dd>du {{ promotion.debut|date('d/m/Y') }} au {{ promotion.fin|date('d/m/Y') }} inclus</dd>
+					<dt>Clients</dt>
+					<dd>
+						{{ promotion.segmentLabel }}
+						{% if promotion.segment == 'liste' %}
+							{% if gestion %}
+								<small class="d-block text-muted">{{ promotion.clients|map(cl => cl.nomComplet)|slice(0, 12)|join(', ') }}{{ promotion.clients|length > 12 ? '…' }}</small>
+							{% else %}
+								<small class="text-muted">({{ promotion.clients|length }})</small>
+							{% endif %}
+						{% endif %}
+					</dd>
+					<dt>Conditions</dt><dd>{{ pr.conditions(promotion, gestion) }}</dd>
+					{% if gestion and promotion.note %}<dt>Note interne</dt><dd>{{ promotion.note }}</dd>{% endif %}
+					<dt>Origine</dt><dd>{{ promotion.estAnniversaire ? 'Anniversaire du client (tâche du jour J)' : 'Créée par ' ~ (promotion.creePar ? promotion.creePar.userIdentifier : '—') ~ ' le ' ~ promotion.creeLe|date('d/m/Y') }}</dd>
+				</dl>
+				{% if gestion and promotion.exigeCodeGenere %}
+					<p class="si-pr-codes-lien">
+						<a href="{{ path('app_promotions_codes', {id: promotion.id}) }}" class="btn btn-sm btn-outline-danger"><i class="fas fa-ticket-alt me-1"></i>Codes promo ({{ nombre_codes }})</a>
+						<small class="text-muted">{{ nombre_codes == 0 ? 'Aucun code encore : la promotion ne sert à personne tant qu\'aucun n\'est créé.' : 'Code partagé ou lot de codes uniques, à exporter ou imprimer.' }}</small>
+					</p>
+				{% endif %}
+				{% if gestion and not en_ligne %}
+					<div class="d-flex gap-2 flex-wrap">
+						{# Une promotion terminée ne se suspend plus. #}
+						{% if promotion.etat(jour) != 'terminee' %}
+							<form method="post" action="{{ path('app_promotions_suspendre', {id: promotion.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">
+								<button class="btn btn-sm btn-outline-secondary">{{ promotion.active ? 'Suspendre' : 'Reprendre' }}</button>
+							</form>
+						{% endif %}
+						{% if not utilisee %}
+							<form method="post" action="{{ path('app_promotions_supprimer', {id: promotion.id}) }}" {{ confirmer_suppression('la promotion « ' ~ promotion.nom ~ ' »') }}>
+								<input type="hidden" name="_token" value="{{ csrf_token('promotion-' ~ promotion.id) }}">
+								<button class="btn btn-sm btn-link text-danger">Supprimer</button>
+							</form>
+						{% endif %}
+					</div>
+				{% endif %}
+			</section>
+
+			<section class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Suivi</h4><span class="si-bloc-note">{{ suivi.periode.jours > 0 ? 'du ' ~ suivi.periode.debut|date('d/m') ~ ' au ' ~ suivi.periode.fin|date('d/m/Y') : 'pas encore commencée' }}</span></div>
+				<div class="si-pr-chiffres">
+					<article><span>Clients touchés</span><strong>{{ c.clients }}</strong><small>clients distincts</small></article>
+					<article><span>Commandes</span><strong>{{ c.commandes }}</strong><small>dont {{ c.facturees }} facturée{{ c.facturees > 1 ? 's' }} · {{ c.lignes }} ligne{{ c.lignes > 1 ? 's' }}</small></article>
+					<article><span>Devis</span><strong>{{ c.devis }}</strong><small>ligne{{ c.devis > 1 ? 's' }} de devis</small></article>
+					{% if droits.ventes %}
+						<article><span>CA réalisé avec la promotion</span><strong>{{ pr.montant(ch.ca) }}</strong><small>HT, lignes facturées</small></article>
+						<article class="{{ ch.alerte_cout ? 'si-pr-alerte' }}">
+							<span>Coût de la promotion</span><strong>{{ pr.montant(ch.remises) }}</strong>
+							<small>{% if ch.taux_cout is not null %}{{ pr.taux(ch.taux_cout) }} du CA facturé de la période{% else %}aucun CA facturé sur la période{% endif %}{% if ch.alerte_cout %} · au-delà de {{ pr.taux(reglages.alerte_cout_pct) }}{% endif %}</small>
+							{% if ch.remises_en_cours > 0 %}<small class="d-block">+ {{ pr.montant(ch.remises_en_cours) }} sur des commandes pas encore facturées</small>{% endif %}
+						</article>
+						<article>
+							<span>Effet sur le segment</span>
+							<strong class="{{ ch.effet is not null ? (ch.effet >= 0 ? 'si-hausse' : 'si-baisse') }}">{{ ch.effet is null ? '—' : (ch.effet > 0 ? '+' : '') ~ pr.taux(ch.effet) }}</strong>
+							<small>{% if ch.avant is defined %}commandes {{ pr.montant(ch.ca_segment) }} contre {{ pr.montant(ch.ca_segment_avant) }} du {{ ch.avant.debut|date('d/m') }} au {{ ch.avant.fin|date('d/m') }}{% else %}à voir quand elle aura commencé{% endif %}</small>
+						</article>
+					{% endif %}
+					{% if droits.marges %}
+						<article class="{{ ch.alerte_marge ? 'si-pr-alerte' }}">
+							<span>Marge restante</span><strong>{{ ch.taux_marge is null ? '—' : pr.taux(ch.taux_marge) }}</strong>
+							<small>{% if ch.marge is not null %}{{ pr.montant(ch.marge) }} sur {{ pr.montant(ch.ca_chiffre) }} chiffrés ({{ ch.part_chiffree }} % du CA){% else %}aucune ligne facturée chiffrée{% endif %}{% if ch.alerte_marge %} · sous {{ pr.taux(reglages.alerte_marge_pct) }}{% endif %}</small>
+						</article>
+					{% endif %}
+				</div>
+				{% if not droits.ventes or not droits.marges %}
+					<p class="si-pg-note mb-0"><i class="fas fa-lock me-1"></i>{% if not droits.ventes and not droits.marges %}Les montants (CA, coût, effet, marge) sont réservés à qui a le droit de voir les ventes et les marges.{% elseif not droits.ventes %}Le CA, le coût et l'effet sont réservés à qui a le droit de voir les ventes.{% else %}La marge est réservée à qui a le droit de voir les coûts de revient.{% endif %}</p>
+				{% endif %}
+			</section>
+		</div>
+
+		<div class="col-xl-4">
+			{% if historique is not empty %}
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Modifications</h4></div>
+					<ul class="si-pr-journal">
+						{% for j in historique %}
+							<li>
+								<span class="si-pr-quand">{{ j.le|date('d/m/Y H:i') }}</span>
+								<b>{{ j.action }}</b> <span class="text-muted">{{ j.qui ? j.qui.userIdentifier : 'système' }}</span>
+								{% if j.details %}<small class="d-block text-muted">{{ j.details|join(' · ') }}</small>{% endif %}
+							</li>
+						{% endfor %}
+					</ul>
+				</div>
+			{% endif %}
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Comment c'est compté</h4></div>
+				<ul class="si-pr-regles">
+					<li><b>CA</b> : lignes portant la promotion sur des commandes facturées, hors TVA.</li>
+					<li><b>Coût</b> : la part de la remise due à la promotion, rapportée au CA facturé de toute l'imprimerie sur la période (indicateur des remises accordées).</li>
+					<li><b>Effet</b> : commandes des clients du segment pendant la promotion, comparées à la même durée juste avant.</li>
+					<li><b>Marge</b> : sur les lignes facturées dont le coût de revient est connu.</li>
+				</ul>
+			</div>
+		</div>
+	</div>
+{% endblock %}

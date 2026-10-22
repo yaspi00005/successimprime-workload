@@ -1,12 +1,14 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Edit Commandes
-{% endblock %}
+{% block title %}Modifier la commande {{ commande.numero }}{% endblock %}
+
+{% block page_title %}Modifier la commande{% endblock %}
 
 {% block body %}
-	<h1>Edit Commandes</h1>
+	{{ include('commandes/_form.html.twig') }}
+{% endblock %}
 
-	{{ include('commandes/_form.html.twig', {'button_label': 'Update'}) }}
-
-
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/saisie-commande.js') }}"></script>
 {% endblock %}

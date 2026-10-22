@@ -1,0 +1,158 @@
+{% extends 'base.html.twig' %}
+
+{# OP06 (droite) et bureau : le travail sur la machine. Démarré, Terminé, Étiquettes, Prêt pour livraison, Signaler. #}
+{% set c = carte %}
+{% set p = progression %}
+{% set etatTexte = o.statut == 'en_cours' ? 'en cours' : (o.statut == 'en_pause' ? 'en pause' : (o.estTermine ? 'terminé' : 'prêt à démarrer')) %}
+{% block title %}{{ c.numero }} · {{ etatTexte }}{% endblock %}
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	{% set prevue = o.finPrevueLe ?? o.dateLimite %}
+	{% set fin = o.termineLe ?? p.finEstimee %}
+	{% set etatLie = etat_fichier_lie(ligne) %}
+	<div class="si-pm">
+		<header class="si-pm-tete-ligne">
+			<div>
+				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ c.numero }}</span>
+				<h1>{{ c.numero }} · {{ etatTexte }}</h1>
+				<p class="si-pm-mobile-sous">{{ c.client }} · {{ c.titre }}</p>
+			</div>
+			<div class="si-pm-tete-actions si-pm-bureau">
+				<a href="{{ path('app_ma_file_verifier', {id: o.id}) }}" class="btn btn-light si-btn-entete"><i class="far fa-file-image me-1"></i>Voir le fichier</a>
+				{% if not o.estTermine %}<a href="{{ path('app_ma_file_estimer', {id: o.id}) }}" class="btn btn-light si-btn-entete"><i class="far fa-clock me-1"></i>Modifier l'estimation</a>{% endif %}
+			</div>
+		</header>
+
+		<div class="si-pm-grille-2">
+			<div class="si-pm-pile si-pm-travail">
+				<section class="si-pm-panneau si-pm-machine-carte" {% if o.statut == 'en_cours' %}data-si-pm-chrono="{{ p.secondes }}" data-duree="{{ p.duree ?? 0 }}"{% endif %}>
+					<div class="haut">
+						<b>{{ o.machine.nom ?? 'Machine à choisir' }}</b>
+						<span class="si-pm-statut{{ o.statut == 'en_pause' ? ' pause' : (o.statut == 'a_produire' ? ' attente') }}">{{ o.statut == 'en_cours' ? 'En cours' : (o.statut == 'en_pause' ? 'En pause' : (o.estTermine ? 'Terminé' : 'Prêt')) }}</span>
+					</div>
+					<div class="barre" role="progressbar" aria-label="Avancement estimé" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ o.estTermine ? 100 : (c.pourcent ?? 0) }}"><i data-barre style="width: {{ o.estTermine ? 100 : (c.pourcent ?? 0) }}%"></i></div>
+					<div class="bas">
+						<span>{{ p.debut ? (o.piecesARefaire ? 'reprise démarrée' : 'démarré') : 'début prévu' }}<b>{{ p.debut ? p.debut|date('H:i') : (o.debutPrevuLe ? o.debutPrevuLe|date('H:i') : '—') }}</b></span>
+						{% set estime = o.piecesARefaire and p.duree ? p.duree|temps_estime : c.estime %}
+						<span>fin estimée{{ estime ? ' · ' ~ estime }}<b>{{ fin ? fin|date(fin|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') : '—' }}</b></span>
+						{% if p.debut %}<span>temps passé<b data-texte>{{ '%02d:%02d:%02d'|format(p.secondes // 3600, (p.secondes // 60) % 60, p.secondes % 60) }}</b></span>{% endif %}
+					</div>
+					{% if p.m2 and o.demarreLe %}<small class="si-pm-note">Imprimé{{ o.estTermine ? '' : ' (estimé)' }} : {{ (o.estTermine ? p.m2 : (p.fait ?? 0))|number_format(1, ',', ' ') }} / {{ p.m2|number_format(1, ',', ' ') }} m²{% if o.piecesARefaire %} · reprise de {{ o.piecesARefaire }} pièce{{ o.piecesARefaire > 1 ? 's' }}{% elseif prevue %} · sortie prévue {{ prevue|date('d/m H:i') }}{% endif %}</small>{% endif %}
+				</section>
+
+				{% if etatLie and etatLie != 'identique' and etatLie != 'hors_atelier' %}
+					<p class="si-pm-alerte">Fichier lié {{ etatLie == 'modifie' ? 'modifié depuis le lien' : 'introuvable' }} : n'imprimez pas, prévenez le prépresse.</p>
+				{% endif %}
+				{% include 'ma_file/_decoupe.html.twig' %}
+				{% if not peutAgir and raisonRefus and not o.estTermine %}
+					<p class="si-pm-alerte info"><i class="fas fa-info-circle me-1"></i>{{ raisonRefus }}</p>
+				{% endif %}
+
+				<div class="si-pm-gros">
+					{# Une pièce à refaire (contrôle final, docs/production-colis.md) a déjà une heure de démarrage : elle se redémarre. #}
+					{% if o.demarreLe and not o.estADemarrer %}
+						<span class="btn si-pm-fait" aria-disabled="true"><i class="fas fa-play"></i>Démarré · {{ (p.debut ?? o.demarreLe)|date('H:i') }} <i class="fas fa-check"></i></span>
+					{% elseif o.machine is null %}
+						<a href="{{ path('app_ma_file_estimer', {id: o.id}) }}" class="btn si-pm-btn-rouge"><i class="far fa-clock"></i>Machine et temps estimé</a>
+					{% else %}
+						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-btn-vert"{{ not peutAgir ? ' disabled' }}><i class="fas fa-play"></i>{{ o.piecesARefaire ? 'Refaire ' ~ o.piecesARefaire ~ ' pièce' ~ (o.piecesARefaire > 1 ? 's') ~ ' sur ' : 'Démarrer sur ' }}{{ o.machine.nom }}</button></form>
+					{% endif %}
+
+					{% if o.tirage and o.tirage.estLance %}
+						{# Sur un rouleau en impression : pause et fin se font avec le rouleau (PD04). #}
+						<a href="{{ path('app_atelier_production_en_cours', {id: o.tirage.id}) }}" class="btn si-pm-btn-nuit"><i class="fas fa-print"></i>Rouleau {{ o.tirage.numero }} : suivre l'impression</a>
+					{% elseif o.statut == 'en_cours' %}
+						<details>
+							<summary class="btn si-pm-btn-nuit"{{ not peutAgir ? ' aria-disabled=true' }}><i class="fas fa-stop"></i>Terminé</summary>
+							{% if peutAgir %}
+								<form method="post" action="{{ path('app_ma_file_terminer', {id: o.id}) }}" class="si-pm-terminer-form">
+									<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+									<div class="ligne">
+										<label>Imprimés (gâche comprise)<input type="number" name="quantite_produite" min="1" class="form-control" value="{{ o.quantite ?? ligne.quantite ?? 1 }}" required></label>
+										<label>Dont gâche<input type="number" name="quantite_rebut" min="0" class="form-control" value="0"></label>
+									</div>
+									<label>Cause de la gâche<select name="motif_gache" class="form-select"><option value="">—</option>{% for cle, libelle in motifsGache %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}</select></label>
+									<label>Observation (facultatif)<input name="observation" maxlength="200" class="form-control" placeholder="ex. bande test rouge validée à 10:34"></label>
+									<button class="btn si-pm-btn-nuit">Confirmer la fin</button>
+								</form>
+							{% endif %}
+						</details>
+						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'pause'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-blanc"{{ not peutAgir ? ' disabled' }}><i class="fas fa-pause"></i>Pause</button></form>
+					{% elseif o.statut == 'en_pause' %}
+						<form method="post" action="{{ path('app_ma_file_agir', {id: o.id, action: 'reprendre'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><button class="btn si-pm-btn-nuit"{{ not peutAgir ? ' disabled' }}><i class="fas fa-play"></i>Reprendre</button></form>
+					{% else %}
+						<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-stop"></i>Terminé</span>
+					{% endif %}
+
+					{% if o.estTermine %}
+						<a href="{{ path('app_ma_file_etiquettes', {id: o.id}) }}" class="btn si-pm-btn-nuit"><i class="fas fa-tag"></i>Étiquettes</a>
+					{% else %}
+						<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-tag"></i>Étiquettes</span>
+					{% endif %}
+					{% if o.estTermine and not o.estPretLivraison and o.commandeDetail and o.commandeDetail.commande %}
+						{# « Prête » se décide au contrôle final (docs/production-colis.md). #}
+						<a href="{{ path('app_atelier_production_controle_commande', {id: o.commandeDetail.commande.id}) }}" class="btn si-pm-btn-bleu"><i class="fas fa-truck"></i>Prêt pour livraison</a>
+					{% else %}
+						<span class="btn si-pm-blanc" aria-disabled="true"><i class="fas fa-truck"></i>Prêt pour livraison</span>
+					{% endif %}
+
+					{% if peutAgir and o.machine and not o.estTermine %}
+						<details>
+							<summary class="btn si-pm-btn-rose"><i class="fas fa-exclamation-triangle"></i>Signaler un problème</summary>
+							<form method="post" action="{{ path('app_ma_file_signaler') }}" class="si-pm-signaler-form">
+								<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="ordre" value="{{ o.id }}">
+								<div class="si-pm-signaler-types" role="radiogroup" aria-label="Ce qui est signalé">
+									<label><input type="radio" name="type" value="incident" checked> Panne ou incident</label>
+									<label><input type="radio" name="type" value="gache"> Gâche</label>
+									<label><input type="radio" name="type" value="tetes"> Têtes nettoyées</label>
+									<label><input type="radio" name="type" value="reimpression"> Réimpression</label>
+								</div>
+								<label>m² concernés (gâche, réimpression)<input name="quantite" inputmode="decimal" class="form-control" placeholder="ex. 1,5"></label>
+								<label>En quelques mots<input name="note" maxlength="200" class="form-control" placeholder="ex. buses bouchées, panne de séchage"></label>
+								<button class="btn si-pm-btn-rouge">Envoyer</button>
+								<small class="si-pm-note">Une panne signalée ne retire aucun point. Une réimpression due à l'opérateur retire {{ bareme.valeur('p_reimpression')|abs }} points.</small>
+							</form>
+						</details>
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="si-pm-pile">
+				<section class="si-pm-panneau">
+					<div class="si-pm-client-tete"><span class="si-pm-initiales" style="background: {{ c.couleur }}">{{ c.initiales }}</span><span><b>{{ c.client }}</b><small>{{ c.titre }}{{ c.promis ? ' · promis le ' ~ c.promis|date('d/m') }}</small></span></div>
+					<dl class="si-pm-lignes mt-2">
+						<div><dt>Taille</dt><dd>{{ c.taille ?? '—' }}</dd></div>
+						<div><dt>Matière</dt><dd>{{ ligne.support.nom ?? '—' }}</dd></div>
+						<div><dt>Impression</dt><dd>{{ ligne.typeImpression.nom ?? '—' }}</dd></div>
+						{% if ligne and ligne.finitions|length %}<div><dt>Finitions</dt><dd>{{ ligne.finitions|map(f => f.nomFinition)|join(' · ') }}</dd></div>{% endif %}
+					</dl>
+					<div class="si-pm-mobile-sous mt-2"><a href="{{ path('app_ma_file_verifier', {id: o.id}) }}">Voir le fichier</a>{% if not o.estTermine %} · <a href="{{ path('app_ma_file_estimer', {id: o.id}) }}">Modifier l'estimation</a>{% endif %}</div>
+				</section>
+
+				<section class="si-pm-panneau">
+					<h2>Journal de ce travail</h2>
+					{% if evenements is empty %}
+						<p class="si-pm-vide">Rien de signalé.</p>
+					{% else %}
+						<ul class="si-pm-journal">{% for e in evenements %}<li><time>{{ e.le|date('H:i') }}</time>{{ e.libelle }}{{ e.quantite ? ' · ' ~ e.quantite|number_format(1, ',') ~ ' m²' }}{{ e.note ? ' · ' ~ e.note }}</li>{% endfor %}</ul>
+					{% endif %}
+				</section>
+
+				<p class="si-pm-panneau si-pm-note">
+					{% if o.estTermine %}Points de ce travail : <b>{{ bareme.points(faits) > 0 ? '+' }}{{ bareme.points(faits) }} pts</b>
+					{% elseif o.piecesARefaire %}Pièce refaite : le point « sorti avant l'heure prévue » n'est plus possible
+					{% else %}Terminé avant {{ prevue ? prevue|date('H:i') : 'l\'heure prévue' }} : <b>+{{ bareme.points({p_avant_heure: 1}) }} pts</b>{% endif %}
+					· +{{ bareme.valeur('p_10m2') }} pt par 10 m²
+				</p>
+			</div>
+		</div>
+	</div>
+	<script src="{{ asset('js/poste-machiniste.js') }}" defer></script>
+{% endblock %}

@@ -1,0 +1,121 @@
+{#- Partie texte du rapport par e-mail (docs/rapports-mail.md) : mêmes parties que le HTML, mêmes droits. -#}
+{% macro pct(valeur, avant, comp) -%}
+{%- if avant is not null and avant > 0 -%}
+{%- set x = ((valeur - avant) * 100 / avant)|round -%}
+{{ ' (' ~ (x >= 0 ? '+' : '−') ~ x|abs ~ ' % vs ' ~ comp ~ ')' }}
+{%- endif -%}
+{%- endmacro %}
+{% autoescape false %}
+{%- import 'rapports_mail/_macros.html.twig' as m -%}
+{%- set a = r.activite -%}
+{%- set comp = p.libelleComparaison -%}
+{%- import _self as t -%}
+{{ marque.nom }} · {{ p.titre }}{% if essai %} (essai){% endif %}
+
+{{ p.libelle|capitalize }}
+{% if r.en_cours %}Période en cours : chiffres arrêtés au {{ r.arrete_le|date('d/m/Y à H:i') }}.
+{% endif %}
+
+Bonjour {{ prenom }},
+Votre version, selon vos droits : {{ contenu }}.
+
+À SURVEILLER
+{% for al in r.alertes %}
+- {{ al.texte }}
+{% else %}
+Rien d’anormal à signaler.
+{% endfor %}
+
+ACTIVITÉ
+- Commandes : {{ m.v(a.commandes.nombre) }}{{ t.pct(a.commandes.nombre, a.commandes.avant, comp) }}{% if a.commandes.objectif is not null %}, objectif {{ m.v(a.commandes.objectif) }}{% endif %}
+
+- Devis émis : {{ m.v(a.devis.emis) }}{{ t.pct(a.devis.emis, a.devis.emis_avant, comp) }} ; devis signés : {{ a.devis.signes }}
+- m² imprimés : {{ m.v(a.surface.valeur, 'm2') }}{{ t.pct(a.surface.valeur, a.surface.avant, comp) }}
+- Nouveaux clients : {{ a.clients.nombre }}{{ t.pct(a.clients.nombre, a.clients.avant, comp) }}{% if a.clients.noms is not null and a.clients.noms is not empty %} ({{ a.clients.noms|join(', ') }}){% endif %}
+
+- Livraisons remises : {{ a.livraisons.livrees }}, échecs : {{ a.livraisons.echecs }}
+- BAT validés : {{ a.bat.valides }}, en attente du client : {{ a.bat.en_attente }}
+- Commandes en retard : {{ a.en_retard }}
+- Devis à relancer : {{ a.devis.a_relancer }}
+- Réclamations reçues : {{ a.reclamations.nouvelles }}, ouvertes : {{ a.reclamations.ouvertes }}
+{% if a.reclamations.liste is not null %}{% for rc in a.reclamations.liste %}  · {{ rc.numero }} · {{ rc.objet }}{% if rc.client %} · {{ rc.client }}{% endif %}
+
+{% endfor %}{% endif %}
+
+{% if r.ventes is not null %}
+CHIFFRE D’AFFAIRES
+- CA facturé imprimerie : {{ m.v(r.ventes.facture, 'f') }}{{ t.pct(r.ventes.facture, r.ventes.avant, comp) }}{% if r.ventes.objectif is not null %}, objectif {{ m.v(r.ventes.objectif, 'f') }} ({{ r.ventes.part }} %){% endif %}
+{% if r.ventes.hors|default(0) > 0 %}
+- Hors imprimerie : {{ m.v(r.ventes.hors, 'f') }} · total {{ m.v(r.ventes.facture + r.ventes.hors, 'f') }}
+{% endif %}
+
+{% if r.ventes.mois is not null %}- CA {{ r.ventes.de_mois }} à ce jour : {{ m.v(r.ventes.mois.realise, 'f') }}{% if r.ventes.mois.objectif is not null %} sur {{ m.v(r.ventes.mois.objectif, 'f') }} ({{ r.ventes.mois.part }} %){% endif %}
+
+{% endif %}
+
+{% endif %}
+{% if r.encaissements is not null %}
+ENCAISSEMENTS
+- Encaissé : {{ m.v(r.encaissements.total, 'f') }}{{ t.pct(r.encaissements.total, r.encaissements.avant, comp) }}
+{% for mode in r.encaissements.modes %}  · {{ mode.libelle }} : {{ m.v(mode.montant, 'f') }} ({{ mode.nombre }})
+{% endfor %}
+- Taux d’encaissement : {{ r.encaissements.taux is null ? '—' : m.v(r.encaissements.taux, 'pct') }} (objectif {{ r.encaissements.taux_objectif }} %)
+{% if r.encaissements.attente.nombre > 0 %}- Paiements à valider : {{ r.encaissements.attente.nombre }} ({{ m.v(r.encaissements.attente.montant, 'f') }})
+{% endif %}
+
+{% endif %}
+{% if r.creances is not null %}
+CRÉANCES CLIENTS
+- Reste à encaisser : {{ m.v(r.creances.total, 'f') }}
+- Échues : {{ m.v(r.creances.echues, 'f') }} ({{ r.creances.nb_echues }} document{{ r.creances.nb_echues > 1 ? 's' }}), dont plus de 60 jours : {{ m.v(r.creances.plus_60, 'f') }}
+{% if r.creances.debiteurs is not null %}{% for d in r.creances.debiteurs %}  · {{ d.nom }} : {{ m.v(d.reste, 'f') }}
+{% endfor %}{% endif %}
+
+{% endif %}
+{% if r.tresorerie is not null %}
+DÉPENSES ET TRÉSORERIE
+- Dépenses : {{ m.v(r.tresorerie.depenses.total, 'f') }}{{ t.pct(r.tresorerie.depenses.total, r.tresorerie.depenses.avant, comp) }}
+{% for cat in r.tresorerie.depenses.categories|slice(0, 6) %}  · {{ cat.libelle }} : {{ m.v(cat.montant, 'f') }}
+{% endfor %}
+- Trésorerie disponible : {{ m.v(r.tresorerie.total, 'f') }}{% if r.tresorerie.seuil > 0 %} (seuil d’alerte {{ m.v(r.tresorerie.seuil, 'f') }}){% endif %}
+
+{% for cpt in r.tresorerie.comptes %}  · {{ cpt.nom }} : {{ m.v(cpt.solde, 'f') }}
+{% endfor %}
+
+{% endif %}
+{% if r.marge is not null %}
+MARGE
+- Taux de marge brute du mois : {{ r.marge.taux is null ? '—' : r.marge.taux ~ ' %' }} ({{ comp }} : {{ r.marge.avant is null ? '—' : r.marge.avant ~ ' %' }})
+
+{% endif %}
+{% if r.equipe is not null %}
+ÉQUIPE
+- Retards : {{ r.equipe.retards }}, absences non justifiées : {{ r.equipe.absences_non_justifiees }}
+{% for l in r.equipe.lignes|slice(0, 8) %}  · {{ l.nom }} : {{ l.retards }} retard{{ l.retards > 1 ? 's' }}, {{ l.absences }} absence{{ l.absences > 1 ? 's' }}{% if l.justifiees > 0 %}, {{ l.justifiees }} justifiée{{ l.justifiees > 1 ? 's' }}{% endif %}{% if l.avant_debut|default(0) > 0 %}, arrivé {{ l.avant_debut }} fois avant l'heure{% endif %}
+
+{% endfor %}
+
+{% endif %}
+{% if r.stock is not null %}
+STOCK SOUS LE SEUIL
+{% for art in r.stock %}- {{ art.designation }} : {{ art.reste|number_format(art.reste == art.reste|round ? 0 : 1, ',', ' ') }} {{ art.unite }}
+{% else %}Aucun article sous son seuil.
+{% endfor %}
+
+{% endif %}
+{% if r.taches.nombre > 0 %}
+VOS TÂCHES EN RETARD ({{ r.taches.nombre }})
+{% for tc in r.taches.liste %}- {{ tc.titre }} (prévue le {{ tc.prevue|date('d/m') }})
+{% endfor %}
+
+{% endif %}
+{% if lien %}Ouvrir dans l’ERP (réseau de l’atelier seulement) : {{ lien }}
+
+{% endif %}
+--
+Document interne et confidentiel. Chiffres calculés le {{ genere_le|date('d/m/Y à H:i') }}, selon vos droits.
+{% if not lien %}Le rapport complet est dans l’ERP (Accueil › Rapports par e-mail), sur le réseau de l’atelier seulement.
+{% endif %}
+Pour ne plus recevoir ces rapports, demandez-le à la direction.
+{{ marque.nom }}
+{% endautoescape %}

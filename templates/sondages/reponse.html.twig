@@ -1,0 +1,109 @@
+{% extends 'sondages/_base.html.twig' %}
+{% import 'sondages/_macros.html.twig' as m %}
+
+{% block title %}Avis de {{ r.qui }}{% endblock %}
+{% block page_title %}Sondages · avis de {{ r.qui }}{% endblock %}
+{% block sous_ecran %}{{ r.alerte ? 'alertes' : (r.commande ? 'commandes' : 'ensemble') }}{% endblock %}
+
+{% block contenu %}
+	{% set THEMES = constant('App\\Service\\Sondages\\Themes::THEMES') %}
+	{% set STATUTS = constant('App\\Service\\Sondages\\Themes::STATUTS') %}
+	<div class="si-so-deux">
+		<section class="card">
+			<div class="si-so-entete">
+				<div>
+					<h2 style="margin:0">{{ r.qui }}</h2>
+					<p>{{ r.libelleType }}{{ r.sondage ? ' · ' ~ r.sondage.titre }} · {{ r.creeLe|date('d/m/Y à H:i') }} · {{ r.libelleCanal }}</p>
+				</div>
+				{{ m.note(r.noteGlobale) }}
+			</div>
+			<dl class="si-so-infos" style="margin-top:14px">
+				{% if r.client %}<dt>Client</dt><dd><a href="{{ path('app_clients_show', {publicId: r.client.publicId}) }}">{{ r.client.nomComplet }}</a>{{ r.auteur ? ' · répondu par ' ~ r.auteur }}</dd>{% endif %}
+				{% if r.nom and not r.client %}<dt>Nom laissé</dt><dd>{{ r.nom }}</dd>{% endif %}
+				{% if r.telephone %}<dt>Téléphone</dt><dd><a href="tel:{{ r.telephone|replace({' ': ''}) }}">{{ r.telephone }}</a></dd>{% endif %}
+				{% if r.commande %}<dt>Commande</dt><dd><a href="{{ path('app_commandes_show', {id: r.commande.id}) }}">{{ r.commande.numero }}</a></dd>{% endif %}
+			</dl>
+
+			{% if r.notes|length %}
+				<h3 style="margin-top:18px">Notes par article</h3>
+				<ul class="si-so-liste">
+					{% for n in r.notes %}
+						<li class="si-so-ligne"><span class="si-so-corps"><b>{{ n.designation }}</b></span>{{ m.etoiles(n.note) }}</li>
+					{% endfor %}
+				</ul>
+			{% endif %}
+
+			<h3 style="margin-top:18px">Réponses</h3>
+			<dl class="si-so-infos">
+				{% for q in questions %}
+					{% set v = r.reponses[q.cle] ?? null %}
+					<dt>{{ q.libelle }}</dt>
+					<dd>
+						{% if v is null %}
+							<span class="si-so-gris">—</span>
+						{% elseif q.type == 'etoiles' %}
+							{{ m.etoiles(v) }} {{ v }}/5
+						{% elseif q.type == 'nps' %}
+							<b class="{{ v >= 9 ? 'si-so-vert' : (v <= 6 ? 'si-so-rouge' : '') }}">{{ v }}/10</b>
+						{% elseif v is iterable %}
+							{{ v|join(', ') }}
+						{% else %}
+							{{ v == 'oui' ? 'Oui' : (v == 'non' ? 'Non' : v) }}
+						{% endif %}
+					</dd>
+				{% endfor %}
+			</dl>
+		</section>
+
+		<div class="si-so" style="gap:20px">
+			{% if r.alerte %}
+				<section class="card {{ r.alerteOuverte ? 'si-so-alerte' }}">
+					<h2>Mauvaise note <span class="si-so-pastille {{ r.alerteOuverte ? 'si-so-p-rouge' : 'si-so-p-gris' }}">{{ r.libelleAlerte }}</span></h2>
+					{% if r.alerteOuverte %}
+						<p style="color:#334155">{{ r.peutEtreRappele ? 'Appelez le client pour comprendre ce qui n’a pas été, puis notez la suite.' : 'Réponse anonyme sans téléphone : notez seulement la suite donnée.' }}</p>
+						<form class="si-so-suivi" method="post" action="{{ path('app_sondages_alerte', {id: r.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+							<label class="form-label" for="suite" style="margin:0">Suite</label>
+							<select id="suite" name="suite" class="form-select">
+								{% for cle, libelle in suites %}<option value="{{ cle }}">{{ libelle }}</option>{% endfor %}
+							</select>
+							<label class="form-label" for="note" style="margin:0">Ce qui a été dit (reste à l’atelier)</label>
+							<textarea id="note" name="note" class="form-control" rows="3" maxlength="500"></textarea>
+							<div class="si-so-actions"><button class="btn btn-primary" type="submit">Noter la suite</button></div>
+						</form>
+						{% if r.client %}
+							<form method="post" action="{{ path('app_sondages_reclamation', {id: r.id}) }}" style="margin-top:12px" data-confirmer="Ouvrir une réclamation pour ce client ? Il la verra dans son espace.">
+								<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+								<button class="btn btn-outline-danger btn-sm" type="submit"><i class="fas fa-exclamation-circle me-1"></i>Ouvrir une réclamation</button>
+							</form>
+						{% endif %}
+					{% else %}
+						<dl class="si-so-infos">
+							<dt>Suite</dt><dd>{{ r.libelleAlerte }}{{ r.alerteTraiteePar ? ' par ' ~ r.alerteTraiteePar }}{{ r.alerteTraiteeLe ? ' le ' ~ r.alerteTraiteeLe|date('d/m/Y à H:i') }}</dd>
+							{% if r.alerteNote %}<dt>Note</dt><dd>{{ r.alerteNote }}</dd>{% endif %}
+							{% if r.reclamation %}<dt>Réclamation</dt><dd><a href="{{ path('app_reclamations_clients_voir', {id: r.reclamation.id}) }}">{{ r.reclamation.numero }}</a></dd>{% endif %}
+						</dl>
+					{% endif %}
+				</section>
+			{% endif %}
+
+			{% if r.proposition %}
+				<section class="card">
+					<h2>Proposition</h2>
+					<p class="si-so-citation" style="font-size:15px">{{ r.proposition }}</p>
+					<form class="si-so-classer" method="post" action="{{ path('app_sondages_classer', {id: r.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+						<input type="hidden" name="retour" value="{{ path('app_sondages_reponse', {id: r.id}) }}">
+						<select name="theme" class="form-select form-select-sm" aria-label="Thème">
+							{% for cle, libelle in THEMES %}<option value="{{ cle }}" {{ r.theme == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+						</select>
+						<select name="statut" class="form-select form-select-sm" aria-label="Statut">
+							{% for cle, libelle in STATUTS %}<option value="{{ cle }}" {{ (r.statutProposition ?? 'a_etudier') == cle ? 'selected' }}>{{ libelle }}</option>{% endfor %}
+						</select>
+						<button class="btn btn-sm btn-outline-primary" type="submit">Classer</button>
+					</form>
+				</section>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}

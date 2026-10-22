@@ -1,0 +1,279 @@
+{#
+	Contact (maquette EC04) : trois canaux (WhatsApp, appel, visite), le
+	formulaire « Écrivez-nous » qui change selon le motif (n° de commande
+	pour un suivi ou une réclamation, fichier joint), la carte, l'allée en
+	photo, les horaires de la semaine avec le jour courant, les coordonnées,
+	puis la galerie « Notre local ».
+
+	Atelier fermé (horaires de la tuile Horaires, jours fériés, fermeture
+	exceptionnelle) : si la direction a activé le rappel (tuile « Site :
+	engagements »), l'écran « L'atelier dort » (EC06) prend le haut de la
+	page avec la demande de rappel à l'heure choisie ; sinon un bandeau
+	rappelle les horaires et WhatsApp. Le reste de la page ne change pas.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_contact' %}
+{% set entreprise = site_entreprise() %}
+{% set visite = site_visite() %}
+{% set wa = site_whatsapp() %}
+{% set fiche_google = site_fiche_google() %}
+{% set donnees_entreprise = true %}
+{% set tailleMo = (tailleMax / 1048576)|round(0, 'floor') %}
+{% set ecran_rappel = creneaux is not null %}
+{% set calcul = site_catalogue().calculateur ? site_lien('app_site_calculateur') : null %}
+
+{% block title %}Contact et adresse de l'imprimerie à Bamako · Succès Imprim{% endblock %}
+{% block description %}Adresse, téléphone, WhatsApp et horaires de Succès Imprim à Bamako. Écrivez-nous pour un devis, une commande en cours ou un conseil sur un fichier.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-formulaires.css', 'css/site-local.css', 'css/site-contact.css') }}
+	{% if lienPlan %}{{ site_styles('css/site-carte.css') }}{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	{% if ecran_rappel %}
+		{# Écran « atelier fermé » (EC06) : le prix tout de suite, un rappel à l'heure choisie. #}
+		<section class="si-dort" aria-labelledby="si-dort-titre">
+			<div class="si-cadre si-dort-grille">
+				<div class="si-dort-texte si-revele">
+					<nav class="si-ariane si-ariane-sombre" aria-label="Fil d'Ariane"><a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">Contact</span></nav>
+					<p class="si-dort-etat"><span class="si-point" aria-hidden="true"></span>{{ horaires.etat }}</p>
+					<h1 id="si-dort-titre">L'atelier dort.<br><span>Votre demande, non.</span></h1>
+					<p class="si-dort-intro">Laissez votre demande maintenant&nbsp;: elle sera parmi les premières traitées à l'ouverture.{% if calcul %} Le prix, lui, est disponible tout de suite.{% endif %}</p>
+					<ul class="si-dort-tuiles">
+						{% if calcul %}<li><a href="{{ calcul }}">{{ include('site/_icone.svg.twig', {nom: 'calculette', taille: 26}) }}<span><strong>Calculer mon prix</strong><small>disponible 24 h/24</small></span></a></li>{% endif %}
+						{% if site_lien('app_site_suivi') %}<li><a href="{{ site_lien('app_site_suivi') }}">{{ include('site/_icone.svg.twig', {nom: 'envoi', taille: 26}) }}<span><strong>Suivre ma commande</strong><small>numéro et téléphone</small></span></a></li>{% endif %}
+						<li><a href="#rappel-nom">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 26}) }}<span><strong>Être rappelé {{ creneaux.quand == 'le' ? 'à l\'ouverture' : creneaux.quand }}</strong><small>choisissez l'heure</small></span></a></li>
+						{% if site_lien('app_site_faq') %}<li><a href="{{ site_lien('app_site_faq') }}">{{ include('site/_icone.svg.twig', {nom: 'alerte', taille: 26}) }}<span><strong>Questions fréquentes</strong><small>délais, fichiers, paiement</small></span></a></li>{% endif %}
+					</ul>
+				</div>
+
+				{% set r = rappel %}
+				<form method="post" action="{{ path('app_site_contact_rappel') }}" class="si-carte si-formulaire si-rappel si-revele" id="formulaire-rappel" novalidate>
+					<h2>Demander un rappel</h2>
+					<p class="si-rappel-sous">Un conseiller vous appelle à l'heure choisie.</p>
+					{{ include('site/_demande_protections.html.twig', {nature: 'rappel', erreurs: r.erreurs, jeton: r.jeton}) }}
+					<div class="si-champs-2">
+						{{ include('site/_champ.html.twig', {nom: 'nom', id_champ: 'rappel-nom', libelle: 'Nom', valeur: r.saisie.nom, attributs: 'autocomplete="name" maxlength="120" required', obligatoire: true, erreurs: r.erreurs}) }}
+						{{ include('site/_champ_telephone.html.twig', {valeur: r.saisie.telephone, id_champ: 'rappel-telephone', obligatoire: true, erreurs: r.erreurs}) }}
+					</div>
+					<fieldset class="si-creneaux{{ r.erreurs.creneau is defined ? ' si-champ-erreur' }}">
+						<legend>{{ creneaux.quand == 'le' ? 'Le ' ~ creneaux.libelle : creneaux.quand|capitalize ~ ', ' ~ creneaux.libelle }}<span class="si-requis" aria-hidden="true"> *</span></legend>
+						{% set premier_libre = (creneaux.heures|filter(c => c.libre)|first).valeur ?? '' %}
+						{% set choisi = r.saisie.creneau in creneaux.heures|filter(c => c.libre)|map(c => c.valeur) ? r.saisie.creneau : premier_libre %}
+						<div class="si-creneaux-liste">
+							{% for c in creneaux.heures %}
+								<label class="si-creneau{{ c.libre ? '' : ' si-creneau-plein' }}">
+									<input type="radio" name="creneau" value="{{ c.valeur }}" data-heure="{{ c.heure }}"{% if not c.libre %} disabled{% endif %}{% if c.valeur == choisi %} checked{% endif %}>
+									<span>{{ c.heure }}&nbsp;h{% if not c.libre %}<span class="si-invisible"> (complet)</span>{% endif %}</span>
+								</label>
+							{% endfor %}
+						</div>
+						{% if r.erreurs.creneau is defined %}<p class="si-erreur" id="erreur-creneau">{{ r.erreurs.creneau }}</p>{% endif %}
+					</fieldset>
+					<div class="si-champ">
+						<label for="rappel-message">Votre besoin <span class="si-facultatif">(facultatif)</span></label>
+						<textarea id="rappel-message" name="message" rows="2" maxlength="{{ constant('App\\Entity\\DemandeDevis::MESSAGE_MAX') }}" placeholder="Devis pour 40 kakémonos…">{{ r.saisie.message }}</textarea>
+					</div>
+					<button type="submit" class="si-bouton si-bouton-rouge si-bouton-grand si-rappel-bouton">Me rappeler<span data-rappel-heure></span></button>
+					{% if wa %}<p class="si-rappel-wa"><strong>WhatsApp reste ouvert&nbsp;:</strong> <a href="{{ wa }}" target="_blank" rel="noopener">écrivez-nous</a>, réponse dès l'ouverture.</p>{% endif %}
+				</form>
+			</div>
+		</section>
+	{% else %}
+		<section class="si-contact-tete">
+			<div class="si-cadre">
+				<nav class="si-ariane si-ariane-claire" aria-label="Fil d'Ariane"><a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">Contact</span></nav>
+				<div class="si-contact-titre">
+					<h1>Parlons de votre projet.</h1>
+					<p class="si-etat-pastille{{ horaires.ouvert ? ' si-etat-ouvert' }}"><span class="si-point" aria-hidden="true"></span>{{ horaires.etat }}</p>
+				</div>
+				{% if not horaires.ouvert %}
+					<p class="si-contact-ferme" role="status">{{ include('site/_icone.svg.twig', {nom: 'lune', taille: 20}) }} <span>L'atelier est fermé&nbsp;: {{ horaires.texte|lower }}{% if horaires.fermes %} · {{ horaires.fermes|lower }}{% endif %}. Votre message sera lu à l'ouverture{% if wa %}, ou <a href="{{ wa }}" target="_blank" rel="noopener">écrivez-nous sur WhatsApp</a>{% endif %}.</span></p>
+				{% endif %}
+			</div>
+		</section>
+	{% endif %}
+	{{ site_fil_ariane([{nom: 'Contact'}]) }}
+
+	<section class="si-section si-canaux-section">
+		<div class="si-cadre">
+			<ul class="si-canaux">
+				{% if wa %}
+					<li class="si-canal si-canal-wa si-revele">
+						<span class="si-canal-icone">{{ include('site/_icone_whatsapp.svg.twig') }}</span>
+						<div><h2>WhatsApp</h2><p class="si-canal-plus">Le plus rapide</p>{% if visite.telephone %}<p>{{ visite.telephone }}</p>{% endif %}</div>
+						<a href="{{ wa }}" class="si-bouton si-bouton-contour-vert" target="_blank" rel="noopener">Écrire maintenant</a>
+					</li>
+				{% endif %}
+				{% if visite.tel %}
+					<li class="si-canal si-canal-appel si-revele">
+						<span class="si-canal-icone">{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 26}) }}</span>
+						<div><h2>Appeler l'atelier</h2><p class="si-canal-plus">{{ horaires.texte }}</p><p>{{ visite.telephone }}</p></div>
+						<a href="{{ visite.tel }}" class="si-bouton si-bouton-contour">Appeler</a>
+					</li>
+				{% endif %}
+				<li class="si-canal si-canal-venir si-revele">
+					<span class="si-canal-icone">{{ include('site/_icone.svg.twig', {nom: 'lieu', taille: 26}) }}</span>
+					<div><h2>Venir à l'atelier</h2><p class="si-canal-plus">{{ visite.ville }}</p>{% if site_lien('app_site_venir') %}<p><a href="{{ site_lien('app_site_venir') }}">Voir l'entrée en photos</a></p>{% elseif repere %}<p>{{ repere }}</p>{% endif %}</div>
+					<a href="{{ visite.itineraire }}" class="si-bouton si-bouton-contour-rouge" target="_blank" rel="noopener">Itinéraire</a>
+				</li>
+			</ul>
+		</div>
+	</section>
+
+	<section class="si-section si-contact" id="ecrire">
+		<div class="si-cadre si-contact-grille">
+			<form method="post" action="{{ path('app_site_contact') }}#ecrire" enctype="multipart/form-data" class="si-carte si-formulaire si-revele" id="formulaire-contact" novalidate>
+				<div class="si-formulaire-tete">
+					<h2 class="si-formulaire-titre">Écrivez-nous</h2>
+					{% if delaiReponse %}<p class="si-delai">{{ delaiReponse }}</p>{% endif %}
+				</div>
+				{{ include('site/_demande_protections.html.twig', {nature: 'contact'}) }}
+
+				<fieldset class="si-motifs">
+					<legend>C'est pour…</legend>
+					<div class="si-motifs-liste">
+						{% for cle, libelle in objets %}
+							<label class="si-motif"><input type="radio" name="objet" value="{{ cle }}"{% if cle == saisie.objet %} checked{% endif %}><span>{{ libelle }}</span></label>
+						{% endfor %}
+					</div>
+				</fieldset>
+				{% if site_lien('app_site_devis') %}
+					<p class="si-aide si-motif-aide" data-motif-aide="devis"{% if saisie.objet != 'devis' %} hidden{% endif %}>Pour un prix précis, le <a href="{{ path('app_site_devis') }}">formulaire de devis</a> demande la taille, la quantité et le fichier.</p>
+				{% endif %}
+
+				<div class="si-champs-2">
+					{{ include('site/_champ.html.twig', {nom: 'nom', libelle: 'Nom', valeur: saisie.nom, attributs: 'autocomplete="name" maxlength="120" required', exemple: 'Awa Diarra', obligatoire: true}) }}
+					{{ include('site/_champ_telephone.html.twig', {valeur: saisie.telephone, obligatoire: true}) }}
+				</div>
+				<div class="si-champs-2">
+					<div data-motif-champ="commande reclamation"{% if saisie.objet not in ['commande', 'reclamation'] and saisie.numero_commande == '' and erreurs.numero_commande is not defined %} hidden{% endif %}>
+						{{ include('site/_champ.html.twig', {nom: 'numero_commande', libelle: 'N° de commande', valeur: saisie.numero_commande, attributs: 'maxlength="40" autocomplete="off" autocapitalize="characters"', exemple: 'CM-0183', facultatif: true, aide: 'Sur votre reçu : la réponse s\'affiche tout de suite.'}) }}
+					</div>
+					<div class="si-champ si-fichier{{ erreurs.fichier is defined ? ' si-champ-erreur' }}">
+						<label for="champ-fichier">Fichier <span class="si-facultatif">(facultatif)</span></label>
+						<div class="si-depot si-depot-petit">
+							<input type="file" id="champ-fichier" name="fichier" class="si-fichier-champ" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" data-max="{{ tailleMax }}" data-max-mo="{{ tailleMo }}" aria-describedby="nom-fichier{{ erreurs.fichier is defined ? ' erreur-fichier' }}"{% if erreurs.fichier is defined %} aria-invalid="true"{% endif %}>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16.5 6v11.5a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10.5a1 1 0 0 1-2 0V6H10v9.5a2.5 2.5 0 0 0 5 0V5a4 4 0 0 0-8 0v12.5a5.5 5.5 0 0 0 11 0V6Z"/></svg>
+							<span class="si-depot-nom" id="nom-fichier">Logo, photo, PDF · {{ tailleMo }} Mo au plus</span>
+						</div>
+						<p class="si-erreur" id="erreur-fichier"{% if erreurs.fichier is not defined %} hidden{% endif %}>{{ erreurs.fichier ?? '' }}</p>
+					</div>
+				</div>
+
+				<div class="si-champ{{ erreurs.message is defined ? ' si-champ-erreur' }}">
+					<label for="champ-message">Message<span class="si-requis" aria-hidden="true"> *</span></label>
+					<textarea id="champ-message" name="message" rows="4" maxlength="{{ constant('App\\Entity\\DemandeDevis::MESSAGE_MAX') }}" placeholder="Bonjour, ma bâche est-elle toujours prévue pour mercredi ?" required{% if erreurs.message is defined %} aria-invalid="true" aria-describedby="erreur-message"{% endif %}>{{ saisie.message }}</textarea>
+					{% if erreurs.message is defined %}<p class="si-erreur" id="erreur-message">{{ erreurs.message }}</p>{% endif %}
+				</div>
+
+				<div class="si-formulaire-actions si-formulaire-envoi">
+					<button type="submit" class="si-bouton si-bouton-rouge si-bouton-grand">Envoyer le message</button>
+					<p class="si-note">Votre numéro sert uniquement à vous répondre. <span class="si-requis" aria-hidden="true">*</span><span aria-hidden="true"> champ obligatoire.</span></p>
+				</div>
+				{{ include('site/_reseaux.html.twig', {variante: 'contact', titre: 'Retrouvez-nous aussi sur'}) }}
+			</form>
+
+			<div class="si-contact-infos">
+				{# Maquette EC04 : la carte, et à côté les photos du local en vignettes (elles s'ouvrent en grand, galerie « Notre local »). #}
+				{% set vignettes = site_photos_local()|slice(0, 3) %}
+				{% if lienPlan or vignettes %}
+					<div class="si-contact-lieu{{ vignettes ? ' si-avec-vignettes' }} si-revele">
+						{% if lienPlan %}<div class="si-contact-plan">{{ include('site/_carte_plan.html.twig') }}</div>{% endif %}
+						{% if vignettes %}
+							<ul class="si-contact-vignettes si-local-mini">
+								{% for p in vignettes %}
+									<li><a href="#local-{{ p.nom }}" data-ouvrir="local-{{ p.nom }}" aria-haspopup="dialog">{{ include('site/_photo.html.twig', {photo: p, sizes: '140px', immediate: false}) }}<span>{{ p.legende ?? p.alt }}</span></a></li>
+								{% endfor %}
+							</ul>
+						{% endif %}
+					</div>
+				{% endif %}
+
+				<div class="si-contact-cartes">
+					<div class="si-carte si-info si-horaires si-revele">
+						<h2>{{ include('site/_icone.svg.twig', {nom: 'date', taille: 18}) }} Horaires</h2>
+						<ul class="si-semaine">
+							{% for j in horaires.semaine %}
+								<li class="{{ j.aujourdhui ? 'si-aujourdhui' }}{{ j.plage ? '' : ' si-jour-ferme' }}"{% if j.aujourdhui %} aria-current="date"{% endif %}><span>{{ j.nom }}{% if j.aujourdhui %} · aujourd'hui{% endif %}</span><span>{{ j.plage ?? 'Fermé' }}</span></li>
+							{% endfor %}
+						</ul>
+					</div>
+					<div class="si-carte si-info si-coordonnees si-revele">
+						<h2>{{ include('site/_icone.svg.twig', {nom: 'lieu', taille: 18}) }} Coordonnées</h2>
+						<p><strong>{{ visite.nom }}</strong>{% if entreprise and entreprise.nomCommercial and entreprise.raisonSociale %} · {{ entreprise.raisonSociale }}{% endif %}<br>{{ visite.adresse }}{% if repere %}<br><span class="si-repere">{{ repere }}</span>{% endif %}</p>
+						{% if visite.telephone %}<p><a href="{{ visite.tel }}">{{ visite.telephone }}</a>{% if wa %} · <a href="{{ wa }}" target="_blank" rel="noopener">WhatsApp</a>{% endif %}</p>{% endif %}
+						{% if visite.email %}<p><a href="mailto:{{ visite.email }}">{{ visite.email }}</a></p>{% endif %}
+						{% if entreprise and (entreprise.rccm or entreprise.nif) %}<p class="si-legal">{% if entreprise.rccm %}RCCM {{ entreprise.rccm }}{% endif %}{% if entreprise.rccm and entreprise.nif %} · {% endif %}{% if entreprise.nif %}NIF {{ entreprise.nif }}{% endif %}</p>{% endif %}
+						{% if fiche_google %}<p><a href="{{ fiche_google }}" target="_blank" rel="noopener" class="si-lien-fleche">Lire nos avis Google</a></p>{% endif %}
+					</div>
+				</div>
+			</div>
+		</div>
+	</section>
+
+	{# Galerie « Notre local » : façade, allée, jardin et entrée (bloc autonome). #}
+	{{ include('site/_notre_local.html.twig') }}
+
+	<script>
+	(function () {
+		// Le formulaire suit le motif : n° de commande pour un suivi ou une réclamation, lien du devis.
+		var form = document.getElementById('formulaire-contact');
+		if (form) {
+			var appliquer = function () {
+				var choix = form.querySelector('input[name=objet]:checked');
+				var motif = choix ? choix.value : '';
+				form.querySelectorAll('[data-motif-champ]').forEach(function (b) {
+					var garde = b.querySelector('input') && b.querySelector('input').value !== '';
+					b.hidden = !(b.dataset.motifChamp.split(' ').indexOf(motif) >= 0 || garde);
+				});
+				form.querySelectorAll('[data-motif-aide]').forEach(function (b) { b.hidden = b.dataset.motifAide !== motif; });
+			};
+			form.querySelectorAll('input[name=objet]').forEach(function (r) { r.addEventListener('change', appliquer); });
+			appliquer();
+
+			var fichier = document.getElementById('champ-fichier');
+			var nom = document.getElementById('nom-fichier');
+			var erreur = document.getElementById('erreur-fichier');
+			var texte = nom.textContent;
+			fichier.addEventListener('change', function () {
+				var f = fichier.files && fichier.files[0];
+				nom.textContent = texte;
+				erreur.hidden = true;
+				if (!f) { return; }
+				if (f.size > Number(fichier.dataset.max)) {
+					fichier.value = '';
+					erreur.textContent = 'Ce fichier dépasse ' + fichier.dataset.maxMo + ' Mo : envoyez-le par WhatsApp ou collez un lien dans le message.';
+					erreur.hidden = false;
+					return;
+				}
+				nom.textContent = f.name + ' · ' + (f.size / 1048576).toFixed(1).replace('.', ',') + ' Mo';
+			});
+		}
+
+		// « Me rappeler à 9 h » suit le créneau choisi.
+		var rappel = document.getElementById('formulaire-rappel');
+		if (rappel) {
+			var heure = rappel.querySelector('[data-rappel-heure]');
+			var maj = function () {
+				var c = rappel.querySelector('input[name=creneau]:checked');
+				heure.textContent = c ? ' à ' + c.dataset.heure + ' h' : '';
+			};
+			rappel.querySelectorAll('input[name=creneau]').forEach(function (r) { r.addEventListener('change', maj); });
+			maj();
+		}
+
+		// Un seul envoi, même si le réseau est lent.
+		[form, rappel].forEach(function (f) {
+			if (!f) { return; }
+			f.addEventListener('submit', function () {
+				var b = f.querySelector('button[type=submit]');
+				setTimeout(function () { b.disabled = true; b.textContent = 'Envoi en cours…'; }, 0);
+			});
+		});
+	})();
+	</script>
+{% endblock %}
+{% block scripts %}<script src="{{ asset('js/site-animations.js') }}" defer></script>{% endblock %}

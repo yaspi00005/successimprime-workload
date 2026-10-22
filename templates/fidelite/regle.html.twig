@@ -1,0 +1,160 @@
+{% extends 'base.html.twig' %}
+
+{# Fidélité par article : une règle (docs/fidelite.md). #}
+
+{% import 'fidelite/_macros.html.twig' as f %}
+
+{% block title %}{{ nouvelle ? 'Nouvelle règle de fidélité' : 'Fidélité de ' ~ regle.produit.nom }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_fidelite_index', {onglet: 'articles'}) }}" class="btn btn-light btn-sm si-btn-entete">Retour</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="row">
+		<div class="col-xl-8">
+			<form method="post" class="card si-bloc si-fi-regle" id="regle">
+				<input type="hidden" name="_token" value="{{ csrf_token('regle-fidelite') }}">
+				<div class="si-bloc-tete"><h4>{{ nouvelle ? 'Programmer la fidélité d\'un article' : 'Fidélité de l\'article' }}</h4></div>
+
+				{% for e in erreurs %}<div class="alert alert-danger py-2">{{ e }}</div>{% endfor %}
+
+				<div class="mb-3">
+					<label class="form-label" for="produit">Article</label>
+					<select id="produit" name="produit" class="form-select" required>
+						<option value="">Choisir…</option>
+						{% for p in produits %}
+							<option value="{{ p.id }}" data-m2="{{ p.modeCalcul == 'metre_carre' ? 1 : 0 }}"{{ regle.produit and regle.produit.id == p.id ? ' selected' }}>{{ p.nom }}{{ p.modeCalcul == 'metre_carre' ? ' (au m²)' }}{{ not p.actif ? ' — inactif' }}</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<fieldset class="mb-3">
+					<legend class="form-label fs-6">Bonification</legend>
+					<div class="si-fi-choix">
+						<label><input type="radio" name="actif" value="1"{{ regle.actif ? ' checked' }}> <b>Active</b><small>l'article rapporte selon cette règle</small></label>
+						<label><input type="radio" name="actif" value="0"{{ not regle.actif ? ' checked' }}> <b>Désactivée</b><small>l'article ne rapporte aucun point, même pour un client aux valeurs propres</small></label>
+					</div>
+				</fieldset>
+
+				<div data-si-actif>
+					<div class="row g-3 mb-3">
+						<div class="col-sm-6">
+							<label class="form-label" for="mode">Les points</label>
+							<select id="mode" name="mode" class="form-select">
+								<option value="unite"{{ regle.mode == 'unite' ? ' selected' }}>par unité (m², pièce ou lot)</option>
+								<option value="pourcentage"{{ regle.mode == 'pourcentage' ? ' selected' }}>en % du montant payé</option>
+							</select>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label" for="valeur" data-si-libelle-valeur>Points gagnés</label>
+							<div class="input-group">
+								<input type="text" inputmode="decimal" id="valeur" name="valeur" value="{{ f.nombre(regle.valeur) }}" class="form-control">
+								<span class="input-group-text" data-si-unite-valeur>pts / unité</span>
+							</div>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label" for="valeur_point">Valeur du point</label>
+							<div class="input-group">
+								<span class="input-group-text">1 point =</span>
+								<input type="number" id="valeur_point" name="valeur_point" min="1" max="1000" value="{{ regle.valeurPoint }}" class="form-control">
+								<span class="input-group-text">F CFA</span>
+							</div>
+							<small class="text-muted">Le solde du client en francs compte chaque point à cette valeur.</small>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label" for="seuil">Plage : ne rapporte qu'au-delà de</label>
+							<div class="input-group">
+								<input type="text" inputmode="decimal" id="seuil" name="seuil" value="{{ f.nombre(regle.seuil) }}" class="form-control">
+								<span class="input-group-text" data-si-unite-seuil>{{ f.unite_plage(regle, regle.produit and regle.produit.modeCalcul == 'metre_carre') }}</span>
+							</div>
+							<small class="text-muted">0 : dès le premier achat. Seule la quantité au-dessus rapporte.</small>
+						</div>
+						<div class="col-12">
+							<label class="form-label" for="portee">La plage se compte sur</label>
+							<select id="portee" name="portee" class="form-select">
+								<option value="produit"{{ regle.portee == 'produit' ? ' selected' }}>cet article seulement</option>
+								<option value="famille"{{ regle.portee == 'famille' ? ' selected' }}>toute sa famille (grand format en m², sinon les autres articles en F)</option>
+							</select>
+						</div>
+					</div>
+				</div>
+
+				<div class="row g-3 mb-3">
+					<div class="col-sm-6">
+						<label class="form-label" for="debut">Début</label>
+						<input type="date" id="debut" name="debut" value="{{ regle.debut|date('Y-m-d') }}" class="form-control" required>
+					</div>
+					<div class="col-sm-6">
+						<label class="form-label" for="fin">Fin (facultative, incluse)</label>
+						<input type="date" id="fin" name="fin" value="{{ regle.fin ? regle.fin|date('Y-m-d') }}" class="form-control">
+					</div>
+					<div class="col-12">
+						<label class="form-label" for="note">Note interne</label>
+						<input type="text" id="note" name="note" maxlength="255" value="{{ regle.note }}" class="form-control" placeholder="Ex. : promotion bâches de la rentrée">
+					</div>
+				</div>
+
+				<div class="d-flex gap-2 flex-wrap">
+					<button class="btn btn-danger">Enregistrer</button>
+					<a href="{{ path('app_fidelite_index', {onglet: 'articles'}) }}" class="btn btn-light">Annuler</a>
+				</div>
+			</form>
+			{% if not nouvelle %}
+				<form method="post" action="{{ path('app_fidelite_regle_supprimer', {id: regle.id}) }}" class="mt-2" {{ confirmer_suppression('la règle de fidélité de « ' ~ regle.produit.nom ~ ' »', {detail: 'L\'article suivra de nouveau les valeurs générales.'}) }}>
+					<input type="hidden" name="_token" value="{{ csrf_token('regle-fidelite-' ~ regle.id) }}">
+					<button class="btn btn-link text-danger btn-sm p-0">Supprimer la règle</button>
+				</form>
+			{% endif %}
+		</div>
+
+		<div class="col-xl-4">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Ce qui s'applique</h4></div>
+				<ol class="si-fi-ordre">
+					<li><b>Valeurs propres au client</b>, fixées sur sa fiche par la direction.</li>
+					<li><b>Cette règle</b>, entre ses dates (jour du paiement).</li>
+					<li><b>Valeurs générales</b> : {{ f.nombre(reglages.pointsParM2) }} pts/m² au-delà de {{ f.nombre(reglages.seuilM2) }} m², {{ f.nombre(reglages.tauxAutre) }} % au-delà de {{ reglages.seuilMontant|number_format(0, ',', ' ') }} F.</li>
+				</ol>
+				<p class="si-pg-note mb-0">Une règle désactivée l'emporte sur tout : l'article ne rapporte rien, mais compte dans la progression du client. Le multiplicateur de délai (×{{ reglages.multiplicateurJour }} le jour même) s'applique à toutes les règles.</p>
+			</div>
+			{% if historique is not empty %}
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Modifications</h4></div>
+					<ul class="si-fi-journal compact">
+						{% for j in historique %}
+							<li>
+								<span class="si-fi-quand">{{ j.le|date('d/m/Y') }}<small>{{ j.le|date('H:i') }}</small></span>
+								<div><b>{{ j.action }}</b>{% if j.details %}<small class="d-block text-muted">{{ j.details|join(' · ') }}</small>{% endif %}</div>
+								<span class="si-fi-qui">{{ j.qui ? j.qui.userIdentifier : 'système' }}</span>
+							</li>
+						{% endfor %}
+					</ul>
+				</div>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var form = document.getElementById('regle');
+			var produit = form.querySelector('#produit');
+			var mode = form.querySelector('#mode');
+			var portee = form.querySelector('#portee');
+			var maj = function () {
+				var actif = form.querySelector('input[name="actif"]:checked').value === '1';
+				form.querySelector('[data-si-actif]').hidden = !actif;
+				var opt = produit.options[produit.selectedIndex];
+				var m2 = opt && opt.dataset.m2 === '1';
+				var pourcent = mode.value === 'pourcentage';
+				form.querySelector('[data-si-unite-valeur]').textContent = pourcent ? '%' : (m2 ? 'pts / m²' : 'pts / pièce');
+				form.querySelector('[data-si-unite-seuil]').textContent = m2 ? 'm²' : (portee.value === 'famille' || pourcent ? 'F' : 'pièces');
+			};
+			form.addEventListener('change', maj);
+			maj();
+		})();
+	</script>
+{% endblock %}

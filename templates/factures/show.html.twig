@@ -2,11 +2,15 @@
 
 {% block title %}
 	{{ facture.comptabilisee ? 'Facture' : 'Pro forma' }}
-	{{ facture.numero|default('#' ~ facture.id) }}
+	{{ facture.numero|default('Brouillon') }}
 {% endblock %}
 
 
 {% block body %}
+
+	{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or is_granted('ROLE_ADMIN') %}
+	{# « Encaisser » mène à la page de paiement, refusée sans le droit Encaissements (graphiste par défaut). #}
+	{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
 
 	{% set client =
         commande
@@ -58,7 +62,7 @@
 						Pro forma
 					{% endif %}
 
-					{{ facture.numero|default('#' ~ facture.id) }}
+					{{ facture.numero|default('Brouillon') }}
 
 				</h1>
 
@@ -96,7 +100,7 @@
 
 					<li class="breadcrumb-item active">
 
-						{{ facture.numero|default('Document') }}
+						{{ facture.numero|default('Facture brouillon') }}
 
 					</li>
 
@@ -152,7 +156,8 @@
 				{# PAIEMENT : UNIQUEMENT FACTURE OFFICIELLE #}
 
 				{% if
-                    facture.comptabilisee
+                    peutEncaisser
+                    and facture.comptabilisee
                     and commande
                     and resteAPayer > 0
                     and not facture.estAnnulee
@@ -446,6 +451,8 @@
 
 			{% if facture.comptabilisee %}
 
+				{# Payé et reste : avec le droit Paiements seulement (montants réglés à part). #}
+				{% if peutVoirPaiements %}
 				{# TOTAL PAYÉ #}
 
 				<div class="col-xl-3 col-md-6">
@@ -530,6 +537,8 @@
 
 				</div>
 
+
+				{% endif %}
 
 				{# STATUT #}
 
@@ -1008,6 +1017,27 @@
 						class="card-body">
 
 
+						{# VALIDATION : le numéro définitif n'est attribué qu'ici ; ensuite la facture ne se modifie plus #}
+
+						{% if facture.estBrouillon and not facture.estAnnulee %}
+
+							<form method="post" action="{{ path( 'app_factures_emettre', { id: facture.id } ) }}" class="mb-3" data-confirmer="Valider {{ facture.estFacture ? 'et numéroter la facture' : 'le document' }} ?" data-confirmer-detail="{{ facture.estFacture ? 'Elle reçoit son numéro définitif et ne se modifie plus : toute correction passera par un avoir.' : 'Il passera à l’état émis.' }}" data-confirmer-bouton="Valider">
+
+								<input type="hidden" name="_token" value="{{ csrf_token( 'emettre-facture-' ~ facture.id ) }}">
+
+								<button type="submit" class="btn btn-primary btn-block" id="btn-valider-facture">
+
+									<i class="fa fa-check mr-1"></i>
+
+									{{ facture.estFacture ? 'Valider et numéroter' : 'Valider le document' }}
+
+								</button>
+
+							</form>
+
+						{% endif %}
+
+
 						{# PDF #}
 
 						<a href="{{ path( 'app_factures_pdf', { id: facture.id } ) }}" class="btn btn-danger btn-block mb-3" target="_blank">
@@ -1058,6 +1088,7 @@
 						{% if
                             facture.comptabilisee
                             and not facture.estAnnulee
+                            and not (facture.estFacture and facture.estEmise)
                             and commande
                             and facture.montantPaye < facture.totalTtc
                         %}
@@ -1087,7 +1118,8 @@
 																																																																																				                           FACTURE OFFICIELLE UNIQUEMENT #}
 
 						{% if
-                            facture.comptabilisee
+                            peutEncaisser
+                            and facture.comptabilisee
                             and commande
                             and resteAPayer > 0
                             and not facture.estAnnulee
@@ -1104,11 +1136,36 @@
 						{% endif %}
 
 
-						{# ANNULATION #}
+						{# AVOIR (FD04) : une facture validée se corrige par un avoir numéroté #}
 
-						{% if not facture.estAnnulee %}
+						{% if facture.estFacture and facture.estEmise %}
 
-							<button type="button" class="btn btn-outline-danger btn-block" id="btn-annuler-facture">
+							<a href="{{ path( 'app_factures_avoir', { id: facture.id } ) }}" class="btn btn-outline-primary btn-block mb-3" style="color:#7B3FC4;border-color:#7B3FC4">
+
+								<i class="fa fa-undo mr-1"></i>
+
+								Créer un avoir
+
+							</a>
+
+							{% for a in avoirsFacture|default([]) %}
+
+								<a href="{{ path( 'app_factures_avoir_show', { id: a.id } ) }}" class="d-flex justify-content-between small mb-2" style="color:#7B3FC4">
+
+									<span>{{ a.numero }} · {{ a.suiteLibelle|lower }}</span><b>− {{ a.total|number_format(0, ',', ' ') }} F</b>
+
+								</a>
+
+							{% endfor %}
+
+						{% endif %}
+
+
+						{# ANNULATION : un brouillon ou une proforma ; une facture validée passe par un avoir #}
+
+						{% if not facture.estAnnulee and not (facture.estFacture and facture.estEmise) %}
+
+							<button type="submit" form="form-annuler-facture" class="btn btn-outline-danger btn-block" id="btn-annuler-facture">
 
 								<i class="fa fa-ban mr-1"></i>
 
@@ -1117,7 +1174,7 @@
 							</button>
 
 
-							<form id="form-annuler-facture" method="post" action="{{ path( 'app_factures_annuler', { id: facture.id } ) }}" class="d-none">
+							<form id="form-annuler-facture" method="post" action="{{ path( 'app_factures_annuler', { id: facture.id } ) }}" class="d-none" data-confirmer="Annuler le document {{ facture.numero }} ?" data-confirmer-detail="Il passera à l’état annulé." data-confirmer-bouton="Annuler le document" data-confirmer-danger>
 
 								<input type="hidden" name="_token" value="{{ csrf_token( 'annuler-facture-' ~ facture.id ) }}">
 
@@ -1200,6 +1257,14 @@
 
 									</div>
 
+								{% endif %}
+
+								{# Objet copié de la commande à la création de la facture. #}
+								{% if facture.objet %}
+									<div class="col-12 mb-3">
+										<small class="text-muted d-block">Objet</small>
+										<strong>{{ facture.objet }}</strong>
+									</div>
 								{% endif %}
 
 							</div>
@@ -1303,12 +1368,7 @@
 
 													<strong>
 
-														{{
-                                                            detail.designation
-                                                            |default(
-                                                                'Article / prestation'
-                                                            )
-                                                        }}
+														{{ detail|ligne_interne('Article / prestation') }}
 
 													</strong>
 
@@ -1396,6 +1456,17 @@
 
 										</tr>
 
+									{% endif %}
+
+									{# Frais de livraison copiés de la commande, déjà compris dans le total HT. #}
+									{% if facture.fraisLivraison > 0 %}
+										<tr>
+											<td>{{ (commande ? commande.commandesDetails|length : 0) + 1 }}</td>
+											<td><strong>Livraison</strong></td>
+											<td class="text-center">1</td>
+											<td class="text-right">{{ facture.fraisLivraison|number_format(0, ',', ' ') }} FCFA</td>
+											<td class="text-right">{{ facture.fraisLivraison|number_format(0, ',', ' ') }} FCFA</td>
+										</tr>
 									{% endif %}
 
 								</tbody>
@@ -1527,58 +1598,21 @@
 									<tbody>
 
 
-										<tr>
-
-											<td>
-												Total HT
-											</td>
-
-											<td class="text-right text-white ">
-
-												{{
-                                                    facture.totalHt
-                                                    |default(0)
-                                                    |number_format(
-                                                        0,
-                                                        ',',
-                                                        ' '
-                                                    )
-                                                }}
-												FCFA
-
-											</td>
-
-										</tr>
-
-
+										{# Remise globale : une ligne visible, déduite du sous-total HT ; Total HT = après remise, TTC = HT + TVA. #}
 										{% if facture.remise > 0 %}
-
 											<tr>
-
-												<td>
-													Remise
-												</td>
-
-												<td class="text-right text-danger">
-
-													-
-													{{
-                                                        facture.remise
-                                                        |number_format(
-                                                            0,
-                                                            ',',
-                                                            ' '
-                                                        )
-                                                    }}
-													FCFA
-
-												</td>
-
+												<td>Sous-total HT</td>
+												<td class="text-right text-white">{{ facture.totalHt|default(0)|number_format(0, ',', ' ') }} FCFA</td>
 											</tr>
-
+											<tr>
+												<td>Remise globale</td>
+												<td class="text-right text-danger">− {{ facture.remise|number_format(0, ',', ' ') }} FCFA</td>
+											</tr>
 										{% endif %}
-
-
+										<tr>
+											<td>Total HT</td>
+											<td class="text-right text-white">{{ facture.totalHtNet|number_format(0, ',', ' ') }} FCFA</td>
+										</tr>
 										{% if facture.montantTva > 0 %}
 
 											<tr>
@@ -1670,7 +1704,7 @@
 										</tr>
 
 
-										{% if facture.comptabilisee %}
+										{% if facture.comptabilisee and peutVoirPaiements %}
 
 											<tr>
 
@@ -1760,7 +1794,7 @@
 																												           HISTORIQUE PAIEMENTS
 																												           ============================================================ #}
 
-		{% if facture.comptabilisee %}
+		{% if facture.comptabilisee and peutVoirPaiements %}
 
 			<div class="card">
 
@@ -2235,7 +2269,7 @@
 
 
 {% block javascripts %}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 	{{ parent() }}
 
@@ -2275,55 +2309,7 @@ formActualiser.submit();
 }
 
 
-const button = document.getElementById('btn-annuler-facture');
-
-const form = document.getElementById('form-annuler-facture');
-
-
-if (! button || ! form) {
-return;
-}
-
-
-button.addEventListener('click', function () { /*
-                         * SweetAlert2.
-                         */
-if (typeof Swal !== 'undefined') {
-
-Swal.fire({
-icon: 'warning',
-
-title: 'Annuler ce document ?',
-
-text: 'Cette opération changera l’état du document en annulé.',
-
-showCancelButton: true,
-
-confirmButtonText: 'Oui, annuler',
-
-cancelButtonText: 'Fermer',
-
-confirmButtonColor: '#d33'
-}).then(function (result) {
-
-if (result.isConfirmed) {
-form.submit();
-}
-
-});
-
-return;
-}
-
-
-/*
-                         * Fallback.
-                         */
-if (confirm('Voulez-vous vraiment annuler ce document ?')) {
-form.submit();
-}
-
-});
+// Annuler le document : data-confirmer sur le formulaire (public/js/confirmation.js).
 
 });
 

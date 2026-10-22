@@ -1,0 +1,93 @@
+{#
+	Fiche client › « Accès à l'espace client » : suspendre tout le compte ou
+	une personne (motif obligatoire, gardé à l'atelier), rétablir l'accès.
+	Droit Clients ; boutons cachés en « Voir » (et refusés par
+	LectureSeuleSubscriber) et sur le site en ligne. Gestes :
+	EspaceSuspensionController. Docs : docs/espace-client.md, « Suspendre
+	l'accès ».
+#}
+{% set s = espace_suspensions(client) %}
+{% set modifiable = s.empechement is null and not module_en_lecture(app.request.attributes.get('_route')) %}
+<style>
+	.si-fh-susp-etat { display: flex; gap: 8px; align-items: flex-start; padding: 8px 10px; border-radius: 10px; background: #FEF2F2; color: #7F1D1D; font-size: 13px; margin: 0 0 8px; }
+	.si-fh-susp-etat b { display: block; color: #991B1B; }
+	.si-fh-susp-etat small { display: block; color: #7F1D1D; }
+	.si-fh-susp-etat form { margin-left: auto; flex: none; }
+	.si-fh-susp-etat .btn { width: auto; }
+	.si-fh-susp-ouvert { font-size: 13px; color: #166534; margin: 0 0 8px; }
+	.si-fh-susp details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: #B91C1C; padding: 4px 0; }
+	.si-fh-susp details[open] > summary { margin-bottom: 6px; }
+	.si-fh-susp label { font-size: 12px; font-weight: 600; color: #334155; margin: 6px 0 2px; display: block; }
+	.si-fh-susp-hist { list-style: none; padding: 0; margin: 8px 0 0; font-size: 12px; color: #64748B; }
+	.si-fh-susp-hist li + li { margin-top: 4px; }
+</style>
+<div class="si-fh-espace si-fh-susp" id="espace-client">
+	<h3>Accès à l'espace client</h3>
+	{% for a in s.actives %}
+		<div class="si-fh-susp-etat" role="status">
+			<div>
+				<b>Suspendu · {{ a.estToutLeCompte ? 'tout le compte' : (a.nom ?? 'une personne') ~ ' (' ~ a.telephoneAffiche ~ ')' }}</b>
+				<small>Le {{ a.suspenduLe|date('d/m/Y à H:i') }}{{ a.suspenduPar ? ' par ' ~ a.suspenduPar|nom_pointage }} : {{ a.motif }}</small>
+			</div>
+			{% if modifiable %}
+				<form method="post" action="{{ path('app_clients_espace_retablir', {publicId: client.publicId, suspension: a.id}) }}" data-confirmer="Rétablir l'accès à l'espace client ?">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace-retablir-' ~ a.id) }}">
+					<button type="submit" class="btn btn-sm btn-outline-success">Rétablir</button>
+				</form>
+			{% endif %}
+		</div>
+	{% else %}
+		<p class="si-fh-susp-ouvert">Ouvert à chaque personne du compte.</p>
+	{% endfor %}
+
+	{% if modifiable and not s.toutLeCompte %}
+		<details>
+			<summary>Suspendre l'accès</summary>
+			<p>La personne ne peut plus se connecter (sa session ouverte se ferme) et ne reçoit plus de notification, de SMS ni d'e-mail de l'espace client. Rien n'est effacé : ses commandes et factures restent.</p>
+			<form method="post" action="{{ path('app_clients_espace_suspendre', {publicId: client.publicId}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace-suspendre-' ~ client.id) }}">
+				<label for="susp-qui">Qui</label>
+				<select name="qui" id="susp-qui" class="form-select form-select-sm">
+					<option value="compte">Tout le compte (chaque personne)</option>
+					{% for p in s.personnes %}
+						<option value="{{ p.telephone }}">{{ p.libelle }}</option>
+					{% endfor %}
+					<option value="autre">Une autre personne (son numéro)…</option>
+				</select>
+				<label for="susp-telephone">Numéro de connexion de l'autre personne</label>
+				<input type="tel" name="telephone" id="susp-telephone" class="form-control form-control-sm" inputmode="numeric" maxlength="20" placeholder="Ex. 60 44 51 03">
+				<label for="susp-nom">Son nom (facultatif)</label>
+				<input type="text" name="nom" id="susp-nom" class="form-control form-control-sm" maxlength="120">
+				<label for="susp-motif">Motif (reste à l'atelier)</label>
+				<input type="text" name="motif" id="susp-motif" class="form-control form-control-sm" maxlength="255" minlength="3" required placeholder="Ex. a quitté l'entreprise, impayés">
+				<button type="submit" class="btn btn-sm btn-outline-danger mt-2">Suspendre l'accès</button>
+			</form>
+		</details>
+	{% elseif s.empechement and s.actives is empty %}
+		<p class="mb-0">{{ s.empechement }}</p>
+	{% endif %}
+
+	{% if s.levees is not empty %}
+		<ul class="si-fh-susp-hist" aria-label="Accès rétablis">
+			{% for l in s.levees|slice(0, 3) %}
+				<li>{{ l.estToutLeCompte ? 'Tout le compte' : (l.nom ?? l.telephoneAffiche) }} : suspendu le {{ l.suspenduLe|date('d/m/Y') }}, rétabli le {{ l.leveeLe|date('d/m/Y') }}{{ l.leveePar ? ' par ' ~ l.leveePar|nom_pointage }}.</li>
+			{% endfor %}
+		</ul>
+	{% endif %}
+</div>
+<script>
+	(function () {
+		var qui = document.getElementById('susp-qui');
+		if (!qui) { return; }
+		var autres = [document.getElementById('susp-telephone'), document.getElementById('susp-nom')];
+		var maj = function () {
+			autres.forEach(function (champ) {
+				champ.hidden = qui.value !== 'autre';
+				champ.previousElementSibling.hidden = qui.value !== 'autre';
+			});
+			autres[0].required = qui.value === 'autre';
+		};
+		qui.addEventListener('change', maj);
+		maj();
+	})();
+</script>

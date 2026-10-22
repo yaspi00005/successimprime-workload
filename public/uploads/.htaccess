@@ -1,0 +1,28 @@
+# Fichiers publics par nature (images du site vitrine, médias de l'écran
+# TV) : le serveur les donne tels quels, il n'en exécute aucun
+# (docs/securite.md). Les fichiers privés (chat, pré-presse, étiquettes…)
+# sont sous var/uploads, servis par l'application après contrôle des droits.
+# Seulement des directives déjà permises par les deux autres .htaccess
+# (Require, Header), pour ne pas risquer une erreur 500 chez l'hébergeur.
+
+# Jamais servi d'ici : script (PHP, CGI…) ni page qui s'ouvrirait comme
+# une page du site (HTML, SVG, JavaScript), même avec une seconde
+# extension (« photo.php.jpg »).
+<FilesMatch "(?i)\.(php\d*|phtml|pht|phps|phar|inc|cgi|pl|py|sh|asp|aspx|jsp|html?|xhtml|shtml|svgz?|xml|js|mjs)(\.|$)">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+    # Le navigateur garde le type annoncé par le serveur.
+    Header always set X-Content-Type-Options "nosniff"
+    # Image ou vidéo ouverte seule : aucun script, même déguisé.
+    <FilesMatch "(?i)\.(jpe?g|png|gif|webp|bmp|ico|mp4|webm|txt|csv|zip)$">
+        Header always set Content-Security-Policy "default-src 'none'; img-src 'self' data:; media-src 'self'; style-src 'unsafe-inline'; frame-ancestors 'self'; sandbox"
+    </FilesMatch>
+</IfModule>

@@ -1,0 +1,165 @@
+{#
+	Fichiers du dossier d'un client (maquette DS01), dans l'onglet Fichiers
+	de la fiche client et sur la page /dossiers-clients/client/{publicId}.
+	Variables : client, dossier (ExplorateurDossier::pourClient), base (URL
+	de la page qui inclut ce bloc). Tout est filtré par la matrice
+	« Qui voit quoi » ; en ligne, seulement les fichiers publiés.
+#}
+{% set d = dossier %}
+{% set jeton = csrf_token('dossiers-clients') %}
+{% set pastilles = {ai: ['AI', '#F97316'], psd: ['PSD', '#2563EB'], psb: ['PSD', '#2563EB'], indd: ['INDD', '#DB2777'], idml: ['INDD', '#DB2777'], pdf: ['PDF', '#DC2626'], jpg: ['JPG', '#0F766E'], jpeg: ['JPG', '#0F766E'], png: ['PNG', '#0F766E'], eps: ['EPS', '#EA580C'], svg: ['SVG', '#7C3AED'], cdr: ['CDR', '#16A34A'], tif: ['TIF', '#0F766E'], tiff: ['TIF', '#0F766E']} %}
+{% macro pastille(ext, pastilles) %}{% set p = pastilles[ext|lower] ?? [ext|upper|slice(0, 4) ?: '?', '#64748B'] %}<span class="dc-ext" style="--dc-ext: {{ p[1] }}">{{ p[0] }}</span>{% endmacro %}
+
+<div class="dc" id="dc-explorateur" data-dc-base="{{ base }}" data-dc-detail="{{ path('app_dossiers_clients_detail', {id: 0})|replace({'/0': '/__ID__'}) }}">
+	{% if d.en_ligne %}
+		{# ===== Site en ligne : il ne voit pas le serveur de l'atelier ===== #}
+		<div class="dc-carte dc-info">
+			<p><b>Fichiers publiés pour ce client.</b> Le site en ligne ne voit pas le serveur de l'atelier : seuls les fichiers envoyés au client (BAT, factures, visuels validés) sont ici. Le dossier complet s'ouvre depuis l'ERP de l'atelier.</p>
+		</div>
+		{% include 'dossiers_clients/_publies.html.twig' with {publies: d.publies, retirer: false} %}
+	{% elseif not d.racine_reglee %}
+		<div class="dc-carte dc-vide">
+			<i class="fas fa-folder-open"></i>
+			<p><b>Le dossier des clients n'est pas encore réglé.</b><br>Indiquez où sont les dossiers des clients sur le serveur de l'atelier.</p>
+			{% if d.peut_lier_dossier %}<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_reglages') }}">Régler l'emplacement</a>{% endif %}
+		</div>
+	{% elseif d.aucun_droit %}
+		<div class="dc-carte dc-vide"><i class="fas fa-lock"></i><p>Votre rôle ne donne accès à aucun sous-dossier des clients. Demandez à la Direction (Réglages › Dossiers clients › Qui voit quoi).</p></div>
+	{% elseif d.lien is null or not d.lien.estLie %}
+		<div class="dc-carte dc-vide">
+			<i class="fas fa-folder-plus"></i>
+			{% if d.lien %}
+				<p><b>Dossier proposé : « {{ d.lien.nomDossier }} »</b> ({{ d.lien.score }} % de ressemblance), pas encore validé.</p>
+			{% else %}
+				<p><b>Aucun dossier n'est lié à ce client.</b><br>L'outil n'a pas trouvé de dossier proche de « {{ client.nomComplet }} »{{ client.code ? ' (' ~ client.code ~ ')' }}.</p>
+			{% endif %}
+			{% if d.peut_lier_dossier %}
+				<div class="dc-actions-ligne">
+					{% if d.lien %}
+						<form method="post" action="{{ path('app_dossiers_clients_lier', {publicId: client.publicId}) }}">
+							<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="dossier" value="{{ d.lien.nomDossier }}"><input type="hidden" name="retour" value="{{ base }}#fichiers">
+							<button class="btn btn-sm dc-btn-principal">Valider ce dossier</button>
+						</form>
+					{% endif %}
+					<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_liaison', {vue: 'introuvable', q: client.code ?: client.nomComplet}) }}">Choisir un autre dossier</a>
+					<form method="post" action="{{ path('app_dossiers_clients_creer', {publicId: client.publicId}) }}">
+						<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="retour" value="{{ base }}#fichiers">
+						<button class="btn btn-sm dc-btn">+ Créer le dossier</button>
+					</form>
+				</div>
+			{% else %}
+				<p class="dc-legende">La Direction ou le prépresse lie le dossier dans Réglages › Dossiers clients.</p>
+			{% endif %}
+		</div>
+	{% else %}
+		{% set sd = d.sous_dossiers[d.sd] ?? null %}
+		{# ===== Barre du chemin ===== #}
+		<div class="dc-barre">
+			<i class="fas fa-folder dc-dossier-ico" aria-hidden="true"></i>
+			<code class="dc-chemin" title="{{ d.chemin }}"><span>{{ d.chemin|default(d.lien.nomDossier) }}</span></code>
+			{% set rapide = [d.etat.rapide.le ?? '', d.etat.complete.le ?? '']|sort|last %}
+			{% if d.lien.absent %}
+				<span class="dc-etat dc-etat-alerte">Dossier introuvable sur le serveur</span>
+			{% elseif rapide %}
+				<span class="dc-etat">Synchronisé {{ date(rapide)|temps_ecoule(true) }}</span>
+			{% else %}
+				<span class="dc-etat dc-etat-attente">Pas encore analysé</span>
+			{% endif %}
+			<span class="dc-compte">{{ d.total }} fichier{{ d.total > 1 ? 's' }} · {{ d.octets|taille_octets }}</span>
+			<span class="dc-barre-boutons">
+				{% if sd and sd.cle != '_autres' %}<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_ouvrir_dossier', {publicId: client.publicId, sd: d.sd}) }}" title="Ouvrir ce dossier dans l'Explorateur Windows du poste"><i class="fab fa-windows"></i> Explorateur</a>{% endif %}
+				{% if d.chemin %}<button type="button" class="btn btn-sm dc-btn" data-dc-copier="{{ d.chemin }}" title="Copier le chemin du dossier"><i class="far fa-copy"></i> Chemin</button>{% endif %}
+				{% if d.peut_ajouter %}<button type="button" class="btn btn-sm dc-btn-principal" data-dc-basculer="dc-depot"><i class="fas fa-upload"></i> Déposer</button>{% endif %}
+			</span>
+		</div>
+		{% if d.peut_ajouter %}
+			<form class="dc-carte dc-depot" id="dc-depot" method="post" enctype="multipart/form-data" action="{{ path('app_dossiers_clients_deposer', {publicId: client.publicId}) }}" hidden>
+				<input type="hidden" name="_token" value="{{ jeton }}"><input type="hidden" name="base" value="{{ base }}">
+				<label>Ranger dans
+					<select name="sd" class="form-select form-select-sm">
+						{% for s in d.sous_dossiers|filter(s => s.cle != '_autres') %}<option value="{{ s.cle }}" {{ s.cle == d.sd ? 'selected' }}>{{ s.dossier }}</option>{% endfor %}
+					</select>
+				</label>
+				<input type="file" name="fichier" class="form-control form-control-sm" required aria-label="Fichier à déposer">
+				<button class="btn btn-sm dc-btn-principal">Envoyer</button>
+				<small>Le fichier est écrit dans le dossier du client sans rien écraser. Pour un très gros fichier, enregistrez-le directement dans le dossier depuis le poste.</small>
+			</form>
+		{% endif %}
+
+		<div class="dc-grille">
+			{# ===== Sous-dossiers et filtres ===== #}
+			<nav class="dc-carte dc-gauche" aria-label="Sous-dossiers">
+				<ul class="dc-sous-dossiers">
+					{% for s in d.sous_dossiers %}
+						<li><a href="{{ base }}?{{ {sd: s.cle, filtre: d.filtre, tri: d.tri}|filter(v => v)|url_encode }}#fichiers" class="{{ s.cle == d.sd and not d.q ? 'actif' }}" {{ s.cle == d.sd and not d.q ? 'aria-current="page"' }}>
+							<span class="dc-carre" style="--dc-c: {{ s.couleur }}"></span><span class="dc-sd-nom">{{ s.dossier }}</span><span class="dc-sd-n">{{ s.fichiers }}</span>
+						</a></li>
+					{% endfor %}
+				</ul>
+				<h3>Filtres</h3>
+				<ul class="dc-filtres">
+					{% for k, l in constant('App\\Service\\DossiersClients\\ExplorateurDossier::FILTRES') %}
+						<li><a href="{{ base }}?{{ {sd: d.sd, filtre: d.filtre == k ? '' : k, tri: d.tri, q: d.q}|filter(v => v)|url_encode }}#fichiers" class="{{ d.filtre == k ? 'actif' }}">{{ l }}{% if d.filtre == k %} <i class="fas fa-times" aria-label="retirer le filtre"></i>{% endif %}</a></li>
+					{% endfor %}
+				</ul>
+			</nav>
+
+			{# ===== Fichiers ===== #}
+			<section class="dc-carte dc-centre" aria-label="Fichiers">
+				<form class="dc-outils" method="get" action="{{ base }}#fichiers" role="search">
+					<input type="hidden" name="sd" value="{{ d.sd }}">
+					{% if d.filtre %}<input type="hidden" name="filtre" value="{{ d.filtre }}">{% endif %}
+					<label class="dc-recherche"><i class="fas fa-search" aria-hidden="true"></i><input type="search" name="q" value="{{ d.q }}" maxlength="100" placeholder="Rechercher dans les fichiers du client (nom, commande{{ d.texte_pdf ? ', texte des PDF' }})" aria-label="Rechercher dans les fichiers du client"></label>
+					<span class="dc-vues" role="group" aria-label="Affichage">
+						<button type="button" data-dc-vue="grille" class="actif" aria-label="Miniatures" title="Miniatures"><i class="fas fa-th-large"></i></button>
+						<button type="button" data-dc-vue="liste" aria-label="Liste" title="Liste"><i class="fas fa-list"></i></button>
+					</span>
+					<label class="dc-tri">Trier :
+						<select name="tri" class="form-select form-select-sm" data-dc-auto>
+							{% for k, l in constant('App\\Service\\DossiersClients\\ExplorateurDossier::TRIS') %}<option value="{{ k }}" {{ d.tri == k ? 'selected' }}>{{ l }}</option>{% endfor %}
+						</select>
+					</label>
+				</form>
+				{% if d.q %}<p class="dc-legende">Recherche « {{ d.q }} » dans tous vos sous-dossiers : {{ d.fichiers|length }} résultat{{ d.fichiers|length > 1 ? 's' }}. <a href="{{ base }}?{{ {sd: d.sd}|url_encode }}#fichiers">Effacer</a></p>{% endif %}
+				{% if d.fichiers is empty %}
+					<p class="dc-vide-court">{{ d.q or d.filtre ? 'Aucun fichier ne correspond.' : 'Ce sous-dossier est vide.' }}</p>
+				{% else %}
+					<ul class="dc-fichiers" data-dc-liste>
+						{% for f in d.fichiers %}
+							{% set choisi = d.detail and d.detail.fichier.id == f.id %}
+							<li>
+								<a href="{{ base }}?{{ {sd: f.sousDossier, q: d.q, filtre: d.filtre, tri: d.tri, f: f.id|code_id}|filter(v => v)|url_encode }}#fichiers" class="dc-tuile {{ choisi ? 'actif' }}" data-dc-fichier="{{ f.id|code_id }}" {{ choisi ? 'aria-current="true"' }}>
+									<span class="dc-vignette"><img src="{{ path('app_dossiers_clients_miniature', {id: f.id}) }}{{ f.miniature ? '?v=' ~ f.miniature|slice(0, 8) }}" alt="" loading="lazy" width="160" height="110"></span>
+									<span class="dc-nom">{{ _self.pastille(f.extension, pastilles) }}<span title="{{ f.nom }}">{{ f.nom }}</span></span>
+									<span class="dc-meta">
+										{% if f.commande %}<b>{{ f.commande.numero }}</b>{% elseif d.produits[f.nom] is defined %}<b class="dc-produit">{{ d.produits[f.nom] }}</b>{% endif %}
+										<span>{{ f.modifieLe|date(f.modifieLe|date('Y') == 'now'|date('Y') ? 'd/m' : 'm/Y') }} · {{ f.octets|taille_octets }}</span>
+										{% if f.version > 1 or d.q %}<span class="dc-v">{{ d.q ? d.sous_dossiers[f.sousDossier].numero ?? '' }}{{ f.version > 1 ? ' v' ~ f.version }}</span>{% endif %}
+									</span>
+								</a>
+							</li>
+						{% endfor %}
+					</ul>
+					{% if d.fichiers|length >= constant('App\\Service\\DossiersClients\\ExplorateurDossier::PAR_PAGE') %}<p class="dc-legende">Les {{ d.fichiers|length }} premiers fichiers sont affichés : utilisez la recherche ou un filtre pour trouver les autres.</p>{% endif %}
+				{% endif %}
+			</section>
+
+			{# ===== Détail du fichier choisi ===== #}
+			<aside class="dc-carte dc-droite" id="dc-detail" aria-live="polite">
+				{% if d.detail %}
+					{% include 'dossiers_clients/_detail.html.twig' with {d: d.detail, client: client, base: base} %}
+				{% else %}
+					<div class="dc-detail-vide">
+						<i class="far fa-hand-pointer"></i>
+						<p>Choisissez un fichier pour voir son aperçu, ses dimensions, sa commande et ses versions.</p>
+					</div>
+					{% if d.publies is not empty %}
+						<h3>Publiés pour le client · {{ d.publies|length }}</h3>
+						{% include 'dossiers_clients/_publies.html.twig' with {publies: d.publies|slice(0, 6), retirer: false} %}
+					{% endif %}
+				{% endif %}
+			</aside>
+		</div>
+		{% if d.lien.marquePosee == false %}<p class="dc-legende">Le dossier est en lecture seule pour l'ERP : la marque « .succes » n'a pas pu être posée, la liaison suit le nom du dossier.</p>{% endif %}
+	{% endif %}
+</div>

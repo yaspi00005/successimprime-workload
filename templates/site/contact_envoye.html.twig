@@ -1,0 +1,95 @@
+{#
+	Message ou rappel envoyé depuis la page Contact (maquette EC05) :
+	numéro de la demande, étapes Reçu / Pris en charge / Réponse avec
+	l'heure limite (délai de la messagerie clients, en heures ouvrées), le
+	message rappelé, et l'état de la commande citée quand son numéro et le
+	téléphone correspondent (même recherche que le suivi sans compte, sans
+	montant). Montrée une fois, jamais indexée.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = 'app_site_contact' %}
+{% set rappel_demande = envoi.nature == 'rappel' %}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, je vous écris au sujet de ma demande' ~ (envoi.numero ? ' ' ~ envoi.numero : '') ~ '.') %}
+{% set jours = ['', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.', 'dim.'] %}
+
+{% block title %}{{ rappel_demande ? 'Rappel demandé' : 'Message envoyé' }} · Succès Imprim{% endblock %}
+{% block description %}Votre {{ rappel_demande ? 'demande de rappel' : 'message' }} est bien arrivé chez Succès Imprim : gardez le numéro de la demande, nous vous répondons pendant nos horaires d'ouverture.{% endblock %}
+
+{% block entete %}
+	<meta name="robots" content="noindex, nofollow">
+	{{ site_styles('css/site-formulaires.css', 'css/site-contact.css') }}
+{% endblock %}
+
+{% block contenu %}
+	<section class="si-recu">
+		<div class="si-cadre si-recu-grille">
+			<div class="si-carte si-recu-carte">
+				<span class="si-recu-coche" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></span>
+				<h1>{{ rappel_demande ? 'Rappel noté' : 'Message reçu' }}{{ envoi.prenom ?? null ? ', ' ~ envoi.prenom : '' }}.</h1>
+				{% if envoi.numero %}
+					<p>Votre demande porte le numéro <span class="si-recu-num">{{ envoi.numero }}</span>.{% if envoi.accuse %} Une confirmation vient de partir par SMS.{% endif %}</p>
+				{% else %}
+					<p>Votre demande est bien partie.</p>
+				{% endif %}
+
+				<ol class="si-recu-etapes">
+					<li class="fait">{{ include('site/_icone.svg.twig', {nom: 'envoi', taille: 22}) }}<strong>Reçu</strong>{{ jours[recuLe|date('N')] }} {{ recuLe|date('d/m · H:i') }}</li>
+					{% if rappel_demande and envoi.rappelLe %}
+						{% set rl = date(envoi.rappelLe) %}
+						<li>{{ include('site/_icone.svg.twig', {nom: 'utilisateur', taille: 22}) }}<strong>Pris en charge</strong>par l'équipe, à l'ouverture</li>
+						<li>{{ include('site/_icone.svg.twig', {nom: 'telephone', taille: 22}) }}<strong>Rappel</strong>{{ jours[rl|date('N')] }} {{ rl|date('d/m') }} vers {{ rl|date('G') }}&nbsp;h</li>
+					{% else %}
+						<li>{{ include('site/_icone.svg.twig', {nom: 'utilisateur', taille: 22}) }}<strong>Pris en charge</strong>par la personne qui suit les messages</li>
+						<li>{{ include('site/_icone.svg.twig', {nom: 'date', taille: 22}) }}<strong>Réponse</strong>avant {{ jours[reponseAvant|date('N')] }} {{ reponseAvant|date('H:i') }} ({{ delaiReponse }} ouvrées)</li>
+					{% endif %}
+				</ol>
+
+				{% if envoi.message or envoi.numeroCommande %}
+					<p class="si-recu-message"><b>Votre message</b>{% if envoi.message %}« {{ envoi.message }} »{% endif %}{% if envoi.resume and not rappel_demande %} · {{ envoi.resume }}{% endif %}{% if envoi.numeroCommande %} · {{ envoi.numeroCommande }}{% endif %}{% if envoi.fichier %} · fichier joint{% endif %}</p>
+				{% endif %}
+
+				<div class="si-formulaire-actions">
+					{% if site_lien('app_site_suivi') and envoi.numeroCommande %}
+						<a href="{{ site_lien('app_site_suivi') }}?numero={{ envoi.numeroCommande|url_encode }}" class="si-bouton si-bouton-rouge si-bouton-grand">Suivre ma commande</a>
+					{% endif %}
+					{% if wa %}
+						<a href="{{ wa }}" class="si-bouton si-bouton-wa si-bouton-grand" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} Continuer sur WhatsApp</a>
+					{% endif %}
+				</div>
+				<p class="si-note">{{ horaires.etat }}. Pour une question urgente pendant nos horaires, appelez l'atelier.</p>
+			</div>
+
+			<div class="si-recu-cote">
+				{% if carte %}
+					{% set commande = carte.commande %}
+					{% set courante = etapes|filter(e => e.etat == 'en_cours')|first %}
+					<article class="si-recu-commande" aria-labelledby="recu-commande">
+						<p class="si-direct-etiquette"><span aria-hidden="true"></span>Réponse immédiate</p>
+						<h2 id="recu-commande">Votre commande {{ commande.numero }}</h2>
+						<p>{{ carte.titre }}</p>
+						{% if carte.annulee %}
+							<p>Cette commande a été annulée.</p>
+						{% else %}
+							<ol class="si-barres" aria-label="Étapes de la commande">
+								{% for e in etapes %}<li class="si-etape-{{ e.etat }}" title="{{ e.libelle }}"><span class="si-invisible">{{ e.libelle }} : {{ e.etat == 'faite' ? 'fait' : (e.etat == 'en_cours' ? 'en cours' : 'à venir') }}</span></li>{% endfor %}
+							</ol>
+							<p class="si-barres-legende"><span>{{ (etapes|first).libelle }}</span>{% if courante %}<strong>● {{ courante.libelle }}</strong>{% endif %}<span>{{ (etapes|last).libelle }}</span></p>
+							<p class="si-recu-etat">{{ pastille.texte }}</p>
+						{% endif %}
+						<p class="si-recu-note">Le site a reconnu votre numéro de commande&nbsp;: voici où elle en est.</p>
+					</article>
+				{% endif %}
+				<nav class="si-carte si-attente" aria-labelledby="en-attendant">
+					<h2 id="en-attendant">En attendant</h2>
+					<ul>
+						{% for route, libelle in {app_site_guide: 'Préparer son fichier', app_site_realisations: 'Voir les réalisations récentes', app_site_faq: 'Questions fréquentes', app_site_calculateur: 'Calculer un prix'} %}
+							{% set url = site_lien(route) %}
+							{% if url %}<li><a href="{{ url }}">{{ libelle }}</a></li>{% endif %}
+						{% endfor %}
+					</ul>
+				</nav>
+			</div>
+		</div>
+	</section>
+{% endblock %}

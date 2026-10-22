@@ -1,0 +1,93 @@
+{% extends 'base.html.twig' %}
+
+{#
+	OP05 : suivi de production et colis de la commande. Les étiquettes (une
+	par colis, 100 × 60 mm, QR) s'impriment dans Production › Étiquettes ;
+	la commande passe « Prête » au contrôle final quand tous ses colis sont
+	scannés (docs/production-colis.md).
+#}
+{% block title %}{{ livraison.numero }} · colis et livraison{% endblock %}
+{% block page_title %}Poste machiniste{% endblock %}
+
+{% block stylesheets %}<link href="{{ asset('css/poste-machiniste.css') }}" rel="stylesheet">{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_ma_file_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-columns"></i><span class="si-masque-mobile ms-1">Ma file</span></a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pm">
+		<header class="si-pm-tete-ligne">
+			<div>
+				<span class="si-pm-fil"><a href="{{ path('app_ma_file_index') }}">Ma file</a> › {{ livraison.numero }}</span>
+				<h1>{{ livraison.numero }} · {{ o.estPretLivraison ? 'prêt pour livraison' : 'terminé' }}<span class="si-pm-bureau-inline"> · colis et livraison</span></h1>
+				<p class="si-pm-mobile-sous">{{ livraison.client }} · {{ livraison.contenu }}</p>
+			</div>
+		</header>
+
+		<div class="si-pm-grille-3">
+			<section class="si-pm-panneau">
+				<h2>Suivi de production</h2>
+				<ol class="si-pm-suivi">
+					{% for e in suivi %}
+						<li class="{{ e.fait ? '' : 'a-faire' }}">
+							<i aria-hidden="true">{% if e.fait %}<span class="fas fa-check"></span>{% endif %}</i>
+							<span><b>{{ e.libelle }}</b><small>{{ e.le ? e.le|date(e.le|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') }}{{ e.le and e.detail ? ' · ' }}{{ e.detail }}</small></span>
+						</li>
+					{% endfor %}
+				</ol>
+				<p class="si-pm-bilan"><b>{{ livraison.conformes ?? 0 }} bon{{ (livraison.conformes ?? 0) > 1 ? 's' }} · {{ livraison.rebut ?? 0 }} en gâche</b>{{ livraison.observation }}</p>
+			</section>
+
+			<section class="si-pm-panneau">
+				<h2>Colis de la commande</h2>
+				{% if colis is null or colis.actifs is empty %}
+					<p class="si-pm-note">Pas encore d'étiquette : une étiquette par colis, avec son QR.</p>
+				{% else %}
+					<ul class="si-pm-suivi">
+						{% for c in colis.actifs %}
+							<li class="{{ c.estScanne ? '' : 'a-faire' }}">
+								<i aria-hidden="true">{% if c.estScanne %}<span class="fas fa-check"></span>{% endif %}</i>
+								<span><b>Colis {{ c.rang }}/{{ c.total }} · {{ c.code }}</b><small>{{ c.contenuTexte }}{{ c.estScanne ? ' · scanné ' ~ c.scanneLe|date('H:i') : ' · à scanner' }}</small></span>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="si-pm-note mb-0">{{ colis.scannes }} colis sur {{ colis.total }} scannés{{ colis.controle and colis.controle.estValide ? ' · contrôle final validé' : ' · contrôle final à faire' }}.</p>
+				{% endif %}
+			</section>
+
+			<div class="si-pm-pile">
+				<section class="si-pm-panneau">
+					<h2>Étiquettes et contrôle</h2>
+					{% if ligne and ligne.commande %}
+						{% if not o.estPretLivraison %}
+							<a href="{{ path('app_atelier_production_etiquettes', {commande: ligne.commande.id}) }}" class="btn si-pm-btn-nuit w-100 mb-2"><i class="fas fa-tag me-1"></i>{{ colis and colis.total > 0 ? 'Étiquettes des colis' : 'Étiqueter les colis' }}</a>
+						{% endif %}
+						<a href="{{ path('app_atelier_production_controle_commande', {id: ligne.commande.id}) }}" class="btn si-pm-btn-bleu w-100"><i class="fas fa-clipboard-check me-1"></i>Contrôle final</a>
+					{% endif %}
+					<p class="si-pm-note mt-2 mb-0">Imprimante d'étiquettes 100 × 60 mm. Scanné à l'atelier, le QR d'un colis le marque collé ; pour le livreur, il ouvre sa remise.</p>
+				</section>
+
+				<section class="si-pm-panneau">
+					<h2>Livraison</h2>
+					<dl class="si-pm-lignes">
+						<div><dt>Mode</dt><dd>{{ livraison.aLivrer ? 'livraison' : 'retrait à l\'imprimerie' }}{% if livraison.date %} · {{ ['dim.','lun.','mar.','mer.','jeu.','ven.','sam.'][livraison.date|date('w')] ~ ' ' ~ livraison.date|date('d/m') }}{{ livraison.creneau ? ' ' ~ livraison.creneau }}{% endif %}</dd></div>
+						{% if livraison.aLivrer %}<div><dt>Livreur</dt><dd>{{ livraison.livreur ?? 'à choisir par le bureau' }}</dd></div>{% endif %}
+						{% if livraison.reste is not null %}
+							<div><dt>Reste à encaisser</dt><dd>{{ livraison.reste|number_format(0, ',', ' ') }} F</dd></div>
+						{% else %}
+							<div><dt>Paiement</dt><dd>{{ livraison.resteAEncaisser ? 'à encaisser à la remise' : 'réglé' }}</dd></div>
+						{% endif %}
+					</dl>
+				</section>
+
+				{% if o.estPretLivraison %}
+					<p class="si-pm-alerte info"><i class="fas fa-check me-1"></i>Prêt pour livraison depuis {{ o.pretLivraisonLe|date('d/m H:i') }}.</p>
+				{% else %}
+					<p class="si-pm-note text-center">La commande passe « Prête » au contrôle final, quand tous ses colis sont scannés ; {{ livraison.aLivrer ? 'le livreur ou le bureau est alors prévenu' : 'le client voit alors « Prête à retirer »' }}.</p>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+	<script src="{{ asset('js/poste-machiniste.js') }}" defer></script>
+{% endblock %}

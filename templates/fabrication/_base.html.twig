@@ -1,0 +1,20 @@
+{#
+	Gabarit des écrans de production PD01 à PD07 (maquettes du 20/10/2026) :
+	feuille de style commune et sous-navigation. Une page définit
+	{% block fab_actif %}cle{% endblock %} (clé de FabricationExtension::ENTREES)
+	et son contenu dans {% block fab_contenu %}.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="si-fab">
+		{% set fab_actif = block('fab_actif') is defined ? block('fab_actif')|trim : '' %}
+		{% include 'fabrication/_nav.html.twig' with {actif: fab_actif} only %}
+		{% block fab_contenu %}{% endblock %}
+	</div>
+{% endblock %}

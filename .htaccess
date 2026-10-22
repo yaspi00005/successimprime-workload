@@ -1,0 +1,10 @@
+# Le site se sert seulement depuis public/. Si le projet est posé par erreur
+# sous la racine web (public_html), rien d'autre ne doit être téléchargeable :
+# .env.local, var/, config/, sauvegardes. public/.htaccess rouvre public/.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+</IfModule>

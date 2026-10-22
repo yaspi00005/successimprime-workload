@@ -1,0 +1,190 @@
+# Recette par rôle (jalon J7)
+
+Liste des essais à faire avant la mise en service, rôle par rôle. Chaque ligne dit ce qu'on fait et ce qu'on doit voir. Une ligne « ne voit pas » se vérifie aussi en tapant l'adresse de la page à la main : la réponse attendue est « accès refusé » ou la page de connexion.
+
+Données d'essai : `php bin/console app:demo` (comptes `demo.*`, mot de passe `demo1234` ; clients `DEMO-…`, qui ne reçoivent jamais de SMS ni d'e-mail). Sur le site en ligne de test, le client 76000001 a le mot de passe `test1234`.
+
+| Rôle | Compte d'essai |
+|---|---|
+| Direction | demo.kadiatou |
+| Caisse et commercial | demo.aminata (droits du rôle seulement, sans la trésorerie), demo.moussa (sans les virements), demo.fanta (droits ajoutés : RH, trésorerie, paiements, statistiques) |
+| Graphiste PAO | demo.seydou |
+| Opérateur production | demo.oumar |
+| Livreur | demo.bakary |
+| Client | 76000001 sur l'espace client en ligne |
+
+## Visiteur du site (en ligne, sans compte)
+
+- [ ] L'accueil s'ouvre sur l'adresse du site, avec le menu, « Espace client » et « Demander un devis ».
+- [ ] Sur téléphone, le menu s'ouvre par le bouton à trois traits ; le bouton WhatsApp ouvre une discussion avec l'atelier.
+- [ ] Le calculateur donne un prix public pour une bâche aux dimensions choisies ; il n'affiche jamais un prix B2B.
+- [ ] Une demande de devis sans compte affiche un numéro de suivi ; au local, un prospect « Site » et un devis brouillon apparaissent.
+- [ ] « Suivre ma commande » avec un numéro et le bon téléphone montre les étapes, sans montant ; un mauvais téléphone donne le même message qu'une commande inconnue.
+- [ ] Aucune page publique ne montre un nom de client sans accord, un montant d'un client, un coût ou une marge.
+- [ ] /robots.txt et /sitemap.xml répondent ; l'ERP local répond « Disallow: / ».
+- [ ] Sans action sociale publiée avec texte et photo, /nos-actions-sociales répond 404 et n'apparaît ni dans le pied de page, ni sur l'accueil, ni dans /sitemap.xml ; après la publication d'une action au local et la synchronisation, tout apparaît (jamais un brouillon).
+- [ ] « Nous soutenir » (accueil, pied de page) ouvre la fiche Google dans un nouvel onglet ; le QR code s'affiche sur ordinateur ; lien vidé dans les réglages : plus rien.
+
+## Client (espace client en ligne)
+
+- [ ] Messages : une conversation par commande, nom, métier et initiales (ou photo) de l'agent, « répondu en X min » ; « Oui, c'est résolu » clôture, étoiles, « Rouvrir » 7 jours ; un demandeur (Mariam Dembélé) voit « … » à la place des montants ; un compte Lecture · suivi n'a pas Messages.
+- [ ] Connexion par numéro et mot de passe ; 5 essais faux bloquent 15 minutes.
+- [ ] « Recevoir un code » : par e-mail si la fiche a une adresse, sinon par SMS ; destination masquée ; puis choix du mot de passe obligatoire.
+- [ ] Fiche client (ERP local) › « Envoyer l'accès à l'espace client » : message WhatsApp avec identifiant, code et lien ; première connexion avec ce code, mot de passe obligatoire et e-mail facultatif ; le même code ne sert pas deux fois.
+- [ ] Nouvelle commande avec fichier : elle arrive au local en brouillon « à confirmer » et ne peut pas être payée avant la confirmation.
+- [ ] BAT : poser des repères sur l'image, demander une modification ; au local, la prépresse reçoit le texte. Valider un autre BAT.
+- [ ] Retouche prépresse (docs/prepresse-retouche.md) : demo.seydou redimensionne une image client, ajoute un contour, génère le PDF (nouvelle version, original intact) puis l'envoie comme BAT ; une image trop petite bloque « Valider » tant qu'on n'a pas changé les réglages ou donné une raison, que le client lit sous le BAT. Un compte sans Prépresse reçoit « accès refusé » sur `/pre-presse/travail/…/retouche`.
+- [ ] Factures et paiement Orange Money : le paiement arrive au local « en attente », sans compte, et n'est jamais validé tout seul.
+- [ ] Réclamation avec photo : la photo n'est visible que du client et du personnel autorisé.
+- [ ] Mes produits : recommander un produit ; le prix vient de la fiche du produit, pas de la page.
+- [ ] Compte entreprise : un demandeur ne voit ni factures ni solde, ni aucun prix (commande, devis, Mes produits, Nouvelle commande, conception) ; seul un valideur accepte un devis ; seul un payeur paie.
+- [ ] Mes devis (docs/devis.md) : la page d'un devis montre lignes, version, validité, total, acompte, délai, « Suivi du devis » et ce qui a changé ; l'ouvrir le passe « Vu » au local. « Accepter et payer l'acompte » crée la commande au prix du devis et ouvre le paiement Orange Money de l'acompte (valideur seul : la commande est créée, l'acompte attend le payeur). Refuser demande un motif ; « Demander une modification » arrive aussi dans les messages. Aucun coût ni marge ; un demandeur voit les lignes sans prix.
+- [ ] Plusieurs personnes d'une entreprise commandent chacune avec son numéro : la demande d'un demandeur attend un valideur, qui la voit « demandée par X » ; au local, la commande montre qui l'a demandée et qui l'a validée.
+- [ ] Accès suspendu (fiche client, ERP local, puis synchronisation) : la personne lit « Votre accès à l'espace client est suspendu. Contactez Succès Imprim. » après son mot de passe, sa session ouverte se ferme, elle ne reçoit plus de notification ; les autres personnes de l'entreprise entrent toujours. « Rétablir » rend l'accès.
+- [ ] Bandes d'annonces : une annonce « Espace client » s'affiche en haut des pages connectées, pas sur le site public ; « × » la ferme pour la visite.
+- [ ] Fidélité : solde, progression vers le seuil, historique, sans nom d'agent ni motif interne.
+- [ ] Les notifications (BAT prêt, commande prête, livreur en route, livrée) arrivent sans montant.
+- [ ] Carte « Nous soutenir » du tableau de bord : « × » la ferme pour cette personne seulement (elle ne revient pas, les autres personnes de l'entreprise la gardent) ; une commande livrée montre l'invitation « Avis Google ».
+- [ ] « Mon solde » (particulier, titulaire, payeur) : solde, relevé de l'imprimerie sans nom d'employé, dépôts en ligne et leur état ; « Voir les frais » montre le dépôt, les frais en plus et le total ; le dépôt arrive au local « reçu », jamais validé tout seul. Le valideur et le demandeur reçoivent « accès refusé », la lecture seule revient à l'accueil ; aucun n'a la tuile « Mon solde ».
+
+## Direction (demo.kadiatou)
+
+- [ ] Clients › Supervision des messages : semaine, 1re réponse médiane, retards par personne (points retirés), « En retard en ce moment » › Relancer ; Règles de réponse enregistrées (30 min, 1 h, escalade 2 h, −5 pts, 72 h).
+- [ ] Tableau de bord : indicateurs du mois, production, encaissements du jour, alertes (sauvegarde, synchronisation, tâches en retard).
+- [ ] Parcours complet : devis, acceptation, commande, BAT, production, livraison, facture, paiement validé.
+- [ ] Finances F01 à F07 : vue d'ensemble, encaissements, dépenses et budgets, fournisseurs, trésorerie à 90 jours, rentabilité, finances du jour sur téléphone.
+- [ ] « À valider » : un paiement saisi en ligne se valide seulement au local, avec un compte choisi.
+- [ ] Compte du client (fiche › « Compte ») : dépôt (reçu D-…), « Rendre l'argent » avec motif et confirmation (reçu RB-…), jamais plus que le disponible ; un dépôt en ligne se valide ou se refuse ; Finances › Comptabilité › Balance : le compte 4191 égale le total de « Soldes clients ».
+- [ ] Réglages : chaque tuile s'ouvre ; une valeur changée est gardée.
+- [ ] Ventes › Produits et services (docs/produits.md) : demo.kadiatou voit coût de revient et marge, dans la page et dans l'export ; demo.aminata ne voit ni l'un ni l'autre (export compris). Masquer un produit en ligne : il disparaît de Nos produits, du calculateur et de la Nouvelle commande de l'espace client, et se vend toujours au comptoir.
+- [ ] Ventes › Prix spéciaux : un prix négocié sous la marge minimale, saisi par le rôle Promotions, attend l'accord de la direction ; accordé, il est posé en remise sur la ligne au comptoir (client choisi) et dans l'espace client du client.
+- [ ] Paramètres › Produits et options › Noms commerciaux : donner « Autocollant » au vinyle adhésif ; la liste des produits montre « Vinyle adhésif Autocollant » ; la saisie d'un devis trouve « autocollant » ; le devis PDF montre « Autocollant » puis « Vinyle adhésif » en plus petit. Après la synchronisation, « autocollant » trouve le produit dans « Nos produits » du site. La page est refusée aux autres rôles (docs/noms-commerciaux.md).
+- [ ] Rôles et menus : passer un module en « Voir » pour un rôle ; une personne de ce rôle voit l'écran mais toute modification est refusée.
+- [ ] Statistiques : objectifs du mois, export Excel et PDF, rapport de la semaine.
+- [ ] Rapports par e-mail : aperçu du jour, de la semaine et du mois ; « M'envoyer un test » arrive avec le PDF ; cocher un destinataire, voir sa version (« Version de… ») ; l'historique note chaque envoi ([docs/rapports-mail.md](rapports-mail.md)).
+- [ ] Contenu du site : publier une réalisation ; elle apparaît en ligne après la synchronisation. Un nom de client n'apparaît qu'avec l'accord coché.
+- [ ] Équipe (Réglages › Site vitrine › Équipe) : une personne visible, avec photo et l'accord coché, apparaît dans « Notre équipe » de « Qui sommes-nous ? » après la synchronisation ; décocher son accord retire sa photo et la retire du site ; sans personne affichée, les cartes Direction, Atelier, PAO reviennent.
+- [ ] Mot du gérant (même onglet, « Rédiger le mot du gérant ») : caché tant que la photo ou le texte manque ; rempli, il paraît avant « Notre équipe », et le gérant n'est pas répété dans la grille sauf « Le montrer aussi dans « Notre équipe » » ; cocher « Gérant » sur une autre fiche le décoche sur la première.
+- [ ] Annonces (Réglages › Site vitrine › Annonces) : une annonce active pour le site public apparaît au-dessus de l'en-tête après la synchronisation ; programmée, elle n'apparaît qu'à son premier jour ; inactive ou terminée, plus du tout.
+- [ ] Fiche client › Accès à l'espace client : suspendre une personne avec un motif, puis tout le compte ; le journal de la fiche note qui, quand et pourquoi ; « Rétablir » ; en « Voir », aucun bouton.
+- [ ] Fiche client (maquettes FC01 à FC04, docs/clients.md), Salon Espoir : les huit onglets s'ouvrent et l'adresse garde l'onglet (`#factures`, `#compte`, `#fidelite`) ; plafond de crédit et jauge, notes internes (ajouter une note depuis l'aperçu), « Commander pour lui » dans Produits crée une commande à confirmer ; « + Commande » ouvre la commande avec le client déjà choisi ; sur téléphone, les tableaux passent en cartes.
+- [ ] Devis « À l'attention de » et commande « Commandé par » : la liste propose les contacts de la fiche ; le nom est imprimé sur le PDF du devis et sur la facture, et se lit sous le numéro dans la fiche client.
+- [ ] Fidélité : régler un article (activé, points, seuil, dates), ajuster les points d'un client avec un motif ; l'action est inscrite au journal.
+- [ ] Crédits SMS et e-mail (Clients) : sans les clés Orange, saisir le solde et la fin du pack, puis la fin de l'abonnement e-mail ; un SMS ou un e-mail envoyé apparaît dans « Historique des envois » sans son texte ; « Export CSV » ; sous le seuil ou à moins de 15 jours de la fin, une seule notification.
+- [ ] Synchronisation et sauvegardes : écrans à jour, « Synchroniser maintenant » fonctionne.
+- [ ] Contrôle final de CMD-PC0177 (`docs/production-colis.md`) : carte « Prête pour la livraison · Bakary », « Ajoutée à la tournée de Bakary », le message WhatsApp avec le code de réception et « Fiche de démonstration : aucun message ». Une commande prête sans bon : « Ajouter à la tournée » (livreur, jour, créneau proposés) crée le bon, le valide et le place dans la tournée.
+
+## Caisse et commercial (demo.aminata, puis demo.fanta)
+
+- [ ] Menu court : Ma journée, Caisse, Mes actions, Clients, Devis et commandes, Encaissements.
+- [ ] Clients › Messages (`docs/messagerie-clients.md`) : seulement ses conversations et les non assignées de son rôle ; « En retard » avec le bandeau rouge et la personne imputée ; une note interne `@Mariam` n'apparaît pas chez le client ; Supervision, Toutes les conversations et Règles de réponse refusées (Direction seulement).
+- [ ] Actions de caisse : une facture échue, un devis sans réponse depuis 48 h puis à J+7, une commande prête ; le lien WhatsApp ouvre un message sans montant pour le devis.
+- [ ] Devis (docs/devis.md) : la liste montre la barre du mois par statut, le taux d'acceptation, l'attente de réponse et « À relancer aujourd'hui » ; « Relancer » ouvre WhatsApp avec le message écrit, sans montant, et la relance s'inscrit dans le suivi. Nouveau devis avec une ligne du catalogue et une ligne libre, conditions, « Envoyer au client » : bandeau « Ouvrir WhatsApp ». « Nouvelle version » puis renvoi : la carte Versions montre les deux. demo.aminata et demo.moussa ne voient pas la carte « Rentabilité » (demo.kadiatou la voit, avec l'alerte sous 25 %).
+- [ ] Encaisser un paiement sur une commande ; il apparaît dans la caisse du jour. La liste des comptes ne montre aucun solde.
+- [ ] Caisse, client `DEMO-0122` : « Payer avec le solde » une partie, puis encaisser le reste en espèces avec un « Montant remis » plus grand et « Garder la monnaie sur le compte du client » ; le reçu dit « Monnaie gardée sur votre compte ». « Dépôt » donne le reçu « Dépôt sur votre compte ». « Rendre l'argent » est là (droit donné d'office au rôle Caisse depuis le 18/10/2026) ; il disparaît pour une personne à qui la Direction l'a retiré sur sa fiche.
+- [ ] Finances › Dépenses (aussi par « Aller à… › Nouveau › Dépense ») : saisir une dépense avec son reçu ; seules ses propres dépenses sont listées, sans budget.
+- [ ] Caisse › « Virement » : verser la caisse sur le compte de la banque ; la banque n'est pas proposée comme compte source ; aucun solde dans le formulaire ni dans le message, retour à la caisse.
+- [ ] Clôturer la caisse : le théorique de sa caisse est affiché, l'écart est signalé à la direction.
+- [ ] Clients : liste, nouvelle fiche, fiche avec historique, journal.
+- [ ] demo.aminata ne voit pas : stock et achats, réglages, salaires, montants de trésorerie (soldes des comptes, Finances › Trésorerie, Fournisseurs, liste des mouvements), statistiques globales.
+- [ ] demo.moussa n'a pas le bouton « Virement » ; le formulaire ne lui propose que l'entrée et la sortie, sans la banque.
+- [ ] demo.fanta voit en plus la trésorerie, les paiements et les statistiques, mais toujours pas les réglages ni le stock.
+
+## Graphiste PAO (demo.seydou)
+
+- [ ] Menu replié en icônes ; le poste PAO s'ouvre avec ses travaux, l'aperçu et le chronomètre.
+- [ ] Démarrer, mettre en pause, envoyer le BAT ; le client le voit dans son espace.
+- [ ] Outil de montage : poser plusieurs fichiers sur une feuille.
+- [ ] Ne voit pas : finances, montants des commandes, réglages, salaires, ni l'onglet « Compte » d'une fiche client.
+- [ ] Fiche client de Salon Espoir : aucun CA, panier moyen, solde, plafond, paiement ni relance ; « Factures et paiements » ne montre que les documents émis ; l'historique n'a pas le filtre « Paiements ».
+- [ ] Production › Rouleaux : voit l'imposition et la fiche du rouleau, sans coût ; ne peut ni cocher ni démarrer (il n'est pas opérateur de la Solvant 3,20 m). Impression en cours : voit le suivi, sans les boutons Pièce imprimée, Pause, Problème ni Impression terminée.
+
+## Opérateur production (demo.oumar)
+
+- [ ] Ma file machine (poste machiniste, `docs/poste-machiniste.md`) : ouvrir CMD-PM0178, cocher le contrôle, « Fichier conforme » ; choisir la machine, corriger une étape du temps estimé (le total et l'heure de fin bougent), démarrer ; Terminé : la page Production › Étiquettes s'ouvre sur la commande. Sur le tableau de production, la carte avance d'elle-même.
+- [ ] Étiquettes et contrôle final (`docs/production-colis.md`) : Production › Étiquettes, CMD-PC0183 propose 2 colis ; « Imprimer 2 étiquettes » (100 × 60 mm, QR, « COLIS 1/2 », ni montant ni téléphone). Contrôle final de CMD-PC0179 : la photo à côté du BAT, cocher les cases (taille 400 × 80 : taper 82 pour la hauteur demande une confirmation), « Prêt pour la livraison », puis scanner le code CMD-PC0179-C2 : la commande passe « Prête » (« 2 colis sur 2 scannés : commande prête, client prévenu »). Sur le téléphone, Mon travail › « Scanner une étiquette de colis ».
+- [ ] « Refaire une pièce » sur un travail d'une commande à contrôler : il revient dans Ma file (colonne « Prêt »), demo.ibrahim est prévenu, le contrôle est à refaire.
+- [ ] Retourner au prépresse : entourer le problème sur l'aperçu, choisir un motif ; le travail passe dans le bandeau rouge ; demo.seydou le reçoit, renvoie le fichier en production, le travail revient « À vérifier ».
+- [ ] Sur téléphone : la file en une colonne, « Prépresse » et « Conforme » en bas de la vérification, les gros boutons du travail en cours.
+- [ ] Ne voit aucun montant sur le poste machiniste (étiquettes : « à encaisser à la remise », sans somme), ni sur les étiquettes de colis et le contrôle final (le « Consommé » est en quantités).
+- [ ] Atelier › Mon travail (téléphone) : le travail en cours de sa machine, Pause, Terminer (imprimé, gâche, motif), Signaler un problème, niveaux d'encre.
+- [ ] Atelier › Vue en direct : ne voit que ses machines (solvants) ; Planning de la semaine et Files d'attente en consultation (pas de glisser-déposer).
+- [ ] Pointage par QR et photo à l'arrivée et au départ.
+- [ ] Production au rouleau (`docs/production-rouleau.md`) : ouvrir le rouleau R-…-04 (Solvant 1,80 m) ; sur l'imposition, « Manuel », déplacer une pièce (un chevauchement est refusé), « Enregistrer le placement », « Renvoyer au RIP » (V2) ; sur la fiche, relever le jaune au-dessus de 20 %, scanner D-MAT-006, « Test fait », puis « Démarrer » : l'impression en cours s'ouvre. Aucun coût affiché.
+- [ ] Impression en cours (PD04) du rouleau R-…-03 : pièce 2 sur 5, vitesse, encre « ≈ », pièces, rappel du rouge Awa Mode, « Ensuite » (Hôtel Niger même rouleau, Pharmacie du Fleuve changer de rouleau). « Pièce imprimée » : la pièce 3 commence. Pause puis Reprendre. Signaler « Pièce ratée » : demo.ibrahim est prévenu. « Impression terminée » : la machine est libre, les travaux sèchent, la chute et l'encre sortent du stock (Production › Contrôle final : « dont … de chute »).
+- [ ] Sur téléphone (PD07) : Mon travail › « Suivre l'impression en cours » ouvre le rouleau de la Solvant ; la carte compacte, les gros boutons Pause, Problème et « Pièce imprimée » en bas ; « Impression terminée » avec « Pièces » et « Ratées et réimprimées » pour chaque travail.
+- [ ] Ma file : CMD-PC0172 (pièce refaite) montre « reprise démarrée », une fin estimée de la reprise seule (« 34 min ») et « reprise de 1 pièce ». « Modifier l'estimation » d'un travail de la Solvant : une durée proposée « corrigé d'après les … derniers travaux » quand la machine en a assez.
+- [ ] Ne voit pas : montants, clients en détail, finances, réglages.
+
+## Chef d'atelier (demo.ibrahim)
+
+- [ ] Atelier › Vue en direct : les 8 machines, les indicateurs, les alertes, les terminés du jour ; « Afficher sur l'écran TV » ouvre la vue sans client ni montant.
+- [ ] Files d'attente : glisser une ligne, « Réordonner automatiquement », affecter les opérateurs, saisir les niveaux d'encre.
+- [ ] Planning : glisser un bloc vers un autre jour ou une autre machine ; si la date promise est dépassée, la caisse reçoit une notification.
+- [ ] Maintenance : mettre à jour la panne de la sublimation (le devis n'apparaît pas sans le droit coûts et marges), noter un entretien « Fait », ajouter une tâche.
+- [ ] Machines et dossiers : modifier le dossier, la tête et un profil d'une machine ; Règles de nommage : changer le code d'un support (demo.oumar et demo.seydou voient ces pages sans pouvoir modifier).
+- [ ] En ligne : toutes les pages de l'atelier répondent 404.
+
+## Livreur (demo.bakary)
+
+- [ ] L'accueil ouvre la tournée du jour (Ma tournée) ; menu Ma tournée, Mes livraisons et Mon espace ; barre du bas Tournée, Livraisons, Pointage, Moi. Ni recherche, ni messagerie, ni « Aller à… ».
+- [ ] Sur le téléphone : appeler le client d'un toucher, ouvrir l'adresse sur la carte ; le reste à encaisser n'apparaît que sur ses propres livraisons.
+- [ ] « Je pars » puis « Livrée » avec le nom de la personne qui reçoit, la signature, une photo et la position ; le client est prévenu.
+- [ ] « Échec » avec une raison : le bureau et la Direction reçoivent « à replanifier » ; le client voit « Reportée » dans son espace, sans la raison.
+- [ ] Mes livraisons : ses remises et ses échecs des 30 derniers jours, sans montant, jamais ceux d'un autre livreur.
+- [ ] Encaissement à la livraison : il arrive en caisse à valider.
+- [ ] Ne voit que sa tournée et ses livraisons : tableau de bord, clients, commandes, statistiques, recherche, messagerie, planning, liste des livraisons, « À retirer » et suivi refusés, même tapés à la main.
+- [ ] Le QR d'une étiquette de colis de sa tournée (CMD-PC0177) ouvre la remise de sa livraison ; Étiquettes, Contrôle final et le scanner de l'atelier lui sont refusés ; il ne voit jamais le code de réception du client.
+
+## Suivi des livraisons (demo.kadiatou, demo.fanta, demo.seydou)
+
+- [ ] Ventes › Suivi des livraisons : filtrer par jour, livreur et statut ; chaque livraison dit si elle est livrée ou pas, à quel moment, par qui et qui l'a reçue (ou la raison de l'échec). Aucun montant.
+- [ ] Page d'une commande : bloc « Livraison » avec le statut, le moment, le livreur et la personne qui a reçu.
+- [ ] Sur le site en ligne, `/livraisons/suivi` et `/livraisons/tournee` répondent « page introuvable ».
+
+## Guide et formation (jalon J7)
+
+- [ ] « ? Aide » en haut de chaque écran, sur le bureau et le téléphone : les fiches du rôle, avec en premier celles de l'écran quitté (docs/guide-utilisateur.md).
+- [ ] demo.aminata, demo.seydou et demo.bakary tapent l'adresse d'une fiche d'un autre rôle (`/aide/a-valider`, `/aide/tournee`, `/aide/caisse-virement`) ou de son image : « accès refusé ».
+- [ ] « Imprimer mon guide » : couverture, sommaire, une page A4 par fiche, seulement les fiches de la personne.
+- [ ] « Fiches du formateur » (`/aide/formation`) : Direction seulement.
+- [ ] Sur le site en ligne, `/aide` répond « page introuvable ».
+- [ ] Une personne nouvelle, après sa demi-journée « Caisse et commercial » (docs/formation.md), réussit seule l'exercice final J7 : client, devis, commande, acompte encaissé avec son reçu, facture.
+
+## Personnel, sur la tablette d'entrée et en ligne
+
+- [ ] Accès par lien WhatsApp et code PIN ; 5 PIN faux bloquent le compte un moment.
+- [ ] Pointage QR et photo ; les photos ne sont visibles que des personnes du rôle RH.
+- [ ] Demande d'absence ou de congé, puis réponse du responsable.
+- [ ] Un salaire n'est visible que de l'équipe RH et de la personne concernée.
+
+## Administration en ligne
+
+- [ ] Depuis un appareil non autorisé, le bon mot de passe est refusé et les administrateurs sont prévenus une fois par jour. Le message est le même avec un mauvais mot de passe ou un identifiant inconnu (« Cet appareil n'est pas autorisé… »).
+- [ ] Depuis un appareil autorisé : mot de passe, puis code de sécurité par e-mail (par SMS sans adresse) ; la session se ferme après 15 minutes sans activité.
+- [ ] Un appareil en « Encaissement » ne peut qu'encaisser ou livrer ; toute autre modification est refusée.
+- [ ] L'API répond « introuvable » en ligne ; les dépenses, budgets et relevés Orange Money restent sur l'ERP local.
+
+## Technique
+
+- [ ] `php bin/console app:verifier-installation` sans erreur sur les deux machines (docs/deploiement.md).
+- [ ] Coupure d'internet à l'atelier pendant 20 minutes : l'alerte part une fois, puis tout passe au retour, sans doublon.
+- [ ] Restauration d'une sauvegarde sur une machine d'essai (docs/sauvegardes.md).
+- [ ] L'API refuse un jeton inconnu et répond « introuvable » en ligne (docs/api.md).
+
+## Alertes système et réseaux sociaux (18/10/2026)
+
+- [ ] Réglages › Alertes système : ouvert à demo.kadiatou (Direction) ; refusé aux autres tant que le droit « Alertes système » n'est pas ajouté sur leur fiche ; avec le droit, la liste et le détail s'ouvrent, les réglages restent refusés (docs/alertes-systeme.md).
+- [ ] « Envoyer une alerte d'essai » : l'alerte part dans la cloche et par e-mail (si la messagerie est réglée), « Je prends » puis « Résoudre » avec une note.
+- [ ] L'e-mail ne contient que la référence, le titre et le lien : aucun détail technique, mot de passe ni donnée de client.
+- [ ] Réglages › Site vitrine › Référencement et réseaux : un lien Facebook et un numéro WhatsApp saisis paraissent dans le pied de page, sur la page Contact et dans l'espace client, en nouvel onglet ; un champ vide ne montre rien.
+
+## Vérification automatique des accès
+
+Avant de cocher cette liste, et avant chaque mise en production, une commande ouvre chaque page avec chaque compte de démonstration et compare ce qu'elle obtient aux droits. Elle se lance sur une base d'essai qui a la démonstration (`app:demo`), jamais en production (elle refuse). Elle n'enregistre rien : les pages sont demandées dans une transaction annulée à la fin, sans aucun envoi de SMS, d'e-mail ni de notification.
+
+- **ERP local** : `php bin/console app:recette:acces` (un seul compte : `--compte=demo.oumar`). Chaque compte `demo.*` demande chaque page de l'admin ; la commande signale une page ouverte sans son droit, une entrée du menu qui répond « accès refusé », une erreur 500, des montants (marges, salaires, paiements, chiffre d'affaires) ou des photos de pointage montrés sans le droit, la fiche d'une autre personne (bulletin, justificatif, photo de pointage, preuve de livraison, échec noté sur la livraison d'un autre livreur, livraisons d'un autre dans « Mes livraisons », journées de pointage d'un autre dans « Mon pointage », même avec son identifiant dans l'adresse), un module en « Voir » qui accepte un envoi, et les crédits SMS et e-mail (écran, historique, export) ouverts sans leur droit ou montrant un numéro, une adresse ou un objet d'e-mail en entier sans le droit Clients (le destinataire d'un message au personnel, ou sa recherche, sans être la direction). Rapports par e-mail : hors Direction, choisir les destinataires ou renvoyer un rapport est refusé, l'aperçu ne montre jamais la version d'un autre, l'e-mail de chacun a exactement les parties que ses droits ouvrent, et un compte qui n'a que « Chiffre d'affaires global » ne voit dans son e-mail ni montant, ni nom de client, ni partie réservée. Compte du client : l'onglet « Compte » d'une fiche n'est montré qu'avec Paiements ou Encaissements, un dépôt n'atteint le serveur qu'avec Encaissements et « Rendre l'argent » qu'avec en plus le droit de le faire. Les onglets « Actions sociales » et « Nous soutenir » de Réglages › Site vitrine sont essayés avec chaque compte (ouverts avec le droit Site vitrine, refusés sinon, enregistrement refusé), et le site public avec et sans action sociale montrée (page, accueil, pied de page, plan du site, brouillon jamais montré, lien « Nous soutenir » en nouvel onglet, QR code). La suppression d'un client (bouton « Supprimer » de la fiche, Direction seulement) n'arrive au serveur qu'avec la Direction. Pour la corbeille, elle pose deux entrées d'essai (une adresse de client, un jour férié) et vérifie que chaque compte n'ouvre l'écran qu'avec la Direction ou le droit « Corbeille », n'ouvre, ne restaure ni ne supprime une entrée sans le droit de sa fiche, et qu'en « Voir » rien ne se restaure (docs/corbeille.md). Pour le livreur seul, toute page ouverte hors de sa tournée, de ses livraisons et de son espace est une fuite, et l'accueil doit le renvoyer sur sa tournée.
+- **Site en ligne** (`APP_EN_LIGNE=1`, après une synchronisation depuis l'ERP d'essai) : la même commande essaie l'espace client avec un particulier, un client B2B et chaque personne d'un compte entreprise (titulaire, valideur, payeur, demandeur, lecture), les fiches et les envois d'un autre client, « Mon solde » réservé à qui paie (un dépôt lancé par le valideur, le demandeur ou la lecture est refusé et ne crée rien), aucun montant pour un demandeur ou la lecture seule (pages, données JSON des pages et appels de prix compris), la session d'une personne suspendue par l'imprimerie (fermée à la page suivante, les autres personnes de l'entreprise entrent toujours), la carte « Nous soutenir » fermée par une personne (« Lecture · suivi » comprise) et gardée pour les autres, l'admin sans appareil autorisé (corbeille comprise), l'API, les pages publiques, aucune personne de l'équipe masquée ou sans son accord sur « Qui sommes-nous ? » (trois témoins ajoutés le temps du contrôle, plus les personnes cachées de la base), aucun mot du gérant caché (deux gérants témoins, sans accord et sans photo) et le mot du gérant de la base montré une seule fois, `robots.txt`, `sitemap.xml`, le suivi de commande et le calculateur. Adresses des produits : aucun lien ni champ de Nos produits, du calculateur et de la demande de devis ne porte un identifiant de la base, une ancienne adresse `?produit=<identifiant>` est redirigée en 301 vers le jeton, et un jeton inventé n'ouvre aucun produit (docs/site-vitrine.md).
+- **Production au rouleau** (`RecetteProductionRouleau`, docs/production-rouleau.md) : au local, le coût du rouleau n'est montré qu'avec « Coûts et marges », cocher un point de la fiche et un geste de l'impression en cours (« Reprendre » sur un rouleau pas en pause) suivent la règle de l'atelier (un graphiste non affecté est refusé), enregistrer les codes des fichiers ou une machine est refusé hors chef d'atelier ; en ligne, ces pages, l'impression en cours, son état, ses gestes, « Commencer la finition » et Mon travail › Impression en cours répondent 404.
+
+Le bilan est écrit dans `var/recette/` (`acces-local-….md` et la matrice compte × page `…-matrice.csv` : O ouverte, R refusée, C connexion, > redirigée, I introuvable, E erreur). La commande se termine en échec s'il reste une fuite, une erreur ou un contrôle raté ; les pages « à examiner » sont à relire. Un écart voulu (page ouverte à tout le personnel, montant de ses propres ventes) s'ajoute avec sa raison dans `RecetteAcces::ECARTS_VOULUS` ou `MONTANTS_VOULUS` (`src/Service/Recette/`). Pour aller vite sur une grande base : `APP_DEBUG=0`.

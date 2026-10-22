@@ -36,6 +36,39 @@ class Machines
         self::MODE_FACTURATION_FEUILLE => 'À la feuille (A4/A3)',
     ];
 
+    /*
+     * Unités d'usage de l'amortissement (docs/immobilisations-primes.md,
+     * maquette M01) : code => [unité courte, libellé de la colonne].
+     * Sans unité choisie, m² pour le grand format et page A4 à la feuille.
+     */
+    public const UNITE_M2 = 'm2';
+    public const UNITE_METRE = 'metre';
+    public const UNITE_PAGE = 'page';
+    public const UNITE_CARTE = 'carte';
+    public const UNITE_TRANSFERT = 'transfert';
+
+    public const UNITES = [
+        self::UNITE_M2 => ['m²', 'm² imprimés'],
+        self::UNITE_METRE => ['m', 'm de film'],
+        self::UNITE_PAGE => ['page A4', 'pages (A3 = 2 A4)'],
+        self::UNITE_CARTE => ['carte', 'cartes'],
+        self::UNITE_TRANSFERT => ['transfert', 'transferts'],
+    ];
+
+    /*
+     * Relevé mensuel du compteur de la machine (maquette M02) : sans
+     * relevé, l'usage vient de la production terminée ; « simple », un
+     * compteur ; « a4a3 », quatre compteurs A4 / A3 en couleur et en noir
+     * et blanc (photocopieur Canon), une A3 comptant pour 2 A4.
+     */
+    public const RELEVE_SIMPLE = 'simple';
+    public const RELEVE_A4A3 = 'a4a3';
+
+    public const RELEVES = [
+        self::RELEVE_SIMPLE => 'Un compteur',
+        self::RELEVE_A4A3 => 'Compteurs A4 / A3, couleur et noir',
+    ];
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -97,6 +130,45 @@ class Machines
     #[ORM\Column(length: 45, unique: true)]
     private ?string $adresseIp = null;
 
+    /** Entretien régulier à faire, en texte libre (maquette 27). */
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $planPreventif = null;
+
+    /** Amortissement à l'usage : capacité prévue sur la vie de la machine (m² ou pages A4). */
+    #[ORM\Column(nullable: true)]
+    private ?float $capaciteUsage = null;
+
+    /** Amortissement à l'usage : valeur résiduelle en fin de vie (F). */
+    #[ORM\Column(nullable: true)]
+    private ?int $valeurResiduelle = null;
+
+    /** Unité d'usage de l'amortissement (UNITES), null : celle du mode de facturation. */
+    #[ORM\Column(name: 'unite_usage', length: 10, nullable: true)]
+    private ?string $unite = null;
+
+    /** Compteur des machines comptées à l'unité (cartes PVC, transferts de sublimation). */
+    #[ORM\Column(options: ['default' => 0])]
+    private int $compteurUnites = 0;
+
+    /** Relevé mensuel du compteur (RELEVES), null : usage compté sur la production. */
+    #[ORM\Column(length: 8, nullable: true)]
+    private ?string $releveCompteurs = null;
+
+    /** Toner par page A4 (F), pour le coût complet par page de la fiche (M02). */
+    #[ORM\Column(type: Types::DECIMAL, precision: 8, scale: 2, nullable: true)]
+    private ?string $coutPageCouleur = null;
+
+    #[ORM\Column(type: Types::DECIMAL, precision: 8, scale: 2, nullable: true)]
+    private ?string $coutPageNoir = null;
+
+    /** Montage d'impression : marge non imprimable de la machine (mm). */
+    #[ORM\Column(nullable: true)]
+    private ?float $margeMontageMm = null;
+
+    /** Montage d'impression : feuilles acceptées, ex. « A4,A3,SRA3 ». */
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $formatsMontage = null;
+
     /*
      * ============================================================
      * RENTABILITÉ / AMORTISSEMENT
@@ -111,6 +183,20 @@ class Machines
 
     #[ORM\Column(nullable: true)]
     private ?int $dureeAmortissementMois = null;
+
+    /*
+     * Donnees du cout de revient (CalculateurCoutRevient) : vitesse
+     * reelle de production, cout d'une heure de machine (amortissement,
+     * electricite, operateur) et cout de l'encre par m2 imprime.
+     */
+    #[ORM\Column(type: Types::DECIMAL, precision: 8, scale: 2, nullable: true)]
+    private ?string $vitesseM2Heure = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $coutHoraire = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?int $coutEncreM2 = null;
 
     #[ORM\Column(options: ['default' => 0])]
     private int $revenuAvantSuivi = 0;
@@ -480,14 +566,20 @@ public function setAdresseIp(string $adresseIp): static
     private const SURFACE_A4_M2 = 0.21 * 0.297;
 
     /**
-     * Ajoute l'usage d'une impression au compteur d'usure de la
-     * machine, uniquement pour suivre la maintenance — n'affecte pas
-     * le calcul de l'amortissement (basé sur le temps écoulé, voir
-     * getChargeAmortissementMensuelle()). Le compteur alimenté dépend
-     * du mode de facturation de la machine.
+     * Ajoute l'usage d'une impression terminée au compteur de la
+     * machine : m² (grand format, DTF), feuilles A4-équivalent (à la
+     * feuille) ou pièces (cartes, transferts). Ce compteur sert à la
+     * maintenance et à l'amortissement à l'usage.
      */
-    public function enregistrerUsage(float $surfaceM2Totale): void
+    public function enregistrerUsage(float $surfaceM2Totale, float $quantite = 0): void
     {
+        // Cartes PVC, transferts : on compte les pièces, même sans dimensions.
+        if ($this->compteALUnite()) {
+            $this->compteurUnites += (int) round(max(0, $quantite));
+
+            return;
+        }
+
         if ($surfaceM2Totale <= 0) {
             return;
         }
@@ -529,6 +621,61 @@ public function setAdresseIp(string $adresseIp): static
         return $this;
     }
 
+    public function getVitesseM2Heure(): ?float
+    {
+        return null === $this->vitesseM2Heure ? null : (float) $this->vitesseM2Heure;
+    }
+
+    public function setVitesseM2Heure(?float $vitesseM2Heure): static
+    {
+        $this->vitesseM2Heure = null === $vitesseM2Heure ? null : number_format($vitesseM2Heure, 2, '.', '');
+
+        return $this;
+    }
+
+    public function getCoutHoraire(): ?int
+    {
+        return $this->coutHoraire;
+    }
+
+    public function setCoutHoraire(?int $coutHoraire): static
+    {
+        $this->coutHoraire = $coutHoraire;
+
+        return $this;
+    }
+
+    public function getCoutEncreM2(): ?int
+    {
+        return $this->coutEncreM2;
+    }
+
+    public function setCoutEncreM2(?int $coutEncreM2): static
+    {
+        $this->coutEncreM2 = $coutEncreM2;
+
+        return $this;
+    }
+
+    /**
+     * Largeur utile en metres, quelle que soit la saisie (« 3,20 m »,
+     * « 320 cm », « 320 »), ou null si elle n'est pas lisible.
+     */
+    public function getLaizeMetres(): ?float
+    {
+        if (!preg_match('/^\s*(\d+(?:[.,]\d+)?)/', (string) $this->largeurImpression, $nombre)) {
+            return null;
+        }
+
+        $valeur = (float) str_replace(',', '.', $nombre[1]);
+
+        if ($valeur <= 0) {
+            return null;
+        }
+
+        return $valeur > 10 ? $valeur / 100 : $valeur;
+    }
+
     public function getRevenuAvantSuivi(): int
     {
         return $this->revenuAvantSuivi;
@@ -564,5 +711,224 @@ public function setAdresseIp(string $adresseIp): static
         }
 
         return $this->prixAchat / $this->dureeAmortissementMois;
+    }
+
+    public function getPlanPreventif(): ?string
+    {
+        return $this->planPreventif;
+    }
+
+    public function setPlanPreventif(?string $plan): static
+    {
+        $plan = null !== $plan ? trim($plan) : null;
+        $this->planPreventif = '' === $plan ? null : $plan;
+
+        return $this;
+    }
+
+    public function getMargeMontageMm(): ?float
+    {
+        return $this->margeMontageMm;
+    }
+
+    public function setMargeMontageMm(?float $marge): static
+    {
+        $this->margeMontageMm = $marge;
+
+        return $this;
+    }
+
+    /** @return list<string> */
+    public function getFormatsMontage(): array
+    {
+        return $this->formatsMontage !== null ? explode(',', $this->formatsMontage) : [];
+    }
+
+    /** @param list<string> $formats */
+    public function setFormatsMontage(array $formats): static
+    {
+        $this->formatsMontage = $formats !== [] ? implode(',', $formats) : null;
+
+        return $this;
+    }
+
+    public function getCapaciteUsage(): ?float
+    {
+        return $this->capaciteUsage;
+    }
+
+    public function setCapaciteUsage(?float $capacite): static
+    {
+        $this->capaciteUsage = $capacite !== null && $capacite > 0 ? $capacite : null;
+
+        return $this;
+    }
+
+    public function getValeurResiduelle(): ?int
+    {
+        return $this->valeurResiduelle;
+    }
+
+    public function setValeurResiduelle(?int $valeur): static
+    {
+        $this->valeurResiduelle = $valeur !== null && $valeur >= 0 ? $valeur : null;
+
+        return $this;
+    }
+
+    /** Code de l'unité d'usage : celle choisie, sinon m² (grand format) ou page A4 (à la feuille). */
+    public function getUnite(): string
+    {
+        return $this->unite ?? ($this->utiliseFeuille() ? self::UNITE_PAGE : self::UNITE_M2);
+    }
+
+    public function setUnite(?string $unite): static
+    {
+        $this->unite = null !== $unite && isset(self::UNITES[$unite]) ? $unite : null;
+
+        return $this;
+    }
+
+    /** Unité d'usage courte : « m² », « m », « page A4 », « carte », « transfert ». */
+    public function uniteUsage(): string
+    {
+        return self::UNITES[$this->getUnite()][0];
+    }
+
+    /** Unité d'un compte : « m² », « m », « pages », « cartes », « transferts ». */
+    public function unitePluriel(): string
+    {
+        return match ($this->getUnite()) {
+            self::UNITE_PAGE => 'pages',
+            self::UNITE_CARTE => 'cartes',
+            self::UNITE_TRANSFERT => 'transferts',
+            default => $this->uniteUsage(),
+        };
+    }
+
+    /** Libellé de la colonne « Unité d'usage » (M01) : « m² imprimés », « m de film »… */
+    public function libelleUnite(): string
+    {
+        return self::UNITES[$this->getUnite()][1];
+    }
+
+    /** Machine comptée à la pièce (cartes, transferts) plutôt qu'à la surface. */
+    public function compteALUnite(): bool
+    {
+        return \in_array($this->getUnite(), [self::UNITE_CARTE, self::UNITE_TRANSFERT], true);
+    }
+
+    /**
+     * Travail converti dans l'unité d'usage : m² tels quels, mètres de
+     * film (surface ÷ laize), pages A4 (surface ÷ surface d'une A4), ou
+     * nombre de pièces pour les cartes et les transferts.
+     */
+    public function usagePour(float $surfaceM2, float $quantite = 0): float
+    {
+        return match ($this->getUnite()) {
+            self::UNITE_PAGE => $surfaceM2 / self::SURFACE_A4_M2,
+            self::UNITE_METRE => $surfaceM2 / ($this->getLaizeMetres() ?? 1.0),
+            self::UNITE_CARTE, self::UNITE_TRANSFERT => max(0.0, $quantite),
+            default => $surfaceM2,
+        };
+    }
+
+    /** Usage compté depuis la mise en service, dans l'unité de la machine. */
+    public function usage(): float
+    {
+        return match ($this->getUnite()) {
+            self::UNITE_PAGE => (float) $this->compteurFeuilles,
+            self::UNITE_METRE => (float) ($this->compteurM2 ?? 0) / ($this->getLaizeMetres() ?? 1.0),
+            self::UNITE_CARTE, self::UNITE_TRANSFERT => (float) $this->compteurUnites,
+            default => (float) ($this->compteurM2 ?? 0),
+        };
+    }
+
+    /**
+     * Recale le compteur de l'unité d'usage sur un relevé (M02) : le
+     * compteur de la machine fait foi, la production n'était qu'une
+     * estimation entre deux relevés.
+     */
+    public function recalerCompteur(float $usage): static
+    {
+        match ($this->getUnite()) {
+            self::UNITE_PAGE => $this->compteurFeuilles = (int) round($usage),
+            self::UNITE_METRE => $this->compteurM2 = round($usage * ($this->getLaizeMetres() ?? 1.0), 2),
+            self::UNITE_CARTE, self::UNITE_TRANSFERT => $this->compteurUnites = (int) round($usage),
+            default => $this->compteurM2 = round($usage, 2),
+        };
+
+        return $this;
+    }
+
+    public function getCompteurUnites(): int
+    {
+        return $this->compteurUnites;
+    }
+
+    public function setCompteurUnites(int $compteur): static
+    {
+        $this->compteurUnites = max(0, $compteur);
+
+        return $this;
+    }
+
+    public function getReleveCompteurs(): ?string
+    {
+        return $this->releveCompteurs;
+    }
+
+    public function setReleveCompteurs(?string $releve): static
+    {
+        $this->releveCompteurs = null !== $releve && isset(self::RELEVES[$releve]) ? $releve : null;
+
+        return $this;
+    }
+
+    /** Compteurs A4 / A3 en couleur et en noir (photocopieur). */
+    public function releveA4A3(): bool
+    {
+        return self::RELEVE_A4A3 === $this->releveCompteurs;
+    }
+
+    public function getCoutPageCouleur(): ?float
+    {
+        return null === $this->coutPageCouleur ? null : (float) $this->coutPageCouleur;
+    }
+
+    public function setCoutPageCouleur(?float $cout): static
+    {
+        $this->coutPageCouleur = null === $cout || $cout < 0 ? null : number_format($cout, 2, '.', '');
+
+        return $this;
+    }
+
+    public function getCoutPageNoir(): ?float
+    {
+        return null === $this->coutPageNoir ? null : (float) $this->coutPageNoir;
+    }
+
+    public function setCoutPageNoir(?float $cout): static
+    {
+        $this->coutPageNoir = null === $cout || $cout < 0 ? null : number_format($cout, 2, '.', '');
+
+        return $this;
+    }
+
+    /** Montant à amortir : prix d'achat moins valeur résiduelle. */
+    public function baseAmortissable(): ?int
+    {
+        return $this->prixAchat !== null ? max(0, $this->prixAchat - ($this->valeurResiduelle ?? 0)) : null;
+    }
+
+    /**
+     * Amortissement par unité d'usage : (prix d'achat − valeur résiduelle)
+     * ÷ capacité prévue. Exemple : 18 000 000 F, 0 F, 60 000 m² → 300 F/m².
+     */
+    public function coutUsageUnitaire(): ?float
+    {
+        $base = $this->baseAmortissable();
+
+        return $base !== null && $this->capaciteUsage !== null && $this->capaciteUsage > 0 ? $base / $this->capaciteUsage : null;
     }
 }

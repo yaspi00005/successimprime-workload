@@ -1,0 +1,14 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Bulletin de paie · {{ libelleMois }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_mon_espace_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Mon espace</a></li>
+	<li class="nav-item"><button type="button" onclick="window.print()" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-print me-1"></i>Imprimer</button></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-py">
+		<section class="card si-ac-bloc">{% include 'paie/_bulletin.html.twig' %}</section>
+	</div>
+{% endblock %}

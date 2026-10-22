@@ -1,0 +1,48 @@
+{# Petits morceaux communs aux écrans Finances. #}
+
+{# Montant en francs CFA, sans retour à la ligne : « 3 418 000 F ». #}
+{% macro f(montant) %}<span class="si-fin-f">{{ montant|number_format(0, ',', ' ') }} F</span>{% endmacro %}
+
+{# Montant signé : « + 165 700 F » ou « − 12 000 F ». #}
+{% macro signe(montant) %}<span class="si-fin-f">{{ montant < 0 ? '−' : '+' }} {{ montant|abs|number_format(0, ',', ' ') }} F</span>{% endmacro %}
+
+{# Icône d'un compte de trésorerie selon son type. #}
+{% macro icone_compte(type, rang) %}
+	{% set icones = {banque: ['fas fa-credit-card', 'bleu'], orange_money: ['fas fa-money-bill-wave', 'orange'], wave: ['fas fa-water', 'cyan'], caisse: [rang > 0 ? 'fas fa-tag' : 'fas fa-cash-register', rang > 0 ? 'gris' : 'vert']} %}
+	{% set choix = icones[type]|default(['fas fa-wallet', 'gris']) %}
+	<span class="si-fin-icone si-fin-icone-{{ choix[1] }}" aria-hidden="true"><i class="{{ choix[0] }}"></i></span>
+{% endmacro %}
+
+{# Initiales d'un nom pour une pastille ronde : « Sahel Plast » → « SP ». #}
+{% macro initiales(nom) %}{% set mots = nom|default('?')|trim|split(' ')|filter(m => m is not empty) %}{{ (mots|first|slice(0, 1) ~ (mots|length > 1 ? mots[1]|slice(0, 1) : ''))|upper }}{% endmacro %}
+
+{# Sélecteur « Période : ce mois » de l'en-tête. #}
+{% macro periode(periodes, periode, route, extra) %}
+	<li class="nav-item">
+		<form method="get" action="{{ path(route) }}" class="si-fin-periode">
+			{% for cle, valeur in extra|default({}) %}<input type="hidden" name="{{ cle }}" value="{{ valeur }}">{% endfor %}
+			<label class="visually-hidden" for="si-fin-periode">Période</label>
+			<select id="si-fin-periode" name="periode" class="form-select form-select-sm" onchange="this.form.submit()">
+				{% for cle, libelle in periodes %}
+					<option value="{{ cle }}" {{ cle == periode ? 'selected' }}>Période : {{ libelle }}</option>
+				{% endfor %}
+			</select>
+		</form>
+	</li>
+{% endmacro %}
+
+{# Pastille d'une dépense, corrigée par l'état de son décaissement. #}
+{% macro statut_depense(d) %}
+	{% set rejete = d.estPayee and d.mouvement and d.mouvement.annule %}
+	<span class="si-fin-statut si-fin-statut-{{ rejete ? 'rouge' : d.couleurStatut }}">{{ rejete ? 'Paiement rejeté' : d.libelleStatut }}</span>
+	{%- if d.estPayee and d.mouvement and d.mouvement.enAttente %}<small class="si-fin-sous-statut">décaissement à valider</small>{% endif %}
+{% endmacro %}
+
+{# Nom d'une personne : prénom et nom de sa fiche employé, sinon son identifiant. #}
+{% macro nom(u) %}{% if u is null %}—{% elseif u.employe and u.employe.prenom is not empty %}{{ u.employe.prenom }} {{ u.employe.nom }}{% else %}{{ u.userIdentifier }}{% endif %}{% endmacro %}
+
+{# « Mar. 20/10 ». #}
+{% macro jour_court(d) %}{{ ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.'][d|date('N') - 1] }} {{ d|date('d/m') }}{% endmacro %}
+
+{# « 1er novembre », « 20 octobre ». #}
+{% macro date_longue(d) %}{{ d|date('j') == 1 ? '1er' : d|date('j') }} {{ ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][d|date('n') - 1] }}{% endmacro %}

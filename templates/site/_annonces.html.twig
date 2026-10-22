@@ -1,0 +1,132 @@
+{#
+	Bande d'annonces (Réglages › Site vitrine › Annonces) : en haut du site
+	public (site/_site.html.twig, cible « site ») et de l'espace client
+	(espace/app/_app.html.twig, cible « espace »). Sans annonce, rien n'est
+	écrit : ni bande, ni style, ni script.
+
+	Plusieurs annonces : une à la fois, la suivante toutes les 7 s (pause au
+	survol et au clavier, arrêt après 4 tours ou dès qu'on touche « suivante »,
+	jamais avec « réduire les animations »). « Fermer » la cache pour la
+	visite (sessionStorage, rien sur le serveur). Sans JavaScript, elles
+	sont toutes affichées l'une sous l'autre. La bande est dans le fil de la
+	page : elle ne couvre jamais un bouton.
+
+	Paramètres : cible (« site », « espace »), annonces (sinon lues pour la
+	cible), apercu (fiche de l'admin : ni boutons ni script).
+#}
+{% set annonces = annonces ?? site_annonces(cible) %}
+{% set apercu = apercu ?? false %}
+{% if annonces is not empty %}
+	<style>
+		.si-annonces { --an-rayon: 0; margin: 0; font-family: inherit; }
+		.si-annonces-espace { --an-rayon: 14px; margin: 0 0 1rem; }
+		.si-annonce { background: #0F4590; color: #fff; border-radius: var(--an-rayon); }
+		.si-annonce + .si-annonce { margin-top: var(--an-ecart, 0); }
+		.si-annonces-espace .si-annonce + .si-annonce { --an-ecart: .4rem; }
+		.si-annonce[hidden] { display: none; }
+		.si-annonce-promotion { background: #FDC82A; color: #1D1D1B; }
+		.si-annonce-alerte { background: #C40D22; color: #fff; }
+		.si-annonce-cadre { display: flex; align-items: center; gap: .6rem; max-width: 1180px; margin: 0 auto; padding: .45rem 16px; min-height: 44px; box-sizing: border-box; font-size: 14px; line-height: 1.4; }
+		.si-annonces-espace .si-annonce-cadre { max-width: none; padding: .5rem .5rem .5rem .9rem; }
+		.si-annonce svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+		.si-annonce-texte { flex: 1; min-width: 0; margin: 0; font-weight: 600; }
+		.si-annonce-texte a, .si-annonce-texte a:visited { color: inherit; font-weight: 800; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+		.si-annonce-texte a:hover { text-decoration-thickness: 2px; }
+		.si-annonce-actions { flex: none; display: flex; align-items: center; gap: .1rem; margin: -.45rem -.4rem -.45rem 0; }
+		.si-annonce-actions[hidden] { display: none; }
+		.si-annonce-actions button { display: inline-grid; place-items: center; min-width: 44px; height: 44px; padding: 0 .5rem; border: 0; border-radius: 10px; background: transparent; color: inherit; font: inherit; font-weight: 800; font-size: 13px; cursor: pointer; }
+		.si-annonce-actions button:hover { background: rgba(0, 0, 0, .12); }
+		.si-annonce-actions button:focus-visible, .si-annonce-texte a:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+		.si-annonce-fermer svg { width: 16px; height: 16px; stroke-width: 2.4; }
+		@media (max-width: 560px) { .si-annonce-cadre { font-size: 13px; gap: .5rem; } .si-annonce-texte a { white-space: normal; } }
+		@media (prefers-reduced-motion: no-preference) { .si-annonce-entre { animation: si-annonce-entre .35s ease-out; } @keyframes si-annonce-entre { from { opacity: 0; } to { opacity: 1; } } }
+	</style>
+	<section class="si-annonces si-annonces-{{ cible == 'espace' ? 'espace' : 'site' }}" aria-label="Annonces de Succès Imprim" data-annonces>
+		{% for a in annonces %}
+			<div class="si-annonce si-annonce-{{ a.style }}" data-annonce="{{ a.publicId }}">
+				<div class="si-annonce-cadre">
+					{% if a.style == 'alerte' %}
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3.5 2.5 20h19z"/><path d="M12 10v4.5M12 17.2h.01"/></svg>
+					{% elseif a.style == 'promotion' %}
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12V4h8l9.5 9.5-8 8z"/><path d="M7.6 7.6h.01"/></svg>
+					{% else %}
+						<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5.5M12 7.8h.01"/></svg>
+					{% endif %}
+					<p class="si-annonce-texte">
+						{{- a.texte -}}
+						{% if a.lien %} <a href="{{ a.lien }}"{% if a.lienExterne %} target="_blank" rel="noopener"{% endif %}>{{ a.libelleLienAffiche }}</a>{% endif %}
+					</p>
+					{% if not apercu %}
+						<span class="si-annonce-actions" hidden>
+							{% if annonces|length > 1 %}
+								<button type="button" data-suivante aria-label="Annonce suivante ({{ loop.index }} sur {{ annonces|length }})">{{ loop.index }}/{{ annonces|length }} ›</button>
+							{% endif %}
+							<button type="button" class="si-annonce-fermer" data-fermer aria-label="Fermer les annonces pour cette visite"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+						</span>
+					{% endif %}
+				</div>
+			</div>
+		{% endfor %}
+	</section>
+	{% if not apercu %}
+		<script>
+			(function () {
+				var bande = document.currentScript && document.currentScript.previousElementSibling;
+				if (!bande || !bande.hasAttribute('data-annonces')) { return; }
+				var cle = 'si-annonces-fermees';
+				var fermees = [];
+				try { fermees = JSON.parse(sessionStorage.getItem(cle) || '[]') || []; } catch (e) { fermees = []; }
+				var toutes = Array.prototype.slice.call(bande.querySelectorAll('[data-annonce]'));
+				var annonces = toutes.filter(function (a) { return fermees.indexOf(a.getAttribute('data-annonce')) < 0; });
+				toutes.forEach(function (a) { if (annonces.indexOf(a) < 0) { a.remove(); } });
+				if (!annonces.length) { bande.remove(); return; }
+				var rang = 0;
+				var tours = 0;
+				var minuterie = null;
+				var arrete = annonces.length < 2 || (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+				var montrer = function (n, anime) {
+					annonces.forEach(function (a, i) {
+						a.hidden = i !== n;
+						a.classList.toggle('si-annonce-entre', anime === true && i === n);
+						var suivante = a.querySelector('[data-suivante]');
+						if (suivante) {
+							suivante.textContent = (i + 1) + '/' + annonces.length + ' ›';
+							suivante.setAttribute('aria-label', 'Annonce suivante (' + (i + 1) + ' sur ' + annonces.length + ')');
+							if (annonces.length < 2) { suivante.remove(); }
+						}
+					});
+					rang = n;
+				};
+				var arreter = function () { if (minuterie) { clearInterval(minuterie); minuterie = null; } };
+				var lancer = function () {
+					if (arrete || minuterie) { return; }
+					minuterie = setInterval(function () {
+						if (rang === annonces.length - 1 && ++tours >= 4) { arrete = true; arreter(); return; }
+						montrer((rang + 1) % annonces.length, true);
+					}, 7000);
+				};
+				annonces.forEach(function (a) { var b = a.querySelector('.si-annonce-actions'); if (b) { b.hidden = false; } });
+				montrer(0);
+				bande.addEventListener('click', function (e) {
+					var bouton = e.target.closest ? e.target.closest('button') : null;
+					if (!bouton) { return; }
+					if (bouton.hasAttribute('data-suivante')) {
+						arrete = true; arreter();
+						montrer((rang + 1) % annonces.length, true);
+						var suivante = annonces[rang].querySelector('[data-suivante]');
+						if (suivante) { suivante.focus(); }
+					} else if (bouton.hasAttribute('data-fermer')) {
+						arreter();
+						try { sessionStorage.setItem(cle, JSON.stringify(fermees.concat(annonces.map(function (a) { return a.getAttribute('data-annonce'); })))); } catch (e) { /* mémoire refusée : fermée pour cette page */ }
+						bande.remove();
+					}
+				});
+				bande.addEventListener('mouseenter', arreter);
+				bande.addEventListener('mouseleave', lancer);
+				bande.addEventListener('focusin', arreter);
+				bande.addEventListener('focusout', function (e) { if (!bande.contains(e.relatedTarget)) { lancer(); } });
+				lancer();
+			})();
+		</script>
+	{% endif %}
+{% endif %}

@@ -1,1627 +1,547 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}
-	Commande
-	{{ commande.reference|default('#' ~ commande.id) }}
+{#
+	Fiche d'une commande côté admin (maquette DT02, 18/10/2026) : étapes,
+	lignes (et devis d'origine), fichiers et BAT, production, historique,
+	client, paiements et conversation. Données : SuiviCommandeService,
+	SuiviCommercial (étape, retard) et FicheCommande.
+#}
+
+{% set client = commande.clients %}
+{% set estAdmin = is_granted('ROLE_ADMIN') %}
+{% set peutModifier = is_granted('ROLE_COMMANDE') or estAdmin %}
+{% set peutEncaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') or estAdmin %}
+{% set peutFacturer = is_granted('ROLE_FACTURE') or estAdmin %}
+{% set peutVoirPaiements = is_granted('ROLE_PAIEMENT_VOIR') or estAdmin %}
+{% set peutPrepresse = is_granted('ROLE_PREPRESSE') or estAdmin %}
+{# Messages des clients (docs/messagerie-clients.md) : la boîte Clients › Messages. #}
+{% set peutMessages = is_granted('MESSAGERIE') %}
+{% set statutTravaux = commande.statutTravaux %}
+{% set annulee = statutTravaux == 'annulee' %}
+{% set verrouillee = lignes|filter(l => l.detail.statutProduction in ['en_production', 'terminee', 'prete_livraison', 'en_livraison', 'livree'])|length > 0 %}
+{% set totalTtc = commande.totalTtc %}
+{% set totalPaye = paiementsValides|reduce((somme, p) => somme + p.montant, 0) %}
+{% set reste = max(totalTtc - totalPaye, 0) %}
+{% set telephone = client and client.telephone ? client.telephone|replace({' ': '', '-': '', '.': '', '+': ''}) : null %}
+{% if telephone and telephone|length == 8 %}{% set telephone = '223' ~ telephone %}{% endif %}
+{% set jours = ['dim.', 'lun.', 'mar.', 'mer.', 'jeu.', 'ven.', 'sam.'] %}
+{% set lienWhatsapp = telephone ? 'https://wa.me/' ~ telephone ~ '?text=' ~ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim : ')|url_encode : null %}
+{% set envoyerBat = peutPrepresse and fiche.ligneBat and not annulee %}
+
+{% block title %}Commande {{ commande.numero }}{% endblock %}
+
+{% block page_title %}Commande{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/commandes-suivi.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/note-vocale.css') }}" rel="stylesheet">
 {% endblock %}
 
-
 {% block body %}
+	{% if app.request.query.get('creee') %}
+		{# Juste après la saisie (maquette C04, écran « Commande créée »). #}
+		<div class="card si-bloc si-commande-creee">
+			<span class="si-commande-creee-coche"><i class="fas fa-check"></i></span>
+			<div class="flex-grow-1 min-w-0">
+				<h3>{{ commande.statut ? 'Commande créée' : 'Brouillon enregistré' }} <strong>{{ commande.numero }}</strong></h3>
+				<p class="text-muted mb-2">{{ client ? client.nomComplet : 'Client comptoir' }} · {{ totalTtc|number_format(0, ',', ' ') }} F TTC</p>
+				<ul class="si-commande-creee-liste">
+					{% if commande.statut %}
+						<li><i class="fas fa-check"></i>Fiches de travail prêtes ({{ lignes|length }})</li>
+						<li><i class="fas fa-check"></i>Lignes ajoutées à la file de production</li>
+					{% else %}
+						<li><i class="fas fa-pause"></i>Brouillon : rien n'est envoyé à l'atelier avant la confirmation</li>
+					{% endif %}
+				</ul>
+			</div>
+			<div class="si-commande-creee-actions">
+				{% if telephone %}
+					<a href="https://wa.me/{{ telephone }}?text={{ ('Bonjour, votre commande ' ~ commande.numero ~ ' chez Succès Imprim est enregistrée. Montant : ' ~ totalTtc|number_format(0, ',', ' ') ~ ' F.')|url_encode }}" class="btn btn-success btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Prévenir le client</a>
+				{% endif %}
+				<a href="{{ path('app_commandes_new') }}" class="btn btn-sm si-btn-secondaire">Nouvelle commande</a>
+			</div>
+		</div>
+	{% endif %}
 
-	{# ================================================================
-						   DONNÉES PRINCIPALES
-						   ================================================================ #}
+	{% if commande.attendValidationEntreprise %}
+		<div class="alert alert-info">
+			<strong>Demande en attente chez le client.</strong> {{ commande.demandeePar ?? 'Une personne de l\'entreprise' }} l'a passée dans l'espace client ; un valideur de l'entreprise doit l'accepter avant qu'elle arrive ici à confirmer. Rien à faire pour l'instant.
+		</div>
+	{% elseif commande.estRefuseeParEntreprise %}
+		<div class="alert alert-secondary">
+			<strong>Refusée par le client</strong> ({{ commande.valideePar ?? 'valideur de l\'entreprise' }}){% if commande.motifRefusEntreprise %} : « {{ commande.motifRefusEntreprise }} »{% endif %}.
+		</div>
+	{% elseif commande.canal == 'en_ligne' and not commande.statut and not annulee and not depuis_mes_produits(commande) %}
+		<div class="alert alert-warning d-flex flex-wrap align-items-center gap-2">
+			<div class="flex-grow-1"><strong>Commande passée par le client dans son espace.</strong> Le prix affiché est indicatif : vérifiez le prix et le fichier, puis confirmez-la. Elle ne part pas à l'atelier avant.{% if commande.codeSaisi and not commande.codePromo and not commande.motifCodePromo %} Le client a tapé le code promo <b>{{ commande.libelleCodePromo }}</b> : il est revérifié quand vous enregistrez.{% endif %}</div>
+			{% if is_granted('ROLE_COMMANDE') %}<a href="{{ path('app_commandes_edit', {id: commande.id}) }}" class="btn btn-sm btn-danger">Vérifier et confirmer</a>{% endif %}
+		</div>
+	{% endif %}
 
-	{% set reference =
-		commande.reference
-			|default(
-				'CMD-' ~ '%05d'|format(commande.id)
-			)
-	%}
+	{% if commande.motifCodePromo %}
+		<div class="alert alert-warning py-2"><i class="fas fa-ticket-alt me-1"></i><strong>Code promo {{ commande.libelleCodePromo }} non retenu.</strong> {{ commande.motifCodePromo }} La commande est restée sans cet avantage.</div>
+	{% endif %}
 
-	{% set client =
-		commande.clients|default(null)
-	%}
+	{# ---------- En-tête : numéro, produit, étape, échéance, actions ---------- #}
+	<div class="si-cs-fiche-tete-page">
+		<div class="si-cs-titre">
+			<a href="{{ path('app_commandes_index') }}" class="si-cs-retour" aria-label="Retour aux commandes"><i class="fas fa-chevron-left"></i></a>
+			<div class="min-w-0">
+				<small>Commandes › {{ commande.numero }}</small>
+				<h1>
+					<span>{{ commande.numero }} · {{ suivi.produit }}{% if suivi.autres %} <small class="d-inline text-muted">+{{ suivi.autres }}</small>{% endif %}</span>
+					<span class="si-cs-etape si-cs-etape-{{ suivi.couleur }}">{{ suivi.libelle }}</span>
+					{% if commande.dateLivraison %}
+						<span class="si-cs-pour{{ suivi.enRetard ? ' retard' }}">{{ suivi.retrait ? 'retrait' : 'pour' }} le {{ jours[commande.dateLivraison|date('w')] }} {{ commande.dateLivraison|date('d/m') }}</span>
+					{% endif %}
+				</h1>
+				<small>
+					{{ client ? client.nomComplet : 'Client comptoir' }}
+					· créée le {{ commande.dateCommande ? commande.dateCommande|date('d/m à H:i') : '—' }}
+					{% if commande.agents %} par {{ commande.agents.employe ? commande.agents.employe.prenom : commande.agents.username }}{% elseif commande.demandeePar %} en ligne par {{ commande.demandeePar }}{% if commande.valideePar and commande.validationEntreprise == 'validee' and commande.valideePar != commande.demandeePar %}, validée par {{ commande.valideePar }}{% endif %}{% endif %}
+					{% if commande.agents and commande.demandeePar %} · commandée par <strong class="text-body">{{ commande.demandeePar }}</strong>{% endif %}
+					{% if commande.bonCommande %} · bon de commande {{ commande.bonCommande }}{% endif %}
+				</small>
+				{% if commande.objet %}<small>Objet : {{ commande.objet }}</small>{% endif %}
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : ni prépresse ni atelier, comptée à part. #}
+				{% if commande.horsImprimerie %}<small><span class="si-badge-hors" title="Vente de matériel, informatique… : comptée à part de l'imprimerie dans les statistiques, sans prépresse ni atelier">Hors imprimerie</span></small>{% endif %}
+				{% if commande.delaiProduction %}<small>Choix du client en ligne : délai {{ commande.estExpress ? 'express' : 'standard' }} · {{ commande.estALivrer ? 'livraison à Bamako' ~ (commande.creneauLivraison ? ', ' ~ commande.creneauLivraison : '') ~ (commande.adresseLivraison ? ' · ' ~ (commande.adresseLivraison|length > 90 ? commande.adresseLivraison|slice(0, 89) ~ '…' : commande.adresseLivraison) : '') : 'retrait à l\'imprimerie' }}</small>{% endif %}
+			</div>
+		</div>
+		<div class="si-cs-actions">
+			<button type="button" class="btn si-cs-btn-blanc si-masque-mobile" onclick="window.print()"><i class="fas fa-print me-1"></i>Bon de travail</button>
+			{% if client and peutMessages %}
+				{% set convTete = fiche.conversation %}
+				{% if convTete and is_granted('MESSAGERIE_VOIR', convTete.conversation) %}
+					<a href="{{ convTete.urlAdmin }}" class="btn si-cs-btn-blanc">Message client</a>
+				{% elseif (not convTete or convTete.conversation.estCloturee) and not site_en_ligne() %}
+					<form method="post" action="{{ path('app_messages_clients_demarrer', {type: 'commande', id: commande.id}) }}" class="d-inline"><input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}"><button class="btn si-cs-btn-blanc">Message client</button></form>
+				{% endif %}
+			{% elseif lienWhatsapp %}
+				<a href="{{ lienWhatsapp }}" class="btn si-cs-btn-blanc" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>Message client</a>
+			{% endif %}
+			{% if peutEncaisser and reste > 0 and not annulee %}
+				<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn {{ envoyerBat ? 'si-cs-btn-blanc' : 'btn-danger' }}">Encaisser</a>
+			{% endif %}
+			{% if envoyerBat %}
+				<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.ligneBat.id}) }}" class="btn btn-danger">Envoyer le BAT</a>
+			{% endif %}
+			<div class="dropdown">
+				<button type="button" class="btn si-cs-btn-blanc" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Autres actions"><i class="fas fa-ellipsis-h"></i></button>
+				<div class="dropdown-menu dropdown-menu-end">
+					{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
+						<a class="dropdown-item" href="{{ path('app_commandes_edit', {id: commande.id}) }}"><i class="fas fa-pen me-2"></i>Modifier</a>
+					{% endif %}
+					{% if is_granted('ROLE_COMMANDE') and commande.clients and not commande.isSoldeOuverture() %}
+						<form method="post" action="{{ path('app_commandes_dupliquer', {id: commande.id}) }}" data-confirmer="Dupliquer la commande {{ commande.numero }} ? Une nouvelle commande est créée avec le même client, les mêmes lignes, les mêmes prix et les mêmes fichiers (sans les paiements).">
+							<input type="hidden" name="_token" value="{{ csrf_token('dupliquer-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-clone me-2"></i>Dupliquer</button>
+						</form>
+					{% endif %}
+					{% if facture and peutFacturer %}
+						<a class="dropdown-item" href="{{ path('app_factures_pdf', {id: facture.id}) }}" target="_blank"><i class="fas fa-file-pdf me-2"></i>Facture PDF</a>
+					{% elseif peutFacturer and not annulee %}
+						{# Brouillon de facture tout de suite (maquette FD02) : le numéro viendra à la validation. #}
+						<form method="post" action="{{ path('app_factures_nouveau_document') }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('nouveau-document') }}">
+							<input type="hidden" name="type" value="facture"><input type="hidden" name="depart" value="commande"><input type="hidden" name="commande" value="{{ commande.id }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-file-invoice me-2"></i>Facturer</button>
+						</form>
+					{% endif %}
+					{% if peutFacturer %}
+						<a class="dropdown-item" href="{{ path('app_factures_documents_lies', {id: commande.id}) }}"><i class="fas fa-link me-2"></i>Documents liés</a>
+					{% endif %}
+					{% if lienWhatsapp %}
+						<a class="dropdown-item" href="{{ lienWhatsapp }}" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-2"></i>WhatsApp client</a>
+					{% endif %}
+					{% if peutPrepresse %}
+						<a class="dropdown-item" href="{{ path('app_controle_pre_presse_index') }}"><i class="fas fa-check-double me-2"></i>Contrôle prépresse</a>
+					{% endif %}
+					<button type="button" class="dropdown-item d-md-none" onclick="window.print()"><i class="fas fa-print me-2"></i>Bon de travail</button>
+					{% if peutModifier and not annulee and (not verrouillee or estAdmin) %}
+						<form method="post" action="{{ path('app_commandes_annuler', {id: commande.id}) }}" data-confirmer="Annuler la commande {{ commande.numero }} ? Un administrateur pourra la restaurer ensuite.">
+							<input type="hidden" name="_token" value="{{ csrf_token('annuler-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item text-danger"><i class="fas fa-times-circle me-2"></i>Annuler la commande</button>
+						</form>
+					{% endif %}
+					{% if annulee and estAdmin %}
+						<form method="post" action="{{ path('app_commandes_restaurer', {id: commande.id}) }}" data-confirmer="Restaurer la commande {{ commande.numero }} ? Chaque ligne retrouvera son statut d'avant l'annulation.">
+							<input type="hidden" name="_token" value="{{ csrf_token('restaurer-commande-' ~ commande.id) }}">
+							<button type="submit" class="dropdown-item"><i class="fas fa-undo me-2"></i>Restaurer la commande</button>
+						</form>
+					{% endif %}
+				</div>
+			</div>
+		</div>
+	</div>
 
-	{% set details =
-		commande.commandesDetails|default([])
-	%}
-
-	{#
-				 # commande.statut / commande.etat sont des booléens (paiement en
-				 # attente / travaux en cours), pas un statut de travail -- le
-				 # badge ci-dessous doit se baser sur commande.statutTravaux (la
-				 # même méthode déjà utilisée par commandes/index.html.twig), qui
-				 # calcule un vrai statut ('annulee', 'preparation', 'livraison',
-				 # 'livree', 'vide') à partir de l'état de production des lignes.
-				 #}
-	{% set statutTravaux =
-		commande.statutTravaux
-	%}
-
-
-	{# ================================================================
-						   PERMISSIONS
-						   ================================================================ #}
-
-	{% set estAdmin =
-		is_granted('ROLE_ADMIN')
-	%}
-
-	{% set peutVoirCommande =
-		is_granted('ROLE_COMMANDE')
-		or estAdmin
-	%}
-
-	{% set peutModifierCommande =
-		is_granted('ROLE_COMMANDE')
-		or estAdmin
-	%}
-
-	{% set peutVoirPaiements =
-		is_granted('ROLE_PAIEMENT_VOIR')
-		or estAdmin
-	%}
-
-	{% set peutEncaisser =
-		is_granted('ROLE_PAIEMENT_ENCAISSER')
-		or estAdmin
-	%}
-
-	{% set peutFacturer =
-		is_granted('ROLE_FACTURE')
-		or estAdmin
-	%}
-
-	{% set peutControlePrePresse =
-		is_granted('ROLE_PREPRESSE')
-		or estAdmin
-	%}
-
-	{% set peutVoirProduction =
-		is_granted('ROLE_PRODUCTION_VOIR')
-		or estAdmin
-	%}
-
-	{% set peutImprimerCommande =
-		peutVoirCommande
-		or peutFacturer
-		or peutControlePrePresse
-		or peutVoirProduction
-		or estAdmin
-	%}
-
-
-	{# ================================================================
-						   VERROUILLAGE PRODUCTION
-						   ================================================================
-						   
-						   Dès qu'une ligne est réellement entrée en production,
-						   une personne non Admin ne peut plus modifier la commande.
-						   ================================================================ #}
-
-	{% set commandeVerrouilleeProduction = false %}
-
-	{% for detail in details %}
-
-		{% set statutProduction =
-			detail.statutProduction
-				|default('a_produire')
-		%}
-
-		{% if statutProduction in [
-			'en_cours',
-			'en_pause',
-			'terminee',
-			'terminée',
-			'prete_livraison',
-			'en_livraison',
-			'livree',
-			'livrée'
-		] %}
-
-			{% set commandeVerrouilleeProduction = true %}
-
-		{% endif %}
-
-	{% endfor %}
-
-
-	{# ================================================================
-						   MONTANTS
-						   ================================================================ #}
-
-	{% set totalTtc =
-		commande.totalTtc|default(0)
-	%}
-
-	{% set totalPaye =
-		commande.totalPaye|default(0)
-	%}
-
-	{% set resteAPayer =
-		commande.resteAPayer
-			|default(
-				totalTtc - totalPaye
-			)
-	%}
-
-
-	<div
-		class="side-app">
-
-
-		{# ============================================================
-												   EN-TÊTE
-												   ============================================================ #}
-
-		<div class="page-header">
-
-			<ol class="breadcrumb">
-
-				<li class="breadcrumb-item">
-					<a href="{{ path('app_commandes_index') }}">
-						Commandes
-					</a>
+	{# ---------- Aiguillage des lignes « Mes produits » (maquette MP06, docs/mes-produits.md) ---------- #}
+	{% include 'commandes/_aiguillage.html.twig' %}
+	{# ---------- Frise des étapes ---------- #}
+	<div class="card si-cs-carte-frise">
+		<ol class="si-cs-frise" aria-label="Étapes de la commande">
+			{% for etape in etapes %}
+				<li class="{{ annulee ? 'a_venir' : etape.etat }}" {% if etape.etat == 'en_cours' and not annulee %}aria-current="step"{% endif %}>
+					<span class="rond" aria-hidden="true"></span>
+					<span>{{ etape.libelle }}</span>
+					{% if etape.detail and etape.etat != 'a_venir' or etape.libelle == 'Prête' and etape.detail %}<small>{{ etape.detail }}</small>{% endif %}
 				</li>
+			{% endfor %}
+		</ol>
+	</div>
 
-				<li class="breadcrumb-item active" aria-current="page">
-					{{ reference }}
-				</li>
+	{% set lignesProduitsClient = lignes|filter(l => l.detail.produitClient) %}
+	{% if lignesProduitsClient is not empty %}
+		{# ---------- « Mes produits » : demande, production, livraison (maquette P05) ---------- #}
+		<div class="card si-bloc">
+			<div class="si-bloc-tete"><h4>Quantité demandée, production et livraison</h4><span class="si-pastille si-pastille-rouge">Depuis « Mes produits »</span></div>
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0 si-table-coordination">
+					<thead>
+						<tr><th>Produit client</th><th class="text-end">Demandé</th><th>Pour la production</th><th>BAT</th><th class="text-end">Produit</th><th class="text-end">Livré</th><th class="text-end">Reste</th><th>Statut</th></tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignesProduitsClient %}
+							{% set detail = ligne.detail %}
+							{% set pc = detail.produitClient %}
+							<tr>
+								<td data-libelle="Produit client"><strong>{{ pc.nom }}</strong><small class="d-block text-muted">{{ pc.reference }}</small></td>
+								<td data-libelle="Demandé" class="text-end text-nowrap">{{ detail.quantiteDemandee is not null ? detail.quantiteDemandee|number_format(detail.quantiteDemandee == detail.quantiteDemandee|round ? 0 : 2, ',', ' ') ~ ' ' ~ {'m2': 'm²', 'piece': 'pièce' ~ (detail.quantiteDemandee > 1 ? 's'), 'lot': 'ex.'}[detail.uniteDemandee]|default('') : '—' }}</td>
+								<td data-libelle="Pour la production"><span>
+									{% if detail.modeCalcul == 'forfait' and detail.longueur %}
+										<strong>{{ detail.longueur|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m</strong> sur laize {{ detail.largeur|number_format(2, ',', ' ') }} m
+									{% elseif detail.largeur and detail.longueur %}
+										{# La surface des pièces elles-mêmes ; en pièces au m², la surface facturée (espacement compris) est dite à part. #}
+										<strong>{{ detail.quantite }} × {{ (detail.largeur * 100)|round(1) }} × {{ (detail.longueur * 100)|round(1) }} cm</strong> = {{ (detail.quantite * detail.largeur * detail.longueur)|number_format(2, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} m²{% if detail.enPiecesAuM2 %} <small class="d-block text-muted">{{ pieces_m2_ligne(detail) }}</small>{% endif %}
+									{% else %}
+										<strong>{{ detail.quantite }}</strong> pièce{{ detail.quantite > 1 ? 's' }}
+									{% endif %}
+									{% if detail.machine %}<small class="d-block text-muted">{{ detail.machine.nom }}</small>{% endif %}</span>
+								</td>
+								<td data-libelle="BAT"><span class="si-pastille si-pastille-{{ detail.fichierLie or (pc.batValide and not detail.prePresseNecessaire) ? 'vert' : 'orange' }}">{{ detail.fichierLie ? 'Fichier lié' : (pc.batValide and not detail.prePresseNecessaire ? 'BAT réutilisé' : 'BAT à faire') }}</span></td>
+								<td data-libelle="Produit" class="text-end">{{ detail.quantiteProduite }}</td>
+								<td data-libelle="Livré" class="text-end">{{ detail.quantiteLivree }}</td>
+								<td data-libelle="Reste" class="text-end">{{ detail.quantiteRestanteLivraison }}</td>
+								<td data-libelle="Statut"><span class="si-pastille si-pastille-{{ ligne.etape == 'livree' ? 'vert' : (detail.quantiteLivree > 0 ? 'orange' : 'bleu') }}">{{ detail.quantiteLivree > 0 and ligne.etape != 'livree' ? 'Livraison partielle' : ligne.libelle }}</span></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		</div>
+	{% endif %}
 
-			</ol>
+	<div class="row">
+		<div class="col-xl-5">
+			{# ---------- Lignes ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Lignes</h4>
+				<table class="si-cs-lignes" data-sans-filtres>
+					<thead>
+						<tr><th scope="col">Désignation</th><th scope="col" class="si-cs-qte">Qté</th><th scope="col" class="text-end">Total</th></tr>
+					</thead>
+					<tbody>
+						{% for ligne in lignes %}
+							{% set detail = ligne.detail %}
+							<tr>
+								<td>
+									<strong>{{ detail|ligne_interne('Travail') }}</strong>
+									{% set caracteristiques = [] %}
+									{% if detail.largeur and detail.longueur %}{% set caracteristiques = caracteristiques|merge([(detail.largeur * 100)|round(1) ~ ' × ' ~ (detail.longueur * 100)|round(1) ~ ' cm']) %}{% endif %}
+									{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+									{% if pieces_m2_ligne(detail) %}{% set caracteristiques = caracteristiques|merge([pieces_m2_ligne(detail)]) %}{% endif %}
+									{% for finition in detail.finitions %}{% set caracteristiques = caracteristiques|merge([finition.nomFinition]) %}{% endfor %}
+									{% if detail.machine %}{% set caracteristiques = caracteristiques|merge([detail.machine.nom]) %}{% elseif detail.typeImpression %}{% set caracteristiques = caracteristiques|merge([detail.typeImpression.nom]) %}{% endif %}
+									{% if caracteristiques %}<small>{{ caracteristiques|join(' · ') }}</small>{% endif %}
+									{% if ligne.etape == 'annulee' %}<small class="text-danger">Ligne annulée</small>{% endif %}
+									{% if detail.demandeClient %}<small><i class="fas fa-comment me-1"></i>Le client : « {{ detail.demandeClient }} »</small>{% endif %}
+									{% if detail.totalFige %}<small title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas.">Total d'origine conservé</small>{% endif %}
+									{% if ligne.cout %}
+										<small {% if ligne.cout.manquants %}title="Coût incomplet : {{ ligne.cout.manquants|join(', ') }}"{% endif %}>
+											Coût {{ ligne.cout.montant|number_format(0, ',', ' ') }} F{% if ligne.cout.manquants %} <i class="fas fa-exclamation-triangle text-warning"></i>{% endif %}
+											{% if ligne.cout.marge is not null %}· <span class="{{ ligne.cout.marge < 35 ? 'text-danger' : 'text-success' }} fw-semibold">marge {{ ligne.cout.marge|number_format(0, ',', ' ') }} %</span>{% endif %}
+										</small>
+									{% endif %}
+									{{ include('promotions/_ligne.html.twig', {detail: detail, possibles: promotionsB2b[detail.id] ?? [], type: 'commande', peutDemander: peutModifier and not annulee}) }}
+									<div class="si-cs-liens-ligne">
+										{% for fichier in detail.fichiers|filter(f => f.origine == 'client' and f.actif)|slice(0, 3) %}
+											<a href="{{ path('app_fichier_visualiser', {id: fichier.id}) }}" target="_blank" title="{{ fichier.nomOriginal }}"><i class="fas fa-paperclip"></i></a>
+										{% endfor %}
+										{# Conservation (ConservationFichiers) : effacés du serveur quelques mois après l'impression, sauf « Garder 1 an ». #}
+										{% set fc = detail.fichiers|filter(f => f.actif and not f.logo) %}
+										{% if fc is not empty %}
+											{% set c = fichier_conservation(fc|first) %}
+											<small class="text-muted" title="Fichiers effacés du serveur après l'impression ; jamais ceux de Mes produits">
+												<i class="fas fa-hourglass-half"></i>
+												{% if c.efface %}fichiers effacés le {{ c.efface|date('d/m/Y') }}{% elseif c.protege %}fichiers gardés (Mes produits){% elseif c.effacement %}fichiers effacés le {{ c.effacement|date('d/m/Y') }}{% else %}fichiers gardés {{ c.garde ? c.moisGarde : c.mois }} mois après impression{% endif %}{{ c.garde and not c.efface ? ' · gardés ' ~ c.moisGarde ~ ' mois' }}
+											</small>
+											{% if c.peutGarder and is_granted('ROLE_COMMANDE') %}
+												<form method="post" action="{{ path('app_commande_ligne_garder_fichiers', {id: detail.id}) }}" class="d-inline">
+													<input type="hidden" name="_token" value="{{ csrf_token('garder-fichiers-' ~ detail.id) }}">
+													<button type="submit" class="btn btn-link">Garder {{ c.moisGarde == 12 ? '1 an' : c.moisGarde ~ ' mois' }}</button>
+												</form>
+											{% endif %}
+										{% endif %}
+										{# Retouche prépresse d'une image (docs/prepresse-retouche.md). #}
+										{% if is_granted('ROLE_PREPRESSE') and detail.fichiers|filter(f => f.actif and f.typeMime in ['image/jpeg', 'image/png', 'image/webp', 'image/gif'])|length > 0 %}<a href="{{ path('app_controle_pre_presse_retouche_outil', {id: detail.id}) }}" title="Redimensionner l'image, contour, fichier final"><i class="fas fa-crop-alt"></i> Redimensionner</a>{% endif %}
+										{% if client and not detail.produitClient and detail.statutProduction in ['livree', 'en_livraison', 'terminee', 'prete_livraison'] and is_granted('ROLE_COMMANDE') %}
+											<form method="post" action="{{ path('app_clients_produits_depuis_ligne', {publicId: client.publicId, id: detail.id}) }}" data-confirmer="Enregistrer « {{ detail.designation|default('ce travail') }} » comme produit du client ? Il pourra le recommander sans nouveau BAT.">
+												<input type="hidden" name="_token" value="{{ csrf_token('produit-client-ligne-' ~ detail.id) }}">
+												<button type="submit" class="btn btn-link">Enregistrer comme produit du client</button>
+											</form>
+										{% endif %}
+										{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction not in ['livree', 'annulee'] %}
+											<form method="post" action="{{ path('app_livraisons_livrer_directement', {id: detail.id}) }}" data-confirmer="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le prépresse ni la production ? Le stock réservé sera sorti.">
+												<input type="hidden" name="_token" value="{{ csrf_token('livraison_direct_' ~ detail.id) }}">
+												<button type="submit" class="btn btn-link">Marquer livré</button>
+											</form>
+										{% endif %}
+									</div>
+								</td>
+								<td class="si-cs-qte">{{ detail.quantite }}</td>
+								<td class="si-cs-total">{{ detail.totalTtc|number_format(0, ',', ' ') }} F</td>
+							</tr>
+						{% else %}
+							<tr><td colspan="3" class="text-muted">Aucune ligne.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				{% if commande.codePromo %}
+					<div class="si-cs-lignes-pied">
+						<span><i class="fas fa-ticket-alt me-1"></i>Code promo <b class="si-cp-code">{{ commande.libelleCodePromo }}</b>{{ commande.codePromo.promotion ? ' · ' ~ commande.codePromo.promotion.nom }}</span>
+						{% if commande.remiseCodePromo > 0 %}<span>−{{ commande.remiseCodePromoTtc|number_format(0, ',', ' ') }} F (déjà déduit)</span>{% endif %}
+					</div>
+				{% endif %}
+				{% if commande.fraisLivraison > 0 %}
+					<div class="si-cs-lignes-pied"><span><i class="fas fa-truck me-1"></i>Livraison</span><span>{{ commande.fraisLivraison|number_format(0, ',', ' ') }} F</span></div>
+				{% endif %}
+				{% if commande.remiseGlobale > 0 %}
+					<div class="si-cs-lignes-pied"><span><i class="fas fa-percent me-1"></i>Remise globale</span><span>−{{ commande.remiseGlobale|number_format(0, ',', ' ') }} F</span></div>
+				{% endif %}
+				<div class="si-cs-lignes-pied">
+					<span>
+						{% if fiche.devis %}
+							Venant du devis {% if is_granted('ROLE_DEVIS') %}<a href="{{ path('app_devis_show', {id: fiche.devis.id}) }}">{{ fiche.devis.numero }}</a>{% else %}{{ fiche.devis.numero }}{% endif %} accepté le {{ commande.dateCommande ? commande.dateCommande|date('d/m') : '—' }}
+						{% else %}
+							Total TTC
+						{% endif %}
+					</span>
+					<b>{{ totalTtc|number_format(0, ',', ' ') }} F</b>
+				</div>
+				{% if commande.montantTva > 0 %}
+					<div class="si-cs-lignes-pied pt-0"><span>dont TVA</span><span>{{ commande.montantTva|number_format(0, ',', ' ') }} F</span></div>
+				{% endif %}
+				{% if marge and marge.taux is not null %}
+					<div class="si-cs-lignes-pied pt-1">
+						<span>Marge brute{% if marge.incomplet %} <span class="text-warning" title="Des coûts manquent : voir Réglages, Coûts de revient">(coût incomplet)</span>{% endif %}</span>
+						<span class="{{ marge.taux < 35 ? 'text-danger' : 'text-success' }} fw-semibold">{{ (marge.ht - marge.cout)|number_format(0, ',', ' ') }} F · {{ marge.taux|number_format(0, ',', ' ') }} %</span>
+					</div>
+				{% endif %}
+				{% if commande.observation %}
+					<p class="text-muted small mb-0 mt-2"><i class="fas fa-comment-alt me-1"></i>{{ commande.observation }}</p>
+				{% endif %}
+			</div>
 
-			{% if commande.modifieLe %}
-				<div class="text-muted small mb-2">
-					<i class="fe fe-edit-2 mr-1"></i>
-					Modifié le
-					{{ commande.modifieLe|date('d/m/Y à H:i') }}
-					{% if commande.modifiePar %}
-						par
-						{{ commande.modifiePar.username }}
+			{# ---------- Fichiers et BAT ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Fichiers et BAT</h4>
+				{% for f in fiche.fichiers %}
+					<div class="si-cs-fichier">
+						<span class="si-cs-vignette{{ f.type == 'bat' ? ' bat' }}" aria-hidden="true"></span>
+						<div>
+							<b>{% if f.fichier %}<a href="{{ path('app_fichier_visualiser', {id: f.fichier.id}) }}" target="_blank">{{ f.nom }}</a>{% else %}{{ f.nom }}{% endif %}</b>
+							<small>{{ f.detail }}</small>
+						</div>
+						{% if f.statut %}<span class="si-cs-etape si-cs-etape-{{ f.statut.couleur }}">{{ f.statut.libelle }}</span>{% endif %}
+					</div>
+				{% else %}
+					<p class="text-muted small mb-0">Aucun fichier ni BAT pour l'instant.</p>
+				{% endfor %}
+				{% if fiche.lignePrepresse and peutPrepresse %}
+					<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.lignePrepresse.id}) }}" class="si-cs-lien-fort">Ouvrir dans l'outil prépresse →</a>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="col-xl-4">
+			{# ---------- Production ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Production</h4>
+				{% for etape in fiche.production %}
+					<div class="si-cs-etape-prod">
+						{% if etape.personne %}
+							<span class="si-cs-disque si-initiales-{{ etape.personne.teinte }}" title="{{ etape.personne.complet }}" aria-hidden="true">{{ etape.personne.initiales }}</span>
+						{% else %}
+							<span class="si-cs-disque personne-vide" aria-hidden="true"><i class="fas fa-user"></i></span>
+						{% endif %}
+						<div>
+							<b>{{ etape.titre }}</b>
+							<small>{{ etape.personne ? etape.personne.complet ~ ' · ' }}{{ etape.detail }}</small>
+						</div>
+						<span class="si-cs-etat-prod {{ etape.etat }}" title="{{ {faite: 'Fait', en_cours: 'En cours', a_venir: 'À venir'}[etape.etat] }}"></span>
+					</div>
+				{% else %}
+					<p class="text-muted small mb-0">Rien à produire pour cette commande.</p>
+				{% endfor %}
+			</div>
+
+			{# ---------- Stock (docs/stock-et-options.md) ---------- #}
+			{% if stock and (stock.articles or stock.sansNomenclature) %}
+				<div class="card si-cs-bloc">
+					<h4>Stock</h4>
+					{% for a in stock.articles %}
+						<div class="d-flex justify-content-between small py-1">
+							<span>{{ a.article.designation }}</span>
+							<span class="text-end">
+								{% if a.reserve > 0 %}réservé {{ a.reserve|number_format(3, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} {{ a.article.uniteCourte }}{% endif %}
+								{% if a.reserve > 0 and a.sorti > 0 %} · {% endif %}
+								{% if a.sorti > 0 %}sorti {{ a.sorti|number_format(3, ',', ' ')|trim('0', 'right')|trim(',', 'right') }} {{ a.article.uniteCourte }}{% endif %}
+							</span>
+						</div>
+					{% endfor %}
+					{% if commande.statutTravaux == 'annulee' and stock.articles|filter(a => a.sorti > 0)|length > 0 %}
+						<p class="small text-muted mb-0 mt-1">Commande annulée : le stock déjà sorti n'est pas remis automatiquement (la matière est consommée).</p>
+					{% endif %}
+					{% for l in stock.sansNomenclature %}
+						<p class="small text-muted mb-0 mt-1">« {{ l.designation }} » : aucun article de stock lié, le stock ne sera pas débité.</p>
+					{% endfor %}
+				</div>
+			{% endif %}
+
+			{# ---------- Historique ---------- #}
+			<div class="card si-cs-bloc">
+				<h4>Historique</h4>
+				<div class="si-cs-historique">
+					{% for evenement in historique %}
+						<small>{{ evenement.date|date('d/m H:i') }}</small>
+						<span>{{ evenement.texte }}</span>
+					{% else %}
+						<span class="text-muted small">Rien pour l'instant.</span>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+
+		<div class="col-xl-3">
+			{# ---------- Client ---------- #}
+			{% if client %}
+				<div class="card si-cs-bloc">
+					<div class="si-cs-client-carte">
+						<span class="si-cs-pastille si-cs-teinte-{{ suivi.client.teinte }}" aria-hidden="true">{{ suivi.client.initiales }}</span>
+						<div class="min-w-0">
+							<b>{% if is_granted('ROLE_CLIENT') %}<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="text-body">{{ client.nomComplet }}</a>{% else %}{{ client.nomComplet }}{% endif %}</b>
+							<small>{{ client.isOrganisation ? 'Client entreprise' : 'Particulier' }}{% if client.isB2B %} · revendeur{% endif %}</small>
+						</div>
+					</div>
+					{% if fiche.contact %}
+						<div class="si-cs-contact">
+							<span class="si-cs-disque" aria-hidden="true">{{ fiche.contact.initiales }}</span>
+							<span>{{ fiche.contact.nom }}{% if fiche.contact.telephone %} · {{ fiche.contact.telephone }}{% endif %}</span>
+						</div>
+					{% endif %}
+					{% if fiche.solde %}
+						<div class="si-cs-alerte-solde">
+							<b>Solde impayé {{ fiche.solde.montant|number_format(0, ',', ' ') }} F</b>
+							{% if fiche.solde.echue %} dont {{ fiche.solde.echue }} échue{% else %} sur {{ fiche.solde.commandes }} commande{{ fiche.solde.commandes > 1 ? 's' }}{% endif %}
+						</div>
 					{% endif %}
 				</div>
 			{% endif %}
 
+			{# ---------- Paiements ---------- #}
+			{% if peutVoirPaiements %}
+				<div class="card si-cs-bloc">
+					<h4>Paiements</h4>
+					<div class="si-cs-paiements">
+						<div><span>Total</span><b>{{ totalTtc|number_format(0, ',', ' ') }} F</b></div>
+						{% set cumul = 0 %}
+						{% for paiement in commande.paiements|filter(p => not p.estAnnule)|sort((a, b) => a.date <=> b.date) %}
+							{% set libelle = loop.first and paiement.montant < totalTtc ? 'Acompte' : (cumul + paiement.montant >= totalTtc ? 'Solde' : 'Paiement') %}
+							{% set cumul = cumul + (paiement.estValide ? paiement.montant : 0) %}
+							<div>
+								<span>{{ libelle }} · {{ paiement.date ? paiement.date|date('d/m') }} · {{ constant('App\\Entity\\Paiements::MODES_LABELS')[paiement.mode]|default(paiement.mode) }}{% if not paiement.estValide %}<span class="si-pastille si-pastille-{{ paiement.estRejete ? 'rouge' : 'orange' }}">{{ paiement.estRejete ? 'Rejeté' : 'À valider' }}</span>{% endif %}</span>
+								<b>{{ paiement.montant|number_format(0, ',', ' ') }} F</b>
+							</div>
+						{% endfor %}
+						<div class="si-cs-reste{{ reste <= 0 ? ' solde' }}">
+							<span>{{ reste > 0 ? 'Reste à payer' : 'Soldée' }}</span>
+							<b>{{ reste|number_format(0, ',', ' ') }} F</b>
+						</div>
+					</div>
+				</div>
+			{% endif %}
 
-			<div>
-
-				{# ====================================================
-																								   RETOUR
-																								   ==================================================== #}
-
-				<a href="{{ path('app_commandes_index') }}" class="btn btn-sm btn-light mr-2 mb-2">
-					<i class="fe fe-arrow-left mr-1"></i>
-
-					Retour
-				</a>
-
-
-				{# ====================================================
-																								   PAIEMENT
-																								   ==================================================== #}
-
-				{% if peutEncaisser and commande.statutTravaux != 'annulee' %}
-
-					{% if resteAPayer > 0 %}
-
-						<a href="{{ path( 'app_commandes_paiement', { id: commande.id } ) }}" class="btn btn-sm btn-info mr-2 mb-2">
-							<i class="fa fa-money mr-1"></i>
-
-							Encaisser un paiement
-						</a>
-
+			{# ---------- Conversation de la commande (maquette DT02, docs/messagerie-clients.md) ---------- #}
+			{% if client and peutMessages %}
+				{% set conv = fiche.conversation %}
+				{% set ouvrable = conv and is_granted('MESSAGERIE_VOIR', conv.conversation) %}
+				<div class="card si-cs-bloc si-cs-conversation" id="conversation">
+					<div class="si-cs-bloc-tete">
+						<h4>Conversation</h4>
+						{% if conv and conv.enRetard %}<span class="si-cs-chrono rouge">En retard · attend depuis {{ conv.attenteMinutes|duree_messagerie }}</span>
+						{% elseif conv and conv.enAttente %}<span class="si-cs-chrono orange">Réponse attendue · {{ conv.attenteMinutes|duree_messagerie }}</span>
+						{% elseif conv and conv.delaiTexte %}<span class="si-cs-chrono vert">{{ conv.delaiTexte }}</span>
+						{% elseif conv and conv.conversation.estCloturee %}<span class="si-cs-chrono vert">Clôturée{{ conv.conversation.avis ? ' · ' ~ conv.conversation.avis ~ ' ★' }}</span>{% endif %}
+					</div>
+					{% if conv and conv.dernier %}
+						{% set d = conv.dernier %}
+						<div class="si-cs-message">
+							{% if d.photo %}<img src="{{ d.photo }}" alt="" class="si-cs-disque" style="object-fit: cover">{% else %}<span class="si-cs-disque" aria-hidden="true"{{ d.deLAtelier ? ' style="background: #0F4590"' }}>{{ d.deLAtelier ? d.initiales : suivi.client.initiales }}</span>{% endif %}
+							<div class="min-w-0">
+								<small>{{ d.deLAtelier ? d.auteur : (d.auteur ?: client.nomComplet) }} · {{ d.le|date('d/m H:i') }} · {{ conv.messages }} message{{ conv.messages > 1 ? 's' }}</small>
+								{{ d.texte|length > 140 ? d.texte|slice(0, 139) ~ '…' : d.texte }}
+							</div>
+						</div>
+						{% if conv.conversation.assigneA %}<small class="text-muted d-block mt-1">Responsable : {{ conv.conversation.assigneA.employe ? conv.conversation.assigneA.employe.nomComplet : conv.conversation.assigneA.username }}</small>{% endif %}
 					{% else %}
-
-						<button type="button" class="btn btn-sm btn-success mr-2 mb-2" disabled>
-							<i class="fa fa-check-circle mr-1"></i>
-
-							Commande soldée
-						</button>
-
+						<p class="text-muted small mb-0">Aucun message sur cette commande.</p>
 					{% endif %}
-
-				{% endif %}
-
-
-				{% if
-					peutModifierCommande
-					and commande.statutTravaux != 'annulee'
-					and (
-						not commandeVerrouilleeProduction
-						or estAdmin
-					)
-				%}
-
-					<form method="post" action="{{ path( 'app_commandes_annuler', { id: commande.id } ) }}" class="js-confirm-form d-inline" data-message="Annuler la commande {{ commande.numero }} ? Un administrateur pourra la restaurer ensuite si besoin.">
-
-						<input type="hidden" name="_token" value="{{ csrf_token( 'annuler-commande-' ~ commande.id ) }}">
-
-						<button type="submit" class="btn btn-sm btn-outline-danger mr-2 mb-2">
-							<i class="fe fe-x-circle mr-1"></i>
-							Annuler la commande
-						</button>
-
-					</form>
-
-				{% endif %}
-
-
-				{% if statutTravaux == 'annulee' and estAdmin %}
-
-					<form method="post" action="{{ path( 'app_commandes_restaurer', { id: commande.id } ) }}" class="js-confirm-form d-inline" data-message="Restaurer la commande {{ commande.numero }} ? Chaque ligne retrouvera le statut de production qu'elle avait avant l'annulation.">
-
-						<input type="hidden" name="_token" value="{{ csrf_token( 'restaurer-commande-' ~ commande.id ) }}">
-
-						<button type="submit" class="btn btn-sm btn-outline-success mr-2 mb-2">
-							<i class="fe fe-rotate-ccw mr-1"></i>
-							Restaurer la commande
-						</button>
-
-					</form>
-
-				{% endif %}
-
-
-				{# ====================================================
-																								   FACTURATION
-																								   ==================================================== #}
-
-				{% if peutFacturer %}
-
-					<a href="{{ path( 'app_factures_nouveau', { id: commande.id } ) }}" class="btn btn-sm btn-success mr-2 mb-2">
-						<i class="fa fa-file-text-o mr-1"></i>
-
-						Créer un document de facturation
-					</a>
-
-				{% endif %}
-
-
-				{# ====================================================
-																								   MODIFIER
-																								   ==================================================== #}
-
-				{% if
-					peutModifierCommande
-					and commande.statutTravaux != 'annulee'
-					and (
-						not commandeVerrouilleeProduction
-						or estAdmin
-					)
-				%}
-
-					<a href="{{ path( 'app_commandes_edit', { id: commande.id } ) }}" class="btn btn-sm btn-primary mr-2 mb-2">
-						<i class="fe fe-edit-2 mr-1"></i>
-
-						Modifier
-					</a>
-
-				{% elseif
-					commandeVerrouilleeProduction
-					and commande.statutTravaux != 'annulee'
-					and not estAdmin
-				%}
-
-					<button type="button" class="btn btn-sm btn-secondary mr-2 mb-2" disabled title="La production a déjà démarré">
-						<i class="fa fa-lock mr-1"></i>
-
-						Commande verrouillée
-					</button>
-
-				{% endif %}
-
-
-				{# ====================================================
-																								   CONTRÔLE PRÉPRESSE
-																								   ==================================================== #}
-
-				{% if peutControlePrePresse %}
-
-					<a href="{{ path( 'app_controle_pre_presse_index' ) }}" class="btn btn-sm btn-warning mr-2 mb-2">
-						<i class="fe fe-check-square mr-1"></i>
-
-						Contrôle prépresse
-					</a>
-
-				{% endif %}
-
-
-				{# ====================================================
-																								   IMPRIMER
-																								   ==================================================== #}
-
-				{% if peutImprimerCommande %}
-
-					<button type="button" class="btn btn-sm btn-secondary mr-2 mb-2" onclick="window.print()">
-						<i class="fe fe-printer mr-1"></i>
-
-						Imprimer
-					</button>
-
-				{% endif %}
-
-			</div>
-
-		</div>
-
-
-		{# ============================================================
-												   MESSAGES FLASH
-												   ============================================================ #}
-
-		{% for type, messages in app.flashes %}
-
-			{% for message in messages %}
-
-				<div class="
-																																				alert
-																																				alert-{{
-																																					type == 'error'
-																																						? 'danger'
-																																						: type
-																																				}}
-																																				alert-dismissible
-																																				fade
-																																				show
-																																			">
-
-					{{ message }}
-
-					<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
-
-				</div>
-
-			{% endfor %}
-
-		{% endfor %}
-
-
-		{# ============================================================
-												   ALERTE PRODUCTION
-												   ============================================================ #}
-
-		{% if commandeVerrouilleeProduction %}
-
-			<div class="alert alert-warning">
-
-				<div class="d-flex align-items-center">
-
-					<i class="fa fa-lock fa-2x mr-3"></i>
-
-					<div>
-
-						<strong class="d-block">
-							Commande verrouillée par la production
-						</strong>
-
-						<span>
-							Au moins un travail de cette commande
-																																										est déjà entré en production.
-						</span>
-
-						{% if estAdmin %}
-
-							<div class="mt-1">
-
-								<strong>
-									Vous êtes administrateur :
-																																																						la modification reste autorisée.
-								</strong>
-
-							</div>
-
-						{% else %}
-
-							<div class="mt-1">
-
-
-								modifier cette commande.
-
-							</div>
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-			</div>
-
-		{% endif %}
-
-
-		<div
-			class="row">
-
-
-			{# ========================================================
-																		   COLONNE PRINCIPALE
-																		   ======================================================== #}
-
-			<div class="col-xl-8 col-lg-8">
-
-
-				<div class="card">
-
-					<div class="
-																																										card-header
-																																										d-flex
-																																										justify-content-between
-																																										align-items-center
-																																									">
-
-						<div>
-
-							<h3 class="card-title mb-1">
-								Détails de la commande
-							</h3>
-
-							<small class="text-muted">
-								{{ reference }}
-								{% if commande.dateCommande %}
-									·
-									{{ commande.dateCommande|date('d/m/Y') }}
-								{% endif %}
-							</small>
-
-						</div>
-
-
-						<div>
-
-							{% if statutTravaux == 'annulee' %}
-
-								<span class="badge badge-danger">
-									Annulée
-								</span>
-
-
-							{% elseif statutTravaux == 'livree' %}
-
-								<span class="badge badge-success">
-									Terminée
-								</span>
-
-
-							{% elseif statutTravaux == 'livraison' %}
-
-								<span class="badge badge-warning">
-									En livraison
-								</span>
-
-
-							{% elseif statutTravaux == 'preparation' %}
-
-								<span class="badge badge-info">
-									En préparation
-								</span>
-
-
-							{% else %}
-
-								<span class="badge badge-primary">
-									Enregistrée
-								</span>
-
-							{% endif %}
-
-						</div>
-
-					</div>
-
-
-					<div class="card-body">
-
-						{% if details is empty %}
-
-							<div class="alert alert-info mb-0">
-
-								Aucun travail n’est associé
-																																																à cette commande.
-
-							</div>
-
-
-						{% else %}
-
-
-							{% for detail in details %}
-
-								{% set configuration =
-									detail.produitConfiguration
-										|default(null)
-								%}
-
-
-								<div
-									class="border rounded mb-4">
-
-
-									{# ========================================
-																																																						   EN-TÊTE DU TRAVAIL
-																																																						   ======================================== #}
-
-									<div class="
-																																																																		bg-light
-																																																																		border-bottom
-																																																																		p-3
-																																																																		d-flex
-																																																																		justify-content-between
-																																																																		align-items-center
-																																																																		text-primary
-																																																																	">
-
-										<div>
-
-											<h5 class="mb-1">
-
-												{{
-													detail.produit.nom
-														|default(
-															detail.designation
-																|default(
-																	'Produit non renseigné'
-																)
-														)
-												}}
-
-											</h5>
-
-											<small class="text-primary">
-
-												Travail n°
-												{{ loop.index }}
-
-											</small>
-
-											<small class=" d-block" title="À utiliser en préfixe du nom de fichier pour l'import depuis le dossier partagé">
-
-												Réf: #{{ detail.id }}
-
-											</small>
-
-										</div>
-
-
-										<strong>
-
-											{{
-												detail.totalTtc
-													|default(0)
-													|number_format(
-														0,
-														',',
-														' '
-													)
-											}}
-
-											FCFA
-
-										</strong>
-
+					{% if ouvrable %}
+						<a href="{{ conv.urlAdmin }}" class="si-cs-lien-fort">Ouvrir la conversation {{ commande.numero }} →</a>
+					{% elseif (not conv or conv.conversation.estCloturee) and not site_en_ligne() %}
+						<form method="post" action="{{ path('app_messages_clients_demarrer', {type: 'commande', id: commande.id}) }}"><input type="hidden" name="_token" value="{{ csrf_token('messages-clients') }}"><button class="btn btn-link p-0 si-cs-lien-fort">{{ conv ? 'Nouvelle conversation sur ' ~ commande.numero : 'Écrire au client' }} →</button></form>
+					{% endif %}
+					{# Notes vocales de la commande (docs/messagerie-clients.md) : écoute selon les droits de la conversation. #}
+					{% if ouvrable %}
+						{% set vocales = notes_vocales(conv.conversation, 3) %}
+						{% if vocales is not empty %}
+							<div class="si-cs-vocales">
+								<small class="text-muted d-block mt-2">Notes vocales</small>
+								{% for v in vocales %}
+									{% set el = v.element %}
+									<div class="si-cs-vocale">
+										<small>{{ v.genre == 'note' ? '🔒 Note interne · ' ~ (el.auteur ? (el.auteur.employe ? el.auteur.employe.nomComplet : el.auteur.username) : 'équipe') : (el.estDeLAtelier ? (el.auteur ?? 'Succès Imprim') : (el.auteur ?: client.nomComplet)) }} · {{ v.le|date('d/m H:i') }}</small>
+										{% include 'messages_clients/_lecteur_vocal.html.twig' with {element: el, url: path('app_messages_clients_vocale_ecouter', {publicId: conv.conversation.publicId, genre: v.genre, id: el.id})} only %}
 									</div>
-
-
-									<div
-										class="p-3">
-
-
-										{# ====================================
-																																																												   INFORMATIONS TECHNIQUES
-																																																												   ==================================== #}
-
-										<div class="row">
-
-
-											<div class="col-md-4 mb-3">
-
-												<small class="text-muted d-block">
-													Type d’impression
-												</small>
-
-												<strong>
-													{{
-														configuration
-															.typeImpression
-															.nom
-															|default('—')
-													}}
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-4 mb-3">
-
-												<small class="text-muted d-block">
-													Support
-												</small>
-
-												<strong>
-													{{
-														configuration
-															.support
-															.nom
-															|default('—')
-													}}
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-4 mb-3">
-
-												<small class="text-muted d-block">
-													Format
-												</small>
-
-												<strong>
-													{{
-														configuration
-															.format
-															.nom
-															|default('—')
-													}}
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Quantité
-												</small>
-
-												<strong>
-													{{ detail.quantite|default(1) }}
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Dimensions
-												</small>
-
-												<strong>
-
-													{% if
-														detail.largeur|default(0)
-														or
-														detail.longueur|default(0)
-													%}
-
-														{{ detail.largeur|default(0) }}
-														×
-														{{ detail.longueur|default(0) }}
-
-													{% else %}
-
-														—
-
-													{% endif %}
-
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Surface
-												</small>
-
-												<strong>
-
-													{{
-														detail.surface
-															|default(0)
-															|number_format(
-																2,
-																',',
-																' '
-															)
-													}}
-
-													m²
-
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-3 mb-3">
-
-												<small class="text-muted d-block">
-													Prix unitaire
-												</small>
-
-												<strong>
-
-													{{
-														detail.prixUnitaire
-															|default(0)
-															|number_format(
-																0,
-																',',
-																' '
-															)
-													}}
-
-													FCFA
-
-												</strong>
-
-											</div>
-
-										</div>
-
-
-										{# ====================================
-																																																												   FINITIONS
-																																																												   ==================================== #}
-
-										{% if
-											detail.finitions
-												|default([])
-												is not empty
-										%}
-
-											<div class="mt-2">
-
-												<h6 class="mb-2">
-													Finitions
-												</h6>
-
-
-												<div class="table-responsive">
-
-													<table class="
-																																																																																										table
-																																																																																										table-sm
-																																																																																										table-bordered
-																																																																																										mb-0
-																																																																																									">
-
-														<thead class="bg-light">
-
-															<tr>
-
-																<th>
-																	Finition
-																</th>
-
-																<th>
-																	Mode de calcul
-																</th>
-
-																<th class="text-center">
-																	Quantité
-																</th>
-
-																<th class="text-right">
-																	Prix appliqué
-																</th>
-
-																<th class="text-right">
-																	Montant
-																</th>
-
-															</tr>
-
-														</thead>
-
-
-														<tbody>
-
-															{% for finition in detail.finitions %}
-
-																<tr>
-
-																	<td>
-
-																		{{
-																			finition
-																				.configurationFinition
-																				.finition
-																				.nom
-																				|default(
-																					'Finition'
-																				)
-																		}}
-
-																	</td>
-
-
-																	<td>
-
-																		{{
-																			finition
-																				.modeCalcul
-																				|default(
-																					'forfait'
-																				)
-																				|replace({
-																					'_': ' '
-																				})
-																				|capitalize
-																		}}
-
-																	</td>
-
-
-																	<td class="text-center">
-
-																		{{
-																			finition.quantite
-																				|default(1)
-																		}}
-
-																	</td>
-
-
-																	<td class="text-right">
-
-																		{{
-																			finition
-																				.prixApplique
-																				|default(0)
-																				|number_format(
-																					0,
-																					',',
-																					' '
-																				)
-																		}}
-
-																		FCFA
-
-																	</td>
-
-
-																	<td class="
-																																																																																																																		text-right
-																																																																																																																		font-weight-bold
-																																																																																																																	">
-
-																		{{
-																			finition
-																				.montant
-																				|default(0)
-																				|number_format(
-																					0,
-																					',',
-																					' '
-																				)
-																		}}
-
-																		FCFA
-
-																	</td>
-
-																</tr>
-
-															{% endfor %}
-
-														</tbody>
-
-													</table>
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# ====================================
-																																																												   DESCRIPTION
-																																																												   ==================================== #}
-
-										{% if detail.description|default('') %}
-
-											<div class="mt-3">
-
-												<small class="text-muted d-block">
-													Description / consignes
-												</small>
-
-												<div class="
-																																																																																				border
-																																																																																				rounded
-																																																																																				bg-light
-																																																																																				p-2
-																																																																																			">
-
-													{{ detail.description|nl2br }}
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# ====================================
-																																																												   OBSERVATION
-																																																												   ==================================== #}
-
-										{% if detail.observation|default('') %}
-
-											<div class="mt-3">
-
-												<small class="text-muted d-block">
-													Observation
-												</small>
-
-												<div class="
-																																																																																				border
-																																																																																				rounded
-																																																																																				bg-light
-																																																																																				p-2
-																																																																																			">
-
-													{{ detail.observation|nl2br }}
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# ====================================
-																																																												   FICHIERS CLIENT
-																																																												   ==================================== #}
-
-										{% set fichiers =
-											detail.fichiers|default([])
-										%}
-
-
-										{% if fichiers is not empty %}
-
-											<div class="mt-3">
-
-												<h6 class="mb-2">
-
-													<i class="fe fe-paperclip mr-1"></i>
-
-													Fichiers du client
-
-												</h6>
-
-
-												<div class="list-group">
-
-													{% for fichier in fichiers %}
-
-														<div class="
-																																																																																																list-group-item
-																																																																																																d-flex
-																																																																																																flex-wrap
-																																																																																																justify-content-between
-																																																																																																align-items-center
-																																																																																															">
-
-															<div class="
-																																																																																																						mr-3
-																																																																																																						mb-2
-																																																																																																						mb-sm-0
-																																																																																																					">
-
-																<i class="
-																																																																																																							fe
-																																																																																																							fe-file
-																																																																																																							text-primary
-																																																																																																							mr-2
-																																																																																																						"></i>
-
-																<strong>
-
-																	{{
-																		fichier.nomOriginal
-																			|default(
-																				'Fichier joint'
-																			)
-																	}}
-
-																</strong>
-
-
-																{% if
-																	fichier.taille
-																		|default(0)
-																	>
-																	0
-																%}
-
-																	<small class="text-muted ml-2">
-
-																		{{
-																			(
-																				fichier.taille
-																				/
-																				1024
-																			)
-																				|number_format(
-																					1,
-																					',',
-																					' '
-																				)
-																		}}
-
-																		Ko
-
-																	</small>
-
-																{% endif %}
-
-															</div>
-
-
-															<a href="{{ path( 'app_fichier_visualiser', { id: fichier.id } ) }}" target="_blank" rel="noopener noreferrer" class="btn btn-sm btn-primary">
-
-																<i class="fe fe-eye mr-1"></i>
-
-																Visualiser
-
-															</a>
-
-														</div>
-
-													{% endfor %}
-
-												</div>
-
-											</div>
-
-										{% endif %}
-
-
-										{# ====================================
-																																																												   TOTAUX DU TRAVAIL
-																																																												   ==================================== #}
-
-										<div class="row mt-3">
-
-											<div class="col-md-4">
-
-												<small class="text-muted d-block">
-													Total HT
-												</small>
-
-												<strong>
-
-													{{
-														detail.totalHt
-															|default(0)
-															|number_format(
-																0,
-																',',
-																' '
-															)
-													}}
-
-													FCFA
-
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-4">
-
-												<small class="text-muted d-block">
-													TVA
-												</small>
-
-												<strong>
-													{{ detail.tva|default(0) }}
-													%
-												</strong>
-
-											</div>
-
-
-											<div class="col-md-4 text-md-right">
-
-												<small class="text-muted d-block">
-													Total TTC
-												</small>
-
-												<strong class="text-primary">
-
-													{{
-														detail.totalTtc
-															|default(0)
-															|number_format(
-																0,
-																',',
-																' '
-															)
-													}}
-
-													FCFA
-
-												</strong>
-
-											</div>
-
-										</div>
-
-										<div class="row mt-3">
-
-											<div class="col-12">
-
-												{% if (is_granted('ROLE_LIVRAISON') or estAdmin) and detail.statutProduction != 'livree' %}
-
-													<form method="post" action="{{ path( 'app_livraisons_livrer_directement', { id: detail.id } ) }}" class="js-confirm-form" data-message="Marquer « {{ detail.designation|default('ce travail') }} » comme livré, sans passer par le contrôle prépresse ni la production ? Le stock réservé sera définitivement sorti.">
-
-														<input type="hidden" name="_token" value="{{ csrf_token( 'livraison_direct_' ~ detail.id ) }}">
-
-														<button type="submit" class="btn btn-sm btn-success">
-															<i class="fe fe-truck mr-1"></i>
-															Marquer comme livré
-														</button>
-
-													</form>
-
-												{% endif %}
-
-											</div>
-
-										</div>
-
-									</div>
-
-								</div>
-
-							{% endfor %}
-
+								{% endfor %}
+							</div>
 						{% endif %}
-
-					</div>
-
+					{% endif %}
+					{% if not site_en_ligne() and (ouvrable or not conv or conv.conversation.estCloturee) and is_granted('ROLE_COMMANDE') %}
+						<div class="mt-2">{% include 'messages_clients/_note_vocale.html.twig' with {url: path('app_messages_clients_vocale_commande', {id: commande.id}), jeton: csrf_token('messages-clients'), choix: true, interne: true} only %}</div>
+					{% endif %}
 				</div>
+			{% endif %}
 
-			</div>
+			{# ---------- Livraison : livrée ou pas, quand, par qui, reçue par qui (docs/documents-livraisons.md) ---------- #}
+			{% include 'commandes/_livraison.html.twig' %}
 
-
-			{# ========================================================
-																		   COLONNE DROITE
-																		   ======================================================== #}
-
-			<div
-				class="col-xl-4 col-lg-4">
-
-
-				{# ====================================================
-																								   CLIENT
-																								   ==================================================== #}
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<h3 class="card-title">
-							Client
-						</h3>
-
-					</div>
-
-
-					<div class="card-body">
-
-						<h5 class="mb-2">
-
-							{{
-								client.raisonSociale
-									|default(
-										client.nomComplet
-											|default(
-												client.nom
-													|default(
-														'Client non renseigné'
-													)
-											)
-									)
-							}}
-
-						</h5>
-
-
-						{% if client.telephone|default('') %}
-
-							<p class="mb-2">
-
-								<i class="
-																																																							fe
-																																																							fe-phone
-																																																							mr-2
-																																																							text-primary
-																																																						"></i>
-
-								{{ client.telephone }}
-
-							</p>
-
-						{% endif %}
-
-
-						{% if client.email|default('') %}
-
-							<p class="mb-2">
-
-								<i class="
-																																																							fe
-																																																							fe-mail
-																																																							mr-2
-																																																							text-primary
-																																																						"></i>
-
-								{{ client.email }}
-
-							</p>
-
-						{% endif %}
-
-
-						{% if client.adresse|default('') %}
-
-							<p class="mb-0">
-
-								<i class="
-																																																							fe
-																																																							fe-map-pin
-																																																							mr-2
-																																																							text-primary
-																																																						"></i>
-
-								{{ client.adresse }}
-
-							</p>
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-
-				{# ====================================================
-																								   RÉCAPITULATIF
-																								   ==================================================== #}
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<h3 class="card-title">
-							Récapitulatif
-						</h3>
-
-					</div>
-
-
-					<div class="card-body">
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																																mb-3
-																																															">
-
-							<span>
-								Total HT
-							</span>
-
-							<strong>
-
-								{{
-									commande.totalHt
-										|default(0)
-										|number_format(
-											0,
-											',',
-											' '
-										)
-								}}
-
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																																mb-3
-																																															">
-
-							<span>
-								Remise
-							</span>
-
-							<strong>
-
-								{{
-									commande.remise
-										|default(0)
-										|number_format(
-											0,
-											',',
-											' '
-										)
-								}}
-
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																																mb-3
-																																															">
-
-							<span>
-								TVA
-							</span>
-
-							<strong>
-								{{ commande.tva|default(0) }}
-								%
-							</strong>
-
-						</div>
-
-
-						<hr>
-
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																																mb-3
-																																															">
-
-							<span class="h5 mb-0">
-								Total TTC
-							</span>
-
-							<strong class="
-																																																						h5
-																																																						mb-0
-																																																						text-primary
-																																																					">
-
-								{{
-									totalTtc
-										|number_format(
-											0,
-											',',
-											' '
-										)
-								}}
-
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																																mb-3
-																																															">
-
-							<span>
-								Montant payé
-							</span>
-
-							<strong class="text-success">
-
-								{{
-									totalPaye
-										|number_format(
-											0,
-											',',
-											' '
-										)
-								}}
-
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						<div class="
-																																																d-flex
-																																																justify-content-between
-																																															">
-
-							<span>
-								Reste à payer
-							</span>
-
-							<strong class="{{ resteAPayer > 0 ? 'text-danger' : 'text-success' }}">
-
-								{{
-									resteAPayer
-										|number_format(
-											0,
-											',',
-											' '
-										)
-								}}
-
-								FCFA
-
-							</strong>
-
-						</div>
-
-
-						{# ================================================
-																																				   ACTION PAIEMENT DANS LE RÉCAPITULATIF
-																																				   ================================================ #}
-
-						{% if peutEncaisser and commande.statutTravaux != 'annulee' %}
-
-							<hr>
-
-
-							{% if resteAPayer > 0 %}
-
-								<a href="{{ path( 'app_commandes_paiement', { id: commande.id } ) }}" class="btn btn-info btn-block">
-									<i class="fa fa-money mr-1"></i>
-
-									Encaisser un paiement
-								</a>
-
-							{% else %}
-
-								<div class="
-																																																												alert
-																																																												alert-success
-																																																												text-center
-																																																												mb-0
-																																																											">
-
-									<i class="fa fa-check-circle mr-1"></i>
-
-									<strong>
-										Commande entièrement payée
-									</strong>
-
-								</div>
-
-							{% endif %}
-
-						{% endif %}
-
-					</div>
-
-				</div>
-
-
-				{# ====================================================
-																								   OBSERVATION COMMANDE
-																								   ==================================================== #}
-
-				{% if commande.observation|default('') %}
-
-					<div class="card">
-
-						<div class="card-header">
-
-							<h3 class="card-title">
-								Observation
-							</h3>
-
-						</div>
-
-
-						<div class="card-body">
-
-							{{ commande.observation|nl2br }}
-
-						</div>
-
-					</div>
-
-				{% endif %}
-
-			</div>
-
+			{# ---------- Fidélité (docs/fidelite.md) ---------- #}
+			{% include 'fidelite/_commande.html.twig' %}
 		</div>
-
 	</div>
 
+	{% if (lienWhatsapp or (peutEncaisser and reste > 0) or envoyerBat) and not annulee %}
+		<div class="si-actions-mobile d-md-none">
+			{% if envoyerBat %}<a href="{{ path('app_controle_pre_presse_controler', {id: fiche.ligneBat.id}) }}" class="btn btn-danger">Envoyer le BAT</a>{% endif %}
+			{% if peutEncaisser and reste > 0 %}<a href="{{ path('app_commandes_paiement', {id: commande.id}) }}" class="btn {{ envoyerBat ? 'btn-light' : 'btn-danger' }}"><i class="fas fa-cash-register me-1"></i>Encaisser</a>{% endif %}
+			{% if lienWhatsapp and not envoyerBat %}<a href="{{ lienWhatsapp }}" class="btn btn-success" target="_blank" rel="noopener"><i class="fab fa-whatsapp me-1"></i>WhatsApp</a>{% endif %}
+		</div>
+	{% endif %}
 {% endblock %}
-
-
-{% block stylesheets %}
-
-	{{ parent() }}
-
-	<style>
-
-		@media print {
-
-			.app-sidebar,
-			.header,
-			.page-header .btn,
-			.breadcrumb,
-			.footer {
-
-				display: none !important;
-
-			}
-
-
-			.side-app,
-			.app-content,
-			.main-content {
-
-				margin: 0 !important;
-				padding: 0 !important;
-
-			}
-
-
-			.card {
-
-				border: 1px solid #ddd !important;
-				box-shadow: none !important;
-				break-inside: avoid;
-
-			}
-
-		}
-	</style>
-
-{% endblock %}
-
 
 {% block javascripts %}
-
-	{{ parent() }}
-
-	<script>
-		document.addEventListener('DOMContentLoaded', function () {
-
-const formulaires = document.querySelectorAll('.js-confirm-form');
-
-formulaires.forEach(function (formulaire) {
-
-formulaire.addEventListener('submit', function (event) {
-
-const message = formulaire.dataset.message || 'Voulez-vous continuer ?';
-
-if (!window.confirm(message)) {
-event.preventDefault();
-}
-
-});
-
-});
-
-});
-	</script>
-
+	<script src="{{ asset('js/note-vocale.js') }}" defer></script>
 {% endblock %}

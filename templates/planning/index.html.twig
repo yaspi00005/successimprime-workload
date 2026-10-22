@@ -1,0 +1,120 @@
+{% extends 'base.html.twig' %}
+
+{% set token = csrf_token(jeton) %}
+{% set cats = constant('App\\Entity\\Echeance::CATEGORIES') %}
+{% set titreVue = vue == 'mois' ? (date|date_fr('MMMM yyyy')) : (vue == 'semaine' ? 'sem. du ' ~ jours|first|date('d/m') : date|date_fr('EEEE d MMMM')) %}
+{% set ici = app.request.requestUri %}
+
+{% block title %}Planning · {{ titreVue }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-pl-vues" role="group" aria-label="Vue">
+		{% for v, l in {jour: 'Jour', semaine: 'Semaine', mois: 'Mois'} %}
+			<a href="{{ path('app_planning_index', {vue: v, date: date|date('Y-m-d'), cat: categories}) }}" class="btn btn-sm {{ vue == v ? 'btn-primary' : 'btn-light si-btn-entete' }}"{{ vue == v ? ' aria-current="page"' }}>{{ l }}</a>
+		{% endfor %}
+		{% if is_granted('ROLE_ADMIN') or voitMontants %}<a href="{{ path('app_planning_annee', {annee: date|date('Y')}) }}" class="btn btn-sm btn-light si-btn-entete">Année</a>{% endif %}
+	</li>
+	<li class="nav-item dropdown">
+		<button class="btn btn-danger btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false"><i class="fas fa-plus me-1"></i>Tâche</button>
+		<ul class="dropdown-menu dropdown-menu-end">
+			<li><a class="dropdown-item" href="{{ path('app_planning_echeance_nouvelle', {date: date|date('Y-m-d')}) }}">Nouvelle tâche</a></li>
+			<li><hr class="dropdown-divider"></li>
+			<li><h6 class="dropdown-header">Modèles prêts</h6></li>
+			{% for k, m in constant('App\\Service\\Planning\\Planning::MODELES') %}
+				<li><a class="dropdown-item" href="{{ path('app_planning_echeance_nouvelle', {modele: k}) }}">{{ m.titre }}</a></li>
+			{% endfor %}
+		</ul>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pl">
+		<div class="si-pl-principal">
+			<section class="card si-pl-cal">
+				<div class="si-pl-barre">
+					<div class="si-pl-filtres" aria-label="Catégories">
+						{% for k, c in cats %}
+							{% set actif = k in categories %}
+							{% set autres = actif ? categories|filter(x => x != k) : categories|merge([k]) %}
+							<a href="{{ path('app_planning_index', {vue: vue, date: date|date('Y-m-d'), cat: autres}) }}" class="si-pl-filtre{{ actif ? ' si-pl-filtre-on' }}" style="--si-pl-c: {{ c[1] }}" aria-pressed="{{ actif ? 'true' : 'false' }}"><i></i>{{ c[0] }}</a>
+						{% endfor %}
+						{% if categories is not empty %}<a href="{{ path('app_planning_index', {vue: vue, date: date|date('Y-m-d')}) }}" class="si-pl-filtre">Toutes</a>{% endif %}
+					</div>
+					<div class="si-pl-nav">
+						<a href="{{ path('app_planning_index', {vue: vue, date: precedent|date('Y-m-d'), cat: categories}) }}" aria-label="Précédent"><i class="fas fa-chevron-left"></i></a>
+						<b>{{ titreVue|capitalize }}</b>
+						<a href="{{ path('app_planning_index', {vue: vue, date: suivant|date('Y-m-d'), cat: categories}) }}" aria-label="Suivant"><i class="fas fa-chevron-right"></i></a>
+						<a href="{{ path('app_planning_index', {vue: vue, cat: categories}) }}" class="si-pl-auj">Aujourd'hui</a>
+					</div>
+				</div>
+
+				{% if vue == 'jour' %}
+					{% set liste = parJour[date|date('Y-m-d')] ?? [] %}
+					{% if feries[date|date('Y-m-d')] is defined %}<p class="si-pl-ferie-ligne">Férié : {{ feries[date|date('Y-m-d')] }}</p>{% endif %}
+					{% if liste is empty %}
+						<p class="si-ac-vide">Rien de prévu ce jour.</p>
+					{% else %}
+						<ul class="si-pl-coches si-pl-jour">{% for t in liste %}{% include 'planning/_coche.html.twig' with {retour: ici} %}{% endfor %}</ul>
+					{% endif %}
+				{% else %}
+					<div class="si-pl-grille si-pl-{{ vue }}" role="grid">
+						{% for n in ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'] %}<div class="si-pl-entete" role="columnheader">{{ n }}</div>{% endfor %}
+						{% for d in jours %}
+							{% set cle = d|date('Y-m-d') %}
+							{% set dehors = vue == 'mois' and d|date('m') != date|date('m') %}
+							<div class="si-pl-case-jour{{ dehors ? ' si-pl-dehors' }}{{ cle == 'now'|date('Y-m-d') ? ' si-pl-auj-case' }}{{ feries[cle] is defined ? ' si-pl-ferie' }}" role="gridcell">
+								<a href="{{ path('app_planning_index', {vue: 'jour', date: cle, cat: categories}) }}" class="si-pl-num">{{ d|date('j') }}</a>
+								{% if feries[cle] is defined %}<small class="si-pl-ferie-nom">{{ feries[cle] }}</small>{% endif %}
+								{% for t in parJour[cle] ?? [] %}
+									<a href="{{ path('app_planning_tache', {id: t.id}) }}" class="si-pl-ev{{ t.estFaite ? ' si-pl-fait' }}" style="--si-pl-c: {{ cats[t.categorie][1] }}" title="{{ t.titre }}{{ t.responsable ? ' · ' ~ t.responsable|nom_pointage }}">{{ t.heure and vue == 'semaine' ? t.heure ~ ' ' }}{{ t.titre }}</a>
+								{% endfor %}
+								{% for t in decalees[cle] ?? [] %}
+									<small class="si-pl-decale"><s>{{ t.titre }}</s> {{ t.raisonDecalage starts with 'férié' ? 'férié' : t.dateOrigine|date_fr('EEEE') }} → {{ t.prevueLe < t.dateOrigine ? 'avancé' : 'reporté' }} au {{ t.prevueLe|date('j') }}</small>
+								{% endfor %}
+							</div>
+						{% endfor %}
+					</div>
+				{% endif %}
+			</section>
+		</div>
+
+		<aside class="si-pl-cote">
+			<section class="card si-ac-bloc">
+				<h2>Aujourd'hui · {{ date()|date_fr('EEE d/MM') }}</h2>
+				{% if aujourdhui is empty %}
+					<p class="si-ac-vide mb-0">Rien de prévu aujourd'hui.</p>
+				{% else %}
+					<ul class="si-pl-coches">{% for t in aujourdhui %}{% include 'planning/_coche.html.twig' with {retour: ici} %}{% endfor %}</ul>
+				{% endif %}
+			</section>
+
+			{% if aNePasManquer is not empty %}
+				<section class="card si-ac-bloc">
+					<h2>À ne pas manquer</h2>
+					<ul class="si-pl-prochaines">
+						{% for t in aNePasManquer %}
+							{% set dans = ((t.prevueLe|date('U') - 'today'|date('U')) / 86400)|round %}
+							<li style="--si-pl-c: {{ cats[t.categorie][1] }}">
+								<a href="{{ path('app_planning_tache', {id: t.id}) }}"><b>{{ t.titre }}{{ t.estDecalee ? ' (' ~ t.raisonDecalage ~ ')' }}</b></a>
+								<small>{{ t.prevueLe|date_fr('EEE d/MM') }} · {{ dans == 1 ? 'demain' : 'dans ' ~ dans ~ ' jours' }}</small>
+							</li>
+						{% endfor %}
+					</ul>
+				</section>
+			{% endif %}
+
+			{% if retard is not empty %}
+				<section class="card si-pl-retard">
+					<b>{{ retard|length }} tâche{{ retard|length > 1 ? 's' }} en retard</b>
+					<a href="{{ path('app_planning_tache', {id: retard[0].id}) }}">{{ retard[0].titre }} · prévue le {{ retard[0].prevueLe|date('d/m') }}</a>
+				</section>
+			{% endif %}
+
+			<div class="si-pl-liens">
+				<a href="{{ path('app_planning_mes_taches') }}"><i class="fas fa-mobile-alt me-1"></i>Mes tâches</a>
+				{% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_planning_rappels') }}"><i class="fab fa-whatsapp me-1"></i>Rappels à envoyer{% if rappelsAEnvoyer %} <span class="badge bg-success">{{ rappelsAEnvoyer }}</span>{% endif %}</a>
+				<a href="{{ path('app_planning_feries') }}"><i class="fas fa-calendar-day me-1"></i>Jours fériés</a>{% endif %}
+			</div>
+		</aside>
+	</div>
+{% endblock %}

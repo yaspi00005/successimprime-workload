@@ -1,0 +1,253 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Paramètres{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_reglages_parametres_journal') }}" class="btn btn-light btn-sm si-btn-entete"><span class="si-masque-mobile">Journal des changements</span><i class="fas fa-history d-md-none"></i></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-param">
+		<div class="si-param-haut">
+			<button type="button" class="si-param-chercher" data-si-param-chercher>
+				<i class="fas fa-search"></i>
+				<span><span class="si-masque-mobile">Que voulez-vous régler ? Ex. « Orange Money », « horaires », « en-tête »</span><span class="d-md-none">Rechercher un réglage</span></span>
+				<kbd class="si-masque-mobile">Ctrl K</kbd>
+			</button>
+			{% if recents is not empty %}
+				<nav class="si-param-recents" aria-label="Réglages récents">
+					<span>Récents :</span>
+					{% for r in recents %}
+						<a href="{{ path('app_reglages_parametres_index', {tuile: r.cle}) }}" data-si-tuile="{{ r.cle }}">{{ r.libelle }}</a>
+					{% endfor %}
+				</nav>
+			{% endif %}
+		</div>
+
+		<div class="si-param-familles">
+			{% for famille in familles %}
+				<section class="si-param-famille si-pf-{{ famille.couleur }}">
+					<header>
+						<h2>{{ famille.libelle }}</h2>
+						<span>{{ famille.tuiles|length }}</span>
+					</header>
+					<div class="si-param-tuiles">
+						{% for t in famille.tuiles %}
+							<a href="{{ path('app_reglages_parametres_index', {tuile: t.cle}) }}" class="si-param-tuile {{ t.badge ? 'si-pt-signale si-pt-' ~ t.badge.type }}" data-si-tuile="{{ t.cle }}">
+								{% if t.badge %}<span class="si-pt-badge">{{ t.badge.texte }}</span>{% endif %}
+								<span class="si-pt-icone"><i class="fas {{ t.icone }}"></i></span>
+								<strong>{{ t.libelle }}</strong>
+								<small>{{ t.etat }}</small>
+							</a>
+						{% endfor %}
+					</div>
+				</section>
+			{% endfor %}
+		</div>
+	</div>
+
+	<div class="si-param-voile" data-si-pp-fermer {{ panneau ? '' : 'hidden' }}></div>
+	<aside class="si-param-panneau {{ panneau ? 'ouvert' }}" id="si-param-panneau" role="dialog" aria-modal="true" aria-labelledby="si-pp-titre" {{ panneau ? '' : 'hidden' }}>
+		{% if panneau %}{% include 'parametres/_panneau.html.twig' %}{% endif %}
+	</aside>
+
+	<dialog class="si-param-dialogue" id="si-param-dialogue" aria-label="Rechercher un réglage">
+		<div class="si-pd-saisie">
+			<i class="fas fa-search"></i>
+			<input type="search" placeholder="Tapez un mot : orange, horaires, en-tête…" autocomplete="off" data-si-pd-saisie aria-controls="si-pd-resultats">
+			<kbd>Échap</kbd>
+		</div>
+		<ul class="si-pd-resultats" id="si-pd-resultats" role="listbox" data-si-pd-resultats></ul>
+		<footer>
+			<span><kbd>↑</kbd><kbd>↓</kbd> pour choisir · <kbd>Entrée</kbd> pour ouvrir le réglage</span>
+			<span data-si-pd-nombre></span>
+		</footer>
+	</dialog>
+
+	<script type="application/json" id="si-param-index">{{ index_recherche|json_encode|raw }}</script>
+	<script>
+		(function () {
+			var base = {{ path('app_reglages_parametres_index')|json_encode|raw }};
+			var panneau = document.getElementById('si-param-panneau');
+			var voile = document.querySelector('.si-param-voile');
+			var dialogue = document.getElementById('si-param-dialogue');
+			var saisie = dialogue.querySelector('[data-si-pd-saisie]');
+			var liste = dialogue.querySelector('[data-si-pd-resultats]');
+			var nombre = dialogue.querySelector('[data-si-pd-nombre]');
+			var index = JSON.parse(document.getElementById('si-param-index').textContent);
+			var choisi = 0;
+			var resultats = [];
+
+			/* ---------- Panneau ---------- */
+
+			function afficher(html) {
+				panneau.innerHTML = html;
+				panneau.hidden = false;
+				voile.hidden = false;
+				requestAnimationFrame(function () { panneau.classList.add('ouvert'); });
+				document.body.classList.add('si-param-bloque');
+				var premier = panneau.querySelector('input:not([type=hidden]), select, .si-pp-fermer');
+				if (premier) { premier.focus({preventScroll: true}); }
+			}
+
+			function ouvrir(cle) {
+				fetch(base + '/' + cle, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+					.then(function (r) { if (!r.ok) { throw r; } return r.text(); })
+					.then(function (html) {
+						afficher(html);
+						history.replaceState(null, '', base + '?tuile=' + cle);
+					})
+					.catch(function () { window.location = base + '?tuile=' + cle; });
+			}
+
+			function fermer() {
+				panneau.classList.remove('ouvert');
+				voile.hidden = true;
+				document.body.classList.remove('si-param-bloque');
+				setTimeout(function () { panneau.hidden = true; panneau.innerHTML = ''; }, 200);
+				history.replaceState(null, '', base);
+			}
+
+			document.addEventListener('click', function (e) {
+				var tuile = e.target.closest('[data-si-tuile]');
+				if (tuile && !e.ctrlKey && !e.metaKey) {
+					e.preventDefault();
+					ouvrir(tuile.dataset.siTuile);
+					return;
+				}
+				if (e.target.closest('[data-si-pp-fermer]')) {
+					e.preventDefault();
+					fermer();
+				}
+			});
+
+			panneau.addEventListener('submit', function (e) {
+				var form = e.target.closest('[data-si-pp-form]');
+				if (!form) { return; }
+				e.preventDefault();
+				var bouton = panneau.querySelector('.si-pp-enregistrer');
+				if (bouton) { bouton.disabled = true; }
+				// Sans suivre la redirection : le message de confirmation est lu par la page rechargée.
+				fetch(form.action, {method: 'POST', body: new FormData(form), redirect: 'manual'})
+					.then(function (r) {
+						if (r.type === 'opaqueredirect' || r.ok) { window.location = base; return null; }
+						return r.text();
+					})
+					.then(function (html) {
+						if (!html) { return; }
+						var doc = new DOMParser().parseFromString(html, 'text/html');
+						var nouveau = doc.getElementById('si-param-panneau');
+						if (nouveau) { panneau.innerHTML = nouveau.innerHTML; }
+					})
+					.catch(function () { form.submit(); });
+			});
+
+			/* ---------- Recherche directe ---------- */
+
+			function sansAccents(texte) {
+				return texte.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+			}
+
+			function echapper(texte) {
+				var div = document.createElement('div');
+				div.textContent = texte;
+				return div.innerHTML;
+			}
+
+			function surligner(texte, mot) {
+				var debut = sansAccents(texte).indexOf(mot);
+				if (debut < 0 || !mot) { return echapper(texte); }
+				return echapper(texte.slice(0, debut)) + '<mark>' + echapper(texte.slice(debut, debut + mot.length)) + '</mark>' + echapper(texte.slice(debut + mot.length));
+			}
+
+			function chercher() {
+				var mot = sansAccents(saisie.value.trim());
+				resultats = [];
+				index.forEach(function (entree) {
+					if (!mot) { resultats.push({entree: entree, texte: entree.textes[entree.textes.length - 1], rang: 2}); return; }
+					// Rang : nom de la tuile d'abord, puis le mot-clé le plus parlant
+					// (premier de la liste) et le mot trouvé le plus tôt dans la phrase.
+					var titre = sansAccents(entree.libelle).indexOf(mot) >= 0;
+					var meilleur = null;
+					entree.textes.forEach(function (t, n) {
+						var position = sansAccents(t).indexOf(mot);
+						if (position >= 0 && (!meilleur || n * 1000 + position < meilleur.rang)) {
+							meilleur = {texte: t, rang: n * 1000 + position};
+						}
+					});
+					if (titre || meilleur) {
+						resultats.push({
+							entree: entree,
+							texte: meilleur ? meilleur.texte : entree.textes[entree.textes.length - 1],
+							rang: (titre ? 0 : 100000) + (meilleur ? meilleur.rang : 0),
+						});
+					}
+				});
+				resultats.sort(function (a, b) { return a.rang - b.rang; });
+				choisi = 0;
+				dessiner(mot);
+			}
+
+			function dessiner(mot) {
+				liste.innerHTML = resultats.map(function (r, i) {
+					var e = r.entree;
+					return '<li role="option" class="si-pf-' + e.couleur + (i === choisi ? ' choisi' : '') + '" aria-selected="' + (i === choisi) + '" data-rang="' + i + '">'
+						+ '<span class="si-pt-icone"><i class="fas ' + e.icone + '"></i></span>'
+						+ '<span class="si-pd-texte"><strong>' + surligner(e.libelle, mot) + '</strong><small>' + surligner(r.texte, mot) + '</small></span>'
+						+ '<span class="si-pd-famille">' + echapper(e.famille) + (i === choisi ? ' <kbd>Entrée ↵</kbd>' : '') + '</span></li>';
+				}).join('') || '<li class="si-pd-vide">Aucun réglage ne correspond.</li>';
+				nombre.textContent = resultats.length + ' résultat' + (resultats.length > 1 ? 's' : '');
+				var actif = liste.querySelector('.choisi');
+				if (actif) { actif.scrollIntoView({block: 'nearest'}); }
+			}
+
+			function ouvrirRecherche() {
+				if (!dialogue.open) { dialogue.showModal(); }
+				saisie.value = '';
+				chercher();
+				saisie.focus();
+			}
+
+			function valider(i) {
+				var r = resultats[i];
+				if (!r) { return; }
+				dialogue.close();
+				ouvrir(r.entree.tuile);
+			}
+
+			saisie.addEventListener('input', chercher);
+			saisie.addEventListener('keydown', function (e) {
+				if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+					e.preventDefault();
+					if (!resultats.length) { return; }
+					choisi = (choisi + (e.key === 'ArrowDown' ? 1 : -1) + resultats.length) % resultats.length;
+					dessiner(sansAccents(saisie.value.trim()));
+				} else if (e.key === 'Enter') {
+					e.preventDefault();
+					valider(choisi);
+				}
+			});
+			liste.addEventListener('click', function (e) {
+				var li = e.target.closest('[data-rang]');
+				if (li) { valider(+li.dataset.rang); }
+			});
+			dialogue.addEventListener('click', function (e) { if (e.target === dialogue) { dialogue.close(); } });
+			document.querySelector('[data-si-param-chercher]').addEventListener('click', ouvrirRecherche);
+
+			// Sur cet écran, Ctrl K ouvre la recherche des réglages plutôt que la recherche globale.
+			window.addEventListener('keydown', function (e) {
+				if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+					e.preventDefault();
+					e.stopPropagation();
+					ouvrirRecherche();
+				} else if (e.key === 'Escape' && !panneau.hidden && !dialogue.open) {
+					fermer();
+				}
+			}, true);
+
+			if (!panneau.hidden) { afficher(panneau.innerHTML); }
+		})();
+	</script>
+{% endblock %}

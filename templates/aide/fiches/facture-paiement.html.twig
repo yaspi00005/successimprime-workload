@@ -1,0 +1,20 @@
+{# Fiche du guide « facture-paiement » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Ouvrez la facture validée. Dans « Actions », touchez « Enregistrer un paiement ».</li>
+	<li>Choisissez le « Moyen » : Orange Money, Espèces, Virement ou Chèque.</li>
+	<li>Le « Montant » est prérempli avec le reste à payer : corrigez-le pour un paiement en partie. Choisissez le « Compte qui reçoit ».</li>
+	<li>Orange Money : saisissez la « Référence de transaction ». Les frais payés par le client sont cochés : lisez le « Total reçu ».</li>
+	<li>Paiement fait à distance : laissez cochée « Reçu à distance : à confirmer par la trésorière ».</li>
+	<li>Laissez cochée « Envoyer le reçu au client sur WhatsApp », puis touchez « Enregistrer · générer le reçu ».</li>
+	<li>La facture revient avec « Paiement de … enregistré ». Touchez « Envoyer le reçu par WhatsApp ».</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Un paiement « à confirmer » attend que la trésorière le retrouve sur le relevé Orange Money. Le client reçoit tout de suite un message « en cours de validation » ; le reçu numéroté suit la confirmation.</li>
+	<li>Le reste à payer de la facture tient compte des avoirs déduits.</li>
+	<li>Le bouton n'apparaît que pour qui a le droit d'encaisser, et tant qu'il reste à payer.</li>
+</ul>
+{% endblock %}

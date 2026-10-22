@@ -1,0 +1,485 @@
+<?php
+
+namespace App\Service\Synchro;
+
+use App\Entity\SynchroEchange;
+use App\Service\Push\EnvoiPush;
+use App\Service\Sauvegarde\HorsSite;
+use App\Service\NotificationService;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
+
+/**
+ * L'agent de l'ERP local (maquette 39). L'imprimerie n'a pas d'adresse fixe :
+ * c'est toujours lui qui appelle le site, chaque minute.
+ *
+ * Un cycle : vérifier que le site répond, envoyer la file du local, puis
+ * recevoir ce qui a été créé en ligne et l'accuser. Une coupure ne perd
+ * rien : ce qui n'est pas accusé repart au cycle suivant, et chaque
+ * élément n'est appliqué qu'une fois de l'autre côté.
+ */
+final class AgentSynchro
+{
+    public const ETAT_REUSSITE = 'derniere_reussite';
+    public const ETAT_CYCLE = 'dernier_cycle';
+    public const ETAT_MISE_EN_ROUTE = 'mise_en_route';
+    public const ETAT_CURSEUR = 'curseur_reception';
+    public const ETAT_LATENCE = 'latence_ms';
+    public const ETAT_ERREUR = 'derniere_erreur';
+    public const ETAT_ALERTE = 'alerte_envoyee';
+    public const ETAT_PURGE = 'derniere_purge';
+    public const ETAT_SCHEMA = 'schema_site';
+    public const ETAT_CONTACT = 'dernier_contact_agent';
+    /** Cause du dernier échec (CauseSynchro), pour un message juste au lieu de « connexion coupée ». */
+    public const ETAT_CAUSE = 'derniere_cause';
+    /** Nombre d'opérations par envoi : réduit quand le site ne suit pas, puis remonte. */
+    public const ETAT_TAILLE_LOT = 'taille_lot';
+
+    /** Les alertes de panne dans la cloche des administrateurs : leur lien et le début de leur texte. */
+    public const ALERTE_ROUTE = 'app_synchronisation_index';
+    public const ALERTE_PREFIXE = 'Synchronisation : ';
+
+    /** Données déjà notées pendant ce cycle : une fiche modifiée trois fois n'a qu'une ligne. */
+    private array $notees = [];
+
+    public function __construct(
+        private readonly Synchro $synchro,
+        private readonly HttpClientInterface $http,
+        private readonly NotificationService $notifications,
+        private readonly EntityManagerInterface $em,
+        private readonly FichiersSynchro $fichiers,
+        private readonly HorsSite $horsSite,
+        private readonly EnvoiPush $push,
+        #[Autowire('%kernel.project_dir%')] private readonly string $projectDir,
+    ) {
+    }
+
+    /**
+     * @return array{statut: string, envoyes: int, recus: int, conflits: int, message: ?string, cause?: ?string, attente?: string}
+     */
+    public function cycle(?\DateTimeImmutable $maintenant = null): array
+    {
+        $maintenant ??= new \DateTimeImmutable();
+        if ($this->synchro->estEnLigne()) {
+            throw new \LogicException('L\'agent tourne sur l\'ERP local, pas sur le site.');
+        }
+        if (!$this->synchro->estConfiguree()) {
+            return ['statut' => 'non_configuree', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'message' => 'SYNC_URL et SYNC_CLE à régler dans .env.local'];
+        }
+
+        @mkdir($this->projectDir.'/var', 0775, true);
+        $verrou = fopen($this->projectDir.'/var/synchro.verrou', 'c');
+        if ($verrou === false || !flock($verrou, \LOCK_EX | \LOCK_NB)) {
+            return ['statut' => 'occupe', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'message' => 'Un cycle est déjà en cours.'];
+        }
+
+        $resume = ['statut' => 'ok', 'envoyes' => 0, 'recus' => 0, 'conflits' => 0, 'fichiers' => 0, 'message' => null, 'cause' => null];
+        $this->notees = [];
+        $siteRepond = false;
+        try {
+            if ($this->synchro->etat(self::ETAT_MISE_EN_ROUTE) === null) {
+                $this->synchro->noterEtat(self::ETAT_MISE_EN_ROUTE, $maintenant->format(\DATE_ATOM));
+            }
+            $this->synchro->noterEtat(self::ETAT_CYCLE, $maintenant->format(\DATE_ATOM));
+
+            $debut = microtime(true);
+            $ping = $this->appeler('/api/synchro/ping', []);
+            $siteRepond = true;
+            $this->synchro->noterEtat(self::ETAT_LATENCE, (string) (int) round((microtime(true) - $debut) * 1000));
+            $this->synchro->noterEtat(self::ETAT_SCHEMA, isset($ping['schema']) ? (string) $ping['schema'] : null);
+
+            $this->envoyer($resume);
+            if ($resume['statut'] === 'ok') {
+                $this->recevoir($resume);
+            }
+            if ($resume['statut'] === 'ok') {
+                // Après les fiches : le site doit déjà connaître le fichier.
+                $bilan = $this->fichiers->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees));
+                $resume['fichiers'] = $bilan['envoyes'];
+                if ($bilan['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier', \sprintf('%d fichier%s de BAT (%s Mo)', $bilan['envoyes'], $bilan['envoyes'] > 1 ? 's' : '', number_format($bilan['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
+                // Les fichiers envoyés par les clients en ligne arrivent à l'atelier.
+                $recus = $this->fichiers->recuperer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets']));
+                if ($recus['recus'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'fichier', \sprintf('%d fichier%s de client (%s Mo)', $recus['recus'], $recus['recus'] > 1 ? 's' : '', number_format($recus['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
+                if ($recus['absents'] !== []) {
+                    // Les autres fichiers et les fiches passent quand même ; celui-ci sera redemandé plus tard.
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'fichier', \sprintf('%d fichier%s de client introuvable%s sur le site', \count($recus['absents']), \count($recus['absents']) > 1 ? 's' : '', \count($recus['absents']) > 1 ? 's' : ''), SynchroEchange::ERREUR, mb_substr(implode(', ', $recus['absents']), 0, 900));
+                }
+                // Notes vocales de la messagerie : celles de l'atelier au client partent, celles des clients arrivent.
+                $vocales = $this->fichiers->envoyerVocales(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']));
+                $vocalesRecues = $this->fichiers->recupererVocales(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets'] - $vocales['octets']));
+                if ($vocales['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'message_client', \sprintf('%d note%s vocale%s', $vocales['envoyes'], $vocales['envoyes'] > 1 ? 's' : '', $vocales['envoyes'] > 1 ? 's' : ''), SynchroEchange::OK);
+                }
+                if ($vocalesRecues['recus'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'message_client', \sprintf('%d note%s vocale%s de client', $vocalesRecues['recus'], $vocalesRecues['recus'] > 1 ? 's' : '', $vocalesRecues['recus'] > 1 ? 's' : ''), SynchroEchange::OK);
+                }
+                if ($vocalesRecues['absents'] !== []) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_LOCAL, 'message_client', \sprintf('%d note%s vocale%s de client introuvable%s ou refusée%s', \count($vocalesRecues['absents']), ...array_fill(0, 4, \count($vocalesRecues['absents']) > 1 ? 's' : '')), SynchroEchange::ERREUR, mb_substr(implode(', ', $vocalesRecues['absents']), 0, 900));
+                }
+                $bilan['octets'] += $vocales['octets'];
+                $recus['octets'] += $vocalesRecues['octets'];
+                // Fichiers publiés pour les clients depuis leur dossier (« Envoyer au client »).
+                $publies = $this->fichiers->envoyerPublies(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']));
+                if ($publies['envoyes'] > 0) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, 'fichier_publie', \sprintf('%d fichier%s publié%s pour les clients (%s Mo)', $publies['envoyes'], ...[...array_fill(0, 2, $publies['envoyes'] > 1 ? 's' : ''), number_format($publies['octets'] / 1048576, 1, ',', ' ')]), SynchroEchange::OK);
+                }
+                $bilan['octets'] += $publies['octets'];
+                $refuses = [...$bilan['refuses'] ?? [], ...$vocales['refuses'] ?? [], ...$publies['refuses'] ?? []];
+                if ($refuses !== []) {
+                    // Un fichier refusé n'arrête plus le cycle : noté une fois, réessayé au cycle suivant.
+                    $this->noterIncident(SynchroEchange::VERS_EN_LIGNE, 'fichier', \sprintf('%d fichier%s en attente côté site', \count($refuses), \count($refuses) > 1 ? 's' : ''), SynchroEchange::REPRISE, mb_substr(implode(' · ', $refuses), 0, 900));
+                }
+                // Puis la copie chiffrée des sauvegardes, avec ce qui reste du budget du cycle.
+                foreach ($this->horsSite->envoyer(fn (string $chemin, array $donnees): array => $this->appeler($chemin, $donnees), max(0, FichiersSynchro::BUDGET_CYCLE - $bilan['octets'] - $recus['octets']), $maintenant) as $copie) {
+                    $this->synchro->noterEchange(SynchroEchange::VERS_EN_LIGNE, null, \sprintf('Sauvegarde %s chiffrée, %s (%s Mo)', $copie['nom'], $copie['partie'] === 'base' ? 'base' : 'fichiers', number_format($copie['octets'] / 1048576, 1, ',', ' ')), SynchroEchange::OK);
+                }
+            }
+        } catch (\Throwable $e) {
+            $resume['statut'] = 'erreur';
+            // Le site a répondu au début du cycle : internet marche, inutile de le tester.
+            $resume['cause'] = self::cause($e, fn (): bool => $siteRepond || CauseSynchro::internetRepond());
+            $resume['message'] = self::messageLiaison($e, $resume['cause']);
+            $this->noterIncident(SynchroEchange::SYSTEME, null, 'Liaison avec le site', SynchroEchange::ERREUR, $resume['message']);
+        } finally {
+            flock($verrou, \LOCK_UN);
+            fclose($verrou);
+        }
+
+        if ($resume['statut'] === 'ok') {
+            $this->synchro->noterEtat(self::ETAT_REUSSITE, $maintenant->format(\DATE_ATOM));
+            $this->synchro->noterEtat(self::ETAT_ERREUR, null);
+            $this->synchro->noterEtat(self::ETAT_CAUSE, null);
+            $this->synchro->resoudreErreurs();
+            if ($this->synchro->etat(self::ETAT_ALERTE) !== null) {
+                $this->synchro->noterEtat(self::ETAT_ALERTE, null);
+                $this->synchro->noterEchange(SynchroEchange::SYSTEME, null, 'Liaison rétablie', SynchroEchange::OK);
+                $this->retirerAlertes();
+            }
+        } else {
+            $this->synchro->noterEtat(self::ETAT_ERREUR, $resume['message']);
+            $this->synchro->noterEtat(self::ETAT_CAUSE, $resume['cause'] ?? CauseSynchro::ERREUR_SITE);
+            $this->alerterSiBesoin($maintenant, $resume['message']);
+        }
+
+        $purge = $this->synchro->dateEtat(self::ETAT_PURGE);
+        if ($purge === null || $purge < $maintenant->modify('-1 day')) {
+            $this->synchro->purger($maintenant);
+            if ($resume['statut'] === 'ok') {
+                // Alertes restées non lues alors que la liaison marche (celles d'avant cette version comprises).
+                $this->retirerAlertes();
+            }
+            $this->synchro->noterEtat(self::ETAT_PURGE, $maintenant->format(\DATE_ATOM));
+        }
+
+        return $resume;
+    }
+
+    /**
+     * Envoie la file, dans l'ordre. Un lot que le site n'arrive pas à
+     * recevoir (délai dépassé, envoi trop gros, connexion coupée par
+     * l'hébergeur) repart aussitôt en plus petit ; à une seule opération,
+     * c'est elle qui ne passe pas : elle compte un essai et, après 10,
+     * passe dans « Bloqués » au lieu de retenir toute la file.
+     *
+     * @param array<string, mixed> $resume
+     */
+    private function envoyer(array &$resume): void
+    {
+        $apres = 0;
+        $taille = self::tailleLot($this->synchro->etat(self::ETAT_TAILLE_LOT));
+        for ($tour = 0; $tour < 80; ++$tour) {
+            $lot = $this->synchro->lot($apres, $taille);
+            if ($lot === []) {
+                return;
+            }
+            try {
+                $reponse = $this->appeler('/api/synchro/envoyer', ['evenements' => $lot]);
+            } catch (\Throwable $e) {
+                if (!self::lotTropLourd($e)) {
+                    throw $e;
+                }
+                if ($taille > 1) {
+                    $taille = self::reduire($taille);
+                    $this->synchro->noterEtat(self::ETAT_TAILLE_LOT, (string) $taille);
+                    continue; // le même début de file, en plus petit
+                }
+                if (!CauseSynchro::internetRepond()) {
+                    throw $e; // internet est tombé en route : l'opération n'y est pour rien
+                }
+                // Une seule opération et le site ne la reçoit toujours pas : c'est elle.
+                $premiere = $lot[0];
+                $message = \sprintf('L\'opération n° %d (%s) ne passe pas : %s', $premiere['id'], $premiere['type'], self::messageLiaison($e, self::cause($e, static fn (): bool => true)));
+                $this->synchro->noterEchecEnvoi($premiere['id'], $message);
+                $this->noterIncident(SynchroEchange::VERS_EN_LIGNE, $premiere['type'], 'Opération trop lourde ou refusée', SynchroEchange::ERREUR, $message);
+                $resume['statut'] = 'erreur';
+                $resume['cause'] = CauseSynchro::OPERATION;
+                $resume['message'] = $message;
+
+                return;
+            }
+            $faits = [];
+            foreach ($reponse['resultats'] ?? [] as $r) {
+                $faits[] = (int) $r['id'];
+                $this->noterResultat(SynchroEchange::VERS_EN_LIGNE, $r, $resume);
+            }
+            $this->synchro->enregistrerEchanges();
+            $this->synchro->marquerEnvoyes($faits);
+            $resume['envoyes'] += \count($faits);
+
+            if (($erreur = $reponse['erreur'] ?? null) !== null) {
+                $this->synchro->noterEchecEnvoi((int) $erreur['id'], (string) $erreur['message']);
+                $this->noterIncident(SynchroEchange::VERS_EN_LIGNE, $erreur['type'] ?? null, (string) ($erreur['titre'] ?? ''), $erreur['reprise'] ? SynchroEchange::REPRISE : SynchroEchange::ERREUR, (string) $erreur['message']);
+                if (!$erreur['reprise']) {
+                    $resume['statut'] = 'erreur';
+                    $resume['cause'] = CauseSynchro::OPERATION;
+                    $resume['message'] = \sprintf('Le site refuse l\'opération n° %d (%s) : %s', (int) $erreur['id'], (string) ($erreur['titre'] ?? $erreur['type'] ?? ''), (string) $erreur['message']);
+
+                    return; // l'ordre compte : la suite attend le prochain cycle
+                }
+                // Elle attend une donnée plus loin dans la file : on continue d'envoyer pour que
+                // cette donnée arrive, l'opération en attente repart au cycle suivant (ce qui est
+                // déjà appliqué en ligne est reconnu et sauté). Avant, la file restait arrêtée
+                // sur elle : « 0 envoyée » à chaque cycle.
+                $resume['attente'] ??= \sprintf('l\'opération n° %d attend une autre donnée (%s)', (int) $erreur['id'], (string) $erreur['message']);
+            }
+            $apres = (int) end($lot)['id'];
+            if ($taille < Synchro::LOT) {
+                // Le site a suivi : on remonte petit à petit.
+                $taille = min(Synchro::LOT, $taille * 2);
+                $this->synchro->noterEtat(self::ETAT_TAILLE_LOT, (string) $taille);
+            }
+        }
+    }
+
+    public static function tailleLot(?string $notee): int
+    {
+        $taille = (int) $notee;
+
+        return $taille >= 1 && $taille <= Synchro::LOT ? $taille : Synchro::LOT;
+    }
+
+    /** 100 → 25 → 6 → 1. */
+    public static function reduire(int $taille): int
+    {
+        return max(1, intdiv($taille, 4));
+    }
+
+    /** Échec qui peut venir de la taille du lot : délai, connexion coupée en route, 413, 500, 502-504. */
+    public static function lotTropLourd(\Throwable $e): bool
+    {
+        if ($e instanceof TransportExceptionInterface) {
+            return true;
+        }
+
+        return $e instanceof ErreurSite && \in_array($e->codeHttp, [413, 500, 502, 503, 504], true);
+    }
+
+    /** Un cycle tient le verrou (tâche planifiée, --boucle, ou un processus resté bloqué). */
+    public function cycleEnCours(): bool
+    {
+        $verrou = @fopen($this->projectDir.'/var/synchro.verrou', 'c');
+        if (false === $verrou) {
+            return false;
+        }
+        $libre = flock($verrou, \LOCK_EX | \LOCK_NB);
+        if ($libre) {
+            flock($verrou, \LOCK_UN);
+        }
+        fclose($verrou);
+
+        return !$libre;
+    }
+
+    /** @param array<string, mixed> $resume */
+    private function recevoir(array &$resume): void
+    {
+        for ($tour = 0; $tour < 50; ++$tour) {
+            $curseur = (int) ($this->synchro->etat(self::ETAT_CURSEUR) ?? 0);
+            $reponse = $this->appeler('/api/synchro/evenements', ['apres' => $curseur, 'max' => Synchro::LOT]);
+            $evenements = $reponse['evenements'] ?? [];
+            if ($evenements === []) {
+                return;
+            }
+            $application = $this->synchro->appliquer($evenements);
+            $dernier = $curseur;
+            foreach ($application['resultats'] as $r) {
+                $dernier = max($dernier, $r['id']);
+                $this->noterResultat(SynchroEchange::VERS_LOCAL, $r, $resume);
+                ++$resume['recus'];
+            }
+            $this->synchro->enregistrerEchanges();
+            if ($dernier > $curseur) {
+                $this->appeler('/api/synchro/accuser', ['jusqua' => $dernier]);
+                $this->synchro->noterEtat(self::ETAT_CURSEUR, (string) $dernier);
+            }
+            if (($erreur = $application['erreur']) !== null) {
+                $this->noterIncident(SynchroEchange::VERS_LOCAL, $erreur['type'], $erreur['titre'], $erreur['reprise'] ? SynchroEchange::REPRISE : SynchroEchange::ERREUR, $erreur['message']);
+                if (!$erreur['reprise']) {
+                    $resume['statut'] = 'erreur';
+                    $resume['message'] = $erreur['message'];
+                }
+
+                return;
+            }
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $r
+     * @param array<string, mixed> $resume
+     */
+    private function noterResultat(string $sens, array $r, array &$resume): void
+    {
+        $statut = match ($r['statut']) {
+            Synchro::RESULTAT_CONFLIT => SynchroEchange::CONFLIT,
+            Synchro::RESULTAT_DEJA => null, // déjà appliqué : rejeu sans effet, rien à montrer
+            default => SynchroEchange::OK,
+        };
+        if ($statut === SynchroEchange::CONFLIT) {
+            ++$resume['conflits'];
+        }
+        $cle = $sens.($r['type'] ?? '').($r['publicId'] ?? '').$statut;
+        if ($statut !== null && !isset($this->notees[$cle])) {
+            $this->notees[$cle] = true;
+            $this->synchro->noterEchange($sens, $r['type'] ?? null, (string) ($r['titre'] ?? ''), $statut, $r['message'] ?? null, false);
+        }
+    }
+
+    /** Un même incident répété chaque minute n'est noté qu'une fois. */
+    private function noterIncident(string $sens, ?string $type, string $libelle, string $statut, string $message): void
+    {
+        $dernier = $this->synchro->echanges(1)[0] ?? null;
+        if ($dernier !== null && !$dernier->isResolu() && $dernier->getMessage() === $message && $dernier->getLibelle() === mb_substr($libelle, 0, 255)) {
+            return;
+        }
+        $this->synchro->noterEchange($sens, $type, $libelle, $statut, $message);
+    }
+
+    private function alerterSiBesoin(\DateTimeImmutable $maintenant, ?string $message): void
+    {
+        $alerte = Synchro::alerte(true, $this->synchro->dateEtat(self::ETAT_REUSSITE), $this->synchro->dateEtat(self::ETAT_MISE_EN_ROUTE), $maintenant, $message);
+        if ($alerte === null || $this->synchro->etat(self::ETAT_ALERTE) !== null) {
+            return;
+        }
+        // Une notification par panne, avec l'envoi sur le téléphone des administrateurs. Celui qui a
+        // encore l'alerte d'une panne précédente non lue la voit remise à jour : une seule dans sa cloche.
+        $misesAJour = $this->notifications->notifierRolesSansDoublon(['ROLE_ADMIN'], self::ALERTE_PREFIXE.$alerte, self::ALERTE_ROUTE, self::ALERTE_PREFIXE, $maintenant);
+        $this->em->flush();
+        foreach ($misesAJour as $notification) {
+            $this->push->aEnvoyer($notification);
+        }
+        $this->synchro->noterEtat(self::ETAT_ALERTE, $maintenant->format(\DATE_ATOM));
+    }
+
+    /** La liaison marche : les alertes de panne encore non lues n'ont plus d'objet. */
+    private function retirerAlertes(): void
+    {
+        if ($this->notifications->marquerLuesParSorte(self::ALERTE_ROUTE, self::ALERTE_PREFIXE) > 0) {
+            $this->em->flush();
+        }
+    }
+
+    /**
+     * Appel signé au site ; la réponse doit être signée aussi.
+     *
+     * @param array<string, mixed> $donnees
+     *
+     * @return array<string, mixed>
+     */
+    private function appeler(string $chemin, array $donnees): array
+    {
+        $corps = json_encode($donnees, \JSON_UNESCAPED_UNICODE | \JSON_UNESCAPED_SLASHES | \JSON_THROW_ON_ERROR);
+        $heure = time();
+        $reponse = $this->http->request('POST', $this->synchro->url().$chemin, [
+            'headers' => [
+                'Content-Type' => 'application/json',
+                Signature::ENTETE_HEURE => (string) $heure,
+                Signature::ENTETE => Signature::calculer($this->synchro->cle(), 'POST', $chemin, $heure, $corps),
+            ],
+            'body' => $corps,
+            'timeout' => 30,
+            'max_duration' => 120,
+        ]);
+        $code = $reponse->getStatusCode();
+        $contenu = $reponse->getContent(false);
+        if ($code !== 200) {
+            throw new ErreurSite(match ($code) {
+                401 => self::messageRefus($contenu, $reponse->getHeaders(false)['date'][0] ?? null, time()),
+                404 => 'Le site ne répond pas à la synchronisation (adresse fausse, ou SYNC_CLE absente sur le site).',
+                413 => 'Le site refuse un envoi trop gros (413).',
+                500 => 'Le site a répondu 500 (erreur interne) : voir var/log du site, souvent une mise à jour ou une migration manquante en ligne.',
+                502, 503, 504 => 'Le site a répondu '.$code.' : l\'hébergeur n\'a pas eu la réponse à temps.',
+                400 => 'Le site refuse : '.(json_decode($contenu, true)['erreur'] ?? 'demande invalide').'.',
+                default => 'Le site a répondu '.$code.'.',
+            }, $code, 401 === $code ? CauseSynchro::REFUS : CauseSynchro::ERREUR_SITE);
+        }
+        $entetes = $reponse->getHeaders(false);
+        if (!Signature::verifier($this->synchro->cle(), 'REPONSE', $chemin, (string) ($entetes[strtolower(Signature::ENTETE_HEURE)][0] ?? ''), $contenu, (string) ($entetes[strtolower(Signature::ENTETE)][0] ?? ''), time())) {
+            throw new \RuntimeException('Réponse du site non signée ou modifiée : elle est ignorée.');
+        }
+
+        return json_decode($contenu, true, 512, \JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Message d'un refus de signature (401) : le site donne le motif, l'heure
+     * vient de sa réponse (ou de l'en-tête Date d'un site pas encore à jour).
+     */
+    public static function messageRefus(string $contenu, ?string $date, int $maintenant): string
+    {
+        $refus = json_decode($contenu, true);
+        $motif = \is_array($refus) ? (string) ($refus['refus'] ?? '') : '';
+        $heureSite = \is_array($refus) && isset($refus['heure_site']) && is_numeric($refus['heure_site']) ? (int) $refus['heure_site'] : null;
+        if ($heureSite === null && $date !== null && ($lue = strtotime($date)) !== false) {
+            $heureSite = $lue;
+        }
+        $ecart = $heureSite !== null ? abs($maintenant - $heureSite) : null;
+
+        if ($motif === Signature::REFUS_HEURE || ($motif === '' && $ecart !== null && $ecart > Signature::ECART_MAX_SECONDES)) {
+            return \sprintf('Le site refuse la signature : l\'heure de cette machine et celle du site ont %s d\'écart (5 minutes au plus). Réglez cette machine à l\'heure automatique.', $ecart !== null ? (int) round($ecart / 60).' min' : 'trop');
+        }
+        if ($motif === Signature::REFUS_ENTETES) {
+            return 'Le site ne reçoit pas les en-têtes de signature (X-SI-Signature, X-SI-Horodatage) : l\'hébergeur ou un pare-feu les retire.';
+        }
+        if ($motif === Signature::REFUS_SIGNATURE) {
+            return 'Le site refuse la signature : la clé SYNC_CLE n\'est pas la même des deux côtés. Comparez « php bin/console app:synchro --empreinte » sur les deux machines.';
+        }
+
+        return 'Le site refuse la signature : la clé SYNC_CLE n\'est pas la même des deux côtés, ou l\'heure d\'une des machines est fausse. Comparez « php bin/console app:synchro --empreinte » sur les deux machines.';
+    }
+
+    /**
+     * Cause d'un échec de liaison (CauseSynchro). $internet n'est appelé que
+     * pour une erreur de transport : internet n'est dit coupé que s'il l'est.
+     *
+     * @param callable(): bool $internet
+     */
+    public static function cause(\Throwable $e, callable $internet): string
+    {
+        if ($e instanceof TransportExceptionInterface) {
+            return CauseSynchro::depuisTransport($e->getMessage(), $internet());
+        }
+        if ($e instanceof ErreurSite) {
+            return $e->cause;
+        }
+
+        return CauseSynchro::ERREUR_SITE;
+    }
+
+    public static function messageLiaison(\Throwable $e, ?string $cause = null): string
+    {
+        $message = $e->getMessage();
+        if ($e instanceof TransportExceptionInterface) {
+            // Le détail technique (DNS, certificat, délai) aide à régler l'installation ; il ne contient pas la clé.
+            return CauseSynchro::titre($cause ?? CauseSynchro::SITE).' : '.mb_substr($message, 0, 300);
+        }
+
+        return mb_substr($message, 0, 500);
+    }
+}

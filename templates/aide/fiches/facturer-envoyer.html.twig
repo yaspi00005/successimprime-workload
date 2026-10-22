@@ -1,0 +1,21 @@
+{# Fiche du guide « facturer-envoyer » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Sur la commande, touchez « … » (autres actions), puis « Facturer ». Le brouillon de la facture s'ouvre, sans numéro.</li>
+	<li>Vérifiez le client, la « Date », l'« Échéance » et l'« Entreprise ». Les lignes sont reprises de la commande ; l'« Aperçu en direct » montre la facture.</li>
+	<li>Une ligne à changer : « Modifier les lignes dans la commande », puis « Reprendre les montants ».</li>
+	<li>« Enregistrer le brouillon » la garde pour plus tard. « Aperçu PDF » l'affiche, marquée brouillon.</li>
+	<li>Touchez « Valider et numéroter », puis « Valider ». La facture reçoit son numéro définitif.</li>
+	<li>Sur la facture validée : « PDF » ou « Imprimer », et « Envoyer sur WhatsApp » au client.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Une facture validée ne se modifie plus. Pour corriger, faites un avoir (fiche « Corriger une facture validée : l'avoir »).</li>
+	<li>Le client la voit dans son espace dès la validation. « Envois » dit quand elle est partie sur WhatsApp et quand le lien a été lu.</li>
+	<li>Un client proche de son plafond de crédit est signalé dans le brouillon.</li>
+	<li>Une facture officielle garde les vrais prix : on ne peut pas les gonfler.</li>
+	<li>Sur la facture, « Enregistrer un paiement » encaisse, pour qui a le droit d'encaisser.</li>
+</ul>
+{% endblock %}

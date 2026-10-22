@@ -1,0 +1,783 @@
+<?php
+
+namespace App\Service\Production;
+
+use App\Entity\BonLivraison;
+use App\Entity\ColisProduction;
+use App\Entity\Commandes;
+use App\Entity\CommandesDetails;
+use App\Entity\ControleFinal;
+use App\Entity\JournalActivite;
+use App\Entity\JournalMachine;
+use App\Entity\OrdreProduction;
+use App\Entity\StockSorties;
+use App\Entity\TirageRouleau;
+use App\Entity\User;
+use App\Repository\ControleFinalRepository;
+use App\Service\Atelier\ActionsOrdre;
+use App\Service\Atelier\ImagesAtelier;
+use App\Service\Atelier\PosteMachiniste;
+use App\Service\EspaceClient\EspaceClient;
+use App\Service\Livraisons\PreparationLivraison;
+use App\Service\Livraisons\ProgrammationLivraison;
+use App\Service\Livraisons\Tournee;
+use App\Service\NotificationService;
+use App\Service\Pointage\Pointages;
+use App\Service\SuiviMetiers\FileMachine;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\DependencyInjection\Attribute\Autowire;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+
+/**
+ * Contrôle final d'une commande (PD06, docs/production-colis.md) :
+ * commandes à contrôler, comparaison au BAT et photo de la pièce, cases
+ * par ligne, temps et matière consommée, « Refaire une pièce », puis la
+ * carte « Prête pour la livraison » (tournée, message WhatsApp préparé).
+ * Aucun montant, aucun coût. ERP local seulement.
+ */
+final class ControlesFinaux
+{
+    public const DOSSIER_PHOTOS = 'var/uploads/production/controles';
+    public const TAILLE_MAX_PHOTO = 15 * 1024 * 1024;
+    /** Nom d'une photo enregistrée : choisi par le serveur, jamais par le navigateur. */
+    public const MOTIF_PHOTO = '/^\d{1,10}-[a-f0-9]{16}\.(png|jpg)$/';
+    public const JOURNAL_WHATSAPP = 'whatsapp_prete';
+    /** Créneau proposé quand le client n'a rien programmé. */
+    public const CRENEAU_DEFAUT = '10-12';
+
+    public function __construct(
+        private readonly EntityManagerInterface $em,
+        private readonly ColisCommandes $colis,
+        private readonly ControleFinalRepository $controles,
+        private readonly PosteMachiniste $poste,
+        private readonly EspaceClient $espace,
+        private readonly NotificationService $notifications,
+        private readonly FileMachine $file,
+        private readonly PreparationLivraison $preparation,
+        private readonly Tournee $tournee,
+        private readonly SortiesProduction $sorties,
+        #[Autowire('%kernel.project_dir%')]
+        private readonly string $projet,
+    ) {
+    }
+
+    /**
+     * Commandes dont tous les travaux sont terminés et pas encore prêtes,
+     * la livraison la plus proche d'abord.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function aControler(\DateTimeImmutable $maintenant): array
+    {
+        $parCommande = [];
+        foreach ($this->colis->ordresTermines(null, $maintenant) as $o) {
+            $c = $o->getCommandeDetail()?->getCommande();
+            if (null !== $c) {
+                $parCommande[(int) $c->getId()][] = $o;
+            }
+        }
+        $liste = [];
+        foreach ($parCommande as $ordres) {
+            $commande = $ordres[0]->getCommandeDetail()->getCommande();
+            if ($this->colis->lignesEnProduction($commande) > 0) {
+                continue;
+            }
+            $etat = $this->colis->etat($commande);
+            $liste[] = [
+                'commande' => $commande,
+                'client' => ColisCommandes::client($commande->getClients()),
+                'resume' => ColisCommandes::resume(ColisCommandes::lignesPourColis($ordres)),
+                'etat' => $etat,
+                'controle' => $etat['controle']?->estValide() ?? false,
+                'livraison' => $this->colis->livraison($commande),
+            ];
+        }
+        usort($liste, static fn (array $a, array $b): int => [$a['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $a['commande']->getId()] <=> [$b['livraison']['jour'] ?? new \DateTimeImmutable('2999-01-01'), $b['commande']->getId()]);
+
+        return $liste;
+    }
+
+    /**
+     * Commandes passées « Prête » aujourd'hui, la plus récente d'abord
+     * (bas de la liste PD06) : livraison planifiée ou à planifier.
+     *
+     * @return list<array{commande: Commandes, client: array<string, mixed>, le: \DateTimeImmutable, livraison: array<string, mixed>}>
+     */
+    public function preteesDuJour(\DateTimeImmutable $maintenant): array
+    {
+        $rangs = $this->em->createQueryBuilder()
+            ->select('IDENTITY(d.commande) AS id', 'MAX(d.preteLivraisonLe) AS le')
+            ->from(CommandesDetails::class, 'd')->join('d.commande', 'c')
+            ->where('d.preteLivraisonLe >= :debut')->andWhere('c.deleted = false')
+            ->setParameter('debut', $maintenant->setTime(0, 0))
+            ->groupBy('d.commande')->orderBy('le', 'DESC')->setMaxResults(30)
+            ->getQuery()->getArrayResult();
+        $liste = [];
+        foreach ($rangs as $r) {
+            $commande = $this->em->find(Commandes::class, (int) $r['id']);
+            if (!$commande instanceof Commandes || !ColisCommandes::estPrete($commande)) {
+                continue;
+            }
+            $liste[] = [
+                'commande' => $commande,
+                'client' => ColisCommandes::client($commande->getClients()),
+                'le' => new \DateTimeImmutable((string) $r['le']),
+                'livraison' => $this->colis->livraison($commande),
+            ];
+        }
+
+        return $liste;
+    }
+
+    /**
+     * Tout ce que montre la page de contrôle d'une commande.
+     *
+     * @return array<string, mixed>
+     */
+    public function page(Commandes $commande, User $moi, bool $peutPlanifier, \DateTimeImmutable $maintenant): array
+    {
+        $etat = $this->colis->etat($commande);
+        $prete = $etat['prete'];
+        $ordres = $this->ordres($commande);
+        $aControler = array_values(array_filter($ordres, static fn (OrdreProduction $o): bool => $o->estTermine() && !$o->estPretLivraison()));
+        $montres = $prete ? array_values(array_filter($ordres, static fn (OrdreProduction $o): bool => $o->estPretLivraison())) : $aControler;
+        $lignes = array_map(function (OrdreProduction $o) use ($etat): array {
+            $ligne = $this->ligne($o, $etat['controle']);
+
+            return $ligne + ['points' => self::points($ligne)];
+        }, $montres);
+
+        return [
+            'commande' => $commande,
+            'client' => ColisCommandes::client($commande->getClients()),
+            'lignes' => $lignes,
+            'aRefaire' => array_values(array_filter($ordres, static fn (OrdreProduction $o): bool => null !== $o->getPiecesARefaire())),
+            'enProduction' => $this->colis->lignesEnProduction($commande),
+            'etat' => $etat,
+            'controle' => $etat['controle'],
+            'prete' => $prete,
+            'peutValider' => !$prete && [] !== $aControler && 0 === $this->colis->lignesEnProduction($commande),
+            'temps' => $this->temps($montres, $etat['controle']),
+            'consomme' => $this->consomme($commande),
+            'livraison' => $this->colis->livraison($commande),
+            'apres' => $prete ? $this->apresPrete($commande, $moi, $peutPlanifier, $maintenant) : null,
+        ];
+    }
+
+    /**
+     * Une ligne à contrôler : BAT, taille attendue, couleur à surveiller,
+     * finitions (œillets comptés), cases déjà cochées.
+     *
+     * @return array<string, mixed>
+     */
+    private function ligne(OrdreProduction $o, ?ControleFinal $controle): array
+    {
+        $d = $o->getCommandeDetail();
+        $produit = NomsProduits::reconnaitre($d?->getDesignation(), $d?->getProduit()?->getNom(), $d?->getProduit()?->getNomCommercial());
+        $l = round((float) ($d?->getLargeur() ?? 0) * 100, 1);
+        $h = round((float) ($d?->getLongueur() ?? 0) * 100, 1);
+        $ctl = $this->poste->dernierControle($o);
+        $bat = null !== $ctl ? ($this->espace->imagesBat($ctl)[0] ?? null) : null;
+        $fichier = $bat ?? PosteMachiniste::fichier($o);
+        $finitions = [];
+        $oeillets = null;
+        foreach ($d?->getFinitions() ?? [] as $f) {
+            $nom = (string) $f->getNomFinition();
+            $espacement = ReglesControleFinal::espacementOeillets($nom);
+            if (null !== $espacement && $l > 0 && $h > 0) {
+                $oeillets = ReglesControleFinal::oeilletsParPiece($l, $h, $espacement);
+            } elseif ('' !== trim($nom)) {
+                $finitions[] = ColisCommandes::finitionCourte($nom);
+            }
+        }
+        $piece = $produit['singulier'] ?? 'pièce';
+        $texteFinitions = implode(' · ', array_filter([
+            null !== $oeillets ? \sprintf('Œillets : %d par %s, bien sertis', $oeillets, $piece) : null,
+            [] !== $finitions ? ucfirst(implode(', ', array_unique($finitions))).' conforme'.(\count($finitions) > 1 ? 's' : '') : null,
+        ]));
+        $couleur = ReglesControleFinal::couleurSensible($d?->getObservation(), $d?->getDemandeClient(), $ctl?->getObservation(), $d?->getCommande()?->getObservation(), $o->getInstructions());
+        $nombre = static fn (float $v): string => QuantiteLisible::nombre($v, 1);
+
+        return [
+            'ordre' => $o,
+            'detail' => $d,
+            'id' => (int) $d?->getId(),
+            'nom' => null !== $d ? ColisCommandes::nomCourt($d, $produit) : (string) $o->getNumero(),
+            'quantite' => (int) ($d?->getQuantite() ?? 0),
+            'bat' => [
+                'fichier' => $fichier,
+                'image' => null !== $fichier && 'image' === PosteMachiniste::typeApercu($fichier),
+                'version' => $fichier?->getVersion(),
+                'valide' => null !== $ctl && \in_array($ctl->getStatut(), ['valide', 'envoye_production'], true) || null !== $ctl?->getValideLe(),
+            ],
+            'taille' => $l > 0 && $h > 0 ? ['l' => $l, 'h' => $h, 'texte' => $nombre($l).' × '.$nombre($h).' cm'] : null,
+            'format' => $d?->getFormat()?->getNom(),
+            'couleur' => $couleur,
+            'finitions' => $texteFinitions,
+            'verif' => $controle?->verificationsLigne((int) $d?->getId()) ?? [],
+        ];
+    }
+
+    /** @return list<OrdreProduction> les travaux non annulés de la commande */
+    public function ordres(Commandes $commande): array
+    {
+        return $this->em->createQueryBuilder()->select('o', 'd')->from(OrdreProduction::class, 'o')->join('o.commandeDetail', 'd')
+            ->where('d.commande = :c')->andWhere('o.statut <> :annule')
+            ->setParameter('c', $commande)->setParameter('annule', OrdreProduction::STATUT_ANNULE)
+            ->orderBy('d.id', 'ASC')->addOrderBy('o.id', 'ASC')->getQuery()->getResult();
+    }
+
+    /**
+     * Temps réel comparé au temps estimé, étape par étape (PD06,
+     * TempsEtapes) : impression mesurée sur la machine (rouleau ou Ma file,
+     * pauses retirées), séchage jusqu'à « Commencer la finition », finition
+     * jusqu'aux étiquettes, contrôle jusqu'à sa validation.
+     *
+     * @param list<OrdreProduction> $ordres
+     *
+     * @return array{lignes: list<array<string, mixed>>, estime: ?int, reel: ?int}
+     */
+    public function temps(array $ordres, ?ControleFinal $controle): array
+    {
+        $etiquettes = $this->etiquettesLe($ordres);
+        $lignes = [];
+        foreach ($ordres as $o) {
+            $t = $this->tempsOrdre($o, $etiquettes[(int) $o->getId()] ?? null, $controle?->getValideLe());
+            $lignes[] = ['nom' => null !== $o->getCommandeDetail() ? PosteMachiniste::titre($o->getCommandeDetail()) : (string) $o->getNumero()] + $t;
+        }
+        $somme = static fn (string $cle): ?int => [] === $lignes || \in_array(null, array_column($lignes, $cle), true) ? null : array_sum(array_column($lignes, $cle));
+
+        return ['lignes' => $lignes, 'estime' => $somme('estime'), 'reel' => $somme('reel')];
+    }
+
+    /**
+     * Les étapes d'un travail : estimé (OP03, ou le rouleau et le profil de
+     * la machine), réel, et le temps proposé dont les estimations apprennent.
+     *
+     * @return array{etapes: list<array{cle: string, libelle: string, estime: ?int, reel: ?int, prevu: ?int}>, estime: ?int, reel: ?int, partiel: bool}
+     */
+    private function tempsOrdre(OrdreProduction $o, ?\DateTimeImmutable $etiquettesLe, ?\DateTimeImmutable $controleLe): array
+    {
+        $tirage = $o->getTirage();
+        $surRouleau = null !== $tirage && !$tirage->estAnnule() && null !== $tirage->getDemarreLe();
+        $ligne = $o->getCommandeDetail();
+        $machine = $surRouleau ? $tirage->getMachine() : $o->getMachine();
+        $sechage = $surRouleau ? $tirage->getSechageMin() : null;
+        if (null === $sechage && null !== $machine && null !== $ligne) {
+            $sechage = $this->sorties->profilLigne($machine, $ligne)['sechageMin'] ?? null;
+        }
+        $mesure = $o->getTempsReels()['etapes']['impression']['prevu'] ?? null;
+        $prevus = [
+            'impression' => null !== $mesure ? (int) $mesure : ActionsOrdre::impressionPrevue($o),
+            'sechage' => null !== $sechage && $sechage > 0 ? $sechage : null,
+        ];
+
+        // Étiquettes imprimées après le contrôle : la finition s'arrête au contrôle.
+        return TempsEtapes::calculer($o->getEstimation()['etapes'] ?? [], $prevus, $o->getTempsReels(), $o->getDureeReelleMinutes(), $o->getTermineLe(), $etiquettesLe ?? $controleLe, $controleLe, (int) $sechage, $ligne?->getFinitions()->count() > 0);
+    }
+
+    /**
+     * Première impression des étiquettes de chaque travail (PD05, ou OP05).
+     *
+     * @param list<OrdreProduction> $ordres
+     *
+     * @return array<int, \DateTimeImmutable> id du travail => le
+     */
+    private function etiquettesLe(array $ordres): array
+    {
+        $le = [];
+        $commandes = [];
+        foreach ($ordres as $o) {
+            if (null !== $o->getEtiquettesImprimeesLe()) {
+                $le[(int) $o->getId()] = $o->getEtiquettesImprimeesLe();
+            }
+            if (null !== ($c = $o->getCommandeDetail()?->getCommande())) {
+                $commandes[(int) $c->getId()] = $c;
+            }
+        }
+        if ([] === $commandes) {
+            return $le;
+        }
+        /** @var list<ColisProduction> $colis */
+        $colis = $this->em->getRepository(ColisProduction::class)->findBy(['commande' => array_values($commandes)]);
+        foreach ($colis as $c) {
+            foreach ($c->getContenu() as $contenu) {
+                $id = (int) ($contenu['ordre'] ?? 0);
+                if ($id > 0 && (!isset($le[$id]) || $c->getImprimeLe() < $le[$id])) {
+                    $le[$id] = $c->getImprimeLe();
+                }
+            }
+        }
+
+        return $le;
+    }
+
+    /**
+     * Ce que la production a sorti du stock pour la commande (PD06) : la
+     * matière (recette et chute du rouleau : « 6,6 m² dont 0,6 de chute »),
+     * l'encre en ml, les œillets et attaches en nombre. Quantités
+     * seulement, jamais de prix.
+     *
+     * @return array{lignes: list<array{article: string, quantite: string, chute: ?string}>, notes: list<string>}
+     */
+    public function consomme(Commandes $commande): array
+    {
+        $rangs = $this->em->createQueryBuilder()
+            ->select('a.id AS id', 'a.designation AS designation', 'a.unite AS unite', 'a.quantiteParUniteAchat AS parUnite', 'a.laize AS laize', 'a.longueurUniteAchat AS longueur', 'IDENTITY(a.machine) AS machine', 'IDENTITY(s.commandeDetail) AS ligne', 's.referenceOrigine AS ref', 'SUM(s.quantite) AS quantite')
+            ->from(StockSorties::class, 's')->join('s.article', 'a')->join('s.commandeDetail', 'd')
+            ->where('d.commande = :c')->andWhere('s.origine = :origine')
+            ->setParameter('c', $commande)->setParameter('origine', StockSorties::ORIGINE_PRODUCTION)
+            ->groupBy('a.id', 'a.designation', 'a.unite', 'a.quantiteParUniteAchat', 'a.laize', 'a.longueurUniteAchat', 'a.machine', 's.commandeDetail', 's.referenceOrigine')
+            ->orderBy('a.designation', 'ASC')
+            ->getQuery()->getArrayResult();
+
+        $ordres = $this->ordres($commande);
+        $imprime = $this->imprimeSurRouleaux($ordres);
+        $articles = [];
+        $encre = 0.0;
+        foreach ($rangs as $r) {
+            $q = (float) $r['quantite'];
+            if ($q <= 0) {
+                continue;
+            }
+            $ref = (string) $r['ref'];
+            if ('litre' === $r['unite'] && null !== $r['machine']) {
+                $encre += $q;
+                continue;
+            }
+            $id = (int) $r['id'];
+            $articles[$id] ??= ['ligne' => $r, 'total' => 0.0, 'rouleau' => false, 'finition' => false];
+            $articles[$id]['total'] += $q;
+            $articles[$id]['rouleau'] = $articles[$id]['rouleau'] || str_starts_with($ref, 'ROUL-');
+            $articles[$id]['finition'] = $articles[$id]['finition'] || str_starts_with($ref, 'FIN-');
+        }
+        // Totaux de la chute : les lignes passées sur un rouleau de ce support.
+        $parLigne = [];
+        foreach ($rangs as $r) {
+            $parLigne[(int) $r['id']][(int) $r['ligne']] = ($parLigne[(int) $r['id']][(int) $r['ligne']] ?? 0.0) + (float) $r['quantite'];
+        }
+
+        $lignes = [];
+        foreach ($articles as $id => $a) {
+            $r = $a['ligne'];
+            $parUnite = (float) ($r['parUnite'] ?? 0);
+            $chute = null;
+            if ($a['rouleau'] && isset($imprime[$id])) {
+                $surRouleau = array_sum(array_intersect_key($parLigne[$id], $imprime[$id]['lignes']));
+                $imprimeStock = ConsommationProduction::versUniteStock((string) $r['unite'], array_sum($imprime[$id]['lignes']), null !== $r['laize'] ? (float) $r['laize'] : $imprime[$id]['laize'], null !== $r['longueur'] ? (float) $r['longueur'] : null);
+                if (null !== $imprimeStock && $surRouleau - $imprimeStock > 0.0005) {
+                    $chute = QuantiteLisible::nombre($surRouleau - $imprimeStock, 1);
+                }
+            }
+            $lignes[] = [
+                'article' => (string) $r['designation'],
+                'quantite' => $a['finition'] && 'unite' !== $r['unite'] && $parUnite > 1 ? QuantiteLisible::nombre($a['total'] * $parUnite, 0) : QuantiteLisible::texte($a['total'], (string) $r['unite']),
+                'chute' => $chute,
+            ];
+        }
+        if ($encre > 0) {
+            $lignes[] = ['article' => 'Encre', 'quantite' => QuantiteLisible::texte($encre, 'litre'), 'chute' => null];
+        }
+
+        $notes = [];
+        if ($encre <= 0) {
+            foreach ($ordres as $o) {
+                $machine = $o->getTirage()?->getMachine() ?? $o->getMachine();
+                if (null !== $machine && $o->estTermine() && [] === $this->sorties->encres($machine)) {
+                    $notes[(int) $machine->getId()] = \sprintf('%s n\'a pas d\'article d\'encre en stock : l\'encre n\'est pas sortie.', $machine->getNom());
+                }
+            }
+        }
+
+        return ['lignes' => $lignes, 'notes' => array_values($notes)];
+    }
+
+    /**
+     * m² imprimés sur les rouleaux par ligne de la commande, par article du
+     * support (pour dire la chute).
+     *
+     * @param list<OrdreProduction> $ordres
+     *
+     * @return array<int, array{lignes: array<int, float>, laize: ?float}> id de l'article => m² par ligne
+     */
+    private function imprimeSurRouleaux(array $ordres): array
+    {
+        $lignes = [];
+        $tirages = [];
+        foreach ($ordres as $o) {
+            $t = $o->getTirage();
+            if (null !== $o->getCommandeDetail() && null !== $t && !$t->estAnnule() && null !== $t->getImprimeLe()) {
+                $lignes[(int) $o->getCommandeDetail()->getId()] = true;
+                $tirages[(int) $t->getId()] = $t;
+            }
+        }
+        $imprime = [];
+        foreach ($tirages as $t) {
+            $article = $t->getSupport();
+            if (null === $article) {
+                continue;
+            }
+            $id = (int) $article->getId();
+            $imprime[$id] ??= ['lignes' => [], 'laize' => $t->getLaizeM()];
+            foreach (array_intersect_key(SortiesProduction::m2ParLigne($t), $lignes) as $ligne => $m2) {
+                $imprime[$id]['lignes'][$ligne] = ($imprime[$id]['lignes'][$ligne] ?? 0.0) + $m2;
+            }
+        }
+
+        return $imprime;
+    }
+
+    /**
+     * Enregistre les cases cochées ; le contrôle est validé quand tout est
+     * coché (et un écart de taille confirmé). La commande passe « Prête »
+     * si ses colis sont déjà tous scannés.
+     *
+     * @param array<string, mixed> $saisie par ligne : cases, mesures, écart confirmé
+     *
+     * @return array{manque: list<string>, prete: bool, notes?: list<string>}
+     */
+    public function valider(Commandes $commande, array $saisie, User $par, \DateTimeImmutable $le): array
+    {
+        if ($this->colis->etat($commande)['prete']) {
+            throw new \LogicException('Cette commande est déjà prête.');
+        }
+        if ($this->colis->lignesEnProduction($commande) > 0) {
+            throw new \LogicException('Une pièce est encore en production : contrôlez la commande quand elle est terminée.');
+        }
+        $ordres = array_values(array_filter($this->ordres($commande), static fn (OrdreProduction $o): bool => $o->estTermine() && !$o->estPretLivraison()));
+        if ([] === $ordres) {
+            throw new \LogicException('Aucun travail terminé à contrôler pour cette commande.');
+        }
+        $manque = [];
+        $verifications = [];
+        foreach ($ordres as $o) {
+            $ligne = $this->ligne($o, null);
+            $s = \is_array($saisie[(string) $ligne['id']] ?? null) ? $saisie[(string) $ligne['id']] : [];
+            $v = [];
+            foreach (self::points($ligne) as $point => $libelle) {
+                $v[$point] = '1' === (string) ($s[$point] ?? '');
+                if (!$v[$point]) {
+                    $manque[] = $ligne['nom'].' : '.$libelle;
+                }
+            }
+            if (null !== $ligne['taille']) {
+                $mesure = ['l' => self::cm($s['mesure_l'] ?? null) ?? $ligne['taille']['l'], 'h' => self::cm($s['mesure_h'] ?? null) ?? $ligne['taille']['h']];
+                $ecart = ReglesControleFinal::tailleHorsTolerance($ligne['taille']['l'], $mesure['l']) || ReglesControleFinal::tailleHorsTolerance($ligne['taille']['h'], $mesure['h']);
+                $v['mesure'] = $mesure;
+                $v['ecart'] = $ecart;
+                if ($ecart && '1' !== (string) ($s['ecart_confirme'] ?? '')) {
+                    $manque[] = \sprintf('%s : la taille mesurée (%s × %s cm) s\'écarte de la commande, confirmez-la', $ligne['nom'], QuantiteLisible::nombre($mesure['l'], 1), QuantiteLisible::nombre($mesure['h'], 1));
+                }
+            }
+            $verifications[(string) $ligne['id']] = $v;
+        }
+        if ([] !== $manque) {
+            return ['manque' => $manque, 'prete' => false];
+        }
+        $controle = $this->controles->deLaCommande($commande);
+        if (null === $controle) {
+            $controle = new ControleFinal($commande);
+            $this->em->persist($controle);
+        }
+        $controle->valider($verifications, $par, $le);
+        // Temps réels des étapes (ils améliorent les prochaines estimations), œillets et attaches sortis du stock.
+        $etiquettes = $this->etiquettesLe($ordres);
+        $notes = [];
+        $tirages = [];
+        foreach ($ordres as $o) {
+            $etapes = [];
+            foreach ($this->tempsOrdre($o, $etiquettes[(int) $o->getId()] ?? null, $le)['etapes'] as $e) {
+                $etapes[$e['cle']] = ['reel' => $e['reel'], 'prevu' => $e['prevu']];
+            }
+            $o->noterEtapes($etapes);
+            array_push($notes, ...$this->sorties->finitions($o));
+            $t = $o->getTirage();
+            if (null !== $t && TirageRouleau::STATUT_IMPRIME === $t->getStatut()) {
+                $tirages[(int) $t->getId()] = $t;
+            }
+        }
+        $this->em->flush();
+        $prete = $this->colis->passerPrete($commande, $par, $le);
+
+        // Le rouleau est terminé quand tous ses travaux ont passé le contrôle final.
+        $attend = function (OrdreProduction $o): bool {
+            $c = $o->getCommandeDetail()?->getCommande();
+
+            return !$o->estAnnule() && !$o->estPretLivraison() && null !== $c && !($this->controles->deLaCommande($c)?->estValide() ?? false);
+        };
+        foreach ($tirages as $t) {
+            if ([] === array_filter($t->ordres(), $attend)) {
+                $t->terminer($le);
+            }
+        }
+        $this->em->flush();
+
+        return ['manque' => [], 'prete' => $prete, 'notes' => array_values(array_unique($notes))];
+    }
+
+    /**
+     * Cases d'une ligne : textes, couleurs, taille (ou format), finitions
+     * s'il y en a, traces.
+     *
+     * @param array<string, mixed> $ligne
+     *
+     * @return array<string, string>
+     */
+    public static function points(array $ligne): array
+    {
+        $points = [
+            'textes' => 'Textes et numéro identiques au BAT',
+            'couleurs' => null !== $ligne['couleur'] ? 'Couleurs : '.$ligne['couleur'].' conforme' : 'Couleurs conformes au BAT',
+            'taille' => null !== $ligne['taille'] ? 'Taille mesurée : '.$ligne['taille']['texte'] : 'Format '.($ligne['format'] ?? 'commandé').' respecté',
+        ];
+        if ('' !== $ligne['finitions']) {
+            $points['finitions'] = $ligne['finitions'];
+        }
+        $points['traces'] = 'Aucune trace, rayure ou bande';
+
+        return $points;
+    }
+
+    /** « 300 », « 299,5 » → cm ; null si vide ou faux. */
+    public static function cm(mixed $saisie): ?float
+    {
+        $texte = str_replace([',', ' '], ['.', ''], trim((string) $saisie));
+        if ('' === $texte || !is_numeric($texte) || (float) $texte <= 0 || (float) $texte > 10000) {
+            return null;
+        }
+
+        return round((float) $texte, 1);
+    }
+
+    /**
+     * Photo de la pièce imprimée : contrôlée, réencodée sans métadonnées
+     * (EXIF, position), rangée hors de public/ sous un nom choisi ici.
+     */
+    public function photographier(Commandes $commande, UploadedFile $fichier, User $par, \DateTimeImmutable $le): void
+    {
+        if (!$fichier->isValid() || $fichier->getSize() > self::TAILLE_MAX_PHOTO) {
+            throw new \DomainException('Photo refusée : 15 Mo au plus, en PNG, JPG ou WebP.');
+        }
+        $image = ImagesAtelier::reencoder((string) file_get_contents($fichier->getPathname()));
+        $dossier = $this->projet.'/'.self::DOSSIER_PHOTOS;
+        if (!is_dir($dossier) && !@mkdir($dossier, 0775, true) && !is_dir($dossier)) {
+            throw new \RuntimeException('Le dossier des photos du contrôle final ne peut pas être créé.');
+        }
+        $nom = \sprintf('%d-%s.%s', (int) $commande->getId(), bin2hex(random_bytes(8)), 'png' === $image['extension'] ? 'png' : 'jpg');
+        if (false === file_put_contents($dossier.'/'.$nom, $image['octets'])) {
+            throw new \RuntimeException('La photo n\'a pas pu être enregistrée.');
+        }
+        $controle = $this->controles->deLaCommande($commande);
+        if (null === $controle) {
+            $controle = new ControleFinal($commande);
+            $this->em->persist($controle);
+        }
+        $ancien = $this->cheminPhoto($controle);
+        $controle->photographier($nom, $par, $le);
+        $this->em->flush();
+        if (null !== $ancien) {
+            @unlink($ancien);
+        }
+    }
+
+    /** Chemin de la photo sur le disque, ou null (nom inattendu, fichier absent). */
+    public function cheminPhoto(?ControleFinal $controle): ?string
+    {
+        $nom = (string) $controle?->getPhoto();
+        if (preg_match(self::MOTIF_PHOTO, $nom) !== 1) {
+            return null;
+        }
+        $chemin = $this->projet.'/'.self::DOSSIER_PHOTOS.'/'.$nom;
+
+        return is_file($chemin) ? $chemin : null;
+    }
+
+    /**
+     * « Refaire une pièce » : le travail repart en production pour $pieces
+     * pièces (il revient dans Ma file, colonne « Prêt »), la ligne aussi ;
+     * le contrôle final est à refaire ; la réimpression est notée au journal
+     * de la machine (due à l'opérateur qui l'a imprimée) et le chef
+     * d'atelier est prévenu. Les colis gardent leurs étiquettes.
+     */
+    public function refaire(OrdreProduction $ordre, int $pieces, string $motif, User $par, \DateTimeImmutable $le): void
+    {
+        $ligne = $ordre->getCommandeDetail() ?? throw new \LogicException('Ce travail n\'est rattaché à aucune ligne de commande.');
+        $commande = $ligne->getCommande() ?? throw new \LogicException('Ce travail n\'est rattaché à aucune commande.');
+        $motif = trim(mb_substr(preg_replace('/\s+/u', ' ', $motif) ?? '', 0, 200));
+        if ('' === $motif) {
+            throw new \InvalidArgumentException('Dites en quelques mots ce qui ne va pas (le chef d\'atelier le lit).');
+        }
+        if ($this->colis->etat($commande)['prete']) {
+            throw new \LogicException('Cette commande est déjà prête : elle ne se reprend plus ici.');
+        }
+        $ordre->refaire($pieces, $le);
+        $ligne->rouvrirPourRefaire($pieces);
+        $this->controles->deLaCommande($commande)?->rouvrir($le);
+        // Les colis de ce travail gardent leur étiquette mais se rescannent une fois la pièce refaite.
+        foreach ($this->colis->etat($commande)['actifs'] as $c) {
+            $c->rouvrirPourReprise((int) $ordre->getId());
+        }
+
+        $nom = PosteMachiniste::titre($ligne);
+        if (null !== $ordre->getMachine()) {
+            $surface = (float) ($ligne->getLargeur() ?? 0) * (float) ($ligne->getLongueur() ?? 0);
+            $this->em->persist(new JournalMachine($ordre->getMachine(), $ordre->getTerminePar() ?? $ordre->getOperateur() ?? $par, JournalMachine::REIMPRESSION, $le, $ordre, $surface > 0 ? round($surface * $pieces, 2) : null, \sprintf('Contrôle final : %d pièce%s à refaire. %s', $pieces, $pieces > 1 ? 's' : '', $motif)));
+        }
+        $this->notifications->notifierRoles(
+            ['ROLE_ATELIER_CHEF'],
+            \sprintf('%s : %d pièce%s à refaire (%s). %s', $commande->getNumero(), $pieces, $pieces > 1 ? 's' : '', $nom, $motif),
+            'app_ma_file_travail',
+            ['id' => $ordre->getId()],
+            $par,
+        );
+        $this->em->flush();
+    }
+
+    /**
+     * Après « Prête » : livreur, jour et créneau du bon, la tournée du jour,
+     * le message WhatsApp préparé (ou pourquoi il n'y en a pas) ; pour le
+     * bureau, le formulaire « Ajouter à la tournée ».
+     *
+     * @return array<string, mixed>
+     */
+    public function apresPrete(Commandes $commande, User $moi, bool $peutPlanifier, \DateTimeImmutable $maintenant): array
+    {
+        $livraison = $this->colis->livraison($commande);
+        $bon = $livraison['bon'];
+        $planifie = null !== $bon && BonLivraison::STATUT_VALIDE === $bon->getStatut() && null !== $bon->getLivreur() && null !== $bon->getPrevuLe();
+        $livreurDuBon = null !== $bon && $bon->getLivreur() === $moi;
+        $tournee = null;
+        if ($planifie) {
+            $arrets = \count($this->tournee->duJour($bon->getPrevuLe(), $bon->getLivreur()));
+            $quand = MessagePrete::jour($bon->getPrevuLe(), $maintenant) ?? '';
+            $heure = (int) substr((string) preg_replace('/\D+/', ' ', (string) $bon->getCreneau()), 0, 3);
+            $moment = '' === trim((string) $bon->getCreneau()) ? '' : ($heure > 0 && $heure < 12 ? ' matin' : ($heure >= 12 ? ' après-midi' : ''));
+            $tournee = [
+                'livreur' => Pointages::nom($bon->getLivreur()),
+                'prenom' => $bon->getLivreur()->getEmploye()?->getPrenom() ?: Pointages::nom($bon->getLivreur()),
+                'jourCourt' => ProgrammationLivraison::jourCourt($bon->getPrevuLe()),
+                'creneau' => $bon->getCreneau(),
+                'arrets' => $arrets,
+                'quand' => ('le ' === mb_substr($quand, 0, 3) ? mb_substr($quand, 3) : $quand).$moment,
+            ];
+        }
+
+        // Message « commande prête » : jamais pour une fiche de démonstration ni pour le livreur de ce bon (code de réception).
+        $client = ColisCommandes::client($commande->getClients());
+        $articles = array_map(static fn (array $l): array => ['nom' => $l['produit'], 'quantite' => $l['quantite']], ColisCommandes::lignesPourColis(array_values(array_filter($this->ordres($commande), static fn (OrdreProduction $o): bool => $o->estPretLivraison()))));
+        $texte = MessagePrete::texte($articles, (string) $commande->getNumero(), !$livraison['retrait'], $livraison['jour'], $livraison['creneau'], $planifie ? $bon->getCodeReception() : null, $maintenant);
+        $whatsapp = [
+            'demo' => $client['demo'],
+            'cache' => $livreurDuBon,
+            'texte' => $livreurDuBon ? null : $texte,
+            'possible' => !$client['demo'] && !$livreurDuBon && null !== MessagePrete::lien($client['telephone'], $texte, false),
+            'journal' => $this->dernierMessage($commande),
+            'prenomClient' => trim((string) $commande->getClients()?->getPrenom()) ?: $client['nom'],
+        ];
+
+        $p = $commande->getProgrammationLivraison() ?? [];
+        $jourDefaut = $livraison['jour'] ?? null;
+        if (null === $jourDefaut || $jourDefaut < $maintenant->setTime(0, 0)) {
+            $jourDefaut = self::prochainJourOuvre($maintenant);
+        }
+
+        return [
+            'livraison' => $livraison,
+            'bon' => $bon,
+            'planifie' => $planifie,
+            'tournee' => $tournee,
+            'whatsapp' => $whatsapp,
+            'peutPlanifier' => $peutPlanifier && !$livraison['retrait'] && !$planifie && (null === $bon || \in_array($bon->getStatut(), [BonLivraison::STATUT_BROUILLON, BonLivraison::STATUT_VALIDE], true)),
+            'livreurs' => $peutPlanifier ? $this->tournee->livreurs() : [],
+            'defaut' => [
+                'livreur' => $bon?->getLivreur()?->getId(),
+                'jour' => $jourDefaut,
+                'creneau' => ProgrammationLivraison::CRENEAUX[$p['creneau'] ?? ''] ?? ($bon?->getCreneau() ?: ProgrammationLivraison::CRENEAUX[self::CRENEAU_DEFAUT]),
+            ],
+            'creneaux' => ProgrammationLivraison::CRENEAUX,
+        ];
+    }
+
+    /** @return list<User> les livreurs actifs (Tournee::livreurs) */
+    public function livreurs(): array
+    {
+        return $this->tournee->livreurs();
+    }
+
+    /** Lendemain, sans le dimanche. */
+    public static function prochainJourOuvre(\DateTimeImmutable $maintenant): \DateTimeImmutable
+    {
+        $jour = $maintenant->setTime(0, 0)->modify('+1 day');
+
+        return '7' === $jour->format('N') ? $jour->modify('+1 day') : $jour;
+    }
+
+    /**
+     * Un bouton pour le bureau : bon de livraison des lignes prêtes créé
+     * (ou repris), validé, planifié dans la tournée du livreur au dernier
+     * rang du jour ; le livreur est prévenu.
+     */
+    public function ajouterATournee(Commandes $commande, User $par, User $livreur, \DateTimeImmutable $jour, string $creneau): BonLivraison
+    {
+        if (!ColisCommandes::estPrete($commande)) {
+            throw new \LogicException('La commande n\'est pas encore prête.');
+        }
+        if (!$commande->estALivrer()) {
+            throw new \LogicException('Cette commande est à retirer à l\'imprimerie : pas de tournée.');
+        }
+        if (!\in_array($creneau, ProgrammationLivraison::CRENEAUX, true)) {
+            throw new \InvalidArgumentException('Choisissez un créneau.');
+        }
+        $bon = $this->colis->dernierBon($commande);
+        if (null !== $bon && !\in_array($bon->getStatut(), [BonLivraison::STATUT_BROUILLON, BonLivraison::STATUT_VALIDE], true)) {
+            $bon = null;
+        }
+        $bon ??= $this->preparation->creerDepuisCommande($commande, $par)['bon'];
+        if ($bon->estBrouillon()) {
+            $this->preparation->valider($bon, $par);
+        }
+        $rang = \count(array_filter($this->tournee->duJour($jour, $livreur), static fn (BonLivraison $b): bool => $b !== $bon)) + 1;
+        $this->preparation->planifier($bon, $livreur, $jour, $creneau, $rang);
+        $this->notifications->notifierUtilisateur($livreur, \sprintf('%s ajoutée à votre tournée du %s (%s).', $commande->getNumero(), ProgrammationLivraison::jourCourt($jour), $creneau), 'app_livraisons_tournee');
+        $this->em->flush();
+
+        return $bon;
+    }
+
+    /**
+     * Note au journal de la commande « message préparé à 11:04 par Oumar »,
+     * sans le texte (il porte le code de réception).
+     */
+    public function noterMessage(Commandes $commande, User $par, \DateTimeImmutable $le): void
+    {
+        $this->em->persist((new JournalActivite())
+            ->setEntite('Commandes')
+            ->setEntiteId((int) $commande->getId())
+            ->setAction(self::JOURNAL_WHATSAPP)
+            ->setDonneesApres(['commande' => $commande->getNumero(), 'message' => 'commande prête, préparé sur WhatsApp', 'le' => $le->format('d/m/Y H:i')])
+            ->setUtilisateur($par)
+            ->setCreatedAt($le));
+        $this->em->flush();
+    }
+
+    /** @return array{le: \DateTimeImmutable, par: string}|null */
+    public function dernierMessage(Commandes $commande): ?array
+    {
+        $j = $this->em->getRepository(JournalActivite::class)->findOneBy(['entite' => 'Commandes', 'entiteId' => (int) $commande->getId(), 'action' => self::JOURNAL_WHATSAPP], ['id' => 'DESC']);
+        if (!$j instanceof JournalActivite) {
+            return null;
+        }
+        $u = $j->getUtilisateur();
+
+        return ['le' => $j->getCreatedAt(), 'par' => null !== $u ? ($u->getEmploye()?->getPrenom() ?: Pointages::nom($u)) : 'quelqu\'un'];
+    }
+
+    /** Texte et lien wa.me du message, ou null (démo, pas de téléphone, livreur du bon). */
+    public function lienMessage(Commandes $commande, User $moi, \DateTimeImmutable $maintenant): ?string
+    {
+        $apres = $this->apresPrete($commande, $moi, false, $maintenant);
+        $client = ColisCommandes::client($commande->getClients());
+
+        return null === $apres['whatsapp']['texte'] ? null : MessagePrete::lien($client['telephone'], $apres['whatsapp']['texte'], $client['demo']);
+    }
+}

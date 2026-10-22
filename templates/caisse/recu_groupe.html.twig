@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Reçu {{ groupe }} · {{ entreprise.nomAffiche }}</title>
+	<style>
+		@page { size: 80mm auto; margin: 4mm; }
+		* { box-sizing: border-box; }
+		body { margin: 0; background: #F3F5FA; font: 13px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #0F172A; }
+		.ticket { width: 80mm; max-width: 100%; margin: 16px auto; background: #fff; padding: 14px 12px; }
+		.centre { text-align: center; }
+		.logo { max-width: 46mm; max-height: 22mm; }
+		.nom { font-weight: 700; font-size: 15px; margin-top: 4px; }
+		.coord { font-size: 11px; color: #475569; }
+		h1 { font-size: 15px; letter-spacing: .08em; margin: 12px 0 2px; }
+		hr { border: 0; border-top: 1px dashed #94A3B8; margin: 10px 0; }
+		dl { margin: 0; }
+		dl div { display: flex; justify-content: space-between; gap: 8px; padding: 2px 0; }
+		dt { color: #475569; }
+		dd { margin: 0; text-align: right; font-weight: 600; }
+		.montant { font-size: 24px; font-weight: 800; text-align: center; margin: 6px 0; }
+		.paye { border-top: 1px solid #CBD5E1; margin-top: 2px; padding-top: 4px !important; }
+		.paye dt { color: #0F172A; font-weight: 700; }
+		.attente { border: 1px solid #F59E0B; color: #92400E; padding: 6px; font-size: 12px; text-align: center; margin-top: 8px; }
+		.cmd dt { max-width: 62%; }
+		.cmd small { display: block; color: #64748B; font-size: 11px; font-weight: 400; }
+		.merci { font-size: 12px; text-align: center; color: #475569; margin-top: 10px; }
+		.actions { text-align: center; margin: 0 auto 16px; }
+		.actions button { font: inherit; padding: 8px 16px; border-radius: 8px; border: 0; background: #16A34A; color: #fff; cursor: pointer; }
+		@media print {
+			body { background: #fff; }
+			.ticket { margin: 0; padding: 0; width: auto; }
+			.actions { display: none; }
+		}
+	</style>
+</head>
+<body>
+	<main class="ticket">
+		<div class="centre">
+			{% if images.logo %}
+				<img src="{{ images.logo }}" class="logo" alt="">
+			{% else %}
+				<img src="{{ asset('images/logo-succes-imprim.png') }}" class="logo" alt="">
+			{% endif %}
+			<div class="nom">{{ entreprise.nomAffiche }}</div>
+			<div class="coord">{{ [entreprise.adresse, entreprise.telephone]|filter(v => v)|join(' · ') }}</div>
+			<h1>REÇU DE PAIEMENT</h1>
+			<div class="coord">N° {{ groupe }} · {{ premier.date|date('d/m/Y H:i') }}</div>
+		</div>
+		<hr>
+		<dl>
+			{% if client %}<div><dt>Client</dt><dd>{{ client.nomComplet }}</dd></div>{% endif %}
+			<div><dt>Mode</dt><dd>{{ premier.modeLabel }}</dd></div>
+			{% if premier.reference and premier.reference != groupe %}<div><dt>Référence</dt><dd>{{ premier.reference }}</dd></div>{% endif %}
+		</dl>
+		<div class="montant">{{ (total + (surplus ? surplus.montant : 0))|number_format(0, ',', ' ') }} F</div>
+		<hr>
+		<dl class="cmd">
+			{% for l in lignes %}
+				<div><dt>{{ l.paiement.facture ? 'Facture ' ~ l.paiement.facture.numero : 'Commande ' ~ l.commande.numero }}<small>{{ l.paiement.facture ? l.commande.numero ~ ' · ' }}reçu R-{{ '%06d'|format(l.paiement.id) }}{{ l.reste > 0 ? ' · reste ' ~ l.reste|number_format(0, ',', ' ') ~ ' F' : ' · soldée' }}</small></dt><dd>{{ l.paiement.montant|number_format(0, ',', ' ') }} F</dd></div>
+			{% endfor %}
+			<div class="paye"><dt>Total payé sur les commandes</dt><dd>{{ total|number_format(0, ',', ' ') }} F</dd></div>
+		</dl>
+		{% if surplus %}
+			<hr>
+			<dl>
+				<div><dt>Gardé sur votre compte</dt><dd>{{ surplus.montant|number_format(0, ',', ' ') }} F</dd></div>
+				<div class="paye"><dt>Solde de votre compte</dt><dd>{{ surplus.soldeApres|number_format(0, ',', ' ') }} F</dd></div>
+			</dl>
+		{% endif %}
+		<hr>
+		<dl><div><dt>Reste à payer sur ces commandes</dt><dd>{{ resteClient|number_format(0, ',', ' ') }} F</dd></div></dl>
+		{% if not premier.estValide %}
+			<div class="attente">Paiement enregistré, en attente de confirmation ({{ premier.statutLabel|lower }}).</div>
+		{% endif %}
+		<hr>
+		<div class="coord">Encaissé par {{ premier.encaissePar ? premier.encaissePar.username : '—' }}</div>
+		<div class="merci">Merci pour votre confiance.</div>
+	</main>
+	<div class="actions"><button type="button" onclick="window.print()">Imprimer</button></div>
+	<script>window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 300); });</script>
+</body>
+</html>

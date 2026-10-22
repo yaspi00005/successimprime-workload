@@ -1,0 +1,16 @@
+{% extends 'avis/_page.html.twig' %}
+
+{% block title %}Merci{% endblock %}
+
+{% block contenu %}
+	<div class="ec-carte av-fin">
+		<div class="av-merci-icone" aria-hidden="true">★</div>
+		<h1 style="font-size:1.35rem">Merci !</h1>
+		{% if deja %}
+			<p>Votre avis sur cette commande nous est déjà parvenu. Merci de votre confiance.</p>
+		{% else %}
+			<p>Vos réponses sont bien enregistrées. Chaque avis est lu par l'équipe et nous aide à progresser.</p>
+		{% endif %}
+		<p class="ec-petit">Une question ? Appelez-nous ou passez à l'atelier.</p>
+	</div>
+{% endblock %}

@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{#
+	QR d'une étiquette ouvert par l'atelier (appareil photo du téléphone,
+	docs/production-colis.md) : le colis, et un bouton pour confirmer le
+	scan. Ouvrir la page n'enregistre rien.
+#}
+
+{% block title %}{{ etiquette.numero }} · colis {{ colis.rang }}/{{ colis.total }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-colis.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="si-scan">
+		<h1>{{ etiquette.numero }} · colis {{ colis.rang }}/{{ colis.total }} · {{ etiquette.client.nom }}</h1>
+		<div class="si-scan-resultat">
+			<div class="si-scan-tete">
+				<span class="si-scan-ok{{ colis.estAnnule ? ' non' }}" aria-hidden="true"><i class="fas {{ colis.estAnnule ? 'fa-times' : (colis.estScanne ? 'fa-check' : 'fa-box') }}"></i></span>
+				<div><b>{{ colis.code }}</b><small>{{ etiquette.contenu|join(' · ') }}</small></div>
+			</div>
+			{% if colis.estAnnule %}
+				<p class="si-scan-suite non">Étiquette remplacée : ce colis a reçu une nouvelle étiquette. Jetez celle-ci et scannez la nouvelle.</p>
+			{% elseif colis.estScanne %}
+				<p class="si-scan-suite">Déjà scanné à {{ colis.scanneLe|date('H:i') }}{{ colis.scannePar ? ' par ' ~ (colis.scannePar.employe ? colis.scannePar.employe.prenom : colis.scannePar.userIdentifier) }}. {{ etat.scannes }} colis sur {{ etat.total }} scannés{{ etat.prete ? ' : commande prête' }}.</p>
+			{% else %}
+				<p class="si-scan-suite attente">{{ etat.scannes }} colis sur {{ etat.total }} scannés. Collez l'étiquette sur le colis, puis confirmez.</p>
+				<form method="post" action="{{ path('app_atelier_production_colis_scanner') }}">
+					<input type="hidden" name="_token" value="{{ csrf_token('production-colis') }}">
+					<input type="hidden" name="saisie" value="{{ colis.jeton }}">
+					<button class="si-scan-bouton"><i class="fas fa-check" aria-hidden="true"></i>Colis collé et scanné</button>
+				</form>
+			{% endif %}
+		</div>
+		<a class="si-scan-bouton clair" href="{{ path('app_atelier_production_controle_commande', {id: colis.commande.id}) }}">Contrôle final de {{ etiquette.numero }}</a>
+		<a class="si-scan-bouton clair" href="{{ path('app_atelier_operateur_scanner') }}">Scanner une autre étiquette</a>
+	</div>
+{% endblock %}

@@ -22,7 +22,7 @@
 {% set peutVoirComptesTresorerie = is_granted('ROLE_ADMIN') %}
 {% set peutVoirRapprochement = is_granted('ROLE_RAPPROCHEMENT_BANCAIRE') %}
 {% set peutVoirStatsGlobales = is_granted('ROLE_STATS_GLOBAL') %}
-{% set peutVoirMesStats = is_granted('ROLE_CAISSE_COMMANDE') or is_granted('ROLE_ADMIN') %}
+{% set peutVoirMesStats = is_granted('ROLE_STATS_PERSO') %}
 {% set peutVoirGestion = peutVoirFactures or peutVoirPaiements or peutVoirTresorerie or peutVoirComptesTresorerie or peutVoirJournalCaisse or peutVoirRapprochement or peutVoirMesStats or peutVoirStatsGlobales %}
 
 {% set peutVoirRh = is_granted('ROLE_ADMIN') %}
@@ -31,13 +31,22 @@
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<meta name="robots" content="noindex, nofollow">
-	<title>{% block title %}Tableau de bord{% endblock %} · Madial Group</title>
+	<title>{% block title %}Tableau de bord{% endblock %} · Succès Imprim</title>
 	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link rel="manifest" href="/manifest.webmanifest">
+	<link rel="apple-touch-icon" href="{{ asset('images/icone-192.png') }}">
+	<meta name="theme-color" content="#0F4590">
 	<link href="{{ asset('theme/vendor/jquery-nice-select/css/nice-select.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/vendor/select2/css/select2.min.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/vendor/toastr/css/toastr.min.css') }}" rel="stylesheet">
 	{% block stylesheets %}{% endblock %}
+	{# Polices du thème servies par le site (docs/securite.md) : le thème les demandait à Google. #}
+	<link href="{{ asset('vendor/poppins-v24/poppins.css') }}" rel="stylesheet">
+	<link href="{{ asset('vendor/roboto-v51/roboto.css') }}" rel="stylesheet">
 	<link href="{{ asset('theme/css/style.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/charte.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/admin.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/notifications-equipe.css') }}" rel="stylesheet">
 </head>
 <body>
 	<div id="preloader">
@@ -45,14 +54,11 @@
 	</div>
 
 	<div id="main-wrapper">
-		{# ---------- En-tête de la barre latérale ---------- #}
-		<div class="nav-header">
-			<a href="{{ path('app_home') }}" class="brand-logo">
-				<span class="d-inline-flex align-items-center justify-content-center" style="width:40px;height:40px;border-radius:10px;background:#467fcf;color:#fff;font-weight:700;">MG</span>
-				<div class="brand-title">
-					<h2>Madial Group</h2>
-					<span class="brand-sub-title">Imprimerie</span>
-				</div>
+		{# ---------- En-tête de la barre latérale : logo ---------- #}
+		<div class="nav-header si-nav-header">
+			<a href="{{ path('app_home') }}" class="brand-logo si-logo-carte">
+				<img src="{{ asset('images/logo-succes-imprim.png') }}" alt="Succès Imprim" class="si-logo-complet">
+				<span class="si-logo-mini">SI</span>
 			</a>
 			<div class="nav-control">
 				<div class="hamburger">
@@ -61,62 +67,74 @@
 			</div>
 		</div>
 
-		{# ---------- En-tête ---------- #}
-		<div class="header border-bottom">
+		{# ---------- En-tête : fil d'Ariane, titre, recherche, compte ---------- #}
+		{% set sectionCourante = section_admin(routeCourante) %}
+		<div class="header si-header">
 			<div class="header-content">
 				<nav class="navbar navbar-expand">
 					<div class="collapse navbar-collapse justify-content-between">
-						<div class="header-left">
+						<div class="header-left si-titre-page">
+							{% if sectionCourante and routeCourante != 'app_home' %}
+								<div class="si-fil-ariane">{{ libelle_section_admin(sectionCourante) }} <span>›</span> {# Le titre est déjà échappé à son rendu : sans |raw, « l'an » s'afficherait « l&#039;an ». #}{{ block('title')|striptags|trim|raw }}</div>
+							{% endif %}
 							<div class="dashboard_bar">{% block page_title %}{{ block('title') }}{% endblock %}</div>
 						</div>
 						<ul class="navbar-nav header-right">
-							<li class="nav-item dropdown notification_dropdown">
-								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-									<i class="fa fa-bell"></i>
-									{% set nombreNotifs = nombre_notifications_generales() + mes_reclamations_a_notifier()|length %}
-									{% if nombreNotifs > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreNotifs }}</span>{% endif %}
+							{% block header_actions %}{% endblock %}
+							{# Le livreur seul n'a ni recherche ni messagerie : sa tournée et ses livraisons seulement (LivreurSeul). #}
+							{% set livreurSeul = livreur_seul() %}
+							{% if not livreurSeul %}
+							<li class="nav-item si-recherche-item">
+								<form action="{{ path('app_recherche') }}" method="get" class="si-recherche" role="search">
+									<i class="fas fa-search"></i>
+									<input type="search" name="q" value="{{ app.request.query.get('q') }}" placeholder="Rechercher client, commande, facture…" aria-label="Recherche globale" data-raccourci-recherche autocomplete="off">
+									<kbd>Ctrl K</kbd>
+								</form>
+							</li>
+							{% endif %}
+							{# Guide utilisateur (docs/guide-utilisateur.md) : ERP local seulement. #}
+							{% if not site_en_ligne() %}
+								<li class="nav-item si-aide-item">
+									<a class="nav-link si-aide-lien" href="{{ path('app_aide_index', {ecran: app.request.attributes.get('_route')}) }}" title="Aide : les fiches de votre rôle">
+										<i class="far fa-question-circle" aria-hidden="true"></i><span class="si-aide-texte">Aide</span>
+									</a>
+								</li>
+							{% endif %}
+							{# Cloche (maquette NT01) : liste triée Urgent / À faire / Info, rechargée à l'ouverture et toutes les 30 s (docs/notifications-equipe.md). #}
+							{% set nombreNotifs = notifications_equipe().non_lues + (livreurSeul ? 0 : mes_reclamations_a_notifier()|length) %}
+							<li class="nav-item dropdown notification_dropdown si-cloche">
+								<a class="nav-link" href="{{ path('app_notification_index') }}" role="button" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" title="Notifications" aria-label="Notifications{{ nombreNotifs > 0 ? ', ' ~ nombreNotifs ~ ' non lue' ~ (nombreNotifs > 1 ? 's') }}" data-si-cloche>
+									<i class="fa fa-bell" aria-hidden="true"></i>
+									<span class="badge light badge-danger rounded-circle" data-si-cloche-nombre{% if nombreNotifs == 0 %} hidden{% endif %}>{{ nombreNotifs > 99 ? '99+' : nombreNotifs }}</span>
 								</a>
-								<div class="dropdown-menu dropdown-menu-end">
-									<div class="widget-media dz-scroll p-3 height380">
-										<ul class="timeline">
-											{% for reclamationANotifier in mes_reclamations_a_notifier() %}
-												<li>
-													<a href="{{ path('app_reclamation_show', {id: reclamationANotifier.id}) }}" class="dropdown-item d-flex pb-3">
-														<i class="fa fa-money me-2 text-success"></i>
-														<span>Réclamation validée — passez à la caisse</span>
-													</a>
-												</li>
-											{% endfor %}
-											{% for notificationGenerale in mes_notifications() %}
-												<li>
-													<a href="{{ path('app_notification_index') }}" class="dropdown-item d-flex pb-3">
-														<i class="fa fa-bell me-2 text-warning"></i>
-														<span>{{ notificationGenerale.message|default('Notification') }}</span>
-													</a>
-												</li>
-											{% endfor %}
-										</ul>
-									</div>
-									<a href="{{ path('app_notification_index') }}" class="dropdown-item text-center">Voir toutes les notifications</a>
+								<div class="dropdown-menu dropdown-menu-end si-cloche-menu" data-si-cloche-menu>
+									{% include 'notification/_cloche_liste.html.twig' %}
 								</div>
 							</li>
-							<li class="nav-item dropdown notification_dropdown">
-								<a class="nav-link" href="{{ path('app_chat_index') }}" role="button">
+							{% if is_granted('MESSAGERIE_INTERNE_ACCES') and not site_en_ligne() %}
+							<li class="nav-item dropdown notification_dropdown si-masque-mobile">
+								<a class="nav-link" href="{{ path('app_messagerie_interne_index') }}" role="button" title="Messagerie de l'équipe">
 									<i class="fa fa-comments"></i>
 									{% set nombreMessages = mes_conversations_non_lues() %}
 									{% if nombreMessages > 0 %}<span class="badge light badge-danger rounded-circle">{{ nombreMessages }}</span>{% endif %}
 								</a>
 							</li>
+							{% endif %}
 							<li class="nav-item dropdown header-profile">
-								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-									<span class="avatar-initiales">{{ (app.user.employe.prenom|default(app.user.username)|slice(0, 1))|upper }}</span>
-									<div class="header-info ms-3">
-										<span class="fs-18 font-w500 mb-2">
-											{{ app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username }}
-										</span>
-									</div>
+								{% set nomAffiche = app.user.employe.prenom is defined and app.user.employe.prenom is not empty ? (app.user.employe.prenom ~ ' ' ~ app.user.employe.nom) : app.user.username %}
+								<a class="nav-link" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false" title="{{ nomAffiche }}">
+									<span class="si-avatar">{{ (app.user.employe.prenom|default(app.user.username)|slice(0, 1) ~ app.user.employe.nom|default('')|slice(0, 1))|upper }}</span>
 								</a>
 								<div class="dropdown-menu dropdown-menu-end">
+									<span class="dropdown-item-text fw-semibold">{{ nomAffiche }}</span>
+									<div class="dropdown-divider"></div>
+									{% if app.user.employe is defined and app.user.employe %}
+										<a class="dropdown-item" href="{{ path('app_mon_espace_index') }}"><i class="fas fa-id-badge text-primary"></i><span class="ms-2">Mon espace</span></a>
+										<a class="dropdown-item" href="{{ path('app_pointer_index') }}"><i class="fas fa-qrcode text-success"></i><span class="ms-2">Pointer</span></a>
+									{% endif %}
+									{% if not site_en_ligne() %}
+										<a class="dropdown-item" href="{{ path('app_aide_index') }}"><i class="far fa-question-circle text-primary"></i><span class="ms-2">Aide et guide</span></a>
+									{% endif %}
 									<a class="dropdown-item" href="{{ path('app_user_change_password') }}"><i class="fas fa-key text-primary"></i><span class="ms-2">Changer mon mot de passe</span></a>
 									<a class="dropdown-item" href="{{ path('app_logout') }}"><i class="fas fa-sign-out-alt text-danger"></i><span class="ms-2">Déconnexion</span></a>
 								</div>
@@ -132,6 +150,7 @@
 
 		{# ---------- Contenu ---------- #}
 		<div class="content-body">
+			{% include 'notification/_banniere.html.twig' %}
 			<div class="container-fluid">
 				{% for type in ['success', 'error', 'danger', 'warning', 'info'] %}
 					{% for message in app.flashes(type) %}
@@ -141,14 +160,33 @@
 						</div>
 					{% endfor %}
 				{% endfor %}
+				{# Lien wa.me prêt (« fichier à venir » à la saisie de la commande, docs/prepresse.md). #}
+				{% for lien in app.flashes('whatsapp') %}
+					<div class="alert alert-success alert-dismissible fade show" role="alert">
+						<i class="fab fa-whatsapp me-1" aria-hidden="true"></i>{{ lien.texte }}
+						<a class="alert-link ms-1" href="{{ lien.url }}" target="_blank" rel="noopener">Ouvrir WhatsApp</a>
+						<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+					</div>
+				{% endfor %}
+				{% block onglets_section %}{% include 'partials/_onglets_section.html.twig' %}{% endblock %}
+				{% set moduleEnLecture = module_en_lecture(routeCourante) %}
+				{% if moduleEnLecture %}
+					<div class="si-lecture-seule" role="note"><i class="far fa-eye" aria-hidden="true"></i> {{ moduleEnLecture }} : vous pouvez consulter, pas modifier.</div>
+				{% endif %}
 				{% block breadcrumb %}{% endblock %}
 				{% block body %}{% endblock %}
 			</div>
 		</div>
 
+		{% include 'partials/_barre_mobile.html.twig' %}
+
+		{# Petites fenêtres en bas (8 s, bouton direct) et son court : notifications-equipe.js. #}
+		<div class="si-fenetres" data-si-fenetres aria-live="polite"></div>
+		{% for idCommande in app.flashes('plafond_bloquant') %}{% include 'notification/_plafond_bloquant.html.twig' with {fenetre: fenetre_plafond(idCommande)} only %}{% endfor %}
+
 		<div class="footer">
 			<div class="copyright">
-				<p>Madial Group © {{ 'now'|date('Y') }}</p>
+				<p>Succès Imprim, un service de MDG © {{ 'now'|date('Y') }}</p>
 			</div>
 		</div>
 	</div>
@@ -160,6 +198,12 @@
 	{% block vendor_javascripts %}{% endblock %}
 	<script src="{{ asset('theme/js/custom.min.js') }}"></script>
 	<script src="{{ asset('theme/js/dlabnav-init.js') }}"></script>
+	{# Fenêtre de confirmation des suppressions et actions sensibles (data-confirmer, docs/corbeille.md). #}
+	<script src="{{ asset('js/confirmation.js') }}" data-css="{{ asset('css/confirmation.css') }}"></script>
+	{# admin.js charge les filtres des tableaux seulement sur les pages qui ont une liste (docs/filtres-tableaux.md). #}
+	<script src="{{ asset('js/admin.js') }}" data-filtres-js="{{ asset('js/filtres-tableaux.js') }}" data-filtres-css="{{ asset('css/filtres-tableaux.css') }}" data-filtres-compte="{{ app.user ? app.user.id }}"></script>
+	<script src="{{ asset('js/notifications-equipe.js') }}" data-etat="{{ path('app_notification_etat') }}" data-cloche="{{ path('app_notification_cloche') }}" data-son="{{ path('app_notification_son') }}" data-jeton="{{ csrf_token('notifications') }}" data-centre="{{ path('app_notification_index') }}" defer></script>
+	<script src="{{ asset('js/montants-saisie.js') }}"></script>
 	{% block javascripts %}{% endblock %}
 </body>
 </html>

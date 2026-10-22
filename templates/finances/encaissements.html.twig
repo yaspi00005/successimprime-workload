@@ -1,0 +1,232 @@
+{% extends 'finances/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Encaissements et Orange Money{% endblock %}
+{% block page_title %}Encaissements{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+		<li class="nav-item si-masque-mobile">
+			<a href="#importer-releve" class="btn btn-light btn-sm si-btn-entete">Importer le relevé Orange Money</a>
+		</li>
+		<li class="nav-item">
+			<a href="{{ path('app_caisse_index') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Encaissement</a>
+		</li>
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% set encaisser = is_granted('ROLE_PAIEMENT_ENCAISSER') %}
+	<div class="si-fin si-fin-encaissements">
+		<section class="si-fin-kpis" aria-label="Encaissements">
+			<article class="card si-fin-kpi">
+				<h2>Encaissé aujourd’hui</h2>
+				<strong>{{ m.f(kpi.jour.montant) }}</strong>
+				<span class="si-fin-vert">{{ kpi.jour.nombre }} paiement{{ kpi.jour.nombre > 1 ? 's' }}{% if kpi.jour.en_attente > 0 %} · <span class="si-fin-bleu">{{ kpi.jour.en_attente }} à valider</span>{% endif %}</span>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Orange Money ce mois</h2>
+				<strong>{{ m.f(kpi.om.montant) }}</strong>
+				{% if kpi.om.releve %}
+					<span class="si-fin-vert">{{ kpi.om.nombre }} transaction{{ kpi.om.nombre > 1 ? 's' }}{% if kpi.om.import %} · relevé du {{ kpi.om.import|date('d/m') }}{% endif %}</span>
+				{% else %}
+					<span class="si-fin-orange">{{ kpi.om.nombre }} paiement{{ kpi.om.nombre > 1 ? 's' }} saisi{{ kpi.om.nombre > 1 ? 's' }} · aucun relevé importé</span>
+				{% endif %}
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>Rapprochés automatiquement</h2>
+				<strong>{{ kpi.rapprochees.auto }} / {{ kpi.rapprochees.total }}</strong>
+				<span class="si-fin-vert">même référence qu’un paiement saisi{% if kpi.rapprochees.associees > 0 %} · {{ kpi.rapprochees.associees }} associé{{ kpi.rapprochees.associees > 1 ? 's' }} à la main{% endif %}</span>
+			</article>
+			<article class="card si-fin-kpi">
+				<h2>À associer</h2>
+				<strong>{{ kpi.a_associer.nombre }}</strong>
+				{% if kpi.a_associer.nombre == 0 %}
+					<span class="si-fin-vert">tout le relevé est rapproché</span>
+				{% else %}
+					<span class="si-fin-rouge">{{ m.f(kpi.a_associer.montant) }}{% if nb_suggestions > 0 %} · {{ nb_suggestions > 1 ? nb_suggestions ~ ' suggestions trouvées' : 'suggestion trouvée' }}{% endif %}</span>
+				{% endif %}
+			</article>
+		</section>
+
+		<div class="si-fin-deux si-fin-enc-grille">
+			<section class="card si-fin-enc-liste" aria-label="Derniers encaissements">
+				<table class="table si-fin-table si-fin-enc-table">
+					<thead>
+						<tr>
+							<th scope="col">Date</th>
+							<th scope="col" class="si-masque-mobile">Moyen</th>
+							<th scope="col">Payé par</th>
+							<th scope="col" class="si-masque-mobile">Pour</th>
+							<th scope="col" class="text-end">Montant</th>
+							<th scope="col" class="text-center"><span class="visually-hidden">État</span></th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							{% if l.releve %}
+								{% set r = l.releve %}
+								{% set piste = pistes[r.id]|default([])|first %}
+								{% set lien = path('app_finances_encaissements', {ligne: r.id}) ~ '#associer' %}
+								<tr class="si-fin-enc-a-associer{{ choisie and choisie.id == r.id ? ' si-fin-enc-choisie' }}">
+									<td class="si-fin-enc-date">{{ r.recuLe|date('d/m H:i') }}<small class="d-md-none">Orange Money</small></td>
+									<td class="si-masque-mobile">Orange Money<small>relevé</small></td>
+									<td><a href="{{ lien }}"><strong>{{ r.nomExpediteur ?: r.expediteur ?: r.reference }}</strong></a><small class="si-fin-orange d-md-none">à associer</small></td>
+									<td class="si-masque-mobile si-fin-orange fw-bold">à associer</td>
+									<td class="text-end"><b class="si-fin-f">{{ r.montant|number_format(0, ',', ' ') }} F</b></td>
+									<td class="text-center">
+										{% if piste and piste.score >= score_suggestion %}
+											<a href="{{ lien }}" class="si-fin-statut si-fin-statut-orange">Suggestion</a>
+										{% elseif r.paiement %}
+											<a href="{{ lien }}" class="si-fin-statut si-fin-statut-rouge">Paiement rejeté</a>
+										{% else %}
+											<a href="{{ lien }}" class="si-fin-statut si-fin-statut-rouge">À associer</a>
+										{% endif %}
+									</td>
+								</tr>
+							{% else %}
+								{% set p = l.paiement %}
+								{% set commande = p.commande %}
+								<tr>
+									<td class="si-fin-enc-date">{{ p.date ? p.date|date('d/m H:i') : '—' }}<small class="d-md-none">{{ p.modeLabel }}</small></td>
+									<td class="si-masque-mobile">{{ p.modeLabel }}{% if p.compteTresorerie and p.mode == 'especes' %}<small>{{ p.compteTresorerie.nom }}</small>{% endif %}</td>
+									<td>
+										{% if is_granted('ROLE_PAIEMENT_VOIR') %}<a href="{{ path('app_paiements_show', {id: p.id}) }}"><strong>{{ commande and commande.clients ? commande.clients.nomComplet : '—' }}</strong></a>{% else %}<strong>{{ commande and commande.clients ? commande.clients.nomComplet : '—' }}</strong>{% endif %}
+										<small class="d-md-none">{{ p.facture ? p.facture.numero : (commande ? commande.libelle : '') }}</small>
+									</td>
+									<td class="si-masque-mobile">{{ p.facture ? p.facture.numero : (commande ? commande.libelle : '—') }}</td>
+									<td class="text-end"><b class="si-fin-f">{{ p.montant|number_format(0, ',', ' ') }} F</b>{% if p.montantTotalEncaisse > p.montant %}<small class="d-block text-muted">+ {{ (p.montantTotalEncaisse - p.montant)|number_format(0, ',', ' ') }} F de frais</small>{% endif %}</td>
+									<td class="text-center">
+										{% if p.statut == 'valide' %}
+											<span class="si-fin-statut si-fin-statut-vert" title="{{ l.lie ? 'Rattaché au relevé Orange Money' : 'Paiement validé, rattaché à sa commande' }}">Rapproché{% if l.lie %} <i class="fas fa-check" aria-hidden="true"></i>{% endif %}</span>
+										{% elseif p.statut == 'en_attente' %}
+											<span class="si-fin-statut si-fin-statut-bleu">À valider</span>
+										{% elseif p.statut == 'rejete' %}
+											<span class="si-fin-statut si-fin-statut-rouge">Rejeté</span>
+										{% else %}
+											<span class="si-fin-statut si-fin-statut-gris">Annulé</span>
+										{% endif %}
+									</td>
+								</tr>
+							{% endif %}
+						{% else %}
+							<tr><td colspan="6" class="si-fin-vide">Aucun encaissement.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+				<p class="si-fin-note">Chaque encaissement a son reçu (lien WhatsApp à ouvrir) et son écriture comptable. Les encaissements saisis en ligne ou associés ici restent provisoires jusqu’à leur validation sur l’ERP local (« À valider »).</p>
+				<p class="si-fin-liens">
+					<a href="{{ path('app_paiements_index') }}">Tous les paiements</a>
+					{% if is_granted('ROLE_FACTURE') %}<a href="{{ path('app_creances_index') }}">Factures et créances</a>{% endif %}
+					{% if droits.admin %}<a href="{{ path('app_a_valider_index') }}">À valider</a>{% endif %}
+				</p>
+			</section>
+
+			<div class="si-fin-enc-cote">
+				{% if recu %}
+					<section class="card si-fin-associer si-fin-associer-fait" aria-label="Paiement associé">
+						<h2><i class="fas fa-check-circle si-fin-vert me-2"></i>Paiement associé</h2>
+						<dl class="si-fin-om">
+							<div><dt>Commande</dt><dd>{{ recu.paiement.commande.libelle }}</dd></div>
+							<div><dt>Client</dt><dd>{{ recu.paiement.commande.clients ? recu.paiement.commande.clients.nomComplet : '—' }}</dd></div>
+							<div><dt>Montant</dt><dd>{{ m.f(recu.paiement.montant) }}</dd></div>
+							{% if recu.paiement.montantTotalEncaisse > recu.paiement.montant %}<div><dt>Frais Orange Money</dt><dd>{{ m.f(recu.paiement.montantTotalEncaisse - recu.paiement.montant) }}</dd></div>{% endif %}
+							<div><dt>Référence Orange Money</dt><dd>{{ recu.ligne.reference }}</dd></div>
+						</dl>
+						<p class="si-fin-note">{% if recu.paiement.statut == 'en_attente' %}Paiement provisoire : il compte dans la caisse et ferme la créance une fois validé dans « À valider ».{% else %}Le paiement était déjà saisi : la transaction du relevé lui est rattachée.{% endif %}</p>
+						{% if recu.lien %}
+							<a href="{{ recu.lien }}" target="_blank" rel="noopener" class="btn btn-success w-100 mt-2"><i class="fab fa-whatsapp me-1"></i>Envoyer l’accusé de réception</a>
+							<p class="si-fin-note">Ouvre WhatsApp avec le message prêt : rien ne part sans vous.</p>
+						{% else %}
+							<p class="si-fin-note">Pas de numéro sur la fiche client : pas de reçu WhatsApp.</p>
+						{% endif %}
+						<a class="si-fin-lien" href="{{ path('app_finances_encaissements') }}">Transaction suivante</a>
+					</section>
+				{% elseif choisie %}
+					{% set suggestions = pistes[choisie.id]|default([]) %}
+					<section class="card si-fin-associer" id="associer" aria-label="Associer ce paiement">
+						<h2>Associer ce paiement</h2>
+						<dl class="si-fin-om">
+							<div><dt>Reçu le</dt><dd>{{ choisie.recuLe|date('d/m · H:i') }}</dd></div>
+							<div><dt>Expéditeur</dt><dd>{{ choisie.expediteur ?: '—' }}{% if choisie.nomExpediteur %}<small>{{ choisie.nomExpediteur }}</small>{% endif %}</dd></div>
+							<div><dt>Montant</dt><dd>{{ m.f(choisie.montant) }}</dd></div>
+							<div><dt>Référence Orange Money</dt><dd>{{ choisie.reference }}</dd></div>
+							{% if choisie.libelle %}<div><dt>Message</dt><dd>{{ choisie.libelle }}</dd></div>{% endif %}
+						</dl>
+						{% if choisie.paiement %}
+							<p class="si-fin-note si-fin-rouge">Le paiement associé ({{ choisie.paiement.commande ? choisie.paiement.commande.numero }}) a été {{ choisie.paiement.statut == 'rejete' ? 'rejeté' : 'annulé' }} : associez la transaction à nouveau.</p>
+						{% endif %}
+
+						{% if encaisser %}
+							<form method="post" action="{{ path('app_finances_encaissements_associer', {id: choisie.id}) }}">
+								<input type="hidden" name="_token" value="{{ csrf_token('associer-om-' ~ choisie.id) }}">
+								<h3>{{ suggestions|length > 1 ? 'Suggestions' : 'Suggestion' }}</h3>
+								{% for s in suggestions %}
+									<label class="si-fin-piste">
+										<input type="radio" name="choix" value="{{ s.choix }}" {{ loop.first ? 'checked' }}>
+										<input type="hidden" name="score_{{ s.choix }}" value="{{ s.score }}">
+										<span class="si-fin-avatar" aria-hidden="true">{{ m.initiales(s.client) }}</span>
+										<span class="si-fin-piste-texte"><strong>{{ s.client }} · {{ s.titre }}</strong><small>{{ s.detail }}</small></span>
+										<span class="si-fin-statut si-fin-statut-{{ s.score >= score_suggestion ? 'vert' : 'gris' }}">{{ s.score }} %</span>
+									</label>
+								{% else %}
+									<p class="si-fin-vide">Aucune facture ni commande ne correspond : choisissez-la ci-dessous.</p>
+								{% endfor %}
+								<details class="si-fin-autre"{{ suggestions is empty ? ' open' }}>
+									<summary>Autre facture ou commande</summary>
+									<label class="si-fin-piste si-fin-piste-autre">
+										<input type="radio" name="choix" value="autre" {{ suggestions is empty ? 'checked' }}>
+										<select name="autre" class="form-select form-select-sm" aria-label="Facture ou commande payée" onchange="this.closest('label').querySelector('input[type=radio]').checked = true">
+											<option value="">Choisir…</option>
+											{% for c in creances %}
+												<option value="commande-{{ c.commande_id }}" {{ c.reste_frais|default(c.reste) < choisie.montant ? 'disabled' }}>{{ c.client }} · {{ c.document }} · reste {{ c.reste|number_format(0, ',', ' ') }} F</option>
+											{% endfor %}
+										</select>
+									</label>
+								</details>
+								<div class="si-fin-actions si-fin-associer-boutons">
+									<button type="submit" class="btn btn-success">Associer et préparer le reçu</button>
+								</div>
+								<p class="si-fin-note">Crée un paiement Orange Money en attente : la créance se ferme une fois le paiement validé dans « À valider ». Rien n’est envoyé au client sans vous.</p>
+							</form>
+						{% else %}
+							{% if suggestions is not empty %}
+								<h3>Suggestion</h3>
+								<p class="si-fin-note"><strong>{{ suggestions[0].client }} · {{ suggestions[0].titre }}</strong> ({{ suggestions[0].score }} %)</p>
+							{% endif %}
+							<p class="si-fin-note">L’association est faite par la caisse ou la direction.</p>
+						{% endif %}
+
+						{% if droits.admin %}
+							<details class="si-fin-autre">
+								<summary>Ce n’est pas un paiement client</summary>
+								<form method="post" action="{{ path('app_finances_encaissements_ignorer', {id: choisie.id}) }}" class="si-fin-ignorer" data-confirmer="Écarter l'opération Orange Money {{ choisie.reference }} ?" data-confirmer-detail="Elle ne sera plus proposée comme paiement d'un client." data-confirmer-bouton="Écarter">
+									<input type="hidden" name="_token" value="{{ csrf_token('ignorer-om-' ~ choisie.id) }}">
+									<input type="text" name="motif" class="form-control form-control-sm" placeholder="Motif : apport, remboursement…" maxlength="255" required aria-label="Motif">
+									<button type="submit" class="btn btn-light btn-sm">Écarter</button>
+								</form>
+							</details>
+						{% endif %}
+					</section>
+				{% else %}
+					<section class="card si-fin-associer" aria-label="Rapprochement Orange Money">
+						<h2>Rapprochement Orange Money</h2>
+						<p class="si-fin-vide">{{ kpi.rapprochees.total > 0 ? 'Toutes les transactions du relevé sont rapprochées.' : 'Importez le relevé du compte marchand pour le rapprocher des paiements saisis.' }}</p>
+					</section>
+				{% endif %}
+
+				{% if encaisser %}
+					<section class="card si-fin-importer" id="importer-releve" aria-label="Importer le relevé Orange Money">
+						<h2>Importer le relevé Orange Money</h2>
+						<form method="post" action="{{ path('app_finances_encaissements_importer') }}" enctype="multipart/form-data">
+							<input type="hidden" name="_token" value="{{ csrf_token('importer-releve-om') }}">
+							<input type="file" name="releve" accept=".csv,.txt,text/csv" class="form-control form-control-sm" required aria-label="Relevé CSV">
+							<button type="submit" class="btn btn-light btn-sm mt-2"><i class="fas fa-file-import me-1"></i>Importer</button>
+						</form>
+						<p class="si-fin-note">Export CSV du compte marchand (colonnes Date, Référence, Montant, et si possible Numéro, Nom, Type, Statut). Les envois, retraits et échecs sont écartés ; une transaction déjà importée n’est pas reprise. Le fichier n’est pas conservé.</p>
+					</section>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

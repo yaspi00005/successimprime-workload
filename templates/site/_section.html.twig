@@ -1,0 +1,23 @@
+{#
+	Section d'une page de contenu (MarkdownSite::sections) : titre, texte
+	et cartes avec leur icône. Les titres et le texte sont déjà échappés
+	par MarkdownSite. Variables : s (la section), icones (vrai par défaut).
+	Une section sans titre (cartes en tête de page) donne des cartes en h2.
+#}
+{% set niveau = s.titre ? 'h3' : 'h2' %}
+<section class="sc-bloc-section"{% if s.titre %} aria-labelledby="{{ s.ancre }}"{% endif %}>
+	{% if s.titre %}<h2 id="{{ s.ancre }}" class="sc-titre-section">{{ s.html|raw }}</h2>{% endif %}
+	{% if s.blocs %}<div class="sc-prose">{{ site_blocs(s.blocs) }}</div>{% endif %}
+	{% if s.cartes %}
+		<div class="sc-cartes">
+			{% for c in s.cartes %}
+				<article class="sc-carte sc-teinte-{{ loop.index0 % 4 }}" id="{{ c.ancre }}">
+					{% if icones ?? true %}<span class="sc-carte-icone">{{ include('site/_icone_contenu.svg.twig', {icone: site_icone(c.titre)}) }}</span>{% endif %}
+					{% if c.etiquette %}<span class="sc-etiquette">{{ c.etiquette }}</span>{% endif %}
+					<{{ niveau }} class="sc-carte-titre">{{ c.html|raw }}</{{ niveau }}>
+					{% if c.blocs %}<div class="sc-prose">{{ site_blocs(c.blocs) }}</div>{% endif %}
+				</article>
+			{% endfor %}
+		</div>
+	{% endif %}
+</section>

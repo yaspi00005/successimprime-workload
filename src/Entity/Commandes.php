@@ -2,7 +2,13 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\CodePromoDocumentTrait;
+use App\Entity\Trait\HorsImprimerieTrait;
+use App\Entity\Trait\LivraisonObjetDocumentTrait;
+use App\Entity\Trait\RemiseGlobaleDocumentTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\CommandesRepository;
+use App\Service\TotauxDocument;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -13,8 +19,32 @@ use Symfony\Component\Uid\Uuid;
 
 #[ORM\Entity(repositoryClass: CommandesRepository::class)]
 #[ORM\Table(name: 'commandes')]
-class Commandes
+#[ORM\Index(name: 'idx_commandes_canal_date', columns: ['canal', 'date_commande'])]
+class Commandes implements AppartientASociete
 {
+    use SocieteTrait;
+    use CodePromoDocumentTrait;
+    use LivraisonObjetDocumentTrait;
+    use HorsImprimerieTrait;
+    use RemiseGlobaleDocumentTrait;
+
+    /*
+     * Canal de la commande : saisie au comptoir par un agent,
+     * ou passée par le client en ligne (espace client, J5).
+     */
+    public const LIVRAISON_RETRAIT = 'retrait';
+    public const LIVRAISON_DOMICILE = 'livraison';
+
+    public const CANAL_COMPTOIR = 'comptoir';
+    public const CANAL_EN_LIGNE = 'en_ligne';
+
+    public const VALIDATION_A_FAIRE = 'a_valider';
+    public const VALIDATION_ACCEPTEE = 'validee';
+    public const VALIDATION_REFUSEE = 'refusee';
+
+    public const DELAI_STANDARD = 'standard';
+    public const DELAI_EXPRESS = 'express';
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -28,8 +58,9 @@ class Commandes
     #[Assert\NotNull(message: 'Veuillez sélectionner un client.')]
     private ?Clients $clients = null;
 
+    /** Vide pour une commande passée en ligne par le client (espace client, synchronisation). */
     #[ORM\ManyToOne(inversedBy: 'commandes')]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?User $agents = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
@@ -140,9 +171,100 @@ class Commandes
     #[ORM\Column(options: ['default' => 0])]
     private int $montantBonusPlafond = 0;
 
+    #[ORM\Column(length: 20, options: ['default' => self::CANAL_COMPTOIR])]
+    private string $canal = self::CANAL_COMPTOIR;
+
+    /*
+     * Choisi à la saisie (maquette C01) : retrait à l'imprimerie ou
+     * livraison chez le client. À ne pas confondre avec
+     * $recupereParClient, qui note le retrait effectif.
+     */
+    #[ORM\Column(length: 20, options: ['default' => self::LIVRAISON_RETRAIT])]
+    private string $modeLivraison = self::LIVRAISON_RETRAIT;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $adresseLivraison = null;
+
+    /*
+     * Délai demandé par le client en ligne (docs/espace-client.md,
+     * « Nouvelle commande ») : standard ou express. null pour une commande
+     * saisie au comptoir. La majoration express est une ligne libre de la
+     * commande, jamais un prix de ligne gonflé.
+     */
+    #[ORM\Column(length: 10, nullable: true)]
+    private ?string $delaiProduction = null;
+
+    /** Créneau de livraison choisi en ligne, en clair (« Lun. 19/10, matin »). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $creneauLivraison = null;
+
+    /**
+     * Livraison programmée par le client dans son espace (maquette DB09) :
+     * adresse, repère, position, jour, créneau, qui reçoit (et si absent),
+     * paiement du reste. Appliquée au bon de livraison au local
+     * (ProgrammationLivraison::appliquer).
+     *
+     * @var array<string, mixed>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $programmationLivraison = null;
+
+    /** Numéro du bon de commande du client (entreprise). */
+    #[ORM\Column(length: 60, nullable: true)]
+    private ?string $bonCommande = null;
+
+    /**
+     * Commande en ligne d'un demandeur d'une entreprise (maquette 19) :
+     * a_valider, puis validee ou refusee par un valideur de l'entreprise.
+     * null : pas de validation interne demandée.
+     */
+    #[ORM\Column(length: 12, nullable: true)]
+    private ?string $validationEntreprise = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $demandeePar = null;
+
+    #[ORM\Column(length: 80, nullable: true)]
+    private ?string $valideePar = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $motifRefusEntreprise = null;
+
+    /** Compte de l'espace client qui a passé la commande (reste sur le site). */
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?CompteClient $compteDemandeur = null;
+
+    /*
+     * Solde d'ouverture (docs/import-donnees.md) : ce que le client devait
+     * au démarrage, repris par l'import. Sans ligne ni facture, ce n'est
+     * pas une vente : il compte dans son solde, les créances et le plafond,
+     * et se règle comme une commande, mais il est écarté du chiffre
+     * d'affaires, des statistiques, de la fidélité, des promotions, des
+     * primes et de l'activité (voir estSoldeOuverture()).
+     */
+    #[ORM\Column(options: ['default' => false])]
+    private bool $soldeOuverture = false;
+
+    /*
+     * Prépresse (docs/prepresse.md, PQ04) : à J+15 sans fichier, la
+     * commande est mise en pause et sa date de livraison retirée ; la date
+     * gardée ici est remise quand le fichier arrive. Restent au local
+     * (CatalogueSynchro ne les liste pas).
+     */
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $enPauseFichiersLe = null;
+
+    #[ORM\Column(nullable: true)]
+    private ?\DateTimeImmutable $dateLivraisonAvantPause = null;
+
+    /** « Fichier à venir » coché à la saisie : le lien d'envoi part tout de suite au client. */
+    #[ORM\Column(name: 'fichier_a_venir', options: ['default' => false])]
+    private bool $fichierAVenir = false;
+
     public function __construct()
     {
-        $this->dateCommande = new \DateTime();
+        $this->dateCommande = new \DateTimeImmutable();
         $this->commandesDetails = new ArrayCollection();
         $this->paiements = new ArrayCollection();
         $this->factures = new ArrayCollection();
@@ -525,12 +647,15 @@ class Commandes
         return $this;
     }
 
+    /** Seuls les paiements validés comptent : un chèque en attente ou un paiement rejeté n'est pas encaissé. */
     public function getTotalPaye(): int
     {
         $total = 0;
 
         foreach ($this->paiements as $paiement) {
-            $total += (int) $paiement->getMontant();
+            if ($paiement->estValide()) {
+                $total += (int) $paiement->getMontant();
+            }
         }
 
         return $total;
@@ -542,6 +667,44 @@ class Commandes
 
         return $this;
     }
+    /**
+     * Totaux de la commande depuis ses lignes non annulees, comme le
+     * formulaire les calcule (TotauxDocument) : sous-total HT (lignes et
+     * frais de livraison, sans TVA), remise globale deduite du HT, TVA des
+     * lignes au prorata, total TTC = ce que le client doit. Pour les
+     * commandes creees hors formulaire (« Mes produits ») et, a chaque
+     * enregistrement du formulaire, pour ne jamais garder les totaux
+     * envoyes par le navigateur.
+     */
+    public function recalculerTotaux(): static
+    {
+        $ht = $this->getFraisLivraison();
+        $tva = 0;
+        $code = 0;
+
+        foreach ($this->commandesDetails as $ligne) {
+            if (CommandesDetails::PRODUCTION_ANNULEE === $ligne->getStatutProduction()) {
+                continue;
+            }
+
+            $ht += $ligne->getTotalHt();
+            $tva += $ligne->getTotalTtc() - $ligne->getTotalHt();
+            $code += $ligne->getRemiseCodePromo();
+        }
+
+        $totaux = TotauxDocument::calculer($ht, $tva, $this->getRemise());
+
+        $this->setTotalHt($totaux['sousTotalHt']);
+        $this->setRemise($totaux['remise']);
+        $this->setRemiseCodePromo($code);
+        $this->setTotalTtc($totaux['totalTtc']);
+        // Montant a payer : le total TTC, remise deja deduite (ancienne copie gardee pour la synchronisation).
+        $this->setMontantApayer($totaux['totalTtc']);
+        $this->setResteAPayer(max(0, $totaux['totalTtc'] - $this->getTotalPaye()));
+
+        return $this->actualiserStatutPaiement();
+    }
+
     public function actualiserStatutPaiement(): static
     {
         $totalTtc = (int) $this->getTotalTtc();
@@ -618,6 +781,23 @@ class Commandes
         return false;
     }
 
+    public function getCanal(): string
+    {
+        return $this->canal;
+    }
+
+    public function setCanal(string $canal): static
+    {
+        $this->canal = $canal;
+
+        return $this;
+    }
+
+    public function isEnLigne(): bool
+    {
+        return $this->canal === self::CANAL_EN_LIGNE;
+    }
+
     public function isBonusPlafondApplique(): bool
     {
         return $this->bonusPlafondApplique;
@@ -646,6 +826,259 @@ class Commandes
                 0,
                 $montantBonusPlafond
             );
+
+        return $this;
+    }
+
+    public function getModeLivraison(): string
+    {
+        return $this->modeLivraison;
+    }
+
+    public function setModeLivraison(?string $mode): static
+    {
+        $this->modeLivraison = self::LIVRAISON_DOMICILE === $mode ? self::LIVRAISON_DOMICILE : self::LIVRAISON_RETRAIT;
+
+        return $this;
+    }
+
+    public function estALivrer(): bool
+    {
+        return self::LIVRAISON_DOMICILE === $this->modeLivraison;
+    }
+
+    public function getAdresseLivraison(): ?string
+    {
+        return $this->adresseLivraison;
+    }
+
+    public function setAdresseLivraison(?string $adresse): static
+    {
+        $adresse = null === $adresse ? null : trim($adresse);
+        $this->adresseLivraison = '' === $adresse ? null : $adresse;
+
+        return $this;
+    }
+
+    public function getDelaiProduction(): ?string
+    {
+        return $this->delaiProduction;
+    }
+
+    public function setDelaiProduction(?string $delai): static
+    {
+        $this->delaiProduction = \in_array($delai, [self::DELAI_STANDARD, self::DELAI_EXPRESS], true) ? $delai : null;
+
+        return $this;
+    }
+
+    public function estExpress(): bool
+    {
+        return self::DELAI_EXPRESS === $this->delaiProduction;
+    }
+
+    public function getCreneauLivraison(): ?string
+    {
+        return $this->creneauLivraison;
+    }
+
+    public function setCreneauLivraison(?string $creneau): static
+    {
+        $creneau = null !== $creneau ? mb_substr(trim($creneau), 0, 60) : null;
+        $this->creneauLivraison = '' === $creneau ? null : $creneau;
+
+        return $this;
+    }
+
+    /** @return array<string, mixed>|null */
+    public function getProgrammationLivraison(): ?array
+    {
+        return $this->programmationLivraison;
+    }
+
+    /** @param array<string, mixed>|null $programmation */
+    public function setProgrammationLivraison(?array $programmation): static
+    {
+        $this->programmationLivraison = $programmation;
+
+        return $this;
+    }
+
+    public function getBonCommande(): ?string
+    {
+        return $this->bonCommande;
+    }
+
+    public function setBonCommande(?string $numero): static
+    {
+        $numero = null !== $numero ? mb_substr(trim($numero), 0, 60) : null;
+        $this->bonCommande = '' === $numero ? null : $numero;
+
+        return $this;
+    }
+
+    public function getValidationEntreprise(): ?string
+    {
+        return $this->validationEntreprise;
+    }
+
+    public function setValidationEntreprise(?string $etat): static
+    {
+        $this->validationEntreprise = $etat;
+
+        return $this;
+    }
+
+    public function attendValidationEntreprise(): bool
+    {
+        return self::VALIDATION_A_FAIRE === $this->validationEntreprise;
+    }
+
+    public function estRefuseeParEntreprise(): bool
+    {
+        return self::VALIDATION_REFUSEE === $this->validationEntreprise;
+    }
+
+    public function getDemandeePar(): ?string
+    {
+        return $this->demandeePar;
+    }
+
+    public function setDemandeePar(?string $nom): static
+    {
+        $this->demandeePar = null !== $nom ? mb_substr($nom, 0, 80) : null;
+
+        return $this;
+    }
+
+    public function getValideePar(): ?string
+    {
+        return $this->valideePar;
+    }
+
+    public function setValideePar(?string $nom): static
+    {
+        $this->valideePar = null !== $nom ? mb_substr($nom, 0, 80) : null;
+
+        return $this;
+    }
+
+    public function getMotifRefusEntreprise(): ?string
+    {
+        return $this->motifRefusEntreprise;
+    }
+
+    public function setMotifRefusEntreprise(?string $motif): static
+    {
+        $motif = null !== $motif ? mb_substr(trim($motif), 0, 255) : null;
+        $this->motifRefusEntreprise = '' === $motif ? null : $motif;
+
+        return $this;
+    }
+
+    public function getCompteDemandeur(): ?CompteClient
+    {
+        return $this->compteDemandeur;
+    }
+
+    public function setCompteDemandeur(?CompteClient $compte): static
+    {
+        $this->compteDemandeur = $compte;
+
+        return $this;
+    }
+
+    public function isSoldeOuverture(): bool
+    {
+        return $this->soldeOuverture;
+    }
+
+    public function estSoldeOuverture(): bool
+    {
+        return $this->soldeOuverture;
+    }
+
+    /**
+     * Commande « Solde d'ouverture » : le montant dû au démarrage, sans
+     * ligne, sans agent, sans facture. Seul l'import la crée. Datée du jour
+     * d'ouverture ; son échéance (date de livraison, comme pour toute
+     * commande sans facture) est celle du fichier, sinon ce même jour.
+     */
+    public static function soldeOuverture(Clients $client, int $montant, \DateTimeImmutable $date, string $numero, ?string $note = null, ?\DateTimeImmutable $echeance = null): self
+    {
+        if ($montant <= 0) {
+            throw new \InvalidArgumentException('Le solde d\'ouverture doit être positif.');
+        }
+        $c = new self();
+        $c->soldeOuverture = true;
+        $c->numero = $numero;
+        $c->clients = $client;
+        $c->dateCommande = $date;
+        $c->dateLivraison = $echeance ?? $date;
+        // Aucun travail à faire : rien n'apparaît à l'atelier.
+        $c->etat = false;
+        $c->totalHt = $montant;
+        $c->totalTtc = $montant;
+        $c->montantApayer = $montant;
+        $c->resteAPayer = $montant;
+        $c->observation = $note;
+
+        return $c;
+    }
+
+    /** Libellé à l'écran : « Solde d'ouverture » plutôt qu'un numéro de commande. */
+    public function getLibelle(): string
+    {
+        return $this->soldeOuverture ? 'Solde d\'ouverture' : ($this->numero ?? 'Nouvelle commande');
+    }
+
+    public function getEnPauseFichiersLe(): ?\DateTimeImmutable
+    {
+        return $this->enPauseFichiersLe;
+    }
+
+    public function getDateLivraisonAvantPause(): ?\DateTimeImmutable
+    {
+        return $this->dateLivraisonAvantPause;
+    }
+
+    public function estEnPauseFichiers(): bool
+    {
+        return null !== $this->enPauseFichiersLe;
+    }
+
+    /** J+15 sans fichier : la date de livraison est retirée et gardée. */
+    public function mettreEnPauseFichiers(\DateTimeImmutable $le): static
+    {
+        if (null === $this->enPauseFichiersLe) {
+            $this->enPauseFichiersLe = $le;
+            $this->dateLivraisonAvantPause = null !== $this->dateLivraison ? \DateTimeImmutable::createFromInterface($this->dateLivraison) : null;
+            $this->dateLivraison = null;
+        }
+
+        return $this;
+    }
+
+    /** Le fichier est arrivé : la date de livraison gardée revient. */
+    public function reprendreApresPause(): static
+    {
+        if (null !== $this->enPauseFichiersLe) {
+            $this->dateLivraison = $this->dateLivraison ?? $this->dateLivraisonAvantPause;
+            $this->dateLivraisonAvantPause = null;
+            $this->enPauseFichiersLe = null;
+        }
+
+        return $this;
+    }
+
+    public function isFichierAVenir(): bool
+    {
+        return $this->fichierAVenir;
+    }
+
+    public function setFichierAVenir(bool $fichierAVenir): static
+    {
+        $this->fichierAVenir = $fichierAVenir;
 
         return $this;
     }

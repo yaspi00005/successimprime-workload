@@ -1,0 +1,56 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Mon planning d'entretien{% endblock %}
+
+{% block header_actions %}
+	{% if is_granted('ROLE_RH') %}<li class="nav-item"><a href="{{ path('app_entretien_controle') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-clipboard-check me-1"></i>Contrôle</a></li>{% endif %}
+{% endblock %}
+
+{% block body %}
+	<div class="si-tr si-en">
+		<section class="card si-tr-jour">
+			<div class="si-tr-jour-tete">
+				<small>{{ maintenant|date_fr('EEEE d/MM')|capitalize }} · {{ agent|nom_pointage }}</small>
+				{% if j.points is not empty %}<span class="si-tr-pts{{ j.jour < 0 ? ' si-tr-pts-moins' }}">{{ j.jour >= 0 ? '+' }}{{ j.jour }} pts</span>{% endif %}
+			</div>
+			<b class="si-tr-total">{{ j.faites }} / {{ j.taches|length }} tâche{{ j.taches|length > 1 ? 's' }}</b>
+			<div class="si-mf-barre"><i style="width: {{ j.taches|length > 0 ? (j.faites * 100 / j.taches|length)|round : 0 }}%"></i></div>
+			<div class="si-tr-jour-pied">
+				<span>Arrivée pointée <b>{{ j.arrivee ? j.arrivee|date('H:i') : '–' }}</b></span>
+				<span>Contrôles du mois <b>{{ j.mois.controles > 0 ? j.mois.conformes ~ ' / ' ~ j.mois.controles ~ ' conformes' : '–' }}</b></span>
+				<span>Points du mois <b>{{ j.mois.gagnes }} / {{ j.mois.possibles }}</b> · note <b>{{ j.mois.note }}/100</b></span>
+			</div>
+		</section>
+
+		{% if j.taches is empty %}
+			<p class="si-ac-vide card p-3">Aucune tâche d'entretien aujourd'hui. Elles se créent dans Planning, catégorie Entretien.</p>
+		{% endif %}
+		{% set prochaine = j.taches|filter(t => not t.estFaite)|first %}
+		<ul class="si-en-liste">
+			{% for t in j.taches %}
+				{% set fin = t.finCreneau %}
+				{% set enRetard = not t.estFaite and fin and maintenant > fin %}
+				{% set tard = t.estFaite and fin and t.faitLe > fin %}
+				<li class="card si-en-tache{{ t == prochaine ? ' si-en-prochaine' }}">
+					<a href="{{ path('app_entretien_tache', {id: t.id}) }}" class="stretched-link" aria-label="{{ t.titre }}"></a>
+					<span class="si-en-heure">{{ t.heure ?? '–' }}</span>
+					<span class="si-en-rond{{ t.estFaite ? (tard ? ' si-en-tard' : ' si-en-ok') }}">{% if t.estFaite %}<i class="fas fa-check"></i>{% endif %}</span>
+					<span class="si-en-info">
+						<b>{{ t.titre }}</b>
+						{% if t.estFaite %}
+							<small class="{{ tard ? 'si-en-rouge' : 'si-en-vert' }}">fait à {{ t.faitLe|date('H:i') }}{{ t.photo ? ' · photo' }}{{ tard ? ' · après le créneau ' ~ t.heure ~ ' – ' ~ t.heureFin }}</small>
+						{% elseif enRetard %}
+							<small class="si-en-rouge">créneau {{ t.heure }} – {{ t.heureFin }} dépassé</small>
+						{% elseif t.isFermeture %}
+							<small>checklist de {{ t.etapes|length }} points</small>
+						{% elseif t == prochaine and t.heure %}
+							{% set dans = (((t.prevueLe|date('Y-m-d') ~ ' ' ~ t.heure)|date('U') - maintenant|date('U')) / 60)|round %}
+							<small>{{ dans > 0 ? 'dans ' ~ dans|minutes : 'maintenant' }}</small>
+						{% endif %}
+					</span>
+					{% if j.points[t.id] is defined %}<span class="si-tr-pts{{ j.points[t.id] < 0 ? ' si-tr-pts-moins' : (j.points[t.id] == 0 ? ' si-en-zero' : '') }}">{{ j.points[t.id] > 0 ? '+' }}{{ j.points[t.id] }} pt{{ j.points[t.id]|abs > 1 ? 's' }}</span>{% endif %}
+				</li>
+			{% endfor %}
+		</ul>
+	</div>
+{% endblock %}

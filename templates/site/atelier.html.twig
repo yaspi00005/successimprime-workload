@@ -1,0 +1,57 @@
+{#
+	Studio textile (ancien « Atelier 3D ») du site public (docs/atelier-3d.md) :
+	sans compte, prix public calculé par le serveur ; « Valider mon modèle »
+	envoie une demande de devis. three.js n'est chargé que sur cette page,
+	après le premier affichage (public/js/atelier-3d.js).
+#}
+{% extends 'site/_site.html.twig' %}
+{% set menu_actif = 'app_site_atelier' %}
+
+{% block title %}T-shirts personnalisés à Bamako : studio textile · Succès Imprim{% endblock %}
+{% block description %}Créez vos t-shirts, polos et casquettes personnalisés en 3D : couleur, logo, texte, prix selon la quantité. BAT avant impression, atelier à Bamako.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/atelier-3d.css') }}
+	{{ site_fil_ariane([{nom: 'Studio textile'}]) }}
+	{% if fiches is not empty %}<script type="importmap">{{ {imports: {'three': asset('vendor/three/three.module.min.js'), 'three/addons/': asset('vendor/three/addons/')}}|json_encode(constant('JSON_UNESCAPED_SLASHES'))|raw }}</script>{% endif %}
+{% endblock %}
+
+{% block contenu %}
+	<div class="a3d-zone-outil">
+		<div class="a3d-cadre">
+			<nav class="si-ariane a3d-ariane" aria-label="Fil d'Ariane">
+				<a href="{{ site_lien('app_site_accueil') }}">Accueil</a> <span aria-hidden="true">›</span> <span aria-current="page">Studio textile</span>
+			</nav>
+			{% if fiches is empty %}
+				<h1 class="a3d-titre-vide">Studio textile</h1>
+				<div class="a3d-vide">
+					<p>Le studio textile ouvre bientôt. En attendant, l'équipe prépare votre t-shirt, polo ou casquette sur devis.</p>
+					{% if site_lien('app_site_devis') %}<a class="si-bouton si-bouton-rouge" href="{{ site_lien('app_site_devis') }}">Demander un devis</a>{% endif %}
+				</div>
+			{% else %}
+				{% include 'atelier/_outil.html.twig' with {
+					mode: 'site',
+					montants: true,
+					reprise: null,
+					csrf: csrf_token(constant('App\\Controller\\SiteAtelierController::CSRF')),
+					urls: {prix: path('app_site_atelier_prix'), image: path('app_site_atelier_image'), valider: path('app_site_atelier_valider')},
+				} %}
+			{% endif %}
+		</div>
+	</div>
+
+	<section class="a3d-etapes">
+		<div class="si-cadre">
+			<h2>Comment ça marche</h2>
+			<ol>
+				<li><strong>Composez</strong><span>Article, couleur, logo et sa position, texte et quantités par taille. Le prix tient compte des remises de quantité.</span></li>
+				<li><strong>Validez votre modèle</strong><span>Les vues de face et de dos partent avec votre demande. Sans compte : un numéro vous permet de la suivre. « Télécharger la maquette » garde une image pour vous.</span></li>
+				<li><strong>L'atelier prépare le BAT</strong><span>Un graphiste vérifie vos images, confirme le prix et vous envoie le BAT avant l'impression.</span></li>
+			</ol>
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	{% if fiches is not empty %}<script src="{{ asset('js/atelier-3d.js') }}" defer></script>{% endif %}
+{% endblock %}

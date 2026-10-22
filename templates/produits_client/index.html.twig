@@ -1,0 +1,224 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Produits du client · {{ client.nomComplet }}{% endblock %}
+{% block page_title %}Produits du client{% endblock %}
+
+{% macro format(produit) %}
+	{%- if produit.estFormatFixe -%}
+		{{ (produit.largeur * 100)|round(1) }} × {{ (produit.hauteur * 100)|round(1) }} cm
+	{%- elseif produit.estLongueurLibre -%}
+		Laize {{ produit.largeur|number_format(2, ',', ' ') }} m · longueur libre
+	{%- endif -%}
+{% endmacro %}
+
+{% macro prix(produit) %}
+	{{- produit.prixUnitaire|number_format(0, ',', ' ') }} F / {{ produit.uniteVente == 'm2' ? 'm²' : (produit.uniteVente == 'lot' ? produit.tailleLot : 'pièce') -}}
+{% endmacro %}
+{% import _self as p %}
+
+{% block body %}
+	<div class="si-titre-fiche">
+		<div class="min-w-0">
+			<h2>{{ client.nomComplet }}</h2>
+			<small class="text-muted"><a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="si-lien-discret">Fiche client</a> · {{ produits|length }} produit{{ produits|length > 1 ? 's' }} validé{{ produits|length > 1 ? 's' }}</small>
+		</div>
+		<ul class="si-actions-fiche">
+			<li><a href="{{ path('app_clients_produits', {publicId: client.publicId, produit: 'nouveau'}) }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Produit client</a></li>
+		</ul>
+	</div>
+
+	<div class="row">
+		<div class="col-xl-7">
+			<div class="card si-bloc">
+				{% for produit in produits %}
+					<a href="{{ path('app_clients_produits', {publicId: client.publicId, produit: produit.id}) }}" class="si-produit-client{{ choisi and choisi.id == produit.id ? ' si-produit-client-actif' }}{{ produit.actif ? '' : ' opacity-50' }}">
+						<span class="si-vignette si-fond-{{ ['bleu', 'magenta', 'orange', 'canard'][produit.id % 4] }}"></span>
+						<span class="flex-grow-1 min-w-0">
+							<strong class="d-block">{{ produit.nom }}</strong>
+							<small class="d-block text-muted">{{ produit.reference }}{% set f = p.format(produit)|trim %}{% if f %} · {{ f }}{% endif %}{% if produit.support %} · {{ produit.support|texte_interne }}{% endif %}{% for finition in produit.finitions %} · {{ finition|texte_interne }}{% endfor %}</small>
+							<span class="d-flex flex-wrap gap-1 mt-1">
+								<span class="si-pastille si-pastille-{{ produit.uniteVente == 'm2' ? 'orange' : 'bleu' }}">{{ {'piece': "à l'unité", 'm2': 'au m²', 'piece_ou_m2': 'm² ou pièces', 'lot': 'par lot'}[produit.uniteVente] }}</span>
+								{% if produit.etatLien == 'suspendu' %}<span class="si-pastille si-pastille-orange">Nouvelle image · au prépresse</span>{% elseif produit.fichiersLies is not empty %}<span class="si-pastille si-pastille-vert">Fichier lié</span>{% elseif produit.batValide %}<span class="si-pastille si-pastille-vert">BAT figé</span>{% elseif produit.origine == 'client' %}<span class="si-pastille si-pastille-orange">Fichier à préparer</span>{% else %}<span class="si-pastille si-pastille-gris">Sans BAT</span>{% endif %}
+								{% if produit.origine == 'client' %}<span class="si-pastille si-pastille-gris">ajouté par le client</span>{% endif %}
+								{% if produit.prixUnitaire <= 0 and produit.paliers is empty %}<span class="si-pastille si-pastille-orange">prix à fixer</span>{% endif %}
+								<span class="si-pastille si-pastille-gris">commandé {{ nombresCommandes[produit.id]|default(0) }} fois</span>
+							</span>
+						</span>
+						<span class="text-end text-nowrap">
+							<strong class="d-block">{{ p.prix(produit) }}</strong>
+							<small class="{{ produit.actif ? 'text-success' : 'text-muted' }}">{{ produit.actif ? 'visible' : 'masqué' }}</small>
+						</span>
+					</a>
+				{% else %}
+					<p class="text-muted mb-0">
+						Aucun produit pour ce client. Créez-en un avec « Produit client », ou depuis une commande livrée avec « Enregistrer comme produit du client » sur la ligne.
+					</p>
+				{% endfor %}
+			</div>
+		</div>
+
+		<div class="col-xl-5">
+			<div class="card si-bloc si-fiche-produit-client">
+				<div class="si-bloc-tete"><h4>{{ choisi ? 'Fiche · ' ~ choisi.nom : 'Nouveau produit client' }}</h4>{% if choisi %}<small class="text-muted">{{ choisi.reference }}</small>{% endif %}</div>
+				<form method="post">
+					<input type="hidden" name="_token" value="{{ csrf_token('produit-client-' ~ client.id) }}">
+					<div class="mb-2">
+						<label class="form-label small" for="pcNom">Nom vu par le client</label>
+						<input id="pcNom" name="nom" class="form-control form-control-sm" required maxlength="255" value="{{ choisi ? choisi.nom }}" placeholder="ex. Bâche façade « Awa Mode »">
+					</div>
+					<div class="row g-2 mb-2">
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcProduit">Produit du catalogue</label>
+							<select id="pcProduit" name="produit" class="form-select form-select-sm">
+								<option value="">—</option>
+								{% for item in catalogue %}<option value="{{ item.id }}" {{ choisi and choisi.produit and choisi.produit.id == item.id ? 'selected' }}>{{ item|texte_interne }}</option>{% endfor %}
+							</select>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcSupport">Support</label>
+							<select id="pcSupport" name="support" class="form-select form-select-sm">
+								<option value="">—</option>
+								{% for item in supports %}<option value="{{ item.id }}" {{ choisi and choisi.support and choisi.support.id == item.id ? 'selected' }}>{{ item|texte_interne }}</option>{% endfor %}
+							</select>
+						</div>
+					</div>
+					{% set libre = choisi and choisi.estLongueurLibre %}
+					<div class="row g-2 mb-2">
+						<div class="col-sm-4">
+							<label class="form-label small" for="pcType">Format</label>
+							<select id="pcType" name="typeFormat" class="form-select form-select-sm">
+								<option value="fixe" {{ not libre ? 'selected' }}>Fixe</option>
+								<option value="libre" {{ libre ? 'selected' }}>Longueur libre</option>
+							</select>
+						</div>
+						<div class="col-sm-4">
+							<label class="form-label small" for="pcLargeur">{{ libre ? 'Laize (cm)' : 'Largeur (cm)' }}</label>
+							<input id="pcLargeur" name="largeur" inputmode="decimal" class="form-control form-control-sm" value="{{ choisi and choisi.largeur ? (choisi.largeur * 100)|round(1) }}">
+						</div>
+						<div class="col-sm-4">
+							<label class="form-label small" for="pcHauteur">Hauteur (cm)</label>
+							<input id="pcHauteur" name="hauteur" inputmode="decimal" class="form-control form-control-sm" value="{{ choisi and choisi.hauteur ? (choisi.hauteur * 100)|round(1) }}">
+						</div>
+					</div>
+					<label class="form-label small d-block">Unité de vente proposée au client</label>
+					<div class="si-choix mb-2">
+						{% for valeur, libelle in {'piece': 'Pièce', 'm2': 'm²', 'piece_ou_m2': 'Pièce ou m²', 'lot': 'Lot'} %}
+							<input type="radio" class="btn-check" name="uniteVente" id="pcUnite{{ valeur }}" value="{{ valeur }}" {{ (choisi ? choisi.uniteVente : 'piece') == valeur ? 'checked' }}>
+							<label class="btn btn-sm btn-outline-primary" for="pcUnite{{ valeur }}">{{ libelle }}</label>
+						{% endfor %}
+					</div>
+					<div class="row g-2 mb-2">
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcPrix">Prix négocié TTC (F par unité de vente)</label>
+							<input id="pcPrix" name="prixUnitaire" inputmode="numeric" class="form-control form-control-sm" value="{{ choisi ? choisi.prixUnitaire }}" required>
+						</div>
+						<div class="col-12">
+							<label class="form-label small d-block mb-1">Prix par quantité (F TTC la pièce, facultatif)</label>
+							<small class="d-block text-muted mb-1">Le client voit ces paliers dans « Mes produits ». Sans palier, le prix négocié s'applique à toute quantité.</small>
+							{% set paliers = choisi ? choisi.paliers : [] %}
+							<div class="row g-1">
+								{% for i in 0..3 %}
+									<div class="col-sm-6">
+										<div class="input-group input-group-sm">
+											<input name="paliers[{{ i }}][q]" inputmode="numeric" class="form-control" placeholder="dès … pcs" aria-label="Palier {{ i + 1 }} : dès combien de pièces" value="{{ paliers[i].q ?? '' }}">
+											<input name="paliers[{{ i }}][prix]" inputmode="numeric" class="form-control" placeholder="F / pce" aria-label="Palier {{ i + 1 }} : prix de la pièce" value="{{ paliers[i].prix ?? '' }}">
+										</div>
+									</div>
+								{% endfor %}
+							</div>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcArrondi">Arrondi si saisie en m²</label>
+							<select id="pcArrondi" name="arrondi" class="form-select form-select-sm">
+								<option value="choix">Le client choisit</option>
+								<option value="superieur" {{ choisi and choisi.arrondiSuperieurImpose ? 'selected' }}>Toujours au supérieur</option>
+							</select>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcMin">Minimum</label>
+							<input id="pcMin" name="quantiteMinimum" inputmode="numeric" class="form-control form-control-sm" value="{{ choisi ? choisi.quantiteMinimum : 1 }}">
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcMachine">Machine</label>
+							<select id="pcMachine" name="machine" class="form-select form-select-sm">
+								<option value="">—</option>
+								{% for item in machines %}<option value="{{ item.id }}" {{ choisi and choisi.machine and choisi.machine.id == item.id ? 'selected' }}>{{ item.nom }}</option>{% endfor %}
+							</select>
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcLot">Taille du lot</label>
+							<input id="pcLot" name="tailleLot" inputmode="numeric" class="form-control form-control-sm" value="{{ choisi ? choisi.tailleLot }}" placeholder="ex. 100">
+						</div>
+						<div class="col-sm-6">
+							<label class="form-label small" for="pcPoses">Poses par feuille</label>
+							<input id="pcPoses" name="posesParFeuille" inputmode="numeric" class="form-control form-control-sm" value="{{ choisi ? choisi.posesParFeuille }}">
+						</div>
+					</div>
+					{% if finitions %}
+						<label class="form-label small d-block">Finitions</label>
+						<div class="si-choix mb-2">
+							{% for finition in finitions %}
+								<input type="checkbox" class="btn-check" name="finitions[]" id="pcFinition{{ finition.id }}" value="{{ finition.id }}" {{ choisi and finition in choisi.finitions ? 'checked' }}>
+								<label class="btn btn-sm btn-outline-primary" for="pcFinition{{ finition.id }}">{{ finition|texte_interne }}</label>
+							{% endfor %}
+						</div>
+					{% endif %}
+					<div class="form-check form-switch mb-3">
+						<input class="form-check-input" type="checkbox" role="switch" id="pcActif" name="actif" value="1" {{ not choisi or choisi.actif ? 'checked' }}>
+						<label class="form-check-label small" for="pcActif">Visible dans l'espace du client</label>
+					</div>
+
+					{% if choisi and (choisi.origine == 'client' or choisi.fichiersLies is not empty) %}
+						<div class="si-encart {{ choisi.estPret ? 'si-fond-vert-clair' : 'si-fond-bleu-clair' }} mb-2">
+							<strong>Fichier traité lié (dossier de l'atelier)</strong>
+							<small class="d-block text-muted">
+								{% if choisi.etatLien == 'suspendu' %}Le client a remplacé l'image : lien suspendu, à refaire au prépresse.
+								{% elseif choisi.fichiersLies is empty %}Pas encore lié : le prépresse prépare le fichier.
+								{% else %}{% for f in choisi.fichiersLies %}{{ f.nom }} ({{ choisi.libelleTaille(f.l, f.h, choisi.rond) }}, lié le {{ f.le|date('d/m') }}){{ not loop.last ? ' · ' }}{% endfor %}{% endif %}
+								{% if is_granted('ROLE_PREPRESSE') %} · <a href="{{ path('app_produits_clients_prepresse_client', {publicId: client.publicId, produit: choisi.id}) }}" class="si-lien-discret">Lier les fichiers</a>{% endif %}
+							</small>
+						</div>
+					{% endif %}
+					{% if choisi and choisi.origine != 'client' %}
+						<div class="si-encart si-fond-vert-clair">
+							<strong>Fichier et BAT figés</strong>
+							<small class="d-block text-muted">
+								{% if choisi.fichier %}<a href="{{ path('app_fichier_visualiser', {id: choisi.fichier.id}) }}" target="_blank" class="si-lien-discret">{{ choisi.fichier.nomOriginal }}</a>{% else %}Aucun fichier{% endif %}
+								{% if choisi.batValide and choisi.batValide.valideLe %} · validé le {{ choisi.batValide.valideLe|date('d/m/Y') }}{% endif %}
+								{% if choisi.batValide %} · réutilisé sans PAO{% else %} · un BAT sera demandé à la première commande{% endif %}
+							</small>
+						</div>
+					{% endif %}
+					{% if choisi and (choisi.fichier or choisi.image) %}
+						{# Jamais effacés par le système (ConservationFichiers) : seul un administrateur les supprime. #}
+						<div class="small text-muted mb-2">
+							<i class="fas fa-lock me-1"></i>Fichiers gardés tant que le produit existe : le système ne les efface jamais.
+							{% if is_granted('ROLE_ADMIN') %}
+								<button type="submit" form="si-pc-supprimer-fichiers" class="btn btn-link btn-sm text-danger p-0 align-baseline">Supprimer les fichiers</button>
+							{% endif %}
+						</div>
+					{% endif %}
+					{% if choisi %}
+						{% if cout and is_granted('ROLE_COUT_MARGE') %}
+							<div class="si-encart si-fond-bleu-clair">
+								<strong>Coût de revient</strong>
+								<small class="d-block text-muted" {% if cout.manquants %}title="Coût incomplet : {{ cout.manquants|join(', ') }}"{% endif %}>
+									{{ cout.montant|number_format(0, ',', ' ') }} F / {{ cout.unite }}
+									{% if cout.marge is not null %}· <span class="{{ cout.marge < 35 ? 'text-danger' : 'text-success' }}">marge {{ cout.marge|number_format(0, ',', ' ') }} %</span>{% endif %}
+									{% if cout.manquants %}· <span class="text-warning">coût incomplet</span>{% endif %}
+								</small>
+							</div>
+						{% endif %}
+						{% if choisi.origine != 'client' %}<small class="d-block text-muted mb-2">Changer le visuel ou la taille : créez un nouveau produit, il demandera un nouveau BAT.</small>{% endif %}
+					{% endif %}
+					<button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save me-1"></i>Enregistrer</button>
+				</form>
+				{% if choisi and (choisi.fichier or choisi.image) and is_granted('ROLE_ADMIN') %}
+					<form method="post" id="si-pc-supprimer-fichiers" action="{{ path('app_clients_produits_supprimer_fichiers', {publicId: client.publicId, id: choisi.id}) }}" data-confirmer="Supprimer du serveur le fichier et l'image de « {{ choisi.nom }} » ? Le client devra renvoyer un fichier (et valider un BAT) à sa prochaine commande. Les fichiers du dossier de l'atelier ne sont pas touchés.">
+						<input type="hidden" name="_token" value="{{ csrf_token('produit-client-fichiers-' ~ choisi.id) }}">
+					</form>
+				{% endif %}
+			</div>
+		</div>
+	</div>
+{% endblock %}

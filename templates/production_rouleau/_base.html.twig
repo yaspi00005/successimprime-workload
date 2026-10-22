@@ -1,0 +1,10 @@
+{#
+	Écrans de la production au rouleau (PD01 à PD03, machines et dossiers,
+	règles de nommage) : gabarit commun de la production et leur feuille.
+#}
+{% extends 'fabrication/_base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/fabrication-rouleau.css') }}" rel="stylesheet">
+{% endblock %}

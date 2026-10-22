@@ -1,0 +1,183 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Dossiers clients · réglages (maquette DS04) : emplacement, mise à
+	jour, modèle de sous-dossiers, qui voit quoi, version en ligne,
+	sécurité. Tuile « Dossiers clients » de Paramètres (route de la tuile).
+	La matrice des droits est modifiable par la Direction seulement.
+#}
+
+{% set jeton = csrf_token('dossiers-clients') %}
+
+{% block title %}Dossiers clients · réglages{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/dossiers-clients.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	<div class="dc-page">
+		<header class="dc-entete dc-entete-actions">
+			<div>
+				<p class="dc-fil"><a href="{{ path('app_reglages_parametres_index') }}">Réglages</a> › Dossiers clients</p>
+				<h1>Dossiers clients · réglages</h1>
+			</div>
+			<div class="dc-entete-boutons">
+				<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_liaison') }}">Lier les dossiers existants</a>
+				<a class="btn btn-sm dc-btn" href="{{ path('app_dossiers_clients_a_classer') }}">Fichiers à classer</a>
+				<button class="btn btn-sm dc-btn-principal" form="dc-reglages">Enregistrer</button>
+			</div>
+		</header>
+
+		<form method="post" action="{{ path('app_dossiers_clients_reglages_enregistrer') }}" id="dc-reglages" class="dc-reglages">
+			<input type="hidden" name="_token" value="{{ jeton }}">
+			<div class="dc-col">
+				{# ===== Emplacement ===== #}
+				<section class="dc-carte">
+					<h2>Emplacement</h2>
+					<label class="dc-champ">Dossier racine
+						<span class="dc-champ-suffixe"><input name="dossier_racine" class="form-control" value="{{ v.dossier_racine }}" maxlength="255" placeholder="D:\Clients ou \\SERVEUR\Clients" spellcheck="false"><small>vu du serveur de l'ERP</small></span>
+					</label>
+					<label class="dc-champ">Le même dossier vu des postes Windows
+						<span class="dc-champ-suffixe"><input name="racine_postes" class="form-control" value="{{ v.racine_postes }}" maxlength="255" placeholder="\\SERVEUR\Clients (vide : le dossier racine)" spellcheck="false"><small>partage Windows</small></span>
+					</label>
+					<label class="dc-champ">Fichiers à classer
+						<input name="dossier_a_classer" class="form-control" value="{{ v.dossier_a_classer }}" maxlength="255" placeholder="\\SERVEUR\À classer" spellcheck="false">
+					</label>
+					{% if not v.dossier_racine %}
+						<p class="dc-connexion dc-connexion-attente"><i class="fas fa-info-circle"></i> Indiquez le dossier où sont rangés les dossiers des clients.</p>
+					{% elseif connexion.ok %}
+						<p class="dc-connexion"><i class="fas fa-check"></i> <b>Connecté</b> · compte « {{ connexion.compte }} »{{ connexion.dossiers is not null ? ' · ' ~ connexion.dossiers ~ ' dossiers' }}{{ connexion.fichiers is not null ? ' · ' ~ connexion.fichiers ~ ' fichiers lus' }}{{ connexion.ecriture ? '' : ' · lecture seule (pas de création de dossier ni de classement)' }}</p>
+					{% else %}
+						<p class="dc-connexion dc-connexion-alerte"><i class="fas fa-exclamation-triangle"></i> Le serveur de l'ERP ne voit pas ce dossier (compte « {{ connexion.compte }} »). Vérifiez le chemin et les droits de partage.</p>
+					{% endif %}
+					{% if v.dossier_a_classer and not connexion.a_classer %}<p class="dc-connexion dc-connexion-alerte"><i class="fas fa-exclamation-triangle"></i> Dossier « À classer » introuvable.</p>{% endif %}
+				</section>
+
+				{# ===== Mise à jour ===== #}
+				<section class="dc-carte">
+					<h2>Mise à jour</h2>
+					<ul class="dc-interrupteurs">
+						<li><label><span><b>Surveiller les changements</b><small>analyse rapide toutes les 5 minutes : fichiers ajoutés ou modifiés</small></span><input type="checkbox" role="switch" name="surveiller" value="1" class="dc-switch" {{ v.surveiller ? 'checked' }}></label></li>
+						<li><label><span><b>Analyse complète</b><small>chaque nuit à <input type="time" name="analyse_heure" value="{{ v.analyse_heure }}" class="dc-heure" aria-label="Heure de l'analyse complète"> : tout est relu, les dossiers des clients sont recherchés</small></span><input type="checkbox" role="switch" name="analyse_nuit" value="1" class="dc-switch" {{ v.analyse_nuit ? 'checked' }}></label></li>
+						<li><label><span><b>Aperçus (miniatures)</b><small>JPG, PNG ; AI, PSD, INDD et PDF quand le fichier contient un aperçu</small></span><input type="checkbox" role="switch" name="apercus" value="1" class="dc-switch" {{ v.apercus ? 'checked' }}></label></li>
+						<li class="{{ pdftotext ? '' : 'dc-grise' }}"><label><span><b>Recherche dans le texte des PDF</b><small>{{ pdftotext ? 'plus lent la première fois' : 'indisponible : l\'outil « pdftotext » (Poppler) n\'est pas installé sur le serveur de l\'ERP' }}</small></span><input type="checkbox" role="switch" name="recherche_pdf" value="1" class="dc-switch" {{ v.recherche_pdf and pdftotext ? 'checked' }} {{ pdftotext ? '' : 'disabled' }}></label></li>
+					</ul>
+					{% set dernier = etat.complete ?? etat.rapide ?? null %}
+					<p class="dc-legende">
+						{% if etat.complete is defined %}Dernière analyse complète {{ date(etat.complete.le)|temps_ecoule }} ({{ etat.complete.fichiers }} fichiers, {{ etat.complete.duree }} s). {% endif %}
+						{% if etat.rapide is defined %}Dernière analyse rapide {{ date(etat.rapide.le)|temps_ecoule }}.{% endif %}
+						{% if dernier is null %}Pas encore d'analyse : la tâche planifiée « dossiers_clients » doit tourner sur le serveur (voir l'aide).{% endif %}
+					</p>
+				</section>
+
+				{# ===== Modèle de sous-dossiers ===== #}
+				<section class="dc-carte">
+					<h2>Modèle de sous-dossiers</h2>
+					<p class="dc-legende">Créés dans le dossier de chaque nouveau client. Changer un nom ici ne renomme pas les dossiers existants : l'ERP reconnaît aussi « 03 BAT », « BAT envoyés » ou « bat ».</p>
+					<ol class="dc-modele" data-dc-modele>
+						{% for e in modele.entrees %}
+							<li>
+								<input type="hidden" name="modele[{{ loop.index0 }}][cle]" value="{{ e.cle }}">
+								<input type="color" name="modele[{{ loop.index0 }}][couleur]" value="{{ e.couleur }}" aria-label="Couleur de {{ e.nom }}">
+								<span class="dc-num">{{ e.numero }}</span>
+								<input name="modele[{{ loop.index0 }}][nom]" value="{{ e.nom }}" class="form-control form-control-sm" maxlength="60" aria-label="Nom du sous-dossier {{ e.numero }}">
+								<input type="number" name="modele[{{ loop.index0 }}][ordre]" value="{{ loop.index }}" min="1" max="12" class="form-control form-control-sm dc-ordre" aria-label="Ordre">
+								<label class="dc-retirer" title="Retirer du modèle (les dossiers existants ne sont pas touchés)"><input type="checkbox" name="modele[{{ loop.index0 }}][retirer]" value="1"> retirer</label>
+							</li>
+						{% endfor %}
+						<li class="dc-modele-nouveau">
+							<input type="hidden" name="modele[{{ modele.entrees|length }}][cle]" value="">
+							<input type="color" name="modele[{{ modele.entrees|length }}][couleur]" value="#64748B" aria-label="Couleur du nouveau sous-dossier">
+							<span class="dc-num">+</span>
+							<input name="modele[{{ modele.entrees|length }}][nom]" value="" class="form-control form-control-sm" maxlength="60" placeholder="Nouveau sous-dossier" aria-label="Nouveau sous-dossier">
+							<input type="number" name="modele[{{ modele.entrees|length }}][ordre]" value="{{ modele.entrees|length + 1 }}" min="1" max="12" class="form-control form-control-sm dc-ordre" aria-label="Ordre">
+						</li>
+					</ol>
+				</section>
+			</div>
+
+			<div class="dc-col">
+				{# ===== Qui voit quoi ===== #}
+				<section class="dc-carte">
+					<h2>Qui voit quoi</h2>
+					<table class="dc-tableau dc-matrice" data-sans-filtres>
+						<thead><tr><th>Rôle</th><th>Voir</th><th>Ajouter</th><th>Supprimer</th></tr></thead>
+						<tbody>
+							{% for l in matrice %}
+								<tr>
+									<th scope="row">{{ l.nom }}{% if peut_droits and not l.fixe %}<input type="hidden" name="droits[{{ l.code }}][present]" value="1">{% endif %}</th>
+									{% for action, c in l.cases %}
+										<td data-label="{{ action|capitalize }}">
+											{% if peut_droits and not l.fixe %}
+												<details class="dc-case">
+													<summary class="{{ action == 'supprimer' and c.texte != 'non' ? 'dc-rouge' }}">{{ c.texte }}</summary>
+													<div class="dc-case-choix">
+														<label><input type="checkbox" name="droits[{{ l.code }}][{{ action }}][]" value="*" {{ c.valeur is same as('*') ? 'checked' }}> {{ action == 'voir' ? 'tout' : 'partout' }}</label>
+														{% for e in modele.entrees %}
+															<label><input type="checkbox" name="droits[{{ l.code }}][{{ action }}][]" value="{{ e.cle }}" {{ c.valeur is not same as('*') and e.cle in c.valeur ? 'checked' }}> {{ e.dossier }}</label>
+														{% endfor %}
+													</div>
+												</details>
+											{% else %}
+												<span class="{{ action == 'supprimer' and c.texte != 'non' ? 'dc-rouge' }}">{{ c.texte }}</span>
+											{% endif %}
+										</td>
+									{% endfor %}
+								</tr>
+							{% endfor %}
+							<tr class="dc-ligne-en-ligne"><th scope="row">Client (en ligne)</th><td>BAT et fichiers publiés</td><td>ses fichiers</td><td>non</td></tr>
+						</tbody>
+					</table>
+					<p class="dc-legende">
+						« Supprimer » veut dire <b>retirer de l'ERP</b> (lien avec une commande, ligne de « À classer », publication pour le client) : aucun fichier n'est jamais effacé du disque.
+						Le droit par personne « Dossiers clients complets » (fiche de l'utilisateur) donne voir et ajouter partout.
+						{% if not peut_droits %}<br>La Direction seule modifie cette matrice.{% endif %}
+					</p>
+				</section>
+
+				{# ===== Version en ligne ===== #}
+				<section class="dc-carte">
+					<h2>Version en ligne</h2>
+					<p>Le site en ligne <b>ne voit pas</b> le serveur de l'atelier. Seuls les fichiers que vous publiez (BAT, factures, visuels validés) sont copiés en ligne pour le client. Les fichiers sources (AI, PSD) restent chez vous.</p>
+					<p class="dc-chiffres"><span>Publiés ce mois : <b>{{ publies_mois }}</b></span><span>Espace en ligne utilisé : <b>{{ octets_en_ligne|taille_octets }}</b></span></p>
+				</section>
+
+				{# ===== Sécurité ===== #}
+				<section class="dc-carte">
+					<h2>Sécurité</h2>
+					<ul class="dc-puces">
+						<li>Le logiciel ne supprime ni ne déplace jamais un fichier. Il crée seulement le dossier d'un nouveau client et range une copie renommée d'un fichier « à classer ».</li>
+						<li>Journal : qui a ouvert, ajouté ou publié quel fichier. {% if is_granted('ROLE_ADMIN') %}<a href="{{ path('app_journal_activite_index', {entite: 'DossierClient'}) }}">Tout le journal</a>{% endif %}</li>
+						<li>« Ouvrir avec Illustrator » passe par un lien signé, valable 10 minutes, limité au dossier des clients.</li>
+						<li>Sauvegarde du dossier Clients<br><span class="dc-orange">à prévoir sur disque externe ou cloud · non incluse</span></li>
+					</ul>
+					{% if journal is not empty %}
+						<h3>Derniers gestes</h3>
+						<ul class="dc-journal">
+							{% for j in journal %}<li><time>{{ j.le|date('d/m H:i') }}</time> <b>{{ j.qui }}</b> · {{ j.quoi }}{{ j.client ? ' · ' ~ j.client }}{% if j.fichier %} · <code>{{ j.fichier|split('/')|last }}</code>{% endif %}</li>{% endfor %}
+						</ul>
+					{% endif %}
+				</section>
+
+				{# ===== Postes Windows ===== #}
+				<section class="dc-carte">
+					<h2>Postes Windows</h2>
+					<p>« Ouvrir avec Illustrator » et « Afficher dans le dossier » demandent un petit programme sur chaque poste (dossier <code>outils/succes-fichier</code> de l'ERP, installation expliquée dans l'aide « Dossiers clients »). Il vérifie la signature du lien et que le fichier est bien dans le dossier des clients.</p>
+					{% if cle_postes %}
+						<label class="dc-champ">Clé des postes (à copier dans la configuration du programme)
+							<span class="dc-champ-suffixe"><input class="form-control" value="{{ cle_postes }}" readonly spellcheck="false" data-dc-masque><button type="button" class="btn btn-sm dc-btn" data-dc-copier="{{ cle_postes }}"><i class="far fa-copy"></i> Copier</button></span>
+						</label>
+						<p class="dc-legende">Gardez-la pour vous : elle permet d'ouvrir des fichiers du dossier des clients sur un poste.</p>
+					{% endif %}
+				</section>
+			</div>
+		</form>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script src="{{ asset('js/dossiers-clients.js') }}" defer></script>
+{% endblock %}

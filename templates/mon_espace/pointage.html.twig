@@ -1,0 +1,101 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Mon pointage : les journées du mois de la personne connectée, leurs
+	heures et leurs points (docs/pointage.md, « Calcul des points »).
+	Seulement les siennes ; pas de photo ici.
+#}
+
+{% set statuts = constant('App\\Service\\Pointage\\CalculPointage::STATUTS') %}
+
+{% block title %}Mon pointage · {{ mois|date_fr('MMMM y') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_mon_espace_pointage', {mois: mois|date_modify('-1 month')|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left"></i><span class="si-masque-mobile ms-1">Mois précédent</span></a></li>
+	{% if suivant %}
+		<li class="nav-item"><a href="{{ path('app_mon_espace_pointage', {mois: suivant|date('Y-m')}) }}" class="btn btn-light btn-sm si-btn-entete"><span class="si-masque-mobile me-1">Mois suivant</span><i class="fas fa-caret-right"></i></a></li>
+	{% endif %}
+	<li class="nav-item"><a href="{{ path('app_pointer_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-qrcode me-1"></i>Pointer</a></li>
+{% endblock %}
+
+{% block body %}
+	{% set f = fiche %}
+	<div class="si-pg si-mp">
+		<p class="si-mp-retour"><a href="{{ path('app_mon_espace_index') }}"><i class="fas fa-arrow-left me-1"></i>Mon espace</a></p>
+		<div class="si-pg-kpis">
+			<article class="card">
+				<h2>Points · {{ mois|date_fr('MMMM') }}</h2>
+				<strong class="{{ f.points < 0 ? 'si-p-alerte' : (f.points > 0 ? 'si-p-ok') }}">{{ f.points > 0 ? '+' }}{{ f.points }}</strong>
+				<span class="si-p-neutre">{{ f.aValider > 0 ? f.aValider ~ ' journée' ~ (f.aValider > 1 ? 's') ~ ' en plus à valider' : (f.note is null ? 'pas encore de note' : 'ponctualité ' ~ f.note ~ ' / 100') }}</span>
+			</article>
+			<article class="card">
+				<h2>Heures faites</h2>
+				{% if f.nouveau > 0 %}
+					<strong>{{ f.faites|duree_pointage }}</strong>
+					<span class="si-p-neutre">sur {{ f.dues|duree_pointage }} dues</span>
+				{% else %}
+					<strong>{{ f.minutes > 0 ? f.minutes|duree_pointage : '0' }}</strong>
+					<span class="si-p-neutre">de présence</span>
+				{% endif %}
+			</article>
+			<article class="card">
+				<h2>Jours pointés</h2>
+				<strong>{{ f.presents }} / {{ f.ouvres }}</strong>
+				<span class="{{ f.retards > 0 ? 'si-p-alerte' : 'si-p-neutre' }}">{{ f.retards }} retard{{ f.retards > 1 ? 's' }}</span>
+				{% if f.avance > 0 %}<span class="si-p-neutre">Arrivé avant l'heure {{ f.avance }} fois</span>{% endif %}
+			</article>
+			<article class="card">
+				<h2>Mon horaire</h2>
+				{% if f.horaire.libre %}
+					<strong class="si-mp-horaire">Sans heure fixe</strong>
+					<span class="si-p-neutre">ni retard ni départ anticipé</span>
+				{% else %}
+					<strong class="si-mp-horaire">{{ f.horaire.debut|heure_pointage }} – {{ f.horaire.fin|heure_pointage }}</strong>
+					<span class="si-p-neutre">{{ f.horaire.libelle }} · {{ f.horaire.dues|duree_pointage }} par jour</span>
+				{% endif %}
+			</article>
+		</div>
+
+		<section class="card si-pg-tableau si-mp-jours">
+			<h2>Jour par jour</h2>
+			<table class="table">
+				<thead><tr><th>Jour</th><th>Arrivée</th><th>Départ</th><th>Heures faites / dues</th><th>Points</th><th>Pourquoi</th></tr></thead>
+				<tbody>
+					{% for j in f.jours|reverse %}
+						{% if j.presences is empty %}
+							<tr class="si-pg-ligne-vide">
+								<td data-libelle="Jour">{{ j.jour|date_fr('EEE d')|capitalize }}</td>
+								<td colspan="5" class="si-mp-raison" data-libelle="Pointage">{{ j.jour|date('Y-m-d') < 'now'|date('Y-m-d') ? 'Pas de pointage' : 'Pas encore pointé' }}</td>
+							</tr>
+						{% endif %}
+						{% for c in j.presences %}
+							{% set p = c.pointage %}
+							{% set k = c.calcul %}
+							<tr data-si-pointage="{{ p.id }}">
+								<td data-libelle="Jour">{{ j.jour|date_fr('EEE d')|capitalize }}{% if k.bareme == 'ancien' %} <small class="si-mp-ancien">ancien barème</small>{% endif %}</td>
+								<td data-libelle="Arrivée" class="{{ k.retard > 0 ? 'si-p-alerte' }}">{{ p.arriveeLe|date('H:i') }}{% if k.avance|default(0) > 0 %} <small class="si-pg-avant" title="Arrivé avant l'heure de début : le temps compte à partir de {{ k.debutPrevu|heure_pointage }}">avant {{ k.debutPrevu|heure_pointage }}</small>{% endif %}</td>
+								<td data-libelle="Départ">{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : statuts[k.statut] }}</td>
+								<td data-libelle="Heures faites / dues">{% if k.dues is not null %}{{ k.faites is null ? '—' : k.faites|duree_pointage }} / {{ k.dues > 0 ? k.dues|duree_pointage : 'repos' }}{% else %}{{ k.presence is null ? '—' : k.presence|duree_pointage }}{% endif %}</td>
+								<td data-libelle="Points"><b class="{{ k.total < 0 ? 'si-p-alerte' : (k.total > 0 ? 'si-p-ok') }}">{{ k.total > 0 ? '+' }}{{ k.total }}</b></td>
+								<td data-libelle="Pourquoi" class="si-mp-raison">
+									{{ k.raison }}
+									{% if p.motifAjustement and p.ajustementPoints != 0 %}<br><span class="si-pg-motif">Ajustement {{ p.ajustementPoints > 0 ? '+' }}{{ p.ajustementPoints }} : {{ p.motifAjustement }}</span>{% endif %}
+									{% if p.corrige %}<br><span class="si-pg-motif">Corrigé par la RH : {{ p.motifCorrection }}</span>{% endif %}
+								</td>
+							</tr>
+						{% endfor %}
+					{% else %}
+						<tr><td colspan="6" class="si-pg-absent">Pas encore de pointage ce mois-ci.</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<p class="si-pg-totaux">
+				Total du mois : <b>{{ f.points > 0 ? '+' }}{{ f.points }} points</b>
+				{% if f.nouveau > 0 %}· <b>{{ f.faites|duree_pointage }}</b> faites sur <b>{{ f.dues|duree_pointage }}</b> dues{% endif %}
+				· présence (pause déduite) <b>{{ f.minutes|duree_pointage }}</b>
+			</p>
+		</section>
+
+		{% include 'pointage/_calcul_points.html.twig' with {regles: regles, horaires: horaires, horaire: f.horaire, debut: f.debutNouveau, pour_moi: true} %}
+	</div>
+{% endblock %}

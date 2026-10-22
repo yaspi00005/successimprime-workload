@@ -3,14 +3,13 @@
 namespace App\Controller;
 
 use App\Entity\BonLivraison;
+use App\Service\Livraisons\PreparationLivraison;
 use App\Entity\BonLivraisonLigne;
 use App\Entity\Commandes;
 use App\Entity\StockSorties;
 use App\Entity\CommandesDetails;
-use App\Service\StockService;
 use App\Entity\User;
 use App\Repository\BonLivraisonRepository;
-use App\Repository\CommandesDetailsRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
@@ -240,8 +239,7 @@ final class BonLivraisonController extends AbstractController
     public function creerDepuisCommande(
         Commandes $commande,
         Request $request,
-        EntityManagerInterface $em,
-        CommandesDetailsRepository $commandesDetailsRepository
+        PreparationLivraison $preparation
     ): Response {
         $utilisateur = $this->utilisateurConnecte();
 
@@ -250,169 +248,9 @@ final class BonLivraisonController extends AbstractController
             'bon_livraison_creer_commande_' . $commande->getId()
         );
 
+        // Lignes prêtes, quantités disponibles, livraison programmée par le client : PreparationLivraison.
         try {
-            /*
-         * ========================================================
-         * 1. RÉCUPÉRER LES LIGNES DISPONIBLES À LA LIVRAISON
-         * ========================================================
-         *
-         * On ne prend que PRETE_LIVRAISON.
-         *
-         * Une ligne EN_LIVRAISON appartient déjà à un BL validé
-         * et ne doit pas être remise dans un nouveau BL.
-         */
-            $details = $commandesDetailsRepository
-                ->createQueryBuilder('detail')
-                ->andWhere(
-                    'detail.commande = :commande'
-                )
-                ->andWhere(
-                    'detail.statutProduction = :statut'
-                )
-                ->setParameter(
-                    'commande',
-                    $commande
-                )
-                ->setParameter(
-                    'statut',
-                    CommandesDetails::PRODUCTION_PRETE_LIVRAISON
-                )
-                ->orderBy(
-                    'detail.id',
-                    'ASC'
-                )
-                ->getQuery()
-                ->getResult();
-
-            if ($details === []) {
-                throw new \LogicException(
-                    'Aucune ligne de cette commande n’est actuellement prête à être livrée.'
-                );
-            }
-
-            /*
-         * ========================================================
-         * 2. CRÉATION DU BON
-         * ========================================================
-         */
-            $bon = new BonLivraison();
-
-            $bon
-                ->setNumero(
-                    $this->genererNumero($em)
-                )
-                ->setCommande(
-                    $commande
-                )
-                ->setCreePar(
-                    $utilisateur
-                );
-
-            /*
-         * Permet de savoir si au moins une ligne
-         * réellement disponible a été ajoutée.
-         */
-            $nombreLignesAjoutees = 0;
-
-            /*
-         * ========================================================
-         * 3. TRAITEMENT DES DÉTAILS
-         * ========================================================
-         */
-            foreach ($details as $detail) {
-
-                /*
-             * Quantité commandée - quantité déjà effectivement livrée.
-             */
-                $quantiteRestante =
-                    $detail->getQuantiteRestanteLivraison();
-
-                if ($quantiteRestante <= 0) {
-                    continue;
-                }
-
-                /*
-             * Quantité déjà placée dans un autre BL
-             * brouillon ou validé.
-             */
-                $quantiteReservee =
-                    $this->calculerQuantiteReserveeLivraison(
-                        $detail,
-                        $em
-                    );
-
-                /*
-             * Quantité encore réellement disponible.
-             */
-                $quantiteDisponible = max(
-                    0,
-                    $quantiteRestante - $quantiteReservee
-                );
-
-                if ($quantiteDisponible <= 0) {
-                    continue;
-                }
-
-                /*
-             * ====================================================
-             * CRÉATION DE LA LIGNE BL
-             * ====================================================
-             */
-                $ligne = new BonLivraisonLigne();
-
-                /*
-             * Cette méthode copie :
-             * - désignation ;
-             * - quantité commandée ;
-             * - unité ;
-             * - etc.
-             */
-                $ligne->setCommandeDetail(
-                    $detail
-                );
-
-                /*
-             * IMPORTANT :
-             *
-             * setCommandeDetail() propose normalement toute
-             * la quantité restante.
-             *
-             * Ici on la remplace par la quantité réellement
-             * disponible après déduction des réservations.
-             */
-                $ligne->setQuantiteLivree(
-                    $quantiteDisponible
-                );
-
-                $bon->addLigne(
-                    $ligne
-                );
-
-                ++$nombreLignesAjoutees;
-            }
-
-            /*
-         * ========================================================
-         * 4. AUCUNE QUANTITÉ DISPONIBLE
-         * ========================================================
-         */
-            if ($nombreLignesAjoutees === 0) {
-                throw new \LogicException(
-                    'Aucune quantité n’est disponible pour un nouveau bon de livraison. '
-                        . 'Les quantités restantes sont peut-être déjà réservées dans un autre bon.'
-                );
-            }
-
-            /*
-         * ========================================================
-         * 5. ENREGISTREMENT
-         * ========================================================
-         */
-            $em->persist(
-                $bon
-            );
-
-            $em->flush();
+            ['bon' => $bon, 'lignes' => $nombreLignesAjoutees] = $preparation->creerDepuisCommande($commande, $utilisateur);
 
             $this->addFlash(
                 'success',
@@ -659,8 +497,7 @@ final class BonLivraisonController extends AbstractController
     public function valider(
         BonLivraison $bon,
         Request $request,
-        EntityManagerInterface $em,
-        StockService $stockService
+        PreparationLivraison $preparation
     ): Response {
         $utilisateur =
             $this->utilisateurConnecte();
@@ -670,135 +507,9 @@ final class BonLivraisonController extends AbstractController
             'bon_livraison_valider_' . $bon->getId()
         );
 
+        // Contrôles, stock des ventes directes seulement, lignes « en livraison » : PreparationLivraison.
         try {
-            /*
-         * ========================================================
-         * CONTRÔLES AVANT VALIDATION
-         * ========================================================
-         */
-            if (!$bon->estBrouillon()) {
-                throw new \LogicException(
-                    'Seul un bon de livraison en brouillon peut être validé.'
-                );
-            }
-
-            if ($bon->getLignes()->isEmpty()) {
-                throw new \LogicException(
-                    'Le bon de livraison ne contient aucune ligne.'
-                );
-            }
-
-            /*
-         * ========================================================
-         * STOCK DES LIVRAISONS DIRECTES
-         * ========================================================
-         *
-         * IMPORTANT :
-         *
-         * Les produits passés par la production ont déjà
-         * consommé leur stock dans ProductionController::terminer().
-         *
-         * On ne déduit donc ici QUE les lignes qui ne nécessitent
-         * aucune production.
-         */
-            foreach (
-                $bon->getLignes()
-                as $ligne
-            ) {
-                $detail =
-                    $ligne->getCommandeDetail();
-
-                if ($detail === null) {
-                    throw new \LogicException(
-                        'Une ligne du bon de livraison n’est plus liée à son détail de commande.'
-                    );
-                }
-
-                $quantiteLivraison =
-                    (float)
-                    $ligne->getQuantiteLivree();
-
-                if ($quantiteLivraison <= 0) {
-                    throw new \LogicException(
-                        sprintf(
-                            'La quantité de « %s » doit être supérieure à zéro.',
-                            $ligne->getDesignation()
-                        )
-                    );
-                }
-
-                /*
-             * Ligne provenant d'une production :
-             * aucune deuxième sortie de stock.
-             */
-                if (
-                    $detail->isProductionNecessaire()
-                ) {
-                    continue;
-                }
-
-                /*
-             * Livraison directe.
-             *
-             * Exemple :
-             * commande = 10
-             * BL1      = 4
-             *
-             * On consomme uniquement 4.
-             */
-                $stockService
-                    ->consommerPourDetail(
-                        $detail,
-                        StockSorties::ORIGINE_LIVRAISON,
-                        (string) $bon->getNumero(),
-                        $quantiteLivraison
-                    );
-            }
-
-            /*
-         * ========================================================
-         * VALIDATION DU BON
-         * ========================================================
-         */
-            $bon->valider(
-                $utilisateur
-            );
-
-            /*
-         * ========================================================
-         * PASSAGE EN LIVRAISON
-         * ========================================================
-         */
-            foreach (
-                $bon->getLignes()
-                as $ligne
-            ) {
-                $detail =
-                    $ligne->getCommandeDetail();
-
-                if ($detail === null) {
-                    continue;
-                }
-
-                if (
-                    $detail->getStatutProduction()
-                    ===
-                    CommandesDetails::PRODUCTION_PRETE_LIVRAISON
-                ) {
-                    $detail
-                        ->marquerEnLivraison();
-                }
-            }
-
-            /*
-         * Un seul flush :
-         *
-         * - BL validé
-         * - détail EN_LIVRAISON
-         * - StockSorties
-         * - StockReservation consommée/réduite
-         */
-            $em->flush();
+            $preparation->valider($bon, $utilisateur);
 
             $this->addFlash(
                 'success',
@@ -1104,58 +815,6 @@ public function livrer(
             (int) $resultat
         );
     }
-    private function genererNumero(
-        EntityManagerInterface $em
-    ): string {
-        $annee = (new \DateTimeImmutable())
-            ->format('Y');
-
-        $prefixe = 'BL-' . $annee . '-';
-
-        /*
-         * On récupère le dernier numéro de l'année.
-         */
-        $dernier = $em
-            ->getRepository(BonLivraison::class)
-            ->createQueryBuilder('bl')
-            ->andWhere(
-                'bl.numero LIKE :prefixe'
-            )
-            ->setParameter(
-                'prefixe',
-                $prefixe . '%'
-            )
-            ->orderBy(
-                'bl.numero',
-                'DESC'
-            )
-            ->setMaxResults(1)
-            ->getQuery()
-            ->getOneOrNullResult();
-
-        $prochainNumero = 1;
-
-        if ($dernier instanceof BonLivraison) {
-            $numero = $dernier->getNumero();
-
-            if ($numero !== null) {
-                $partieNumero = substr(
-                    $numero,
-                    strlen($prefixe)
-                );
-
-                $prochainNumero =
-                    ((int) $partieNumero) + 1;
-            }
-        }
-
-        return sprintf(
-            '%s%06d',
-            $prefixe,
-            $prochainNumero
-        );
-    }
-
     /*
      * ============================================================
      * UTILISATEUR CONNECTÉ

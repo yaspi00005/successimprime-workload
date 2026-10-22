@@ -1,0 +1,208 @@
+{% extends 'production_rouleau/_base.html.twig' %}
+
+{% block title %}Imposition · {{ tirage.numero }}{% endblock %}
+{% block fab_actif %}rouleaux{% endblock %}
+
+{% set laize = tirage.laizeCm %}
+{% set marge = tirage.margeCm %}
+{% set hauteur_plan = max(longueur, 50) %}
+{% set modifiable = tirage.estModifiable %}
+
+{% block fab_contenu %}
+	<header class="si-fab-entete">
+		<div>
+			<p class="si-fab-ariane">Atelier › Production › <a href="{{ path('app_atelier_production_rouleaux') }}">Rouleaux</a> › {{ tirage.machine.nom }}</p>
+			<h1 class="si-fab-titre">Imposition · rouleau {{ tirage.libelleSupport|split('·')|first|trim|lower }} · laize {{ tirage.laizeM|number_format(2, ',', ' ') }} m</h1>
+			<p class="si-fab-muet mb-0">{{ tirage.numero }} · <span class="si-fab-pastille {{ tirage.statut == 'envoye' ? 'bleu' : (tirage.statut == 'en_impression' ? 'orange' : (tirage.statut == 'annule' ? 'rouge' : '')) }}">{{ tirage.libelleStatut }}</span>{% if tirage.mode == 'manuel' %} · placement manuel{% endif %}</p>
+		</div>
+		<div class="si-fab-actions">
+			<a href="{{ path('app_atelier_production_fiche', {id: tirage.id}) }}" class="si-fab-bouton"><i class="fas fa-clipboard-check" aria-hidden="true"></i>Fiche de production</a>
+			{% if modifiable and peutAgir %}
+				<form method="post" action="{{ path('app_atelier_production_recalculer', {id: tirage.id}) }}" class="si-fr-inline">
+					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+					<button type="submit" class="si-fab-bouton"><i class="fas fa-redo" aria-hidden="true"></i>Recalculer</button>
+				</form>
+				<button type="button" class="si-fab-bouton principal" data-fr-rip {{ tirage.pieces is empty ? 'disabled' }}><i class="fas fa-paper-plane" aria-hidden="true"></i>{{ tirage.envois is empty ? 'Envoyer au RIP' : 'Renvoyer au RIP' }}</button>
+			{% endif %}
+		</div>
+	</header>
+
+	{% if not peutAgir and raison %}<p class="si-fr-alerte">{{ raison }} Vous voyez le placement sans pouvoir le changer.</p>{% endif %}
+	{% if not modifiable %}<p class="si-fr-alerte">Ce rouleau est {{ tirage.libelleStatut|lower }} : le placement ne change plus.</p>{% endif %}
+	{% if tirage.aRenvoyer %}<p class="si-fr-alerte rouge">Le placement a changé depuis l'envoi V{{ (tirage.envois|first).version }} : renvoyez le rouleau au RIP avant de démarrer.</p>{% endif %}
+
+	<div class="si-fab-grille si-fr-impo">
+		<section class="si-fab-carte" aria-labelledby="si-fr-plan-titre">
+			<div class="si-fr-carte-entete">
+				<h2 id="si-fr-plan-titre">Placement sur le rouleau <small>vue de dessus · le rouleau avance vers le bas</small></h2>
+				{% if modifiable and peutAgir %}
+					<div class="si-fr-mode" role="group" aria-label="Mode de placement">
+						<button type="button" class="{{ tirage.mode == 'auto' ? 'actif' }}" data-fr-mode="auto" aria-pressed="{{ tirage.mode == 'auto' ? 'true' : 'false' }}">Automatique</button>
+						<button type="button" class="{{ tirage.mode == 'manuel' ? 'actif' }}" data-fr-mode="manuel" aria-pressed="{{ tirage.mode == 'manuel' ? 'true' : 'false' }}">Manuel</button>
+					</div>
+				{% endif %}
+			</div>
+			<div class="si-fr-placement">
+				<div>
+					<div class="si-fr-plan" data-fr-plan>
+						<svg viewBox="-2 -2 {{ laize + 4 }} {{ hauteur_plan + 4 }}" role="img" aria-label="Placement des {{ pieces|length }} pièces sur une laize de {{ laize|number_format(0, ',', ' ') }} cm, {{ longueur|number_format(0, ',', ' ') }} cm de rouleau">
+							<rect x="0" y="0" width="{{ laize }}" height="{{ hauteur_plan }}" fill="#FFFFFF" stroke="#C9D3E3" stroke-width="1"></rect>
+							<rect x="0" y="0" width="{{ marge }}" height="{{ hauteur_plan }}" fill="#9AA6B8" opacity=".35"></rect>
+							<rect x="{{ laize - marge }}" y="0" width="{{ marge }}" height="{{ hauteur_plan }}" fill="#9AA6B8" opacity=".35"></rect>
+							{% for p in pieces %}
+								{% set fs = min(max(min(p.l, p.h) / 9, 5), 13) %}
+								{% set titre = p.produit ~ ' ' ~ p.lo|number_format(0, ',', ' ') ~ ' × ' ~ p.ho|number_format(0, ',', ' ') ~ (p.tourne ? ' ↻' : '') %}
+								{# Les deux lignes tiennent dans la largeur de la pièce. #}
+								{% set fs1 = min(fs, p.l * 0.92 / max(titre|length * 0.6, 1)) %}
+								{% set fs2 = min(fs * 0.75, p.l * 0.92 / max(p.libelle|length * 0.56, 1)) %}
+								{# Pièce étroite : la deuxième ligne passe sur plusieurs lignes plutôt qu'en tout petit. #}
+								{% set parts = p.libelle|split(' · ') %}
+								{% set multi = parts|length > 1 and fs2 < fs * 0.55 %}
+								{% if multi %}{% set fs2 = min(fs * 0.75, p.l * 0.92 / max(max(parts|map(x => x|length)) * 0.56, 1)) %}{% endif %}
+								<g class="piece" data-cle="{{ p.cle }}" data-l="{{ p.l }}" data-h="{{ p.h }}" data-lo="{{ p.lo }}" data-ho="{{ p.ho }}" data-fs="{{ fs }}" data-tourne="{{ p.tourne ? 1 : 0 }}" transform="translate({{ p.x }} {{ p.y }})" tabindex="-1" aria-label="{{ titre }}, {{ p.libelle }}{{ p.tourne ? ', tournée' }}">
+									<rect class="fond" x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="{{ p.couleur }}"></rect>
+									<rect x="0" y="0" width="{{ p.l }}" height="{{ p.h }}" fill="none" stroke="#DE1028" stroke-width="1" stroke-dasharray="4 3"></rect>
+									{% set decale = multi ? (parts|length - 1) * fs2 * 0.6 : 0 %}
+									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 - fs * 0.3 - decale }}" text-anchor="middle" font-size="{{ fs1 }}" font-weight="700" fill="#FFFFFF">{{ titre }}</text>
+									<text x="{{ p.l / 2 }}" y="{{ p.h / 2 + fs * 0.9 - decale }}" text-anchor="middle" font-size="{{ fs2 }}" fill="#FFFFFF">{% if multi %}{% for part in parts %}<tspan x="{{ p.l / 2 }}" dy="{{ loop.first ? 0 : fs2 * 1.2 }}">{{ part }}</tspan>{% endfor %}{% else %}{{ p.libelle }}{% endif %}</text>
+								</g>
+							{% endfor %}
+						</svg>
+					</div>
+					{% if modifiable and peutAgir %}
+						<div class="si-fr-manuel-barre" data-fr-barre>
+							<span class="si-fab-muet">Glissez les pièces (pas de 1 cm) ou choisissez-en une et utilisez les flèches (Maj : 10 cm), R pour la tourner.</span>
+							<button type="button" class="si-fab-bouton sombre si-fr-petit-bouton" data-fr-enregistrer>Enregistrer le placement</button>
+							<span data-fr-message role="status" class="si-fr-rouge"></span>
+						</div>
+					{% endif %}
+				</div>
+				<div class="si-fr-legende">
+					<h3>Légende</h3>
+					<ul>
+						<li><span class="si-fr-trait" aria-hidden="true"></span>ligne de coupe</li>
+						<li><span class="si-fr-carre" aria-hidden="true"></span>marge de {{ margeTexte }} cm de chaque côté</li>
+						<li><span class="si-fr-carre" aria-hidden="true" style="background:#FFFFFF;border:1px solid #C9D3E3"></span>{{ espaceTexte }} cm entre les pièces</li>
+					</ul>
+					<h3>Ordre d'impression</h3>
+					<ol class="si-fr-ordre">
+						{% for t in travaux %}
+							<li>
+								<span class="pastille-couleur" style="background: {{ t.couleur }}" aria-hidden="true"></span>
+								<span class="texte">{{ t.rang }}. {{ t.client|default(t.numero) }}{% if t.promis and loop.first %} : livraison {{ t.promis|date('H:i') != '00:00' ? t.promis|date('H:i') : t.promis|date('d/m') }}{% endif %}</span>
+								{% if modifiable and peutAgir and travaux|length > 1 %}
+									<form method="post" action="{{ path('app_atelier_production_recalculer', {id: tirage.id}) }}" class="si-fr-fleches">
+										<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+										<input type="hidden" name="deplacer" value="{{ t.ordre.id }}">
+										<button type="submit" name="sens" value="haut" aria-label="Imprimer {{ t.numero }} plus tôt" {{ loop.first ? 'disabled' }}>▲</button>
+										<button type="submit" name="sens" value="bas" aria-label="Imprimer {{ t.numero }} plus tard" {{ loop.last ? 'disabled' }}>▼</button>
+									</form>
+								{% endif %}
+							</li>
+						{% endfor %}
+					</ol>
+					{% if sortSec %}<p class="si-fab-note">Le plus urgent part en premier : il sort sec à {{ sortSec|date('H:i') }}.</p>{% endif %}
+				</div>
+			</div>
+		</section>
+
+		<div>
+			<section class="si-fab-carte" aria-labelledby="si-fr-bilan-titre">
+				<h2 id="si-fr-bilan-titre">Bilan du rouleau</h2>
+				<div class="si-fr-bilan">
+					<div class="si-fr-anneau" style="--pc: {{ tirage.pourcent }}"><span>{{ tirage.pourcent }} %<small>utilisé</small></span></div>
+					<dl>
+						<div><dt>Imprimé</dt><dd>{{ tirage.imprimeM2|number_format(1, ',', ' ') }} m²</dd></div>
+						<div><dt>Rouleau consommé</dt><dd>{{ tirage.consommeM|number_format(1, ',', ' ') }} m · {{ tirage.consommeM2|number_format(1, ',', ' ') }} m²</dd></div>
+						<div><dt>Chute</dt><dd style="color:#8A6100">{{ tirage.chuteM2|number_format(1, ',', ' ') }} m²</dd></div>
+					</dl>
+				</div>
+			</section>
+
+			<section class="si-fab-carte" aria-labelledby="si-fr-estim-titre">
+				<h2 id="si-fr-estim-titre">Estimation</h2>
+				<dl class="si-fr-chiffres">
+					<div><dt>Durée d'impression</dt><dd>{{ dureeImpression is not null ? dureeImpression|temps_estime : 'vitesse à régler' }}{% if correction %}<small class="d-block si-fab-muet" title="Durée calculée avec la vitesse du profil : {{ tirage.dureeImpressionMin|temps_estime }}">{{ correction }}</small>{% endif %}</dd></div>
+					<div><dt>Séchage avant finition</dt><dd>{{ tirage.sechageMin is not null ? tirage.sechageMin ~ ' min' : '—' }}</dd></div>
+					<div><dt>Encre</dt><dd>{{ tirage.encreMl is not null ? '≈ ' ~ tirage.encreMl ~ ' ml' : 'profil à régler' }}</dd></div>
+					{% if voitCout %}
+						<div><dt>Coût matière + encre</dt><dd>{{ cout is not null ? '≈ ' ~ cout|number_format(0, ',', ' ') ~ ' F' : 'coûts à régler' }}</dd></div>
+					{% endif %}
+				</dl>
+				{% if profil %}<p class="si-fab-note">Profil {{ profil.profilIcc|default('du support') }}{% if profil.mode %} · {{ profil.mode }}{% endif %}.</p>{% endif %}
+			</section>
+
+			{% if pourquoi %}
+				<section class="si-fab-carte" aria-labelledby="si-fr-pourquoi-titre">
+					<h2 id="si-fr-pourquoi-titre">Pourquoi la {{ tirage.laizeM|number_format(2, ',', ' ') }} m ?</h2>
+					<p class="mb-0" style="font-size:13px">{{ pourquoi }}</p>
+				</section>
+			{% endif %}
+
+			<div class="si-fr-note-rip">
+				Le RIP reçoit un seul fichier avec les {{ pieces|length }} pièce{{ pieces|length > 1 ? 's' }}, les repères de coupe et le nom de chaque commande imprimé dans la marge ({{ nomRip }}). Les couleurs sont converties par le RIP avec le profil du support : le serveur ne convertit rien.
+				{% if dossier and racine %}<br>Dossier de la machine : <span class="si-fr-code">{{ dossier }}</span>{% endif %}
+				{% if not racine %}<br><b>{{ alerteRacine|trim('.', 'right') }}</b>{% if dossier %} (prévu : <span class="si-fr-code">{{ dossier }}</span>){% endif %}.{% endif %}
+			</div>
+
+			{% if modifiable and peutAgir %}
+				<section class="si-fab-carte" aria-labelledby="si-fr-envoi-titre" data-fr-envoi hidden>
+					<h2 id="si-fr-envoi-titre">Envoi au RIP</h2>
+					<p data-fr-etape role="status" class="mb-1" style="font-size:13px"></p>
+					<div class="si-fr-progression"><span data-fr-barre-progression></span></div>
+				</section>
+				<form method="post" action="{{ path('app_atelier_production_separes', {id: tirage.id}) }}" class="si-fab-carte" data-fr-separes>
+					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+					<p class="si-fab-muet mb-2" style="font-size:12px">Un fichier ne se monte pas (format, taille au-delà de {{ (tailleMax / 1024 / 1024)|number_format(0) }} Mo, pièce de plus de 5 m) ? Envoyez chaque fichier sous son nom de production avec une feuille de placement.</p>
+					<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-copy" aria-hidden="true"></i>Envoyer les fichiers séparés</button>
+				</form>
+			{% endif %}
+
+			{% if tirage.envois is not empty %}
+				<section class="si-fab-carte" aria-labelledby="si-fr-hist-titre">
+					<h2 id="si-fr-hist-titre">Envois</h2>
+					<ul class="si-fr-liste">
+						{% for e in tirage.envois %}
+							<li>
+								<span style="font-size:12px"><b>V{{ e.version }}</b> · {{ e.mode == 'separes' ? 'fichiers séparés' : 'un seul PDF' }} · {{ e.le|date('d/m H:i') }} · {{ e.parNom }}{% if e.copie %}<br><span class="si-fab-muet">copié dans le dossier de la machine</span>{% endif %}</span>
+								<a href="{{ path('app_atelier_production_rip_fichier', {id: tirage.id, version: e.version}) }}" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-download" aria-hidden="true"></i>{{ e.mode == 'separes' ? 'Feuille' : 'PDF' }}</a>
+							</li>
+						{% endfor %}
+					</ul>
+				</section>
+			{% endif %}
+
+			{% if modifiable and peutAgir %}
+				<form method="post" action="{{ path('app_atelier_production_annuler', {id: tirage.id}) }}" data-confirmer="Annuler le rouleau {{ tirage.numero }} ?" data-confirmer-detail="Ses travaux attendront un autre rouleau ; les fichiers déjà envoyés restent dans l'historique." data-confirmer-bouton="Annuler le rouleau" data-confirmer-danger>
+					<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+					<button type="submit" class="si-fab-bouton si-fr-petit-bouton"><i class="fas fa-times" aria-hidden="true"></i>Annuler le rouleau</button>
+				</form>
+			{% endif %}
+		</div>
+	</div>
+
+	{% if modifiable and peutAgir %}
+		<form method="post" action="{{ path('app_atelier_production_recalculer', {id: tirage.id}) }}" hidden data-fr-auto>
+			<input type="hidden" name="_token" value="{{ csrf_token('production-rouleau') }}">
+		</form>
+		<script type="application/json" id="si-fr-config">{{ {
+			jeton: csrf_token('production-rouleau'),
+			manuel: path('app_atelier_production_manuel', {id: tirage.id}),
+			donnees: path('app_atelier_production_rip_donnees', {id: tirage.id}),
+			initialiser: path('app_atelier_production_rip_initialiser', {id: tirage.id}),
+			morceau: path('app_atelier_production_rip_morceau', {id: tirage.id}),
+			terminer: path('app_atelier_production_rip_terminer', {id: tirage.id}),
+			tailleMorceau: morceau,
+			laize: laize, marge: marge, longueurMax: longueurMax,
+			mode: tirage.mode
+		}|json_encode|raw }}</script>
+	{% endif %}
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	{% if modifiable and peutAgir %}
+		<script src="{{ asset('vendor/montage/pdf-lib.min.js') }}"></script>
+		<script src="{{ asset('js/production-rouleau.js') }}"></script>
+	{% endif %}
+{% endblock %}

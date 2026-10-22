@@ -109,14 +109,7 @@
                 detail.typeLigne
             ) }}
 
-				<small class="form-text text-muted">
-					Produit / prestation :
-																																																																	                élément provenant du catalogue.
-																																																																	                Article en stock :
-																																																																	                vente directe d'un article physique.
-																																																																	                Saisie libre :
-																																																																	                désignation, quantité et prix libres.
-				</small>
+
 
 			</div>
 
@@ -457,7 +450,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6 js-zone-surface">
+				<div class="d-none js-zone-surface">
 
 					{{ form_row(detail.surface, {
                     attr: {
@@ -569,6 +562,7 @@
 					<small class="form-text text-muted js-remise-totale-detail">
 						Remise totale : —
 					</small>
+					<small class="form-text text-success d-block js-palier-info" hidden></small>
 
 				</div>
 
@@ -590,7 +584,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6">
+				<div class="d-none">
 
 					{{ form_row(detail.totalHt, {
                     attr: {
@@ -603,7 +597,7 @@
 				</div>
 
 
-				<div class="col-lg-3 col-md-6">
+				<div class="d-none">
 
 					{{ form_row(detail.totalTtc, {
                     attr: {
@@ -617,12 +611,28 @@
 
 			</div>
 
+			{# Petites pièces facturées au m² (docs/saisie-devis-commandes.md). #}
+			{{ include('partials/_pieces_m2_ligne.html.twig', {detail: detail}) }}
+
 		</div>
 
 
 		{# ========================================================
 																										       FINITIONS
 																										       ======================================================== #}
+
+		{#
+			Promotion de la ligne (docs/promotions.md) : affichée par
+			public/js/promotions-saisie.js, recalculée par le serveur à
+			l'enregistrement. La case cachée garde le choix de l'agent de la
+			retirer ; la classe js-calcul-detail relance le calcul.
+		#}
+		{% set ligneEnregistree = detail.vars.data %}
+		<div hidden>{{ form_widget(detail.promotionRetiree) }}</div>
+		<div class="si-pr-ligne js-promo-ligne js-calcul-detail" data-ligne="{{ ligneEnregistree ? ligneEnregistree.id }}" data-remise-promotion="{{ ligneEnregistree ? ligneEnregistree.remisePromotion : 0 }}" data-libelle="{{ ligneEnregistree ? ligneEnregistree.libellePromotion }}"></div>
+
+		<div class="si-resume-ligne js-resume-ligne"></div>
+		{% if ligneEnregistree and ligneEnregistree.totalFige %}<small class="d-block text-muted" title="Ligne d'avant la nouvelle version : son total enregistré reste tant que la quantité, le prix, la remise, les dimensions et les finitions ne changent pas. L'aperçu ci-dessus refait le calcul ; le total enregistré, lui, ne bouge pas.">Total d'origine conservé : recalculé seulement si la quantité, le prix, la remise, les dimensions ou les finitions changent.</small>{% endif %}
 
 		<div class="travail-section js-zone-finitions">
 
@@ -686,6 +696,10 @@
 
 		</div>
 
+
+		{# Réglages moins courants, repliés (maquette 22 : la ligne reste courte). #}
+		<details class="si-plus-options">
+			<summary>Plus d'options : caractéristiques techniques, observation</summary>
 
 		{# ========================================================
 																										       CARACTÉRISTIQUES TECHNIQUES
@@ -768,6 +782,7 @@
         ) }}
 
 		</div>
+		</details>
 
 	</div>
 
@@ -781,512 +796,358 @@
 {{ form_start(form, {
     attr: {
         id: 'devis-form',
-
         'data-brouillon-nouvelle':
             form.vars.data.id is null ? '1' : '0',
-
         'data-brouillon-csrf':
             csrf_token('brouillon-devis'),
-
         'data-brouillon-enregistrer-url':
             path('app_brouillon_enregistrer', {type: 'devis'}),
-
         'data-brouillon-verifier-url':
             path('app_brouillon_verifier', {type: 'devis'})
     }
 }) }}
 
+{#
+	Saisie d'un devis (maquette GC04, docs/devis.md) : en-tête (client,
+	contact, validité, délai), lignes depuis le catalogue ou libres,
+	calculateur grand format, conditions et canaux d'envoi ; à droite le
+	total, la rentabilité « Interne » (droit « Marges et coûts », jamais
+	montrée au client) et ce qui se passe après l'envoi. Sur téléphone,
+	3 étapes (client et lignes, ligne, conditions et envoi).
+#}
+{% set devis = form.vars.data %}
+{% set estNouveau = devis.id is null %}
+{% set voirCouts = is_granted('ROLE_COUT_MARGE') %}
+{% set nouvelleVersion = not estNouveau and devis.statut != 'brouillon' %}
 
-<div
-	class="side-app">
+<div class="si-saisie si-saisie-devis si-dv" data-etape="lignes" data-ligne=".detail-devis" data-travail=".js-devis-detail">
 
-	{# ========================================================
-													       HEADER
-													       ======================================================== #}
-
-	<div class="page-header">
-
-		<ol class="breadcrumb">
-
-			<li class="breadcrumb-item">
-
-				<a href="{{ path( 'app_devis_index' ) }}">
-					Devis
-				</a>
-
-			</li>
-
-			<li class="breadcrumb-item active">
-
-				{{
-                    form.vars.data.id
-                        ? 'Modifier le devis'
-                        : 'Nouveau devis'
-                }}
-
-			</li>
-
-		</ol>
-
-
-		<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-sm btn-primary-light">
-			<i class="fa fa-list mr-1"></i>
-			Liste des devis
-		</a>
-
+	<div class="si-saisie-tete">
+		<div class="si-saisie-retour d-md-none">
+			<button type="button" class="si-rond js-etape-retour" aria-label="Retour"><i class="fas fa-chevron-left"></i></button>
+			<div>
+				<strong class="js-titre-etape">{{ estNouveau ? 'Nouveau devis' : devis.numero }}</strong>
+				<small class="text-muted js-sous-titre-etape">Étape 1/3 · client et lignes</small>
+			</div>
+		</div>
+		<div class="si-saisie-boutons">
+			<a href="{{ estNouveau ? path('app_devis_index') : path('app_devis_show', {id: devis.id}) }}" class="btn btn-light btn-sm si-btn-entete d-none d-lg-inline-block">Annuler</a>
+			{% if estNouveau %}
+				<button type="submit" name="action" value="apercu" class="btn btn-light btn-sm si-btn-entete" formnovalidate>Aperçu PDF</button>
+			{% else %}
+				<a href="{{ path('app_devis_pdf', {id: devis.id}) }}" target="_blank" class="btn btn-light btn-sm si-btn-entete">Aperçu PDF</a>
+			{% endif %}
+			<button type="submit" name="action" value="brouillon" class="btn btn-light btn-sm si-btn-entete">Enregistrer le brouillon</button>
+			<button type="submit" name="action" value="envoyer" class="btn btn-danger btn-sm si-btn-entete js-dv-envoyer">Envoyer au client</button>
+		</div>
 	</div>
 
-
-	{% if not form.vars.valid %}
-
-		<div class="alert alert-danger">
-			{{ form_errors(form) }}
-		</div>
-
+	{% if apercu|default(null) %}
+		<div class="alert alert-info si-dv-bandeau">Brouillon enregistré. <a href="{{ path('app_devis_pdf', {id: apercu}) }}" target="_blank" rel="noopener"><strong>Ouvrir l'aperçu PDF</strong></a></div>
+	{% endif %}
+	{% if nouvelleVersion %}
+		<div class="alert alert-warning si-dv-bandeau">Ce devis a déjà été envoyé (version {{ devis.version }}). Enregistrer prépare la <strong>version {{ devis.version + 1 }}</strong> : le client garde la version {{ devis.version }} jusqu'au nouvel envoi.</div>
 	{% endif %}
 
-
-	{# ========================================================
-													       CLIENT
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-user-circle mr-2"></i>
-				Client
-			</div>
-
-		</div>
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.clients, {
-                        label: 'Client',
-
-                        attr: {
-                            class:
-                                'form-control js-select-search',
-
-                            'data-placeholder':
-                                'Rechercher un client...'
-                        }
-                    }) }}
-
-				</div>
-
-				<div class="col-lg-6">
-
-					{{ form_row(form.emetteur, {
-                        label: 'Émetteur',
-
-                        attr: {
-                            class: 'form-control custom-select'
-                        }
-                    }) }}
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       FACTURATION À UN TIERS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-exchange mr-2"></i>
-				Facturation à un tiers
-			</div>
-
-		</div>
-
-		<div class="card-body">
-
-			<div class="custom-control custom-checkbox mb-3">
-
-				{{ form_widget(form.facturerAUnTiers, {
-                        attr: {
-                            class: 'custom-control-input js-facturer-a-un-tiers'
-                        }
-                    }) }}
-
-				{{ form_label(form.facturerAUnTiers, null, {
-                        label_attr: {
-                            class: 'custom-control-label'
-                        }
-                    }) }}
-
-			</div>
-
-			<small class="form-text text-muted mb-3 d-block">
-				Le demandeur du devis n'est pas toujours celui qui paie
-																												(ex : un employé demande, son entreprise règle).
-																												Cochez cette case pour indiquer les coordonnées du payeur ;
-																												elles remplaceront celles du client sur le PDF.
-			</small>
-
-			<div class="row js-zone-facturer-a-un-tiers" style="display:none;">
-
-				<div class="col-md-6">
-					{{ form_row(form.nomFacturation, {
-                            label: 'Nom du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.adresseFacturation, {
-                            label: 'Adresse de facturation',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.telephoneFacturation, {
-                            label: 'Téléphone du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-				<div class="col-md-6">
-					{{ form_row(form.emailFacturation, {
-                            label: 'Email du payeur',
-                            attr: { class: 'form-control' }
-                        }) }}
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       INFORMATIONS DEVIS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="card-header">
-
-			<div class="card-title">
-				<i class="fa fa-file-text-o mr-2"></i>
-				Informations du devis
-			</div>
-
-		</div>
-
-		<div class="card-body">
-
-			<div class="row">
-
-				<div class="col-md-6 col-xl-3">
-
-					<div class="form-group">
-
-						<label>
-							Numéro
-						</label>
-
-						<input type="text" class="form-control" disabled value="{{ form.vars.data.numero |default( 'Généré automatiquement' ) }}">
-
-					</div>
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.statut, {
-                        label: 'Statut'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.etat, {
-                        label: 'État'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-6 col-xl-3">
-
-					{{ form_row(form.tva, {
-                        label: 'TVA (%)'
-                    }) }}
-
-				</div>
-
-
-				<div class="col-md-12 col-xl-6">
-
-					{{ form_row(form.observation, {
-                        label: 'Observation',
-
-                        attr: {
-                            rows: 3,
-                            placeholder:
-                                'Informations complémentaires...'
-                        }
-                    }) }}
-
-				</div>
-
-			</div>
-
-		</div>
-
-	</div>
-
-
-	{# ========================================================
-													       DÉTAILS
-													       ======================================================== #}
-
-	<div class="card">
-
-		<div class="
-																																																				                card-header
-																																																				                d-flex
-																																																				                justify-content-between
-																																																				                align-items-center
-																																																				            ">
-
-			<div>
-
-				<div class="card-title mb-0">
-
-					<i class="fa fa-shopping-cart mr-2"></i>
-
-					Produits, articles et prestations
-
-				</div>
-
-				<small class="text-muted">
-					Produit catalogue,
-																																																																	                    article en stock ou saisie libre.
-				</small>
-
-			</div>
-
-
-			<button type="button" id="add-detail" class="btn btn-success-light">
-				<i class="fa fa-plus mr-1"></i>
-				Ajouter un détail
-			</button>
-
-		</div>
-
-
-		<div class="card-body">
-
-			{{ form_errors(
-                form.devisDetails
-            ) }}
-
-
-			<div id="collection-details" data-index="{{ form.devisDetails|length }}" data-prototype="{{ _self.champs_detail( form.devisDetails.vars.prototype )|e('html_attr') }}">
-
-				{% for detail in form.devisDetails %}
-
-					<div class="
-																																																																																											                            detail-devis
-																																																																																											                            card
-																																																																																											                            border
-																																																																																											                            mb-4
-																																																																																											                        ">
-
-						<div class="
-																																																																																																								                                card-header
-																																																																																																								                                bg-light
-																																																																																																								                                d-flex
-																																																																																																								                                justify-content-between
-																																																																																																								                                align-items-center
-																																																																																																								                            ">
-
-							<div class="
-																																																																																																																					                                    card-title
-																																																																																																																					                                    detail-title
-																																																																																																																					                                    mb-0
-																																																																																																																					                                ">
-								Travail
-								{{ loop.index }}
-							</div>
-
-
-							<button type="button" class="
-																																																																																																																					                                    btn
-																																																																																																																					                                    btn-danger-light
-																																																																																																																					                                    btn-sm
-																																																																																																																					                                    supprimer-detail
-																																																																																																																					                                ">
-								<i class="fa fa-trash mr-1"></i>
-								Supprimer
-							</button>
-
-						</div>
-
-
-						<div class="card-body p-0">
-
-							{{ _self.champs_detail(
-                                detail
-                            ) }}
-
-						</div>
-
-					</div>
-
-				{% else %}
-
-					<div id="aucun-detail" class="alert alert-info mb-0">
-						Aucun travail ajouté.
-																																																																														                        Cliquez sur « Ajouter un détail ».
-					</div>
-
+	{% if not form.vars.valid %}
+		{# Toutes les erreurs, celles des lignes comprises : le volet de la ligne concernée peut être fermé. #}
+		<div class="alert alert-danger">
+			<ul class="mb-0 ps-3">
+				{% for erreur in form.vars.errors.form.getErrors(true) %}
+					<li>{{ erreur.message }}</li>
 				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
 
+	<div class="si-saisie-grille">
+		<div class="si-saisie-gauche">
+
+			{# ---------- En-tête : client, contact, validité, délai ---------- #}
+			<div class="card si-bloc si-saisie-client si-dv-entete js-zone-client">
+				<div class="si-dv-entete-client">
+					<div class="si-client-carte js-client-carte" hidden>
+						<span class="si-client-initiales js-client-initiales"></span>
+						<div class="min-w-0 flex-grow-1">
+							<small class="text-muted">Client</small>
+							<div class="si-client-nom"><strong class="js-client-nom"></strong> <span class="si-pastille si-pastille-bleu js-client-compte"></span> <span class="si-pastille si-pastille-gris js-client-tarif"></span></div>
+							<small class="text-muted js-client-contact"></small>
+						</div>
+						<button type="button" class="btn btn-sm si-btn-secondaire js-client-changer">Changer</button>
+					</div>
+					<div class="js-client-choix">
+						{{ form_row(form.clients, {
+							label: 'Client',
+							attr: {
+								class: 'form-control js-select-search js-client-saisie',
+								'data-placeholder': 'Téléphone, prénom ou nom…'
+							}
+						}) }}
+					</div>
+				</div>
+				<div class="si-dv-entete-contact">
+					{% include 'partials/_interlocuteur.html.twig' with {champ: form.interlocuteur, libelle: 'Contact'} %}
+				</div>
+				<div class="si-dv-entete-validite">
+					{{ form_label(form.validiteJours, 'Valable', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.validiteJours, {attr: {class: 'form-select form-select-sm js-validite'}}) }}
+					<small class="text-muted js-validite-date" data-depuis="{{ (devis.envoyeLe and devis.statut != 'brouillon' and not nouvelleVersion ? devis.envoyeLe : 'now')|date('Y-m-d') }}"></small>
+				</div>
+				<div class="si-dv-entete-delai">
+					{{ form_label(form.delaiRealisation, 'Délai de réalisation', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.delaiRealisation, {attr: {class: 'form-control form-control-sm'}}) }}
+					<datalist id="delais-suggeres">
+						{% for d in ['24 heures', '2 jours ouvrés', '3 jours ouvrés', '5 jours ouvrés', '7 jours ouvrés', '10 jours ouvrés', '15 jours ouvrés'] %}<option value="{{ d }}"></option>{% endfor %}
+					</datalist>
+				</div>
+				{# Objet du devis, imprimé sur le devis puis sur la facture (« Objet : … ») ; suggestions des Réglages. #}
+				<div class="si-dv-entete-objet">
+					{{ form_label(form.objet, 'Objet', {label_attr: {class: 'form-label mb-1'}}) }}
+					{{ form_widget(form.objet, {attr: {class: 'form-control form-control-sm', placeholder: 'Signalétique du hall, enseigne + pose… (facultatif)'}}) }}
+					<datalist id="objets-suggeres">
+						{% for objet in objets_suggeres() %}<option value="{{ objet }}"></option>{% endfor %}
+					</datalist>
+				</div>
+				{{ form_errors(form.validiteJours) }}{{ form_errors(form.delaiRealisation) }}{{ form_errors(form.objet) }}
+				{# Vente hors imprimerie (docs/hors-imprimerie.md) : comptée à part de l'imprimerie dans les statistiques ; suit le devis à la commande. #}
+				<div class="form-check mt-2 si-dv-entete-hors si-hors-imprimerie">
+					{{ form_widget(form.horsImprimerie, {attr: {class: 'form-check-input'}}) }}
+					<label class="form-check-label fw-semibold" for="{{ form.horsImprimerie.vars.id }}">Hors imprimerie</label>
+					<small class="d-block text-muted">{{ form.horsImprimerie.vars.help }}.</small>
+					{{ form_errors(form.horsImprimerie) }}
+				</div>
 			</div>
 
-			<div class="text-center mt-2">
-				<button type="button" id="add-detail-bottom" class="btn btn-success-light">
-					<i class="fa fa-plus mr-1"></i>
-					Ajouter un détail
-				</button>
+			{# ---------- Lignes ---------- #}
+			<div class="card si-bloc si-saisie-lignes">
+				<div class="si-bloc-tete">
+					<h4>Lignes <span class="text-muted d-md-none js-nombre-lignes"></span></h4>
+					<div class="si-dv-ajouts d-none d-md-flex">
+						<button type="button" id="add-detail" class="btn btn-light btn-sm si-btn-entete">+ Depuis le catalogue</button>
+						<button type="button" class="btn btn-light btn-sm si-btn-entete js-ligne-libre">+ Ligne libre</button>
+					</div>
+				</div>
+				{{ form_errors(form.devisDetails) }}
+				<div class="table-responsive">
+					<table class="table si-table si-table-lignes align-middle mb-0" data-sans-filtres>
+						<thead>
+							<tr>
+								<th class="si-col-vignette"></th>
+								<th>Désignation</th>
+								<th>Mode d'impression</th>
+								<th class="text-end">Qté</th>
+								<th class="text-end">Prix unitaire</th>
+								<th class="text-end">Total</th>
+								<th class="si-col-fichier"></th>
+								<th></th>
+							</tr>
+						</thead>
+						<tbody class="js-lignes-resume"></tbody>
+					</table>
+				</div>
+				<div id="aucun-detail" class="si-vide">Aucune ligne. Ajoutez un produit du catalogue ou une ligne libre (pose, déplacement…).</div>
+				<div class="si-dv-ajouts-mobile d-md-none">
+					<button type="button" id="add-detail-bottom" class="btn si-btn-ajout-ligne">+ Catalogue</button>
+					<button type="button" class="btn si-btn-ajout-ligne js-ligne-libre">+ Ligne libre</button>
+				</div>
+
+				{# Calculateur grand format : prix au m² des configurations du catalogue (public/js/saisie-devis.js). #}
+				<div class="si-dv-calc js-dv-calc" hidden>
+					<span class="si-dv-calc-titre">Calculateur grand format :</span>
+					<label>Largeur <input type="number" class="js-calc-largeur" min="0" step="0.01" inputmode="decimal" placeholder="3,00"> m</label>
+					<label>Hauteur <input type="number" class="js-calc-hauteur" min="0" step="0.01" inputmode="decimal" placeholder="0,80"> m</label>
+					<label>Matière <select class="js-calc-matiere"></select></label>
+					<span class="si-dv-calc-prix js-calc-prix"></span>
+					<button type="button" class="btn btn-link btn-sm js-calc-ajouter" hidden>Ajouter la ligne</button>
+				</div>
 			</div>
 
+			{# ---------- Configuration de la ligne choisie ---------- #}
+			<div class="card si-bloc si-saisie-config js-zone-config">
+				<div id="collection-details" data-index="{{ form.devisDetails|length }}" data-prototype="{{ _self.champs_detail(form.devisDetails.vars.prototype)|e('html_attr') }}">
+					{% for detail in form.devisDetails %}
+						<div class="detail-devis">
+							<div class="si-bloc-tete">
+								<h4 class="detail-title">Ligne {{ loop.index }}</h4>
+								<button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
+							</div>
+							{{ _self.champs_detail(detail) }}
+						</div>
+					{% endfor %}
+				</div>
+				<div class="si-barre-ligne d-md-none">
+					<div><small class="text-muted">Prix de la ligne</small><strong class="js-prix-ligne-active">0 F</strong></div>
+					<button type="button" class="btn btn-primary js-valider-ligne">Valider la ligne</button>
+				</div>
+			</div>
+
+			{# ---------- Conditions et envoi (étape 3 sur téléphone) ---------- #}
+			<div class="si-dv-bas si-dv-recap-mobile">
+				<div class="card si-bloc si-dv-conditions">
+					<h4>Conditions</h4>
+					<div class="si-dv-condition">
+						<label for="{{ form.acomptePourcentage.vars.id }}">Acompte</label>
+						<div class="si-dv-condition-valeur">
+							{{ form_widget(form.acomptePourcentage) }}
+							<strong class="js-acompte-texte"></strong>
+						</div>
+					</div>
+					{% for champ in [form.conditionSolde, form.conditionFichier, form.conditionGarantie] %}
+						<div class="si-dv-condition">
+							{{ form_label(champ) }}
+							<div class="si-dv-condition-valeur">{{ form_widget(champ, {attr: {class: 'form-control form-control-sm'}}) }}</div>
+						</div>
+						{{ form_errors(champ) }}
+					{% endfor %}
+				</div>
+
+				<div class="card si-bloc si-dv-canaux">
+					<h4>Envoyer par</h4>
+					{% set details = {
+						espace: 'le client accepte et paie l\'acompte en ligne',
+						whatsapp: 'lien du devis au <span class="js-canal-telephone">numéro du client</span>',
+						email: 'PDF en pièce jointe',
+					} %}
+					{% for choix in form.canauxEnvoi %}
+						<label class="si-dv-canal">
+							{{ form_widget(choix, {attr: {class: 'form-check-input'}}) }}
+							<span><strong>{{ {espace: 'Espace client', whatsapp: 'WhatsApp', email: 'E-mail'}[choix.vars.value]|default(choix.vars.label) }}</strong><small>{{ details[choix.vars.value]|default('')|raw }}</small></span>
+						</label>
+					{% endfor %}
+					{{ form_errors(form.canauxEnvoi) }}
+					{{ form_row(form.messageClient, {label: 'Message avec le devis', label_attr: {class: 'form-label mb-1 mt-2'}, attr: {class: 'form-control form-control-sm'}}) }}
+				</div>
+			</div>
+
+			<div class="si-barre-total d-md-none">
+				<div><small class="text-muted">Total TTC</small><strong class="js-total-affiche">0 F</strong></div>
+				<button type="button" class="btn btn-danger js-etape-suivante">Continuer <i class="fas fa-arrow-right ms-1"></i></button>
+			</div>
 		</div>
 
-	</div>
+		<div class="si-saisie-droite">
 
-
-	{# ========================================================
-													       RÉCAPITULATIF
-													       ======================================================== #}
-
-	<div class="row">
-
-		<div class="col-xl-5 ml-auto">
-
-			<div class="card">
-
-				<div class="card-header">
-
-					<div class="card-title">
-						<i class="fa fa-calculator mr-2"></i>
-						Récapitulatif
-					</div>
-
-				</div>
-
-
-				<div class="card-body">
-
-					<div class="row">
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalHt, {
-                                label: 'Total HT',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.remise, {
-                                label: 'Remise'
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.totalTtc, {
-                                label: 'Total TTC',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
-
-						<div class="col-md-6">
-
-							{{ form_row(form.montantApayer, {
-                                label: 'Montant à payer',
-
-                                attr: {
-                                    readonly: true
-                                }
-                            }) }}
-
-						</div>
-
-					</div>
-
-				</div>
-
-
-				<div class="
-																																																																														                        card-footer
-																																																																														                        d-flex
-																																																																														                        justify-content-between
-																																																																														                    ">
-
-					<a href="{{ path( 'app_devis_index' ) }}" class="btn btn-primary-light">
-						Annuler
-					</a>
-
-
-					<button type="submit" class="btn btn-success-light">
-						<i class="fa fa-save mr-1"></i>
-
-						{{
-                            button_label
-                            |default(
-                                'Enregistrer le devis'
-                            )
-                        }}
-
-					</button>
-
-				</div>
-
+			{# ---------- Total du devis ---------- #}
+			<div class="card si-bloc si-saisie-recap si-dv-total">
+				<small>Total du devis</small>
+				<strong class="si-dv-total-montant js-total-affiche">0 F</strong>
+				<dl class="si-recap">
+					<dt class="js-recap-lignes">Sous-total HT</dt><dd class="js-recap-ht">0</dd>
+					<dt class="js-recap-tva-libelle">TVA</dt><dd class="js-recap-tva">0</dd>
+					<dt class="js-recap-livraison" hidden>Livraison</dt><dd class="js-recap-livraison js-recap-livraison-montant" hidden>0</dd>
+					<dt>Remise</dt>
+					<dd>{{ form_widget(form.remise, {attr: {class: 'form-control form-control-sm si-remise js-remise-saisie'}}) }}</dd>
+					<dt>Code promo</dt>
+					<dd>{{ form_widget(form.codePromo, {attr: {class: 'form-control form-control-sm si-remise js-code-promo', maxlength: 30, autocomplete: 'off', placeholder: 'Facultatif'}}) }}</dd>
+					<dt>Acompte demandé</dt>
+					<dd><span class="js-acompte-taux">{{ devis.acomptePourcentage }}</span> % · <span class="js-acompte" data-pourcentage="{{ devis.acomptePourcentage }}">0 F</span></dd>
+				</dl>
+				<small class="si-dv-total-note">Taxes selon votre régime (Réglages › Taxes)</small>
 			</div>
 
+			{# ---------- Rentabilité (interne, droit « Marges et coûts ») ---------- #}
+			{% if voirCouts %}
+				<div class="card si-bloc si-dv-rentabilite js-dv-rentabilite" data-url="{{ path('app_devis_rentabilite') }}" data-token="{{ csrf_token('devis-rentabilite') }}" data-seuil="{{ seuilMarge|default(25) }}">
+					<h4>Rentabilité <span class="si-dv-interne">Interne</span></h4>
+					<dl>
+						<dt>Coût estimé</dt><dd class="js-rent-cout">—</dd>
+						<dt>Marge</dt><dd class="js-rent-marge">—</dd>
+						<dt>Taux de marge</dt><dd class="js-rent-taux">—</dd>
+					</dl>
+					<p class="si-dv-alerte js-rent-alerte" hidden>Marge sous {{ seuilMarge|default(25)|number_format(0) }} % : revoyez le prix ou la remise.</p>
+					<p class="si-dv-petit js-rent-manquants" hidden></p>
+					<p class="si-dv-petit">Jamais visible par le client. Alerte si la marge passe sous {{ seuilMarge|default(25)|number_format(0) }} %.</p>
+
+					<details class="si-plus-options">
+						<summary>Coût de la ligne ouverte · optimiseur de laize</summary>
+						<div class="si-cout-ligne js-cout-ligne" data-url="{{ path('app_saisie_cout_ligne') }}" data-token="{{ csrf_token('cout-ligne') }}">
+							<h5 class="mt-2">Ligne <small class="text-muted js-cout-titre"></small></h5>
+							<label class="form-label mb-1" for="cout-machine">Machine</label>
+							<select id="cout-machine" class="form-select form-select-sm js-cout-machine">
+								{% for machine in machines_pour_cout() %}
+									<option value="{{ machine.id }}" data-laize="{{ machine.laizeMetres }}">{{ machine.nom }}</option>
+								{% endfor %}
+							</select>
+							<table class="table si-table si-table-cout mb-2" data-sans-filtres>
+								<tbody>
+									<tr><td>Support <small class="text-muted js-cout-surface"></small></td><td class="text-end js-cout-matieres">—</td></tr>
+									<tr><td>Encre</td><td class="text-end js-cout-encre">—</td></tr>
+									<tr><td>Temps machine</td><td class="text-end js-cout-machine-temps">—</td></tr>
+									<tr><td>Finitions</td><td class="text-end js-cout-finitions">—</td></tr>
+									<tr class="si-cout-total"><td>Coût total</td><td class="text-end js-cout-total">—</td></tr>
+								</tbody>
+							</table>
+							<div class="si-cout-prix">
+								<div><small class="text-muted">Prix de vente TTC</small><strong class="js-cout-prix">0 F</strong></div>
+								<div class="text-end"><small class="text-muted">Marge brute</small><strong class="js-cout-marge">—</strong></div>
+							</div>
+							<p class="si-cout-manquants js-cout-manquants" hidden></p>
+							<h5 class="mt-3">Optimiseur de laize</h5>
+							<div class="si-laize js-laize"><small class="text-muted">Indiquez largeur, hauteur et quantité.</small></div>
+							<div class="si-laize-infos">
+								<span>Laize <strong class="js-laize-largeur">—</strong></span>
+								<span>Support <strong class="js-laize-metres">—</strong></span>
+								<span>Chute <strong class="js-laize-chute">—</strong></span>
+							</div>
+						</div>
+					</details>
+				</div>
+			{% endif %}
+
+			{# ---------- Après l'envoi ---------- #}
+			<div class="card si-bloc si-dv-apres">
+				<h4>Après l'envoi</h4>
+				<p>Relance WhatsApp automatique {{ joursRelance|default(3) }} jours après, si le devis n'est pas ouvert ou pas accepté. Une fois accepté, il devient la commande, sans ressaisie.</p>
+			</div>
+
+			{# ---------- Livraison : un des paliers des Réglages (Ventes › Livraison et objet), jamais un montant tapé. ---------- #}
+			<div class="card si-bloc si-saisie-livraison js-zone-frais-livraison">
+				<h4>Livraison</h4>
+				<div class="si-choix-pilules js-frais-livraison mb-1" role="radiogroup" aria-label="Frais de livraison">
+					{% for choix in form.fraisLivraison %}
+						<label class="si-pilule">{{ form_widget(choix) }}<span class="text-nowrap">{{ choix.vars.label }}</span></label>
+					{% endfor %}
+				</div>
+				{{ form_errors(form.fraisLivraison) }}
+				<small class="text-muted d-block">Des frais choisis font une commande à livrer quand le devis est accepté.</small>
+
+				<details class="si-plus-options">
+					<summary>Émetteur, TVA, facturer à un tiers, observation</summary>
+					<div class="row g-2 mt-1">
+						<div class="col-7">{{ form_row(form.emetteur, {label: 'Émetteur', attr: {class: 'form-select form-select-sm'}}) }}</div>
+						<div class="col-5">{{ form_row(form.tva, {label: 'TVA %', attr: {class: 'form-control form-control-sm'}}) }}</div>
+					</div>
+					<div class="form-check mb-2">
+						{{ form_widget(form.facturerAUnTiers, {attr: {class: 'form-check-input'}}) }}
+						<label class="form-check-label" for="{{ form.facturerAUnTiers.vars.id }}">Facturer à un tiers</label>
+					</div>
+					<div class="js-zone-facturer-a-un-tiers" style="display:none;">
+						{{ form_row(form.nomFacturation, {label: 'Nom'}) }}
+						{{ form_row(form.adresseFacturation, {label: 'Adresse'}) }}
+						{{ form_row(form.telephoneFacturation, {label: 'Téléphone'}) }}
+						{{ form_row(form.emailFacturation, {label: 'E-mail'}) }}
+					</div>
+					{{ form_row(form.observation, {label: 'Observation', attr: {rows: 3}}) }}
+				</details>
+			</div>
+
+			<div class="si-dv-boutons-mobile d-md-none">
+				<button type="submit" name="action" value="brouillon" class="btn btn-light">Enregistrer le brouillon</button>
+				<button type="submit" name="action" value="envoyer" class="btn btn-danger js-dv-envoyer">Envoyer au client</button>
+			</div>
+
+			{# Promotions des lignes : aperçu demandé au serveur pendant la saisie. #}
+			<div hidden class="js-promotions-saisie" data-url="{{ path('app_promotions_apercu') }}" data-csrf="{{ csrf_token('promotions-saisie') }}" data-type="devis" data-id="{{ devis.id }}" data-verrouille="0"></div>
+
+			{# Champs calculés par le script, envoyés tels quels. #}
+			<div hidden>
+				{{ form_widget(form.totalHt) }}
+				{{ form_widget(form.totalTtc) }}
+				{{ form_widget(form.montantApayer) }}
+				{{ form_widget(form.etat) }}
+			</div>
 		</div>
-
 	</div>
-
 </div>
 
 
@@ -1303,216 +1164,31 @@
 ) }}
 
 
-<link href="{{ asset( 'assets/plugins/select2/select2.min.css' ) }}" rel="stylesheet">
+<link href="{{ asset('css/promotions.css') }}" rel="stylesheet">
+<script src="{{ asset('js/promotions-saisie.js') }}"></script>
+{# Pièces au m² des lignes (docs/saisie-devis-commandes.md). #}
+{{ site_styles('css/pieces-m2.css') }}
+<script src="{{ asset('js/pieces-m2.js') }}"></script>
+{# Paliers de prix, grille du client et prix négocié (docs/produits.md) : aperçu, le serveur refait le calcul. #}
+<script src="{{ asset('js/paliers-prix.js') }}"></script>
+<link href="{{ asset('css/devis.css') }}" rel="stylesheet">
 
 
 <style>
-
-	/* ============================================================
-   FORMULAIRE DEVIS
-   ============================================================ */
-
-	#devis-form,
-	#devis-form label,
-	#devis-form small,
-	#devis-form .form-text {
-		color: #334155 !important;
-		-webkit-text-fill-color: #334155 !important;
-	}
-
-	#devis-form input.form-control,
-	#devis-form select.form-control,
-	#devis-form textarea.form-control {
-		color: #1f2937 !important;
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background-color: #ffffff !important;
-
-		border: 1px solid #d8deea !important;
-
-		opacity: 1 !important;
-	}
-
-	#devis-form input[readonly],
-	#devis-form textarea[readonly],
-	#devis-form .form-control[readonly] {
-		color: #475569 !important;
-		-webkit-text-fill-color: #475569 !important;
-
-		background-color: #f1f5f9 !important;
-
-		opacity: 1 !important;
-	}
-
-	#devis-form select option {
-		color: #1f2937 !important;
-		background: #ffffff !important;
-	}
-
-
-	/* ============================================================
-   DÉTAIL
-   ============================================================ */
-
-	.detail-devis {
-		border: 1px solid #dce4f0 !important;
-		border-radius: 8px;
-		overflow: hidden;
-	}
-
-	.detail-devis > .card-header {
-		min-height: 58px;
-
-		padding: 14px 20px;
-
-		background: #f4f7fc !important;
-
-		border-bottom: 1px solid #dce4f0;
-	}
-
-	.travail-form {
-		padding: 20px;
-		background: #ffffff;
-	}
-
-	.travail-section {
-		padding: 18px 18px 4px;
-
-		margin-bottom: 18px;
-
-		border: 1px solid #e5eaf2;
-		border-radius: 7px;
-
-		background: #fbfcfe;
-	}
-
-	.travail-section-title {
-		margin: -18px -18px 18px;
-
-		padding: 11px 16px;
-
-		color: #17366f !important;
-
-		-webkit-text-fill-color: #17366f !important;
-
-		font-size: 14px;
-
-		font-weight: 600;
-
-		background: #f1f5fb;
-
-		border-bottom: 1px solid #e1e7f0;
-	}
-
-	.travail-section-title i {
-		width: 22px;
-		color: #6259ca;
-	}
-
-
-	/* ============================================================
-   FINITIONS
-   ============================================================ */
-
-	.finitions-box {
-		padding: 14px;
-
-		border: 1px dashed #cbd4e1;
-
-		border-radius: 6px;
-
-		background: #ffffff;
-	}
-
-	.finitions-box .form-check {
-		display: inline-flex;
-
-		align-items: center;
-
-		margin: 0 20px 10px 0;
-	}
-
-
-	/* ============================================================
-   SELECT2
-   ============================================================ */
-
-	#devis-form select.select2-hidden-accessible {
-		position: absolute !important;
-
-		width: 1px !important;
-		height: 1px !important;
-
-		padding: 0 !important;
-
-		margin: -1px !important;
-
-		overflow: hidden !important;
-
-		clip: rect(0, 0, 0, 0) !important;
-
-		white-space: nowrap !important;
-
-		border: 0 !important;
-
-		opacity: 0 !important;
-	}
-
 	#devis-form .select2-container {
-		display: block;
-
 		width: 100% !important;
 	}
 
-	#devis-form .select2-selection--single {
-		height: 42px;
-
-		background: #ffffff !important;
-
-		border: 1px solid #d8dee9 !important;
-
-		border-radius: 5px;
+	#devis-form .select2-container .select2-selection--single {
+		min-height: 2.6rem;
+		border-radius: 0.6rem;
+		border-color: #D5DCE8;
+		display: flex;
+		align-items: center;
 	}
-
-	#devis-form .select2-selection__rendered {
-		line-height: 40px !important;
-
-		color: #1f2937 !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-	.select2-dropdown {
-		background: #ffffff !important;
-	}
-
-	.select2-results__option {
-		color: #1f2937 !important;
-
-		background: #ffffff !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-	}
-
-	.select2-results__option--highlighted {
-		color: #ffffff !important;
-
-		-webkit-text-fill-color: #ffffff !important;
-
-		background: #6259ca !important;
-	}
-
-	.select2-search__field {
-		color: #1f2937 !important;
-
-		-webkit-text-fill-color: #1f2937 !important;
-
-		background: #ffffff !important;
-	}
-
 </style>
 
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 <script>
 	document.addEventListener('DOMContentLoaded', function () {
@@ -1520,6 +1196,36 @@
 console.log('✅ JavaScript Devis chargé');
 
 const form = document.getElementById('devis-form');
+
+// Client du devis et remise de chaque grille de prix, en % (Paramètres › Grille tarifaire, docs/produits.md).
+const clientSaisie = form ? form.querySelector('.js-client-saisie') : null;
+const remisesGrilles = {{ remises_grilles()|json_encode|raw }};
+function optionClientSaisie() {
+return clientSaisie && clientSaisie.value ? clientSaisie.options[clientSaisie.selectedIndex] : null;
+}
+function remiseGrilleClient() {
+const option = optionClientSaisie();
+return option ? (Number(remisesGrilles[String(option.dataset.grille || 'B2C')]) || 0) : 0;
+}
+function clientDevisB2B() {
+const option = optionClientSaisie();
+return option ? String(option.dataset.typeClient || '').toUpperCase() === 'B2B' : false;
+}
+/* Paliers et prix négocié des configurations du produit de la ligne, pour le client choisi. */
+async function chargerPaliers(detail) {
+const produit = champDetail(detail, 'produit');
+if (! produit || ! produit.value) {
+return;
+}
+try {
+const reponse = await fetch(construireUrl(optionsManuellesUrl, codeUrl(produit, produit.value)) + (clientSaisie && clientSaisie.value ? '?client=' + encodeURIComponent(codeUrl(clientSaisie, clientSaisie.value)) : ''));
+const json = await reponse.json();
+detail.dataset.paliers = JSON.stringify(json.paliers || []);
+calculerDetail(detail);
+} catch (e) {
+console.error(e);
+}
+}
 const collection = document.getElementById('collection-details');
 const addButton = document.getElementById('add-detail');
 
@@ -1579,6 +1285,13 @@ const configurationsParDetail = new WeakMap();
 
 function construireUrl(url, id) {
 return url.replace('/0/', '/' + encodeURIComponent(id) + '/');
+}
+
+/* Le code chiffré (data-code) du choix « id » de la liste, pour l'URL : pas de numéro lisible (docs/ids-chiffres.md). */
+function codeUrl(select, id) {
+const valeur = String(id ?? '');
+const option = select && select.options ? Array.from(select.options).find(function (o) { return o.value === valeur; }) : null;
+return option && option.dataset.code ? option.dataset.code : valeur;
 }
 
 
@@ -1907,13 +1620,16 @@ const quantite = Math.max(1, nombreDepuisChamp(champDetail(detail, 'quantite'), 
 
 const prix = Math.max(0, nombreDepuisChamp(champDetail(detail, 'prixUnitaire')));
 
-const remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+let remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
 
 const tva = Math.max(0, nombreDepuisChamp(champDetail(detail, 'tva')));
 
 const champMode = champDetail(detail, 'modeCalcul');
 
 const mode = String(champMode ? champMode.value : 'unite').toLowerCase();
+
+// Pièces au m² (public/js/pieces-m2.js) : surface facturée selon les pièces qui tiennent sur 1 m², ou null.
+const surfacePieces = window.SiPiecesM2 ? window.SiPiecesM2.ligne(detail, {mode: mode, typeLigne: valeurTypeLigne(detail), largeur: largeur, longueur: longueur, quantite: quantite}) : null;
 
 
 let montant = 0;
@@ -1931,7 +1647,7 @@ case 'metre': facteur = longueur * quantite; montant = prix * facteur;
 break;
 
 
-case 'metre_carre': facteur = surface * quantite; montant = prix * facteur;
+case 'metre_carre': facteur = surfacePieces !== null ? surfacePieces : surface * quantite; montant = prix * facteur;
 
 break;
 
@@ -1946,6 +1662,24 @@ default: facteur = quantite; montant = prix * facteur;
 break;
 }
 
+
+// Palier de volume, grille du client, prix négocié (public/js/paliers-prix.js) : la remise due, tant que l'agent ne l'a pas changée.
+if (window.SiPaliers && valeurTypeLigne(detail) === 'produit' && champDetail(detail, 'produit') && champDetail(detail, 'produit').value) {
+window.SiPaliers.ligneComptoir({
+detail: detail,
+champRemise: champDetail(detail, 'remise'),
+info: detail.querySelector('.js-palier-info'),
+prix: prix,
+pieces: quantite,
+surfaceTotale: mode === 'metre_carre' ? facteur : 0,
+b2b: clientDevisB2B(),
+grille: remiseGrilleClient(),
+type: champDetail(detail, 'typeImpression') ? champDetail(detail, 'typeImpression').value : '',
+support: champDetail(detail, 'support') ? champDetail(detail, 'support').value : '',
+format: champDetail(detail, 'format') ? champDetail(detail, 'format').value : ''
+});
+remise = Math.max(0, nombreDepuisChamp(champDetail(detail, 'remise')));
+}
 
 /*
          * Les finitions appartiennent uniquement
@@ -1965,8 +1699,11 @@ montant += montantFinitionsManuelles(detail);
 }
 
 
+// Promotion de la ligne (docs/promotions.md) : remise par unité donnée par le serveur, ajoutée à la remise saisie.
+const remisePromotion = window.SiPromotions ? window.SiPromotions.remise(detail) : 0;
+
 // La remise est un montant par unité (ex. 500 FCFA par m²), pas un montant fixe sur toute la ligne.
-const remiseTotale = Math.min(montant, remise * Math.max(0, facteur));
+const remiseTotale = Math.min(montant, (remise + remisePromotion) * Math.max(0, facteur));
 
 const totalHt = Math.max(0, montant - remiseTotale);
 
@@ -1990,6 +1727,10 @@ definirValeurChamp(detail, 'surface', surface, false);
 definirValeurChamp(detail, 'totalHt', Math.round(totalHt), false);
 
 definirValeurChamp(detail, 'totalTtc', Math.round(totalTtc), false);
+
+if (window.SiPromotions) {
+window.SiPromotions.calculee(detail, montant, facteur);
+}
 
 
 calculerRecapitulatif();
@@ -2015,6 +1756,11 @@ totalHt += nombreDepuisChamp(champDetail(detail, 'totalHt'));
 totalTtc += nombreDepuisChamp(champDetail(detail, 'totalTtc'));
 });
 
+// Frais de livraison choisis, sans TVA. Le serveur refait ces totaux.
+const fraisLivraison = document.querySelector('.js-frais-livraison input:checked');
+totalHt += fraisLivraison ? (Number(fraisLivraison.value) || 0) : 0;
+totalTtc += fraisLivraison ? (Number(fraisLivraison.value) || 0) : 0;
+
 
 const totalHtForm = document.getElementById('{{ form.totalHt.vars.id }}');
 
@@ -2025,14 +1771,18 @@ const remiseForm = document.getElementById('{{ form.remise.vars.id }}');
 const montantForm = document.getElementById('{{ form.montantApayer.vars.id }}');
 
 
-const remise = Math.max(0, nombreDepuisChamp(remiseForm));
+const remise = Math.min(Math.max(0, nombreDepuisChamp(remiseForm)), Math.max(0, totalHt));
+
+// Remise globale déduite du sous-total HT, TVA au prorata (TotauxDocument) : le total TTC est ce que le client paiera.
+const tvaNette = totalHt > 0 ? Math.round(Math.max(0, totalTtc - totalHt) * (totalHt - remise) / totalHt) : 0;
+const net = Math.max(0, totalHt - remise + tvaNette);
 
 
 ecrireMontant(totalHtForm, totalHt);
 
-ecrireMontant(totalTtcForm, totalTtc);
+ecrireMontant(totalTtcForm, net);
 
-ecrireMontant(montantForm, Math.max(0, totalTtc - remise));
+ecrireMontant(montantForm, net);
 }
 
 
@@ -2496,7 +2246,7 @@ return;
 
 try {
 
-const response = await fetch(construireUrl(optionsManuellesUrl, produitId));
+const response = await fetch(construireUrl(optionsManuellesUrl, codeUrl(champDetail(detail, 'produit'), produitId)));
 
 const json = await response.json();
 
@@ -2505,6 +2255,12 @@ throw new Error(json.message || 'Impossible de charger le produit.');
 }
 
 const infosProduit = json.produit || {};
+
+// Nouveau produit : la remise automatique repart de zéro (paliers rechargés pour le client choisi).
+if (window.SiPaliers) {
+window.SiPaliers.oublier(detail);
+}
+chargerPaliers(detail);
 
 definirValeurChamp(detail, 'prixUnitaire', infosProduit.prixBase || 0, false);
 
@@ -2570,7 +2326,7 @@ information.innerHTML = '<i class="fa fa-spinner fa-spin"></i> Chargement...';
 
 
 try {
-const url = construireUrl(articleUrl, select.value);
+const url = construireUrl(articleUrl, codeUrl(select, select.value));
 
 
 console.log('URL article appelée :', url);
@@ -2641,7 +2397,7 @@ information.innerHTML = '<span class="text-danger">' + erreur.message + '</span>
        PRODUIT AJAX
        ========================================================= */
 
-async function chargerConfigurationsProduit(detail, produitId, configurationInitiale = null) {
+async function chargerConfigurationsProduit(detail, produitId, configurationInitiale = null, appliquer = true) {
 if (valeurTypeLigne(detail) !== 'produit') {
 return;
 }
@@ -2667,7 +2423,7 @@ return;
 
 
 try {
-const url = construireUrl(configurationsProduitUrl, produitId);
+const url = construireUrl(configurationsProduitUrl, codeUrl(champDetail(detail, 'produit'), produitId));
 
 
 console.log('Chargement configurations :', url);
@@ -2702,6 +2458,9 @@ configurations.forEach(function (configuration) {
 const option = document.createElement('option');
 
 option.value = configuration.id;
+if (configuration.code) {
+option.dataset.code = configuration.code;
+}
 
 option.textContent = configuration.libelle || configuration.nom || ('Configuration ' + configuration.id);
 
@@ -2725,8 +2484,10 @@ configurationSelect.value = String(configurationId);
 
 actualiserSelect2(configurationSelect);
 
-
+// Ligne déjà enregistrée : on garde ses valeurs (désignation, dimensions, prix).
+if (appliquer) {
 await chargerConfiguration(detail, configurationId);
+}
 }
 
 } catch (erreur) {
@@ -2750,7 +2511,7 @@ return;
 
 
 try {
-const url = construireUrl(configurationUrl, configurationId);
+const url = construireUrl(configurationUrl, codeUrl(champDetail(detail, 'configuration'), configurationId));
 
 
 console.log('Chargement configuration :', url);
@@ -3059,13 +2820,18 @@ if (data.element && data.element.disabled) {
 return null;
 }
 
-const terme = (params.term || '').trim().toUpperCase();
+// Sans accents, majuscules ni pluriel : « autocollants » trouve « Vinyle adhésif (Autocollant) » (docs/noms-commerciaux.md).
+const sansAccents = function (t) {
+return String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/([A-Z]{3})[SX](?=[^A-Z0-9]|$)/g, '$1');
+};
+
+const terme = sansAccents((params.term || '').trim());
 
 if (terme === '') {
 return data;
 }
 
-const texte = (data.text || '').toUpperCase();
+const texte = sansAccents(data.text);
 
 return texte.indexOf(terme) > -1 ? data : null;
 }
@@ -3175,7 +2941,8 @@ console.log('Produit changé :', produit.value);
 
 const optionProduit = produit.options[produit.selectedIndex];
 
-const nomProduit = optionProduit && produit.value ? optionProduit.textContent.trim() : '';
+// Le nom technique seul : le nom commercial s'affiche à côté sur les documents (docs/noms-commerciaux.md).
+const nomProduit = optionProduit && produit.value ? (optionProduit.dataset.designation || optionProduit.textContent.trim()) : '';
 
 definirValeurChamp(detail, 'designation', nomProduit, false);
 
@@ -3308,6 +3075,10 @@ calculerDetail(detail);
 /*
          * Valeurs initiales.
          */
+// Ligne enregistrée au mètre ou au m² : dimensions visibles (sinon elles seraient vidées).
+if (modeCalcul && ['metre', 'metre_carre'].includes(modeCalcul.value)) {
+detail.dataset.modeDimension = 'mesure';
+}
 appliquerTypeLigne(detail);
 
 
@@ -3318,7 +3089,7 @@ if (produit && produit.value && valeurTypeLigne(detail) === 'produit') {
 const configurationInitiale = configuration ? configuration.value : null;
 
 
-chargerConfigurationsProduit(detail, produit.value, configurationInitiale);
+chargerConfigurationsProduit(detail, produit.value, configurationInitiale, false);
 }
 
 
@@ -3385,46 +3156,15 @@ collection.dataset.index = String(index + 1);
 const wrapper = document.createElement('div');
 
 
-wrapper.className = 'detail-devis card border mb-4';
+wrapper.className = 'detail-devis';
 
 
 wrapper.innerHTML = `
-            <div
-                class="
-                    card-header
-                    bg-light
-                    d-flex
-                    justify-content-between
-                    align-items-center
-                "
-            >
-                <div
-                    class="
-                        card-title
-                        detail-title
-                        mb-0
-                    "
-                >
-                    Nouveau travail
-                </div>
-
-                <button
-                    type="button"
-                    class="
-                        btn
-                        btn-danger-light
-                        btn-sm
-                        supprimer-detail
-                    "
-                >
-                    <i class="fa fa-trash mr-1"></i>
-                    Supprimer
-                </button>
+            <div class="si-bloc-tete">
+                <h4 class="detail-title">Nouvelle ligne</h4>
+                <button type="button" class="btn btn-sm si-btn-secondaire supprimer-detail" data-confirmer="Retirer cette ligne ?" data-confirmer-detail="Elle quitte la saisie ; rien n'est enregistré avant « Enregistrer »." data-confirmer-bouton="Retirer" data-confirmer-danger><i class="fas fa-trash-alt me-1"></i>Retirer</button>
             </div>
-
-            <div class="card-body p-0">
-                ${html}
-            </div>
+            ${html}
         `;
 
 
@@ -3453,7 +3193,7 @@ details.forEach(function (detail, index) {
 const titre = detail.querySelector('.detail-title');
 
 if (titre) {
-titre.textContent = 'Travail ' + (
+titre.textContent = 'Ligne ' + (
 index + 1
 );
 }
@@ -3508,6 +3248,23 @@ bindSuppressionDetail(wrapper);
 
 initialiserDetail(wrapper);
 });
+
+// Paliers des lignes déjà là, et de nouveau quand le client change (docs/produits.md).
+function rechargerPaliersLignes(oublier) {
+collection.querySelectorAll('.js-devis-detail').forEach(function (detail) {
+if (oublier && window.SiPaliers) {
+window.SiPaliers.oublier(detail);
+}
+chargerPaliers(detail);
+});
+}
+rechargerPaliersLignes(false);
+if (clientSaisie) {
+clientSaisie.addEventListener('change', function () { rechargerPaliersLignes(true); });
+if (window.jQuery) {
+window.jQuery(clientSaisie).on('select2:select select2:clear', function () { rechargerPaliersLignes(true); });
+}
+}
 
 
 addButton.addEventListener('click', function (event) {

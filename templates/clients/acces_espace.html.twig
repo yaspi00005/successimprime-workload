@@ -1,0 +1,42 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Accès à l'espace client prêt (fiche client › « Envoyer l'accès à
+	l'espace client ») : le message est à ouvrir dans WhatsApp. Le code
+	ne s'affiche qu'ici ; il n'est enregistré nulle part.
+#}
+
+{% block title %}Accès à l'espace client · {{ client.nomComplet }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Fiche</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<section class="card si-cf-bloc si-acces-espace">
+		<h2><i class="fab fa-whatsapp me-1" aria-hidden="true"></i>Accès prêt pour {{ client.nomComplet }}</h2>
+		<p class="si-cf-aide">Ouvrez WhatsApp et envoyez ce message au client. Le code est valable jusqu'au {{ acces.expireLe|date('d/m/Y à H:i') }}, pour une seule connexion. Il ne s'affichera plus : s'il le perd, envoyez-lui un nouvel accès (celui-ci ne servira plus).</p>
+		{% if not site_regle %}
+			<p class="alert alert-warning mb-3">L'adresse du site en ligne n'est pas réglée sur ce poste (SYNC_URL) : le code n'ira pas sur le site et le lien du message mène à cet ERP. Prévenez la personne qui gère l'installation.</p>
+		{% endif %}
+		<pre class="si-acces-message" id="message-acces">{{ message }}</pre>
+		<div class="si-acces-actions">
+			<a href="{{ lien_whatsapp }}" target="_blank" rel="noopener" class="btn btn-success"><i class="fab fa-whatsapp me-1"></i>Ouvrir WhatsApp</a>
+			<button type="button" class="btn btn-light js-copier" data-cible="message-acces">Copier le message</button>
+			<a href="{{ path('app_clients_show', {publicId: client.publicId}) }}" class="btn btn-light">Retour à la fiche</a>
+		</div>
+		<p class="si-cf-aide mt-3 mb-0">{{ constant('App\\Service\\EspaceClient\\AccesEspace::CONSIGNE_BOUTIQUE') }}</p>
+	</section>
+	<script>
+		document.querySelectorAll('.js-copier').forEach(function (bouton) {
+			bouton.addEventListener('click', function () {
+				var texte = document.getElementById(bouton.dataset.cible).textContent;
+				if (navigator.clipboard) {
+					navigator.clipboard.writeText(texte).then(function () { bouton.textContent = 'Message copié'; });
+				}
+			});
+		});
+	</script>
+{% endblock %}

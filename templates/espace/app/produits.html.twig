@@ -1,0 +1,611 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Mes produits (maquettes MP01, MP03, MP04 et MP07, docs/mes-produits.md) :
+	le catalogue du client, indépendant des commandes. Il ajoute ses produits
+	(image, nom, type, dimensions) sans commander ; chaque produit est « Prêt à
+	imprimer » (fichier lié par l'atelier) ou « Fichier en préparation ». Il
+	choisit la taille et la quantité et met le produit au panier. Prix et
+	conversion viennent du serveur (MesProduits::calculer) ; un demandeur
+	(coque.montants faux) ne reçoit aucun prix.
+#}
+
+{% block title %}Mes produits{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link rel="stylesheet" href="{{ asset('css/mes-produits.css') }}">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_commandes') }}"><span class="fl">‹</span>Mes produits</a>{% endblock %}
+
+
+{% block contenu %}
+	{% import 'espace/app/_mes_produits.html.twig' as m %}
+	{% set nbPanier = panier.articles|length %}
+	<div class="mp-tete">
+		<h1>Mes produits</h1>
+		<div class="mp-actions">
+			<a class="mp-panier-bouton" href="{{ path('app_espace_panier') }}" aria-label="Panier, {{ nbPanier }} produit{{ nbPanier > 1 ? 's' }}">
+				<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.4 10.2a1 1 0 0 0 1 .8h8.9a1 1 0 0 0 1-.8L20 8H6M9 20h.01M17 20h.01"/></svg>
+				Panier <span class="mp-compte" data-panier-nombre>{{ nbPanier }}</span>
+			</a>
+			<button type="button" class="mp-ajouter" data-ouvrir-ajout>+ Ajouter des produits</button>
+		</div>
+	</div>
+	<p class="mp-note">Vos produits restent ici, même sans commande.</p>
+
+	{% if fiches is empty %}
+		<div class="ec-carte ec-vide">
+			<b style="display:block;color:var(--encre);margin-bottom:.3rem">Aucun produit pour l'instant</b>
+			Ajoutez vos étiquettes, cartes ou visuels une fois : notre atelier prépare leur fichier d'impression, puis vous les commandez en deux clics, sans renvoyer de fichier.
+		</div>
+	{% endif %}
+
+	{% if fiches is not empty %}
+		<div class="mp-barre-filtres">
+			{% if familles|length > 1 %}
+				<div class="ec-filtres" role="group" aria-label="Filtrer">
+					<a href="#" class="actif" data-filtre="">Tous · {{ fiches|length }}</a>
+					{% for nom, nombre in familles %}<a href="#" data-filtre="{{ nom }}">{{ nom }} · {{ nombre }}</a>{% endfor %}
+				</div>
+			{% else %}<span></span>{% endif %}
+			{% if fiches|length > 6 %}
+				<div class="mp-recherche" role="search">
+					<label class="ec-sr" for="mes-produits-recherche">Chercher un produit</label>
+					<input type="search" class="ec-saisie" id="mes-produits-recherche" placeholder="Chercher un produit…" autocomplete="off" enterkeyhint="search">
+				</div>
+			{% endif %}
+		</div>
+	{% endif %}
+
+	<div class="mp-mise{{ nbPanier == 0 ? ' sans-volet' }}" id="mise">
+		<div>
+			<ul class="mp-grille" id="produits">
+				{% for f in fiches %}
+					{% set p = f.p %}
+					<li class="mp-carte" data-id="{{ f.id }}" data-famille="{{ f.famille }}" data-recherche="{{ cle_recherche(p.nom, p.reference, p.type, p.produit ? p.produit.nom, p.produit ? p.produit.nomCommercial, p.support ? p.support.nom, f.famille) }}">
+						{{ m.visuel(f) }}
+						<div class="mp-carte-texte">
+							<b>{{ p.nom }}</b>
+							<span class="mp-sous">{{ [p.type ?: (p.produit ? p.produit|nom_client), f.taille ?: f.format]|filter(v => v)|join(' · ') }}</span>
+							<div class="mp-etat">
+								{% if f.pret %}
+									<span class="mp-badge pret">✓ Prêt à imprimer</span>
+									<span class="mp-version">{{ [f.version, f.lienLe ? f.lienLe|date('d/m')]|filter(v => v)|join(' · ') }}</span>
+								{% elseif f.commandable %}
+									<span class="mp-badge bat">BAT à chaque commande</span>
+								{% else %}
+									<span class="mp-badge prep">⏳ Fichier en préparation</span>
+									<span class="mp-version">{{ f.suspendu ? 'nouvelle image' : 'reçue' }} le {{ f.recuLe|date('d/m') }}</span>
+								{% endif %}
+							</div>
+						</div>
+						{% if f.commandable %}
+							<button type="button" class="mp-commander" data-commander="{{ f.id }}">+ Commander</button>
+						{% else %}
+							<div class="mp-bientot">Disponible bientôt</div>
+						{% endif %}
+					</li>
+				{% endfor %}
+				<li>
+					<button type="button" class="mp-carte-ajout" data-ouvrir-ajout>
+						<span class="plus" aria-hidden="true">+</span>
+						<b>Ajouter un produit</b>
+						<small>image ou fichier, nom, dimensions</small>
+					</button>
+				</li>
+			</ul>
+			<p class="ec-petit" id="mes-produits-aucun" role="status" hidden>Aucun de vos produits ne correspond.</p>
+
+			<div class="mp-etapes">
+				<b>Comment ça marche</b>
+				<span data-n="1">Vous ajoutez vos produits une fois</span>
+				<span data-n="2">Notre atelier prépare le fichier d'impression</span>
+				<span data-n="3">Ensuite vous commandez en 2 clics, sans renvoyer de fichier</span>
+			</div>
+
+			<a class="mp-barre-panier" id="barre-panier" href="{{ path('app_espace_panier') }}"{{ nbPanier == 0 ? ' hidden' }}>
+				<span>Panier · <span data-panier-nombre>{{ nbPanier }}</span></span>
+				<span>{% if coque.montants %}<span data-panier-total>{{ panier.total|number_format(0, ',', ' ') }} F</span> · {% endif %}Voir ›</span>
+			</a>
+		</div>
+
+		<aside class="mp-volet" id="volet" aria-label="Panier">
+			<h2>Panier <small data-panier-libelle>{{ nbPanier }} produit{{ nbPanier > 1 ? 's' }}</small></h2>
+			<div class="mp-volet-liste" id="volet-liste">
+				{% for a in panier.articles %}
+					<div class="mp-article">
+						{{ m.visuel(a.fiche) }}
+						<span class="mp-article-texte"><b>{{ a.fiche.p.nom }}</b><small>{{ [a.calcul.taille.libelle ?? null, a.calcul.resume]|filter(v => v)|join(' · ') }}</small><span class="{{ a.calcul.direct ? 'mp-direct' : 'mp-avec-bat' }}">{{ a.calcul.direct ? '✓ fichier prêt' : 'BAT avant impression' }}</span></span>
+						{% if coque.montants %}<span class="mp-article-prix">{{ a.calcul.montant|number_format(0, ',', ' ') }} F</span>{% endif %}
+					</div>
+				{% endfor %}
+			</div>
+			{% if coque.montants %}<div class="mp-volet-total"><span>Sous-total</span><b data-panier-total>{{ panier.total|number_format(0, ',', ' ') }} F</b></div>{% endif %}
+			<a class="ec-bouton bleu" style="background:var(--encre)" href="{{ path('app_espace_panier') }}">Voir le panier</a>
+		</aside>
+	</div>
+
+	{# ---------- MP01 : ajouter des produits ---------- #}
+	<dialog class="mp-fenetre" id="ajout" aria-labelledby="ajout-titre">
+		<form method="post" action="{{ path('app_espace_produits_ajouter') }}" class="mp-fenetre-corps" id="ajout-form">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			<div class="mp-fenetre-tete">
+				<div>
+					<h2 id="ajout-titre">Ajouter des produits</h2>
+					<p class="ec-petit" style="margin:.15rem 0 0">Déposez vos images : une ligne par produit. Vous pourrez les commander quand vous voulez.</p>
+				</div>
+				<button type="button" class="mp-fermer" data-fermer aria-label="Fermer">×</button>
+			</div>
+			<div class="mp-entetes" aria-hidden="true"><span>Image</span><span>Nom du produit</span><span>Type</span><span>Dimensions</span><span>Fichier</span><span></span></div>
+			<div class="mp-lignes" id="ajout-lignes"></div>
+			<label class="mp-depot" id="ajout-depot">
+				+ Déposer d'autres images (PNG, JPG, PDF, AI)
+				<input type="file" multiple accept=".png,.jpg,.jpeg,.pdf,.ai,.eps,.tif,.tiff,.psd" id="ajout-fichiers">
+			</label>
+			<p class="mp-erreur" id="ajout-erreur" role="alert"></p>
+			<div class="mp-pied">
+				<p>Après l'enregistrement, notre atelier prépare le fichier d'impression de chaque produit <b>une seule fois</b>, en général sous 24 h ouvrées. Gratuit.</p>
+				<div class="mp-pied-boutons">
+					<button type="button" class="mp-btn-blanc" data-fermer>Annuler</button>
+					<button type="submit" class="mp-btn-bleu" id="ajout-enregistrer">Enregistrer</button>
+				</div>
+			</div>
+		</form>
+	</dialog>
+	<template id="ligne-modele">
+		<div class="mp-ligne">
+			<label class="mp-ligne-image"><span>Image</span><input type="file" accept=".png,.jpg,.jpeg,.pdf,.ai,.eps,.tif,.tiff,.psd" aria-label="Image du produit"></label>
+			<input class="ec-saisie" data-champ="nom" maxlength="120" placeholder="Nom du produit" aria-label="Nom du produit">
+			<select class="ec-saisie" data-champ="type" aria-label="Type">
+				{% for t in types %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+			</select>
+			<input class="ec-saisie" data-champ="dimensions" maxlength="60" placeholder="50 × 30 mm" aria-label="Dimensions">
+			<span class="mp-ligne-fichier" data-etat>—</span>
+			<button type="button" class="mp-retirer" aria-label="Retirer cette ligne">🗑</button>
+		</div>
+	</template>
+
+	{# ---------- MP04 : taille et quantité ---------- #}
+	<dialog class="mp-fenetre etroite" id="commande" aria-labelledby="commande-nom">
+		<form method="dialog" class="mp-fenetre-corps" id="commande-form">
+			<div class="mp-produit-tete">
+				<span class="mp-visuel" id="commande-visuel"></span>
+				<div style="flex:1;min-width:0">
+					<b id="commande-nom"></b>
+					<span class="mp-sous" id="commande-sous"></span>
+					<div id="commande-badge" style="margin-top:.3rem"></div>
+					<p id="commande-info"></p>
+				</div>
+				<button type="button" class="mp-fermer" data-fermer aria-label="Fermer">×</button>
+			</div>
+			<div id="commande-tailles-zone">
+				<div class="mp-section">Dimensions</div>
+				<div class="mp-choix" id="commande-tailles" role="radiogroup" aria-label="Dimensions"></div>
+				<div class="mp-autre" id="commande-autre-taille" hidden>
+					<input class="ec-saisie" id="taille-l" inputmode="decimal" placeholder="largeur" aria-label="Largeur en mm"> ×
+					<input class="ec-saisie" id="taille-h" inputmode="decimal" placeholder="hauteur" aria-label="Hauteur en mm"> mm
+				</div>
+			</div>
+			<div class="ec-segment" id="commande-modes" role="radiogroup" aria-label="Saisir la quantité" style="margin-top:.8rem" hidden>
+				<label><input type="radio" name="saisie" value="piece"><span>En nombre de pièces</span></label>
+				<label><input type="radio" name="saisie" value="m2"><span>En m²</span></label>
+			</div>
+			<div class="mp-section" id="commande-libelle-quantite">Quantité</div>
+			<div class="mp-choix quantites" id="commande-quantites" role="radiogroup" aria-label="Quantité"></div>
+			<div class="mp-autre" id="commande-autre-quantite" hidden>
+				<input class="ec-saisie" id="quantite-autre" inputmode="decimal" aria-label="Quantité"> <span class="ec-petit" id="quantite-unite"></span>
+			</div>
+			<p class="mp-avis" id="commande-avis" hidden></p>
+			<p class="mp-erreur" id="commande-erreur" role="alert"></p>
+			<div class="mp-pied">
+				<div class="mp-total">
+					<small id="commande-resume">—</small>
+					{% if coque.montants %}<b id="commande-prix">—</b>{% else %}<b style="font-size:1rem">Prix confirmé par votre valideur</b>{% endif %}
+				</div>
+				<div class="mp-pied-boutons">
+					<button type="button" class="mp-btn-blanc" data-fermer>Annuler</button>
+					<button type="button" class="mp-btn-bleu" id="commande-ajouter" disabled>🛒 Ajouter au panier</button>
+				</div>
+			</div>
+			<div class="mp-remplacer" id="commande-remplacer">
+				Votre visuel a changé ? <label>Remplacer l'image<input type="file" hidden accept=".png,.jpg,.jpeg,.pdf,.ai,.eps,.tif,.tiff,.psd" id="remplacer-fichier"></label> : l'atelier refait le fichier, le produit repasse « en préparation ».
+				<span id="remplacer-etat" class="ec-petit"></span>
+			</div>
+		</form>
+	</dialog>
+	<form method="post" id="remplacer-form" hidden>
+		<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+		<input type="hidden" name="image" id="remplacer-image">
+	</form>
+
+	<script type="application/json" id="fiches">{{ fiches|map(f => {
+		id: f.id, nom: f.p.nom, sous: [f.p.type, f.taille ?: f.format]|filter(v => v)|join(' · '), pret: f.pret, commandable: f.commandable,
+		lienLe: f.lienLe ? f.lienLe|date('d/m') : null, saisies: f.saisies, pas: f.pas, raccourcis: f.raccourcis, raccourcisM2: f.raccourcisM2,
+		minimum: f.minimum, tailles: f.tailles, choixTaille: f.choixTaille, paliers: f.paliers, prix: f.prix, unite: f.p.uniteVente,
+		famille: f.famille,
+	})|json_encode|raw }}</script>
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/espace-envoi.js') }}"></script>
+	<script>
+	(function () {
+		const $ = function (id) { return document.getElementById(id); };
+		const fiches = JSON.parse($('fiches').textContent);
+		const parId = Object.fromEntries(fiches.map(function (f) { return [f.id, f]; }));
+		const jeton = {{ csrf_token('espace')|json_encode|raw }};
+		const urlEnvoi = {{ path('app_espace_fichier_envoi')|json_encode|raw }};
+		const urlCalcul = {{ path('app_espace_produits_calcul', {id: '00000000-0000-0000-0000-000000000000'})|json_encode|raw }};
+		const urlPanier = {{ path('app_espace_produits_panier', {id: '00000000-0000-0000-0000-000000000000'})|json_encode|raw }};
+		const urlImage = {{ path('app_espace_produits_image', {id: '00000000-0000-0000-0000-000000000000'})|json_encode|raw }};
+		const urlFichier = {{ path('app_espace_fichier', {id: 0})|json_encode|raw }};
+		const MONTANTS = {{ coque.montants ? 'true' : 'false' }};
+		const MAX_AJOUT = {{ ajoutMax }};
+		const fr = new Intl.NumberFormat('fr-FR');
+		const ZERO = '00000000-0000-0000-0000-000000000000';
+
+		function ouvrirFenetre(d) { if (typeof d.showModal === 'function') d.showModal(); else d.setAttribute('open', ''); }
+		function fermerFenetre(d) { if (typeof d.close === 'function') d.close(); else d.removeAttribute('open'); }
+		document.querySelectorAll('dialog').forEach(function (d) {
+			d.querySelectorAll('[data-fermer]').forEach(function (b) { b.addEventListener('click', function () { fermerFenetre(d); }); });
+		});
+
+		// ---------- Filtres et recherche ----------
+		let filtre = '';
+		function appliquerFiltres() {
+			const champ = $('mes-produits-recherche');
+			const q = champ ? champ.value.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim() : '';
+			let visibles = 0;
+			document.querySelectorAll('.mp-carte').forEach(function (c) {
+				const ok = (!filtre || c.dataset.famille === filtre) && (!q || (c.dataset.recherche || '').indexOf(q) !== -1);
+				c.hidden = !ok;
+				visibles += ok ? 1 : 0;
+			});
+			const aucun = $('mes-produits-aucun');
+			if (aucun) aucun.hidden = visibles > 0 || document.querySelectorAll('.mp-carte').length === 0;
+		}
+		document.querySelectorAll('[data-filtre]').forEach(function (a) {
+			a.addEventListener('click', function (e) {
+				e.preventDefault();
+				filtre = a.dataset.filtre;
+				document.querySelectorAll('[data-filtre]').forEach(function (b) { b.classList.toggle('actif', b === a); });
+				appliquerFiltres();
+			});
+		});
+		if ($('mes-produits-recherche')) $('mes-produits-recherche').addEventListener('input', appliquerFiltres);
+
+		// ---------- MP01 : ajouter des produits ----------
+		const ajout = $('ajout');
+		const lignes = $('ajout-lignes');
+		let envoisEnCours = 0;
+
+		function nomDepuisFichier(nom) {
+			return nom.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').replace(/\s+/g, ' ').trim().replace(/^./, function (c) { return c.toUpperCase(); });
+		}
+
+		function compter() {
+			const n = lignes.querySelectorAll('.mp-ligne').length;
+			$('ajout-enregistrer').textContent = 'Enregistrer ' + (n > 0 ? n + ' produit' + (n > 1 ? 's' : '') : '');
+			$('ajout-enregistrer').disabled = n === 0 || envoisEnCours > 0;
+		}
+
+		function nouvelleLigne(fichier) {
+			if (lignes.querySelectorAll('.mp-ligne').length >= MAX_AJOUT) {
+				$('ajout-erreur').textContent = MAX_AJOUT + ' produits au plus en une fois.';
+				return null;
+			}
+			const ligne = $('ligne-modele').content.firstElementChild.cloneNode(true);
+			lignes.append(ligne);
+			ligne.querySelector('.mp-retirer').addEventListener('click', function () { ligne.remove(); compter(); });
+			ligne.querySelector('.mp-ligne-image input').addEventListener('change', function (e) {
+				if (e.target.files[0]) envoyerImage(ligne, e.target.files[0]);
+			});
+			if (fichier) {
+				ligne.querySelector('[data-champ=nom]').value = nomDepuisFichier(fichier.name);
+				envoyerImage(ligne, fichier);
+			}
+			compter();
+			return ligne;
+		}
+
+		function envoyerImage(ligne, fichier) {
+			const etat = ligne.querySelector('[data-etat]');
+			const cadre = ligne.querySelector('.mp-ligne-image');
+			if (!ligne.querySelector('[data-champ=nom]').value) ligne.querySelector('[data-champ=nom]').value = nomDepuisFichier(fichier.name);
+			if (/^image\/(png|jpeg)$/.test(fichier.type)) {
+				const url = URL.createObjectURL(fichier);
+				cadre.querySelector('span').innerHTML = '';
+				const img = document.createElement('img');
+				img.src = url;
+				img.alt = '';
+				cadre.querySelector('span').append(img);
+			} else {
+				cadre.querySelector('span').textContent = (fichier.name.split('.').pop() || '').toUpperCase();
+			}
+			etat.className = 'mp-ligne-fichier envoi';
+			etat.textContent = 'envoi… 0 %';
+			delete ligne.dataset.image;
+			envoisEnCours++;
+			compter();
+			window.EspaceEnvoi.envoyer(fichier, {debut: urlEnvoi, jeton: jeton, progres: function (p) { etat.textContent = 'envoi… ' + p + ' %'; }})
+				.then(function (f) {
+					ligne.dataset.image = f.id;
+					etat.className = 'mp-ligne-fichier';
+					etat.textContent = '✓ ' + f.nom;
+				})
+				.catch(function (e) {
+					etat.className = 'mp-ligne-fichier erreur';
+					etat.textContent = e.message;
+				})
+				.finally(function () { envoisEnCours--; compter(); });
+		}
+
+		document.querySelectorAll('[data-ouvrir-ajout]').forEach(function (b) {
+			b.addEventListener('click', function () {
+				if (!lignes.querySelector('.mp-ligne')) nouvelleLigne(null);
+				$('ajout-erreur').textContent = '';
+				ouvrirFenetre(ajout);
+			});
+		});
+		$('ajout-fichiers').addEventListener('change', function (e) {
+			Array.from(e.target.files).forEach(function (f) {
+				// Une ligne vide d'abord, puis de nouvelles lignes.
+				const vide = Array.from(lignes.querySelectorAll('.mp-ligne')).find(function (l) { return !l.dataset.image && !l.querySelector('[data-champ=nom]').value; });
+				if (vide) envoyerImage(vide, f); else nouvelleLigne(f);
+			});
+			e.target.value = '';
+		});
+		const depot = $('ajout-depot');
+		['dragenter', 'dragover'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.add('survol'); }); });
+		['dragleave', 'drop'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.remove('survol'); }); });
+
+		$('ajout-form').addEventListener('submit', function (e) {
+			const form = e.target;
+			form.querySelectorAll('input[name^="produits["]').forEach(function (i) { i.remove(); });
+			let erreur = '';
+			lignes.querySelectorAll('.mp-ligne').forEach(function (l, i) {
+				const valeurs = {
+					nom: l.querySelector('[data-champ=nom]').value.trim(),
+					type: l.querySelector('[data-champ=type]').value,
+					dimensions: l.querySelector('[data-champ=dimensions]').value.trim(),
+					image: l.dataset.image || '',
+				};
+				if (!valeurs.nom || !valeurs.dimensions) erreur = 'Chaque produit a besoin d\'un nom et de ses dimensions (ex. 50 × 30 mm, Ø 60 mm, A6).';
+				Object.keys(valeurs).forEach(function (k) {
+					const input = document.createElement('input');
+					input.type = 'hidden';
+					input.name = 'produits[' + i + '][' + k + ']';
+					input.value = valeurs[k];
+					form.append(input);
+				});
+			});
+			if (envoisEnCours > 0) erreur = 'Attendez la fin de l\'envoi des images.';
+			if (erreur) {
+				e.preventDefault();
+				$('ajout-erreur').textContent = erreur;
+			}
+		});
+
+		// ---------- MP04 : taille, quantité, panier ----------
+		const fenetre = $('commande');
+		let courant = null; // {fiche, taille: {l,h}|null|'autre', quantite, saisie, calcul}
+		let minuteur = null;
+		let demande = 0;
+
+		function unite(f, saisie) {
+			if (saisie === 'm2') return 'm²';
+			if (saisie === 'lot') return 'ex.';
+			return f.famille === 'Étiquettes' ? 'étiquettes' : 'pièces';
+		}
+
+		function choix(zone, nom, valeur, titre, detail, classeDetail, coche) {
+			const label = document.createElement('label');
+			const input = document.createElement('input');
+			input.type = 'radio';
+			input.name = nom;
+			input.value = valeur;
+			input.checked = !!coche;
+			const b = document.createElement('b');
+			b.textContent = titre;
+			label.append(input, b);
+			if (detail) {
+				const s = document.createElement('small');
+				s.textContent = detail;
+				if (classeDetail) s.className = classeDetail;
+				label.append(s);
+			}
+			zone.append(label);
+			return input;
+		}
+
+		function ouvrirCommande(id, quantite, saisie) {
+			const f = parId[id];
+			if (!f || !f.commandable) return;
+			const carte = document.querySelector('.mp-carte[data-id="' + id + '"] .mp-visuel');
+			const visuel = $('commande-visuel');
+			visuel.className = carte ? carte.className : 'mp-visuel';
+			visuel.innerHTML = carte ? carte.innerHTML : '';
+			$('commande-nom').textContent = f.nom;
+			$('commande-sous').textContent = f.sous;
+			$('commande-badge').innerHTML = f.pret ? '<span class="mp-badge pret">✓ Prêt à imprimer</span>' : '<span class="mp-badge bat">BAT à chaque commande</span>';
+			$('commande-info').textContent = f.pret ? 'Fichier préparé par l\'atelier' + (f.lienLe ? ' le ' + f.lienLe : '') + '. Rien à envoyer.' : 'L\'atelier vous envoie un BAT avant chaque impression.';
+			$('commande-erreur').textContent = '';
+			const saisieDefaut = saisie && f.saisies.indexOf(saisie) !== -1 ? saisie : f.saisies[0];
+			courant = {fiche: f, taille: f.choixTaille && f.tailles.length ? {l: f.tailles[0].l, h: f.tailles[0].h} : null, saisie: saisieDefaut, quantite: null, calcul: null};
+			// Tailles (MP04) : préparées (impression directe) puis « Autre taille ».
+			const zoneTailles = $('commande-tailles');
+			zoneTailles.textContent = '';
+			$('commande-tailles-zone').hidden = !f.choixTaille;
+			$('commande-autre-taille').hidden = true;
+			if (f.choixTaille) {
+				f.tailles.forEach(function (t, i) {
+					choix(zoneTailles, 'taille', i, t.libelle, t.direct ? 'taille préparée · direct' : 'l\'atelier prépare le fichier', t.direct ? '' : 'orange', i === 0);
+				});
+				choix(zoneTailles, 'taille', 'autre', 'Autre taille', 'l\'atelier adapte le fichier', 'orange', false);
+			}
+			$('commande-modes').hidden = f.saisies.length < 2;
+			fenetre.querySelectorAll('input[name=saisie]').forEach(function (r) { r.checked = r.value === courant.saisie; });
+			afficherQuantites(quantite ? Number(String(quantite).replace(',', '.')) : null);
+			ouvrirFenetre(fenetre);
+			calculer();
+		}
+
+		function afficherQuantites(quantite) {
+			const f = courant.fiche;
+			const zone = $('commande-quantites');
+			zone.textContent = '';
+			const parPaliers = courant.saisie === 'piece' && f.paliers.length > 0;
+			const valeurs = parPaliers ? f.paliers.map(function (p) { return p.q; }) : (courant.saisie === 'm2' && f.saisies.length > 1 ? f.raccourcisM2 : f.raccourcis);
+			const defaut = quantite || (parPaliers ? valeurs[Math.min(1, valeurs.length - 1)] : Math.max(valeurs[0], f.minimum * (courant.saisie === 'lot' ? f.pas : 1)));
+			let trouve = false;
+			valeurs.forEach(function (v, i) {
+				const palier = parPaliers ? f.paliers[i] : null;
+				const coche = v === defaut;
+				trouve = trouve || coche;
+				choix(zone, 'quantite', v, fr.format(v) + (courant.saisie === 'm2' ? ' m²' : ''), palier && palier.prix !== null ? fr.format(palier.prix) + ' F / u' : '', '', coche);
+			});
+			choix(zone, 'quantite', 'autre', 'Autre', 'saisir', '', !trouve);
+			$('commande-autre-quantite').hidden = trouve;
+			$('quantite-autre').value = trouve ? '' : String(defaut).replace('.', ',');
+			$('quantite-unite').textContent = unite(f, courant.saisie);
+			$('commande-libelle-quantite').textContent = courant.saisie === 'm2' ? 'Surface (m²)' : (courant.saisie === 'lot' ? 'Exemplaires (par ' + fr.format(f.pas) + ')' : 'Quantité');
+			courant.quantite = defaut;
+		}
+
+		function lireChoix() {
+			const f = courant.fiche;
+			const t = fenetre.querySelector('input[name=taille]:checked');
+			if (f.choixTaille && t) {
+				const autre = t.value === 'autre';
+				$('commande-autre-taille').hidden = !autre;
+				courant.taille = autre ? {l: $('taille-l').value.replace(',', '.'), h: $('taille-h').value.replace(',', '.')} : {l: f.tailles[Number(t.value)].l, h: f.tailles[Number(t.value)].h};
+			}
+			const q = fenetre.querySelector('input[name=quantite]:checked');
+			const autreQ = q && q.value === 'autre';
+			$('commande-autre-quantite').hidden = !autreQ;
+			courant.quantite = autreQ ? Number($('quantite-autre').value.replace(/\s/g, '').replace(',', '.')) || 0 : Number(q ? q.value : 0);
+		}
+
+		function calculer() {
+			lireChoix();
+			clearTimeout(minuteur);
+			$('commande-ajouter').disabled = true;
+			minuteur = setTimeout(function () {
+				const n = ++demande;
+				fetch(urlCalcul.replace(ZERO, courant.fiche.id), {
+					method: 'POST',
+					headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton},
+					body: JSON.stringify({quantite: courant.quantite, saisie: courant.saisie, inferieur: false, taille: courant.fiche.choixTaille ? courant.taille : null}),
+					credentials: 'same-origin',
+				}).then(function (r) { return r.json(); }).then(function (r) {
+					if (n !== demande) return;
+					const avis = $('commande-avis');
+					if (r.erreur) {
+						$('commande-erreur').textContent = r.erreur;
+						$('commande-resume').textContent = '—';
+						if (MONTANTS) $('commande-prix').textContent = '—';
+						avis.hidden = true;
+						courant.calcul = null;
+						return;
+					}
+					$('commande-erreur').textContent = '';
+					courant.calcul = r;
+					$('commande-resume').textContent = (r.saisie === 'piece' ? fr.format(r.pieces) + ' ' + unite(courant.fiche, 'piece') : r.resume) + (r.taille ? ' · ' + r.taille.libelle : (r.detail ? ' ' + r.detail : ''));
+					if (MONTANTS && r.montant !== undefined) $('commande-prix').textContent = fr.format(r.montant) + ' F';
+					avis.hidden = false;
+					avis.className = r.direct ? 'mp-avis' : 'mp-avis orange';
+					avis.textContent = r.direct ? '✓ Fichier prêt : part directement en impression, sans BAT.' : 'Nouvelle taille : l\'atelier adapte le fichier et vous envoie un BAT avant l\'impression.';
+					$('commande-ajouter').disabled = false;
+				}).catch(function () { if (n === demande) $('commande-erreur').textContent = 'Connexion perdue. Réessayez.'; });
+			}, 250);
+		}
+
+		fenetre.addEventListener('change', function (e) {
+			if (e.target.name === 'saisie') {
+				courant.saisie = e.target.value;
+				afficherQuantites(null);
+			}
+			if (e.target.id !== 'remplacer-fichier') calculer();
+		});
+		['taille-l', 'taille-h', 'quantite-autre'].forEach(function (id) { $(id).addEventListener('input', calculer); });
+
+		function rafraichirPanier(p) {
+			document.querySelectorAll('[data-panier-nombre]').forEach(function (e) { e.textContent = p.nombre; });
+			document.querySelectorAll('[data-panier-libelle]').forEach(function (e) { e.textContent = p.nombre + ' produit' + (p.nombre > 1 ? 's' : ''); });
+			if (MONTANTS) document.querySelectorAll('[data-panier-total]').forEach(function (e) { e.textContent = fr.format(p.total) + ' F'; });
+			$('barre-panier').hidden = p.nombre === 0;
+			$('mise').classList.toggle('sans-volet', p.nombre === 0);
+			const liste = $('volet-liste');
+			liste.textContent = '';
+			p.articles.forEach(function (a) {
+				const ligne = document.createElement('div');
+				ligne.className = 'mp-article';
+				const carte = document.querySelector('.mp-carte[data-id="' + a.image + '"] .mp-visuel');
+				const visuel = document.createElement('span');
+				visuel.className = carte ? carte.className : 'mp-visuel';
+				visuel.innerHTML = carte ? carte.innerHTML : '';
+				const texte = document.createElement('span');
+				texte.className = 'mp-article-texte';
+				const b = document.createElement('b');
+				b.textContent = a.nom;
+				const s = document.createElement('small');
+				s.textContent = a.resume;
+				const d = document.createElement('span');
+				d.className = a.direct ? 'mp-direct' : 'mp-avec-bat';
+				d.textContent = a.direct ? '✓ fichier prêt' : 'BAT avant impression';
+				texte.append(b, s, d);
+				ligne.append(visuel, texte);
+				if (MONTANTS && a.montant !== null) {
+					const prix = document.createElement('span');
+					prix.className = 'mp-article-prix';
+					prix.textContent = fr.format(a.montant) + ' F';
+					ligne.append(prix);
+				}
+				liste.append(ligne);
+			});
+		}
+
+		$('commande-ajouter').addEventListener('click', function () {
+			if (!courant || !courant.calcul) return;
+			const bouton = this;
+			bouton.disabled = true;
+			fetch(urlPanier.replace(ZERO, courant.fiche.id), {
+				method: 'POST',
+				headers: {'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton},
+				body: JSON.stringify({quantite: courant.quantite, saisie: courant.saisie, inferieur: false, taille: courant.fiche.choixTaille ? courant.taille : null}),
+				credentials: 'same-origin',
+			}).then(function (r) { return r.json(); }).then(function (r) {
+				if (r.erreur) {
+					$('commande-erreur').textContent = r.erreur;
+					bouton.disabled = false;
+					return;
+				}
+				rafraichirPanier(r);
+				fermerFenetre(fenetre);
+			}).catch(function () { $('commande-erreur').textContent = 'Connexion perdue. Réessayez.'; bouton.disabled = false; });
+		});
+
+		document.querySelectorAll('[data-commander]').forEach(function (b) {
+			b.addEventListener('click', function () { ouvrirCommande(b.dataset.commander); });
+		});
+
+		// Règle « Nouvelle image » : l'image part, puis le produit est mis à jour (lien suspendu).
+		$('remplacer-fichier').addEventListener('change', function (e) {
+			const fichier = e.target.files[0];
+			if (!fichier || !courant) return;
+			const etat = $('remplacer-etat');
+			etat.textContent = ' envoi…';
+			window.EspaceEnvoi.envoyer(fichier, {debut: urlEnvoi, jeton: jeton, progres: function (p) { etat.textContent = ' envoi… ' + p + ' %'; }})
+				.then(function (f) {
+					const form = $('remplacer-form');
+					form.action = urlImage.replace(ZERO, courant.fiche.id);
+					$('remplacer-image').value = f.id;
+					form.submit();
+				})
+				.catch(function (err) { etat.textContent = ' ' + err.message; });
+		});
+
+		// « Commander à nouveau » (tableau de bord) : la feuille de ce produit, quantité reprise.
+		const ouvrir = {{ ouvrir|json_encode|raw }};
+		if (ouvrir.produit && parId[ouvrir.produit]) ouvrirCommande(ouvrir.produit, ouvrir.quantite, ouvrir.saisie);
+	})();
+	</script>
+{% endblock %}

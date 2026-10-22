@@ -1,0 +1,26 @@
+{% extends 'security/_page_connexion.html.twig' %}
+
+{% block title %}Autoriser cet appareil · Succès Imprim{% endblock %}
+
+{# Ouverte en scannant le QR de Réglages › Sécurité (maquette 38). #}
+{% block carte %}
+	{% if invitation %}
+		<h1>Autoriser cet appareil</h1>
+		<p class="si-connexion-sous-titre">Pour l'administration en ligne de Succès Imprim.</p>
+		<dl class="si-appareil-details">
+			<dt>Appareil</dt><dd>{{ invitation.nom }}</dd>
+			<dt>Utilisateur</dt><dd>{{ invitation.nomUtilisateur }}</dd>
+			<dt>Rôle en ligne</dt><dd>{{ invitation.roleEnLigneLibelle }}</dd>
+		</dl>
+		<form method="post">
+			<input type="hidden" name="_token" value="{{ csrf_token('appareil-' ~ jeton) }}">
+			<button type="submit" class="si-connexion-bouton">Autoriser cet appareil</button>
+		</form>
+		<p class="si-connexion-lien">Seul cet appareil pourra ouvrir la session de {{ invitation.nomUtilisateur }} en ligne, avec le mot de passe et un code reçu par SMS.</p>
+	{% else %}
+		<h1>Lien expiré</h1>
+		<p class="si-connexion-sous-titre">Ce QR n'est plus valable (5 minutes, une seule fois). Demandez à l'administrateur d'en afficher un nouveau dans Réglages › Sécurité.</p>
+	{% endif %}
+{% endblock %}
+
+{% block note %}{% endblock %}

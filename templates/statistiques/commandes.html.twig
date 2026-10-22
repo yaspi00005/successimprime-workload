@@ -1,7 +1,17 @@
 {% extends 'base.html.twig' %}
+{% import 'statistiques/_macros.html.twig' as st %}
 
 {% block title %}
 	Statistiques des commandes
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/statistiques.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	{% if local %}{{ st.exporter('app_statistiques_commandes_export', {granularite: granulariteEvolution}) }}{% endif %}
 {% endblock %}
 
 {% block body %}
@@ -38,7 +48,7 @@
 		<div class="card-header d-flex align-items-center justify-content-between flex-wrap">
 
 			<h3 class="card-title mb-0">
-				Évolution du chiffre d'affaires et du nombre de commandes
+				Évolution {{ droits.ventes ? 'du chiffre d\'affaires et ' }}du nombre de commandes
 			</h3>
 
 			<div class="btn-group">
@@ -59,9 +69,10 @@
 
 
 	{# ==========================================================
-	   RÉSUMÉ DES IMPAYÉS
+	   RÉSUMÉ DES IMPAYÉS (droit Paiements)
 	   ========================================================== #}
 
+	{% if commandesNonSoldees is not null %}
 	<div class="row">
 
 		{% for tranche in parTranche %}
@@ -126,9 +137,9 @@
 				<tbody>
 					{% for ligne in commandesNonSoldees %}
 						<tr>
-							<td>{{ ligne.commande.numero|default('#' ~ ligne.commande.id) }}</td>
-							<td>{{ ligne.commande.clients ? ligne.commande.clients.nomComplet : 'Client supprimé' }}</td>
-							<td>{{ ligne.commande.dateCommande|date('d/m/Y') }}</td>
+							<td>{{ ligne.numero }}</td>
+							<td>{{ ligne.client }}</td>
+							<td>{{ ligne.date|date('d/m/Y') }}</td>
 							<td class="text-right">
 								<span class="badge {{ ligne.jours > 90 ? 'badge-danger' : (ligne.jours > 30 ? 'badge-warning' : 'badge-light') }}">
 									{{ ligne.jours }} jour(s)
@@ -136,7 +147,7 @@
 							</td>
 							<td class="text-right">{{ ligne.reste|number_format(0, ',', ' ') }}</td>
 							<td class="text-center">
-								<a href="{{ path('app_commandes_show', {id: ligne.commande.id}) }}" class="btn btn-sm btn-primary-light" title="Voir la commande">
+								<a href="{{ path('app_commandes_show', {id: ligne.id}) }}" class="btn btn-sm btn-primary-light" title="Voir la commande">
 									<i class="fa fa-eye"></i>
 								</a>
 							</td>
@@ -153,11 +164,14 @@
 		</div>
 
 	</div>
+	{% else %}
+	<p class="text-muted"><i class="fa fa-lock mr-1"></i>Les impayés par ancienneté demandent le droit de voir les paiements.</p>
+	{% endif %}
 
 </div>
 
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="{{ asset('vendor/chart.js-4.4.4/chart.umd.js') }}"></script>
 
 <script>
 	(function () {
@@ -171,6 +185,7 @@
 				data: {
 					labels: evolution.labels,
 					datasets: [
+						{% if droits.ventes %}
 						{
 							label: 'Chiffre d\'affaires (FCFA)',
 							data: evolution.ca,
@@ -180,6 +195,7 @@
 							tension: 0.35,
 							yAxisID: 'y'
 						},
+						{% endif %}
 						{
 							label: 'Nombre de commandes',
 							data: evolution.commandes,

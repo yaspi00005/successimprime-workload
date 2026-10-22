@@ -1,0 +1,170 @@
+{% extends 'base.html.twig' %}
+
+{# Poste du graphiste (maquette R03) : trois volets, le fichier au centre. #}
+{% set x = carte %}
+{% block title %}Fichiers et BAT{% endblock %}
+{% block page_title %}{{ x ? x.numero ~ ' · ' ~ x.titre ~ (x.client ? ' · ' ~ x.client) : 'Poste PAO' }}{% endblock %}
+{% block onglets_section %}{% endblock %}
+
+{% block header_actions %}
+	{% if x %}
+		{% set etape = x.etape %}
+		{% if etape in ['a_faire', 'en_conception', 'corrections'] %}
+			<li class="nav-item"><form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'bat'}) }}"><input type="hidden" name="_token" value="{{ csrf_token(jeton) }}"><input type="hidden" name="retour" value="poste"><button class="btn btn-light btn-sm si-btn-entete si-gp-envoyer">Envoyer le BAT V{{ c.versions + 1 }}</button></form></li>
+		{% elseif etape == 'bat_envoye' %}
+			<li class="nav-item"><span class="si-gp-attente">BAT V{{ c.versions }} chez le client</span></li>
+		{% endif %}
+	{% endif %}
+{% endblock %}
+
+{% block body %}
+	{% if x %}{% include 'conception/_whatsapp.html.twig' %}{% endif %}
+	<div class="si-gp">
+		<aside class="si-gp-travaux" aria-label="Mes travaux">
+			<div class="si-gp-travaux-tete"><b>Mes travaux · {{ travaux|length }}</b><a href="{{ path('app_conception_tableau') }}" title="Tableau de conception"><i class="fas fa-columns"></i></a></div>
+			<ul>
+				{% for t in travaux %}
+					<li>
+						<a href="{{ path('app_conception_poste', {id: t.c.id}) }}" class="si-gp-travail si-cp-d-{{ t.delai.couleur }}{{ x and t.c.id == c.id ? ' actif' }}"{{ x and t.c.id == c.id ? ' aria-current="page"' }}>
+							<b>{{ t.titre|split(' · ')|first }}</b>
+							<small>{{ t.client ?? t.numero }}</small>
+							<span class="si-cp-delai"><i></i>{{ t.c.enCours ? 'en cours · ' }}{{ t.delai.texte }}</span>
+						</a>
+					</li>
+				{% else %}
+					<li class="si-gp-vide">Aucun travail en attente. Les nouveaux contrôles arrivent ici.</li>
+				{% endfor %}
+			</ul>
+		</aside>
+
+		{% if x %}
+			{% set token = csrf_token(jeton) %}
+			{% set etape = x.etape %}
+			<section class="si-gp-apercu" aria-label="Aperçu du fichier">
+				{% set premier = fichiers|first %}
+				<div class="si-gp-legende">
+					{% if premier %}
+						V{{ premier.f.version }} · {{ x.titre|split(' · ')|last }}{% if premier.fondsPerdus %} · fond perdu {{ premier.fondsPerdus.valeur }}{{ premier.fondsPerdus.ok ? ' ✓' }}{% endif %}{{ premier.f.origine == 'client' ? ' · fichier du client' }}
+					{% else %}
+						Pas encore de fichier
+					{% endif %}
+				</div>
+				<div class="si-gp-scene" id="si-gp-scene">
+					{% for p in fichiers %}
+						{% if not p.disponible %}
+							<div class="si-gp-sans"><i class="far fa-file"></i><b>{{ p.f.nomOriginal }}</b><small>Le fichier n'est pas sur ce poste.</small></div>
+						{% elseif p.type == 'image' %}
+							{% set rang = rangs[p.f.id] ?? 0 %}
+							<div class="si-gp-cadre si-gp-zoom">
+								<img src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: p.f.id}) }}" alt="{{ p.f.nomOriginal }}">
+								{% if reperes %}
+									{% for r in reperes.reperes %}{% if r.i == rang %}<span class="si-gp-repere{{ reperes.corrigeeEn ? ' corrige' }}" style="left:{{ r.x * 100 }}%;top:{{ r.y * 100 }}%" title="{{ r.t }}">{{ loop.index }}</span>{% endif %}{% endfor %}
+								{% endif %}
+							</div>
+						{% elseif p.type == 'pdf' %}
+							<iframe class="si-gp-zoom" src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: p.f.id}) }}#toolbar=0&amp;view=Fit" title="{{ p.f.nomOriginal }}"></iframe>
+						{% else %}
+							<div class="si-gp-sans"><i class="far fa-file-archive"></i><b>{{ p.f.nomOriginal }}</b><small>Fichier de travail : à ouvrir dans le logiciel.</small></div>
+						{% endif %}
+					{% else %}
+						<div class="si-gp-sans"><i class="fas fa-pencil-ruler"></i><b>Aucun fichier pour l'instant</b>
+							{% if c.controle.commandeDetail %}<a href="{{ path('app_controle_pre_presse_controler', {id: c.controle.commandeDetail.id}) }}" class="btn btn-light btn-sm mt-2">Déposer la V{{ c.versions + 1 }}</a>{% endif %}
+						</div>
+					{% endfor %}
+				</div>
+				{% if fichiers is not empty %}
+					<div class="si-gp-outils" role="group" aria-label="Zoom">
+						<button type="button" data-zoom="-1" aria-label="Réduire">−</button>
+						<span id="si-gp-niveau">100 %</span>
+						<button type="button" data-zoom="1" aria-label="Agrandir">+</button>
+						<button type="button" data-plein-ecran>Plein écran</button>
+						{% if c.controle.commandeDetail %}<a href="{{ path('app_controle_pre_presse_controler', {id: c.controle.commandeDetail.id}) }}">Fichiers</a>{% endif %}
+					</div>
+				{% endif %}
+			</section>
+
+			<aside class="si-gp-details" aria-label="Détails et échanges">
+				<h2>Détails et échanges</h2>
+				<div class="si-gp-etiquette">Chronomètre</div>
+				<div class="si-gp-chrono" id="si-gp-chrono" data-secondes="{{ x.secondes }}"{{ c.enCours ? ' data-en-marche' }}>{{ '%02d:%02d:%02d'|format(x.secondes // 3600, (x.secondes % 3600) // 60, x.secondes % 60) }}</div>
+				<div class="si-gp-boutons">
+					{% if c.enCours %}
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'pause'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="poste"><button class="btn btn-light btn-sm"><i class="fas fa-pause me-1"></i>Pause</button></form>
+					{% elseif etape in ['a_faire', 'en_conception', 'corrections'] %}
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'demarrer'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="poste"><button class="btn btn-danger btn-sm"><i class="fas fa-play me-1"></i>{{ etape == 'a_faire' ? 'Démarrer' : 'Reprendre' }}</button></form>
+					{% endif %}
+					<small>prévu {{ c.tempsPrevu|duree_pointage }}</small>
+				</div>
+
+				<div class="si-gp-etiquette">Échéance du BAT</div>
+				<div class="si-gp-echeance si-cp-d-{{ x.delai.couleur }}">{{ c.echeanceBat and 'avant' not in x.delai.texte ? c.echeanceBat|date(c.echeanceBat|date('Ymd') == maintenant|date('Ymd') ? 'H:i' : 'd/m H:i') ~ ' · ' }}<span class="si-cp-delai">{{ x.delai.texte }}</span></div>
+
+				<ol class="si-gp-fil">
+					{% for e in evenements %}
+						{% if e.type in ['retour', 'erreur'] %}
+							<li class="si-gp-client"><b>{{ e.type == 'erreur' ? 'Erreur à corriger' : 'Client' }}</b> : {{ e.detail and e.detail starts with '«' ? e.detail|split(' · ')|first : (e.reperes ?? [] ? 'repères sur le BAT' : 'correction demandée') }}
+								{% if e.reperes ?? [] %}<ol class="si-gp-reperes">{% for r in e.reperes %}<li>{{ r.t }}</li>{% endfor %}</ol>{% endif %}
+								<time>{{ e.le|date('d/m H:i') }}</time></li>
+						{% elseif e.type == 'bat' %}
+							<li class="si-gp-nous">{{ e.titre }}<time>{{ e.le|date('d/m H:i') }}</time></li>
+						{% elseif e.type == 'valide' %}
+							<li class="si-gp-nous valide">BAT validé ✓<time>{{ e.le|date('d/m H:i') }}</time></li>
+						{% else %}
+							<li class="si-gp-info">{{ e.titre }}{% if c.controle.commandeDetail and c.controle.commandeDetail.demandeClient %} : « {{ c.controle.commandeDetail.demandeClient }} »{% endif %}<time>{{ e.le|date('d/m H:i') }}</time></li>
+						{% endif %}
+					{% endfor %}
+				</ol>
+
+				{% if etape == 'bat_envoye' %}
+					<div class="si-cp-reponse" id="reponse">
+						<b>Réponse du client sur la V{{ c.versions }}</b>
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'valider'}) }}"><input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="poste"><button class="btn btn-success btn-sm"><i class="fas fa-check me-1"></i>BAT validé par le client</button></form>
+						<form method="post" action="{{ path('app_conception_agir', {id: c.id, action: 'retour'}) }}" class="si-cp-retour">
+							<input type="hidden" name="_token" value="{{ token }}"><input type="hidden" name="retour" value="poste">
+							<input name="texte" maxlength="160" class="form-control form-control-sm" placeholder="Ce qu'il faut changer">
+							<label class="si-pg-case"><input type="radio" name="raison" value="client" checked> Demande du client (0 pt)</label>
+							<label class="si-pg-case"><input type="radio" name="raison" value="erreur"> Erreur à corriger</label>
+							<button class="btn btn-light btn-sm si-btn-entete">Correction demandée</button>
+						</form>
+					</div>
+				{% endif %}
+
+				<a class="si-gp-lien" href="{{ path('app_conception_voir', {id: c.id}) }}">Heures, délais et points <i class="fas fa-angle-right"></i></a>
+			</aside>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	<script>
+	(function () {
+		var chrono = document.getElementById('si-gp-chrono');
+		if (chrono && chrono.hasAttribute('data-en-marche')) {
+			var depart = Date.now() - (+chrono.dataset.secondes) * 1000;
+			var deux = function (n) { return (n < 10 ? '0' : '') + n; };
+			setInterval(function () {
+				var s = Math.floor((Date.now() - depart) / 1000);
+				chrono.textContent = deux(Math.floor(s / 3600)) + ':' + deux(Math.floor(s % 3600 / 60)) + ':' + deux(s % 60);
+			}, 1000);
+		}
+
+		var scene = document.getElementById('si-gp-scene');
+		var niveau = document.getElementById('si-gp-niveau');
+		var zoom = 100;
+		document.querySelectorAll('[data-zoom]').forEach(function (b) {
+			b.addEventListener('click', function () {
+				zoom = Math.min(400, Math.max(25, zoom + (+b.dataset.zoom) * 25));
+				scene.style.setProperty('--si-gp-zoom', zoom / 100);
+				niveau.textContent = zoom + ' %';
+			});
+		});
+		var plein = document.querySelector('[data-plein-ecran]');
+		if (plein && scene) {
+			plein.addEventListener('click', function () {
+				var cible = scene.closest('.si-gp-apercu');
+				if (document.fullscreenElement) { document.exitFullscreen(); } else if (cible.requestFullscreen) { cible.requestFullscreen(); }
+			});
+		}
+	})();
+	</script>
+{% endblock %}

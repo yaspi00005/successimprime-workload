@@ -1,0 +1,69 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Documents liés d'une commande (maquette FD05) : devis → commande → BAT
+	→ BL → factures → avoirs → paiements, équilibre du dossier, écart
+	devis → facture, et ce qu'il reste à faire.
+#}
+
+{% block title %}Documents liés · {{ commande.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set e = chaine.equilibre %}
+	<div class="fd-page">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › <a href="{{ path('app_commandes_show', {id: commande.id}) }}">{{ commande.numero }}</a></div>
+				<h1>Documents liés · {{ commande.clients ? commande.clients.nomComplet : 'Comptoir' }}{{ commande.objet ? ' · ' ~ commande.objet }}</h1>
+			</div>
+		</div>
+
+		<div class="fd-carte">
+			{% include 'facturation/_chaine.html.twig' with {frise: true} %}
+		</div>
+
+		<div class="row g-3">
+			<div class="col-lg-4">
+				<div class="fd-carte h-100">
+					<h2>Équilibre du dossier</h2>
+					<div class="fd-ligne-solde"><span>{{ e.surCommande ? 'Commande (pas encore facturée)' : 'Facturé' }}</span><b>{{ e.facture|number_format(0, ',', ' ') }} F</b></div>
+					{% if e.avoirs > 0 %}<div class="fd-ligne-solde"><span>Avoirs</span><span class="fd-violet">− {{ e.avoirs|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+					{% if chaine.voirPaiements %}
+						<div class="fd-ligne-solde"><span>Payé</span><span class="fd-vert">− {{ e.paye|number_format(0, ',', ' ') }} F</span></div>
+						{% if e.aConfirmer > 0 %}<div class="fd-ligne-solde"><span>Payé, à confirmer</span><span class="fd-vert">− {{ e.aConfirmer|number_format(0, ',', ' ') }} F</span></div>{% endif %}
+					{% endif %}
+					<div class="fd-ligne-solde"><span>Reste</span><b class="{{ e.reste > 0 ? 'fd-rouge' : 'fd-vert' }}">{{ e.reste|number_format(0, ',', ' ') }} F</b></div>
+				</div>
+			</div>
+			<div class="col-lg-4">
+				<div class="fd-carte h-100">
+					<h2>Écart devis → facture</h2>
+					{% if chaine.ecart %}
+						{% set ec = chaine.ecart %}
+						<p class="small mb-2">Devis {{ ec.devisNumero }} : {{ ec.devis|number_format(0, ',', ' ') }} F. Facturé : {{ ec.facture|number_format(0, ',', ' ') }} F.</p>
+						{% if ec.ecart == 0 %}<b class="fd-vert small">Aucun écart.</b>
+						{% else %}<b class="small {{ ec.ecart > 0 ? 'fd-rouge' : 'fd-vert' }}">{{ ec.ecart > 0 ? '+ ' : '− ' }}{{ (ec.ecart|abs)|number_format(0, ',', ' ') }} F par rapport au devis : à expliquer au client si besoin.</b>{% endif %}
+					{% else %}
+						<p class="fd-muet small mb-0">{{ chaine.etapes|filter(x => x.type == 'devis') is empty ? 'Commande sans devis.' : 'Pas encore de facture validée.' }}</p>
+					{% endif %}
+				</div>
+			</div>
+			<div class="col-lg-4">
+				<div class="fd-carte h-100">
+					<h2>À faire</h2>
+					{% for a in chaine.aFaire %}
+						<div class="fd-alerte mb-2">{{ a.texte }}</div>
+						{% if a.url and a.bouton %}<a href="{{ a.url }}" class="btn fd-vert-plein w-100 mb-2">{{ a.bouton }}</a>{% endif %}
+					{% else %}
+						<p class="fd-vert small mb-0"><i class="fa fa-check me-1"></i>Rien à faire : le dossier est en ordre.</p>
+					{% endfor %}
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

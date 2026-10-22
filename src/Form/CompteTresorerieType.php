@@ -460,6 +460,37 @@ class CompteTresorerieType extends AbstractType
 
         /*
          * ============================================================
+         * ORANGE MONEY EN LIGNE
+         * ============================================================
+         *
+         * Le compte qui reçoit les paiements Orange Money de l'espace
+         * client (API). Un seul : le marquer le retire aux autres.
+         * ============================================================
+         */
+
+        $builder->add(
+            'orangeMoneyEnLigne',
+            CheckboxType::class,
+            [
+                'label' =>
+                    'Reçoit les paiements Orange Money en ligne (espace client)',
+
+                'required' =>
+                    false,
+
+                'help' =>
+                    'Compte Orange Money de l’API : les paiements en ligne y vont d’office, la caisse ne le propose pas. Un seul compte porte cette marque.',
+
+                'row_attr' => [
+                    'data-compte-om-en-ligne' =>
+                        'true',
+                ],
+            ]
+        );
+
+
+        /*
+         * ============================================================
          * DESCRIPTION
          * ============================================================
          */

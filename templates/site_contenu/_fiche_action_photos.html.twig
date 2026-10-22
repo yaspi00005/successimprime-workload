@@ -1,0 +1,41 @@
+{#
+	Photos d'une action sociale : de 1 à ActionSociale::PHOTOS_MAX,
+	réencodées en WebP sans EXIF ni position GPS, original non gardé
+	(ContenuSite::lirePhotosAction). Rappel de l'accord des personnes.
+#}
+{% set photosMax = constant('App\\Entity\\ActionSociale::PHOTOS_MAX') %}
+<section class="card si-bloc si-sv-encadre">
+	<h2 class="si-sv-sous-titre">Photos <small class="text-muted">({{ objet.images|length }} sur {{ photosMax }} au plus · la première est la photo principale)</small></h2>
+	<div class="si-sv-accord-photos" role="note" style="margin:0 0 14px;padding:12px 14px;border:1px solid #f0d58a;border-radius:10px;background:#fff7e0;color:#5c4300;font-size:14px;line-height:1.5">
+		<strong>Accord des personnes photographiées.</strong>
+		Une personne reconnaissable sur une photo doit avoir donné son accord pour paraître sur le site ; pour un enfant, c'est l'accord de ses parents (ou de son responsable). Sans cet accord, choisissez une photo de dos, de loin, ou floutée avant l'envoi. Jamais de nom d'enfant.
+	</div>
+	{% if objet.images is not empty %}
+		<ul class="si-sv-photos">
+			{% for image in objet.images %}
+				{% set fichier = site_image(image, 'petite') %}
+				<li>
+					{% if fichier %}
+						<img src="{{ asset(fichier.chemin) }}" width="{{ fichier.largeur }}" height="{{ fichier.hauteur }}" alt="" loading="lazy">
+					{% else %}
+						<span class="si-sv-vignette si-sv-vignette-vide" aria-hidden="true"><i class="far fa-image"></i></span>
+					{% endif %}
+					<label class="visually-hidden" for="photo-alt-{{ image.id }}">Description de la photo {{ loop.index }}</label>
+					<input type="text" name="photos[{{ image.id }}][alt]" id="photo-alt-{{ image.id }}" value="{{ image.texteAlternatif }}" maxlength="160" class="form-control form-control-sm" placeholder="Description de la photo">
+					<div class="si-sv-photo-actions">
+						<label>Ordre <input type="number" name="photos[{{ image.id }}][ordre]" value="{{ image.ordre }}" min="0" max="99" class="form-control form-control-sm"></label>
+						<label class="form-check mb-0"><input type="checkbox" name="photos[{{ image.id }}][retirer]" value="1" class="form-check-input"> <span class="form-check-label">Retirer</span></label>
+					</div>
+				</li>
+			{% endfor %}
+		</ul>
+	{% endif %}
+	{% if objet.images|length < photosMax %}
+		<label class="si-libelle-champ mt-2" for="champ-images">Ajouter des photos</label>
+		<input type="file" name="images[]" id="champ-images" multiple accept="{{ formats.jpeg ? 'image/jpeg,' }}image/png{{ formats.webpLu ? ',image/webp' }}" class="form-control">
+		<div class="form-text">
+			{{ formats.jpeg ? 'JPG, PNG' : 'PNG' }}{{ formats.webpLu ? ' ou WebP' }}, 15 Mo au plus chacune. Réduites à 1 200 px et réencodées en {{ formats.webp ? 'WebP' : 'PNG' }} : les données de l'appareil photo (EXIF, position GPS) sont retirées, et la photo envoyée n'est pas gardée telle quelle.
+			{% if not formats.jpeg %}<br><strong>Ce serveur ne lit pas le JPG (GD sans JPEG) : envoyez un PNG.</strong>{% endif %}
+		</div>
+	{% endif %}
+</section>

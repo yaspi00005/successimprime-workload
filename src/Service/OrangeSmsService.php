@@ -2,6 +2,9 @@
 
 namespace App\Service;
 
+use App\Entity\EnvoiMessage;
+use App\Service\Messagerie\JournalEnvois;
+use App\Service\Messagerie\SegmentsSms;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 use Symfony\Contracts\Cache\ItemInterface;
@@ -14,6 +17,11 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * désormais de .env.local (jamais du code source), et le jeton
  * OAuth n'est plus codé en dur -- il est demandé automatiquement à
  * Orange puis mis en cache jusqu'à son expiration.
+ *
+ * Chaque envoi tenté est noté dans l'historique des envois (JournalEnvois,
+ * sans le texte). Le solde du contrat et les achats de packs se lisent
+ * avec le même jeton (lireContrats, lireAchats : Clients › Crédits SMS et
+ * e-mail).
  */
 final class OrangeSmsService
 {
@@ -26,7 +34,8 @@ final class OrangeSmsService
         private readonly string $clientId,
         private readonly string $clientSecret,
         private readonly string $senderAddress,
-        private readonly string $senderName
+        private readonly string $senderName,
+        private readonly ?JournalEnvois $journal = null,
     ) {
     }
 
@@ -48,9 +57,33 @@ final class OrangeSmsService
      *                                campagne). Laissé null ou vide :
      *                                le nom par défaut de .env.local
      *                                est utilisé.
+     * @param string|null $type       sorte de message pour l'historique
+     *                                des envois (EnvoiMessage::TYPES)
      * @return array{succes: bool, erreur: ?string}
      */
-    public function envoyerSms(string $telephone, string $message, ?string $senderName = null): array
+    public function envoyerSms(string $telephone, string $message, ?string $senderName = null, ?string $type = null): array
+    {
+        $resultat = $this->envoyer($telephone, $message, $senderName);
+        $this->journal?->noter(
+            EnvoiMessage::SMS,
+            $type ?? 'autre',
+            $telephone,
+            match (true) {
+                $resultat['succes'] => EnvoiMessage::ENVOYE,
+                !$this->estConfigure() => EnvoiMessage::NON_ENVOYE,
+                default => EnvoiMessage::ECHEC,
+            },
+            $resultat['erreur'],
+            SegmentsSms::compter($message),
+        );
+
+        return $resultat;
+    }
+
+    /**
+     * @return array{succes: bool, erreur: ?string}
+     */
+    private function envoyer(string $telephone, string $message, ?string $senderName): array
     {
         if (!$this->estConfigure()) {
             return [
@@ -81,10 +114,11 @@ final class OrangeSmsService
             ];
         }
 
+        $expediteur = self::adresseExpediteur($this->senderAddress);
         $corps = [
             'outboundSMSMessageRequest' => [
                 'address' => $destinataire,
-                'senderAddress' => $this->senderAddress,
+                'senderAddress' => $expediteur,
                 'outboundSMSTextMessage' => [
                     'message' => $message,
                 ],
@@ -103,7 +137,7 @@ final class OrangeSmsService
             $response = $this->httpClient->request(
                 'POST',
                 self::BASE_URL . '/smsmessaging/v1/outbound/'
-                    . urlencode($this->senderAddress) . '/requests',
+                    . urlencode($expediteur) . '/requests',
                 [
                     'auth_bearer' => $token,
                     'json' => $corps,
@@ -132,6 +166,60 @@ final class OrangeSmsService
                 'succes' => false,
                 'erreur' => $exception->getMessage(),
             ];
+        }
+    }
+
+    /**
+     * Contrats SMS du compte Orange : unités restantes et date
+     * d'expiration par pays (GET /sms/admin/v1/contracts, réponse brute).
+     *
+     * @return array<mixed>
+     */
+    public function lireContrats(): array
+    {
+        return $this->lireAdmin('/sms/admin/v1/contracts');
+    }
+
+    /**
+     * Achats de packs (GET /sms/admin/v1/purchaseorders, réponse brute).
+     *
+     * @return array<mixed>
+     */
+    public function lireAchats(): array
+    {
+        return $this->lireAdmin('/sms/admin/v1/purchaseorders');
+    }
+
+    /**
+     * Lecture d'une adresse d'administration Orange avec le jeton en cache ;
+     * un jeton refusé (expiré plus tôt que prévu) est redemandé une fois.
+     * Ni le jeton ni les identifiants ne vont dans le journal.
+     *
+     * @return array<mixed>
+     */
+    private function lireAdmin(string $chemin): array
+    {
+        if (!$this->estConfigure()) {
+            throw new \RuntimeException('Le service SMS Orange n’est pas configuré (identifiants manquants).');
+        }
+
+        for ($essai = 1; ; ++$essai) {
+            $response = $this->httpClient->request('GET', self::BASE_URL.$chemin, [
+                'auth_bearer' => $this->obtenirToken(),
+                'headers' => ['Accept' => 'application/json'],
+            ]);
+            $statut = $response->getStatusCode();
+            if (401 === $statut && 1 === $essai) {
+                $this->cache->delete('orange_sms_token');
+                continue;
+            }
+            if ($statut < 200 || $statut >= 300) {
+                $contenu = $response->toArray(false);
+
+                throw new \RuntimeException($this->extraireMessageErreur($contenu) ?? ('Réponse Orange inattendue (HTTP '.$statut.').'));
+            }
+
+            return $response->toArray();
         }
     }
 
@@ -187,6 +275,9 @@ final class OrangeSmsService
     private function normaliserTelephone(string $telephone): ?string
     {
         $chiffres = preg_replace('/\D+/', '', $telephone) ?? '';
+        if (str_starts_with($chiffres, '00')) {
+            $chiffres = substr($chiffres, 2); // 00223… : indicatif international
+        }
 
         if (strlen($chiffres) === 8) {
             $chiffres = '223' . $chiffres;
@@ -199,18 +290,34 @@ final class OrangeSmsService
         return 'tel:+' . $chiffres;
     }
 
-    private function extraireMessageErreur(array $reponse): ?string
+    /**
+     * Adresse d'expéditeur au format attendu par Orange (tel:+2230000 pour
+     * le Mali), même si .env.local donne seulement les chiffres.
+     */
+    public static function adresseExpediteur(string $adresse): string
     {
-        if (!empty($reponse['requestError']['serviceException'])) {
-            $exception = $reponse['requestError']['serviceException'];
-
-            return trim(($exception['text'] ?? '') . ' ' . ($exception['variables'] ?? ''));
+        $chiffres = preg_replace('/\D+/', '', $adresse) ?? '';
+        if (str_starts_with($chiffres, '00')) {
+            $chiffres = substr($chiffres, 2);
         }
 
-        if (!empty($reponse['requestError']['policyException'])) {
-            $exception = $reponse['requestError']['policyException'];
+        return $chiffres === '' ? trim($adresse) : 'tel:+' . $chiffres;
+    }
 
-            return trim(($exception['text'] ?? '') . ' ' . ($exception['variables'] ?? ''));
+    private function extraireMessageErreur(array $reponse): ?string
+    {
+        $exception = $reponse['requestError']['serviceException'] ?? $reponse['requestError']['policyException'] ?? null;
+        if (\is_array($exception) && $exception !== []) {
+            // Orange met les valeurs à part (« %1 ») : on les remet dans le texte.
+            $texte = (string) ($exception['text'] ?? '');
+            foreach (array_values((array) ($exception['variables'] ?? [])) as $i => $valeur) {
+                $texte = str_replace('%' . ($i + 1), (string) $valeur, $texte);
+            }
+            if (str_contains($texte, 'No valid addresses')) {
+                $texte .= ' (l\'expéditeur ORANGE_SMS_SENDER_ADDRESS doit être celui de votre contrat Orange, tel:+2230000 pour le Mali ; le numéro du destinataire doit être un numéro malien)';
+            }
+
+            return trim($texte);
         }
 
         return $reponse['error_description'] ?? $reponse['message'] ?? null;

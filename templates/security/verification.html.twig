@@ -1,0 +1,96 @@
+{% extends 'security/_page_connexion.html.twig' %}
+
+{% block title %}Code de sécurité · Succès Imprim{% endblock %}
+{% block classe_page %} si-verification{% endblock %}
+
+{# Code de sécurité reçu par e-mail, ou par SMS sans adresse (maquette CX03, à droite). #}
+{% block tete %}
+	<div class="si-verification-haut">
+		<a href="{{ path('app_logout') }}" class="si-verification-retour" aria-label="Annuler et revenir à la connexion">‹</a>
+		<strong>Vérification</strong>
+	</div>
+{% endblock %}
+
+{% block carte %}
+	<span class="si-verification-cadenas" aria-hidden="true">🔐</span>
+	<h1>Code de sécurité</h1>
+	<p class="si-connexion-sous-titre">
+		{% if envoi.envoye|default(false) %}
+			{{ envoi.canal|default('sms') == 'email' ? 'Envoyé par e-mail à' : 'Envoyé par SMS au' }} {{ envoi.destination|default(envoi.telephone|default('')) }}. Valable 5 minutes.
+		{% elseif envoi.limite|default(false) %}
+			{{ envoi.erreur }}
+		{% else %}
+			Le code n'a pas pu partir : {{ envoi.erreur|default('envoi impossible.') }} Vérifiez l'e-mail et le téléphone de votre fiche employé ou demandez un nouveau code.
+		{% endif %}
+	</p>
+	{% if envoi.codeDev|default(null) %}
+		<p class="si-verification-dev">Hors production, sans envoi : le code est <strong>{{ envoi.codeDev }}</strong>.</p>
+	{% endif %}
+
+	{% if erreur %}
+		<div class="si-connexion-erreur" role="alert">{{ erreur }}</div>
+	{% endif %}
+
+	<form method="post" action="{{ path('app_verification') }}" class="js-form-code">
+		<input type="hidden" name="_token" value="{{ csrf_token('verification') }}">
+		<div class="si-code" role="group" aria-label="Code à 6 chiffres">
+			{% for i in 1..6 %}
+				<input type="text" name="code[]" inputmode="numeric" pattern="[0-9]" maxlength="1" required aria-label="Chiffre {{ i }}"{{ i == 1 ? ' autocomplete="one-time-code" autofocus' }}>
+			{% endfor %}
+		</div>
+		<div class="si-code-bas">
+			<span class="js-renvoi" data-secondes="{{ renvoi }}">{% if renvoi > 0 %}Renvoyer dans {{ '%d:%02d'|format(renvoi // 60, renvoi % 60) }}{% endif %}</span>
+			<button type="submit" form="form-renvoyer" class="si-code-renvoyer js-bouton-renvoi"{{ renvoi > 0 ? ' hidden' }}>Renvoyer le code</button>
+		</div>
+		<button type="submit" class="si-connexion-bouton">Valider</button>
+	</form>
+	<form method="post" action="{{ path('app_verification_renvoyer') }}" id="form-renvoyer">
+		<input type="hidden" name="_token" value="{{ csrf_token('verification') }}">
+	</form>
+
+	<p class="si-verification-rappel"><strong>Rappel</strong> · les encaissements saisis en ligne restent provisoires jusqu'à leur validation sur l'ERP local.</p>
+
+	<script>
+		(function () {
+			var cases = Array.prototype.slice.call(document.querySelectorAll('.si-code input'));
+			cases.forEach(function (champ, i) {
+				champ.addEventListener('input', function () {
+					var chiffres = champ.value.replace(/\D/g, '');
+					// Collage ou remplissage automatique du code complet.
+					if (chiffres.length > 1) {
+						chiffres.split('').slice(0, cases.length - i).forEach(function (c, j) { cases[i + j].value = c; });
+						(cases[Math.min(i + chiffres.length, cases.length - 1)]).focus();
+					} else {
+						champ.value = chiffres;
+						if (chiffres && cases[i + 1]) { cases[i + 1].focus(); }
+					}
+					if (cases.every(function (c) { return c.value.length === 1; })) {
+						champ.form.requestSubmit();
+					}
+				});
+				champ.addEventListener('keydown', function (e) {
+					if (e.key === 'Backspace' && !champ.value && cases[i - 1]) { cases[i - 1].focus(); }
+				});
+				champ.removeAttribute('maxlength');
+			});
+
+			var compteur = document.querySelector('.js-renvoi');
+			var bouton = document.querySelector('.js-bouton-renvoi');
+			var reste = parseInt(compteur.dataset.secondes, 10) || 0;
+			var minuterie = setInterval(function () {
+				reste -= 1;
+				if (reste <= 0) {
+					clearInterval(minuterie);
+					compteur.textContent = '';
+					bouton.hidden = false;
+					return;
+				}
+				compteur.textContent = 'Renvoyer dans ' + Math.floor(reste / 60) + ':' + String(reste % 60).padStart(2, '0');
+			}, 1000);
+		})();
+	</script>
+{% endblock %}
+
+{% block note %}
+	<p class="si-connexion-note">Session fermée après 15 min sans activité</p>
+{% endblock %}

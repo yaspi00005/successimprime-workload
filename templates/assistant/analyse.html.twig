@@ -1,0 +1,116 @@
+{#
+	Clients › Assistant du site › Analyse : questions les plus posées,
+	questions restées sans réponse ou jugées pas utiles (à ajouter à la FAQ
+	ou au catalogue), sujets, avis et dépense du jour face au plafond.
+#}
+{% extends 'assistant/_admin.html.twig' %}
+{% import 'assistant/_admin.html.twig' as m %}
+
+{% block title %}Analyse de l'assistant{% endblock %}
+{% block sous_ecran %}analyse{% endblock %}
+
+{% block header_actions %}
+	{{ m.periode(periodes, periode, 'app_assistant_analyse', {}) }}
+{% endblock %}
+
+{% block contenu %}
+	{% if enLigne %}
+		<section class="card">
+			<h2>Analyse</h2>
+			<p class="as-ad-vide">L'analyse se lit sur l'ERP de l'imprimerie, où les conversations arrivent par la synchronisation.</p>
+		</section>
+	{% else %}
+		{% set ch = chiffres %}
+		{% set avis = ch.utile + ch.pasUtile %}
+		<section class="as-ad-kpis" aria-label="Chiffres de la période">
+			<article class="card as-ad-kpi">
+				<h2>Conversations</h2>
+				<strong>{{ ch.conversations }}</strong>
+				<span>{{ ch.site }} sur le site · {{ ch.espace }} dans l'espace client</span>
+			</article>
+			<article class="card as-ad-kpi">
+				<h2>Questions</h2>
+				<strong>{{ ch.questions }}</strong>
+				<span>{{ ch.sansReponse }} sans réponse de l'assistant</span>
+			</article>
+			<article class="card as-ad-kpi">
+				<h2>Réponses utiles</h2>
+				<strong>{{ avis > 0 ? (ch.utile * 100 / avis)|round ~ ' %' : '—' }}</strong>
+				<span>{{ ch.utile }} <i class="fas fa-thumbs-up" aria-label="utiles"></i> · {{ ch.pasUtile }} <i class="fas fa-thumbs-down" aria-label="pas utiles"></i></span>
+			</article>
+			<article class="card as-ad-kpi">
+				<h2>Passées à un conseiller</h2>
+				<strong>{{ ch.agent }}</strong>
+				<span>WhatsApp avec un résumé prêt</span>
+			</article>
+			<article class="card as-ad-kpi">
+				<h2>Dépense de la période</h2>
+				<strong>{{ ch.depense|number_format(0, ',', ' ') }} F</strong>
+				{% set part = limite > 0 ? min(100, aujourdhui * 100 / limite) : 100 %}
+				<div class="as-ad-jauge{{ part >= 100 ? ' as-ad-pleine' }}" role="img" aria-label="Aujourd'hui : {{ aujourdhui|number_format(0, ',', ' ') }} F sur {{ limite|number_format(0, ',', ' ') }} F"><i style="width: {{ part|round }}%"></i></div>
+				<span>aujourd'hui {{ aujourdhui|number_format(0, ',', ' ') }} F / plafond {{ limite|number_format(0, ',', ' ') }} F{{ actif ? '' : ' · assistant arrêté' }}</span>
+			</article>
+		</section>
+
+		<div class="as-ad-deux">
+			<section class="card">
+				<h2>Questions les plus posées</h2>
+				{% if frequentes is empty %}
+					<p class="as-ad-vide">Aucune question sur la période.</p>
+				{% else %}
+					{% set plus = frequentes|first.nombre %}
+					<ul class="as-ad-liste">
+						{% for q in frequentes %}
+							<li>
+								<span style="flex: 1; min-width: 0">
+									{% if q.conversation and q.conversation.id %}<a href="{{ path('app_assistant_conversation', {id: q.conversation.id}) }}">{{ q.texte }}</a>{% else %}{{ q.texte }}{% endif %}
+									<span class="as-ad-barre"><i style="width: {{ (q.nombre * 100 / plus)|round }}%"></i></span>
+								</span>
+								<b>{{ q.nombre }}</b>
+							</li>
+						{% endfor %}
+					</ul>
+					<p class="as-ad-note">Questions regroupées quand elles ont les mêmes mots (sans accents ni ponctuation) ; la formulation montrée est la plus récente.</p>
+				{% endif %}
+			</section>
+			<section class="card">
+				<h2>Sujets</h2>
+				{% if sujets is empty %}
+					<p class="as-ad-vide">Aucun outil appelé sur la période.</p>
+				{% else %}
+					<ul class="as-ad-liste">
+						{% for s in sujets %}<li><span>{{ s.libelle }}</span><b>{{ s.nombre }}</b></li>{% endfor %}
+					</ul>
+					<p class="as-ad-note">Ce que l'assistant a dû consulter pour répondre.</p>
+				{% endif %}
+			</section>
+		</div>
+
+		<section class="card">
+			<h2>À reprendre : sans réponse, conseiller ou pas utiles</h2>
+			{% if sansReponse is empty %}
+				<p class="as-ad-vide">Rien à reprendre sur la période.</p>
+			{% else %}
+				<div class="table-responsive">
+					<table class="table as-ad-table">
+						<thead><tr><th>Question</th><th>Ce qui s'est passé</th><th>Conversation</th></tr></thead>
+						<tbody>
+							{% for l in sansReponse %}
+								{% set r = l.reponse %}
+								<tr>
+									<td><div class="as-ad-question">{{ l.question ?: '—' }}</div><small>{{ r.creeLe|date('d/m à H:i') }}</small></td>
+									<td>
+										<span class="si-pastille si-pastille-{{ r.note == -1 ? 'rouge' : (r.issue == 'agent' ? 'orange' : 'gris') }}">{{ r.note == -1 ? 'Pas utile' : r.libelleIssue }}</span>
+										<small>{{ r.texte|length > 110 ? r.texte|slice(0, 110) ~ '…' : r.texte }}</small>
+									</td>
+									<td>{% if r.conversation and r.conversation.id %}<a href="{{ path('app_assistant_conversation', {id: r.conversation.id}) }}">{{ r.conversation.numero }}</a>{% endif %}</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+				<p class="as-ad-note">À reprendre : une page de la FAQ, une fiche produit, un réglage (horaires, délais) ou une réponse du conseiller. L'assistant ne répond qu'avec ce que le site publie.</p>
+			{% endif %}
+		</section>
+	{% endif %}
+{% endblock %}

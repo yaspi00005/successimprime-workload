@@ -1,0 +1,73 @@
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
+
+{#
+	Commande proposée à un fournisseur (maquette SU07, docs/achats.md) : les
+	articles en alerte et ceux à regrouper pour partager le transport, aux
+	quantités suggérées par la consommation moyenne, avec le transport et
+	le transit de la dernière commande et le total rendu Bamako. Un geste
+	l'enregistre en brouillon de commande d'achat.
+#}
+
+{% block title %}Commande proposée · {{ fournisseur.nomCourt }}{% endblock %}
+{% block page_title %}Commande proposée{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/achats-reappro.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set achat = proposition.achat %}
+	{% set noms = proposition.lignes|map(l => l.nom|lower) %}
+	<div class="ac-page rp-page rp-proposition">
+		<p class="rp-fil"><a href="{{ path('app_reappro_index') }}">Réapprovisionnement</a> › {{ fournisseur.nomCourt }}</p>
+
+		<header class="rp-entete">
+			<small>Commande proposée</small>
+			<h1>{{ m.avatar(fournisseur) }}{{ fournisseur.nomCourt }}</h1>
+			<p>{{ noms|join(' + ') }}{{ noms|length > 1 ? ', un seul transport' }}</p>
+		</header>
+
+		<section class="ac-carte rp-lignes" aria-label="Lignes proposées">
+			{% for l in proposition.detail.lignes %}
+				{% set info = proposition.lignes[loop.index0] %}
+				<div class="rp-ligne">
+					<span>
+						<b>{{ info.nom }} × {{ info.texteQuantite }}</b>
+						<small>
+							{% if 'stock_bas' in info.alertes %}{{ info.urgence in ['sous_minimum', 'maintenant'] ? 'à commander maintenant' : 'à commander avant le ' ~ info.date|date('d/m') }}
+							{% elseif 'oubli' in info.alertes %}commande habituelle dépassée
+							{% else %}ajouté pour partager le transport{% endif %}
+							· stock {{ m.q(info.disponible) }} {{ info.article.uniteCourte }}{{ info.joursRestants is not null ? ', ' ~ info.joursRestants ~ ' j' }}
+							· ≈ {{ info.consoHebdo > 0 ? ((l.quantiteStock / info.consoHebdo)|round) ~ ' semaines de consommation' : 'pas de consommation récente' }}
+						</small>
+					</span>
+					<b class="num">{{ m.f(l.ligne.totalHt) }}</b>
+				</div>
+			{% endfor %}
+			<div class="rp-ligne">
+				<span>Transport + transit{% if achat.fraisTransportLibelle %}<small>{{ achat.fraisTransportLibelle }}{{ achat.fraisTransitLibelle ? ' · ' ~ achat.fraisTransitLibelle }} · repris de la dernière commande</small>{% endif %}</span>
+				<b class="num">{{ m.f(achat.fraisTransport + achat.fraisTransit) }}</b>
+			</div>
+			<div class="rp-ligne rp-total">
+				<span>Total rendu{% if achat.acomptePourcentage > 0 %}<small>acompte {{ achat.acomptePourcentage }} % à la commande : {{ m.f(achat.montantAcompte) }}</small>{% endif %}</span>
+				<b class="num ac-bleu">{{ m.f(achat.totalRendu) }}</b>
+			</div>
+		</section>
+
+		{% if proposition.economie > 0 %}
+			<p class="rp-astuce"><i class="fas fa-lightbulb me-1"></i>Grouper {{ noms|length > 2 ? 'ces articles' : 'les deux' }} économise ≈ {{ m.f(proposition.economie) }} de transport.</p>
+		{% endif %}
+
+		<p class="ac-note">Quantités suggérées : la consommation moyenne des 12 dernières semaines pendant le délai du fournisseur, la marge de sécurité et l'intervalle habituel entre deux commandes. Vous pourrez les modifier sur le brouillon avant de l'envoyer.</p>
+
+		<div class="rp-pied">
+			<form method="post" action="{{ path('app_reappro_brouillon', {fournisseur: fournisseur.id}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('reappro_brouillon' ~ fournisseur.id) }}">
+				<button type="submit" class="btn btn-success rp-valider"><i class="fas fa-check me-1"></i>Préparer le brouillon pour {{ fournisseur.nomCourt }}</button>
+			</form>
+			<a class="rp-modifier" href="{{ path('app_reappro_index') }}">Retour aux alertes</a>
+		</div>
+	</div>
+{% endblock %}

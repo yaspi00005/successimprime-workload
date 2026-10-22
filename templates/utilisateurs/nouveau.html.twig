@@ -1,0 +1,48 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvel utilisateur{% endblock %}
+
+{% macro champ(nom, libelle, valeur, erreurs, attrs) %}
+	<div class="col-md-6 mb-3">
+		<label class="si-libelle-champ" for="{{ nom }}">{{ libelle }}</label>
+		<input id="{{ nom }}" name="{{ nom }}" value="{{ valeur }}" class="form-control {{ erreurs[nom] is defined ? 'is-invalid' }}" {{ attrs|raw }}>
+		{% if erreurs[nom] is defined %}<div class="invalid-feedback">{{ erreurs[nom] }}</div>{% endif %}
+	</div>
+{% endmacro %}
+{% import _self as f %}
+
+{% block body %}
+	<form method="post" class="row">
+		<input type="hidden" name="_token" value="{{ csrf_token('nouvel-utilisateur') }}">
+		<div class="col-xl-7">
+			<div class="card si-bloc">
+				<div class="si-bloc-tete"><h4>Identité et accès</h4></div>
+				<div class="row">
+					{{ f.champ('prenom', 'Prénom', saisie.prenom, erreurs, 'autocomplete="off" maxlength="50"') }}
+					{{ f.champ('nom', 'Nom', saisie.nom, erreurs, 'autocomplete="off" maxlength="50"') }}
+					{{ f.champ('telephone', 'Téléphone', saisie.telephone, erreurs, 'type="tel" inputmode="tel" maxlength="50" placeholder="76 00 00 00" required') }}
+					{{ f.champ('email', 'E-mail', saisie.email, erreurs, 'type="email" maxlength="255" placeholder="facultatif"') }}
+					<div class="col-md-6 mb-3">
+						<label class="si-libelle-champ" for="profil">Rôle</label>
+						<select id="profil" name="profil" class="form-select {{ erreurs.profil is defined ? 'is-invalid' }}" required>
+							<option value="">Choisir…</option>
+							{% for role in roles %}
+								<option value="{{ role.id }}" {{ saisie.profil == role.id ? 'selected' }}>{{ role.nom }}</option>
+							{% endfor %}
+						</select>
+						{% if erreurs.profil is defined %}<div class="invalid-feedback">{{ erreurs.profil }}</div>{% endif %}
+					</div>
+				</div>
+				<label class="si-interrupteur-ligne">
+					<span class="si-interrupteur"><input type="checkbox" name="changer_mot_de_passe" value="1" {{ saisie.changerMotDePasse ? 'checked' }}><span></span></span>
+					Changer le mot de passe à la première connexion
+				</label>
+				<p class="text-muted small mt-3 mb-0">L'identifiant de connexion est créé tout seul : initiale du prénom et nom (mtoure). Le mot de passe temporaire s'affiche à l'écran suivant, avec un bouton pour l'envoyer par WhatsApp. Les droits du rôle s'appliquent ; vous pourrez ensuite cocher ou décocher des droits pour cette personne. Un administrateur se nomme depuis la fiche d'une personne.</p>
+			</div>
+			<div class="si-barre-enregistrer">
+				<a href="{{ path('app_utilisateurs_index') }}" class="btn si-btn-discret">Annuler</a>
+				<button type="submit" class="btn btn-danger">Créer et envoyer l'accès</button>
+			</div>
+		</div>
+	</form>
+{% endblock %}

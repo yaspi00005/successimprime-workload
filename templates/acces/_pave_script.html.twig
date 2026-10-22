@@ -1,0 +1,39 @@
+<script>
+	(function () {
+		// Avec JavaScript : on tape sur le pavé, les champs sont cachés.
+		// Sans : les champs restent visibles et se remplissent au clavier.
+		var form = document.querySelector('[data-si-pin-form]');
+		var confirmer = form.hasAttribute('data-si-confirmer');
+		var champs = form.querySelectorAll('.si-pin-saisie');
+		var points = form.querySelectorAll('[data-si-points] span');
+		var etape = document.querySelector('[data-si-etape]');
+		var actuel = 0;
+		form.classList.add('si-pin-js');
+
+		function dessiner() {
+			var v = champs[actuel].value;
+			points.forEach(function (p, i) { p.classList.toggle('si-plein', i < v.length); });
+		}
+		function taper(c) {
+			var champ = champs[actuel];
+			if (c === '⌫') { champ.value = champ.value.slice(0, -1); dessiner(); return; }
+			if (champ.value.length >= 4) { return; }
+			champ.value += c;
+			dessiner();
+			if (champ.value.length < 4) { return; }
+			if (confirmer && actuel === 0) {
+				actuel = 1;
+				setTimeout(function () { etape.textContent = 'Tapez-le une 2e fois pour confirmer'; dessiner(); }, 200);
+				return;
+			}
+			setTimeout(function () { form.submit(); }, 150);
+		}
+		form.querySelectorAll('[data-si-touche]').forEach(function (b) {
+			b.addEventListener('click', function () { taper(b.dataset.siTouche); });
+		});
+		document.addEventListener('keydown', function (e) {
+			if (/^[0-9]$/.test(e.key)) { taper(e.key); e.preventDefault(); }
+			else if (e.key === 'Backspace') { taper('⌫'); e.preventDefault(); }
+		});
+	})();
+</script>

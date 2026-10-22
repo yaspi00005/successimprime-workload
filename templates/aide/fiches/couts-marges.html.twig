@@ -1,0 +1,21 @@
+{# Fiche du guide « couts-marges » (CatalogueGuide, maquette SU04). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Menu Stock et achats › « Coûts et marges ». Le mois en cours s'affiche ; le bouton du mois (« Octobre ») ouvre les 12 derniers mois.</li>
+	<li>Lisez chaque ligne de gauche à droite : « Achat », « Transport + frais » et « Encre, gâche, machine » font le « Coût de revient » d'un m² (ou d'une pièce) ; le « Prix de vente moyen » moins ce coût donne la « Marge unitaire » et la « Marge » en %. « Vendu » × marge donne le « Bénéfice brut » du mois.</li>
+	<li>Touchez le nom d'un produit : « Où part l'argent » montre, pour un m² ou une pièce, le prix de vente, puis l'achat, le transport, le transit, l'encre, la gâche, la machine et la main-d'œuvre, et la marge qui reste.</li>
+	<li>Lisez « À retenir » : le poids du transport, la marge la plus faible (en rouge sous 25 %), le produit le plus rentable.</li>
+	<li>Un badge « coût incomplet » dit ce qui manque (machine, encre au m²…). Touchez « Régler les coûts » pour noter le coût machine et main-d'œuvre au m² de chaque machine et la gâche mesurée de chaque article, puis « Enregistrer ».</li>
+	<li>« Exporter » donne le tableau du mois pour Excel.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Le bénéfice est brut : loyer, salaires fixes et électricité restent dans les Finances.</li>
+	<li>Le coût de la matière vient des réceptions des trois derniers mois : prix vraiment payé, transport et transit réels, portés par les unités en bon état. Sans réception, c'est le coût moyen du stock (badge « coût du stock »).</li>
+	<li>La gâche compte 8 % de la matière tant qu'elle n'est pas mesurée pour l'article (réglage de la tuile « Achats et fournisseurs »).</li>
+	<li>Les ventes « Hors imprimerie » sont comptées à part, pas dans ces marges.</li>
+	<li>Pour le mois en cours, la comparaison se fait avec les mêmes jours du mois d'avant.</li>
+</ul>
+{% endblock %}

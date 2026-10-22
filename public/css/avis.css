@@ -1,0 +1,64 @@
+/*
+ * Sondages et avis (docs/sondages.md) : réponse dans l'espace client et
+ * pages sans compte (lien de livraison, QR code). Téléphone d'abord, avec
+ * les couleurs de l'espace client (espace-app.css).
+ */
+
+.av-intro { margin: 0 0 1rem; color: var(--gris); font-size: .92rem; }
+.av-question { border: 0; margin: 0; padding: 0; min-width: 0; }
+.av-question + .av-question { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--trait); }
+.av-question legend { padding: 0; margin: 0 0 .55rem; font-weight: 800; font-size: 1rem; }
+/* La légende reste dans la carte, sous le trait qui sépare deux questions. */
+.av-question legend { float: left; width: 100%; }
+.av-question legend + * { clear: both; }
+.av-requis { color: var(--rouge); margin-left: .2rem; }
+.av-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Étoiles : de droite à gauche dans le code, pour colorer celles d'avant. */
+.av-etoiles { display: inline-flex; flex-direction: row-reverse; gap: .2rem; }
+.av-etoiles input { position: absolute; opacity: 0; pointer-events: none; }
+.av-etoiles label { cursor: pointer; line-height: 0; padding: .1rem; border-radius: 10px; }
+.av-etoiles svg { width: 42px; height: 42px; fill: #E2E7F0; stroke: none; transition: fill .12s, transform .12s; }
+.av-etoiles input:checked ~ label svg,
+.av-etoiles label:hover svg,
+.av-etoiles label:hover ~ label svg { fill: #F5A800; }
+.av-etoiles label:active svg { transform: scale(.9); }
+.av-etoiles input:focus-visible + label { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.av-etoiles.petites svg { width: 30px; height: 30px; }
+.av-bornes { display: flex; justify-content: space-between; max-width: 230px; color: var(--gris); font-size: .75rem; margin-top: .15rem; }
+
+/* Article noté (sondage de commande) */
+.av-question.petite + .av-question.petite { margin-top: .7rem; padding-top: .7rem; }
+.av-question.petite legend { font-size: .93rem; font-weight: 700; margin-bottom: .3rem; }
+
+/* Recommandation de 0 à 10 */
+.av-nps { display: grid; grid-template-columns: repeat(11, minmax(0, 1fr)); gap: .3rem; }
+.av-nps input { position: absolute; opacity: 0; pointer-events: none; }
+.av-nps label { display: grid; place-items: center; height: 2.6rem; border-radius: 10px; border: 1.5px solid var(--trait); background: #fff; font-weight: 700; font-size: .9rem; cursor: pointer; }
+.av-nps input:checked + label { background: var(--bleu); border-color: var(--bleu); color: #fff; }
+.av-nps input:focus-visible + label { outline: 2px solid var(--bleu); outline-offset: 2px; }
+.av-nps-bornes { display: flex; justify-content: space-between; color: var(--gris); font-size: .75rem; margin-top: .3rem; }
+@media (max-width: 420px) {
+  .av-nps { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+}
+
+.av-champs { display: grid; gap: .5rem; }
+.av-piege { position: absolute; left: -5000px; width: 1px; height: 1px; overflow: hidden; }
+.av-envoyer { position: sticky; bottom: calc(4.6rem + env(safe-area-inset-bottom)); z-index: 5; box-shadow: 0 10px 24px rgba(224,16,43,.25); }
+@media (min-width: 900px) { .av-envoyer { bottom: 1rem; } }
+
+/* Avis déjà donné */
+.av-merci { display: flex; align-items: center; gap: .8rem; }
+.av-merci-icone { flex: none; display: grid; place-items: center; width: 46px; height: 46px; border-radius: 14px; background: #FFF4D6; color: #B7791F; font-size: 1.4rem; }
+.av-note { color: #F5A800; letter-spacing: .05em; font-size: 1.05rem; white-space: nowrap; }
+.av-note .vide { color: #D8DEE8; }
+
+/* Pages sans compte */
+body.av-public .ec-page { padding-bottom: 3rem; }
+body.av-public .av-envoyer { bottom: 1rem; }
+@media (min-width: 900px) { body.av-public .ec-page { margin: 0 auto; } }
+.av-entete { display: flex; align-items: center; justify-content: space-between; padding: 1rem 0 .5rem; }
+.av-entete img { height: 38px; display: block; }
+.av-pied { text-align: center; color: var(--gris); font-size: .78rem; margin-top: 1.5rem; }
+.av-fin { text-align: center; padding: 2rem 1.2rem; }
+.av-fin .av-merci-icone { margin: 0 auto .8rem; width: 64px; height: 64px; font-size: 2rem; border-radius: 20px; }

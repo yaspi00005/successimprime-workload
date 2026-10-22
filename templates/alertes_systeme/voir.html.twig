@@ -1,0 +1,112 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Une alerte système (docs/alertes-systeme.md) : ce qui s'est passé, combien
+	de fois, qui s'en occupe, le détail technique (nettoyé : ni mot de passe
+	ni donnée de client) et la résolution.
+#}
+
+{% block title %}{{ alerte.reference }} · Alertes système{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/alertes-systeme.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_alertes_systeme_index') }}" class="btn btn-outline-primary btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1" aria-hidden="true"></i>Alertes</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-as si-as-voir">
+		<div class="card si-bloc si-as-tete{{ alerte.estCritique and not alerte.estResolue ? ' si-as-critique' }}">
+			<p class="si-as-sorte">{{ alerte.reference }} · {{ alerte.libelleType }} · {{ alerte.libelleGravite }}</p>
+			<h2 class="si-as-grand-titre">{{ alerte.titre }}</h2>
+			<p class="si-as-quand">
+				{% include 'alertes_systeme/_etat.html.twig' with {alerte: alerte} only %}
+				<span>
+					{%- if alerte.occurrences > 1 -%}
+						<b>{{ alerte.occurrences }} fois</b>, du {{ alerte.premiereLe|date('d/m/Y à H:i') }} au {{ alerte.derniereLe|date('d/m/Y à H:i') }}
+					{%- else -%}
+						Le {{ alerte.premiereLe|date('d/m/Y à H:i') }}
+					{%- endif %} · {{ alerte.libelleOrigine -}}
+				</span>
+			</p>
+			{% if alerte.etat == 'prise' %}
+				<p class="si-as-qui"><i class="fas fa-user-cog me-1" aria-hidden="true"></i>{{ alerte.prisePar == app.user ? 'Vous vous en occupez' : (alerte.prisePar ? (alerte.prisePar.employe ? alerte.prisePar.employe.nomComplet : alerte.prisePar.userIdentifier) : 'Quelqu\'un') ~ ' s\'en occupe' }} depuis le {{ alerte.priseLe|date('d/m/Y à H:i') }}.</p>
+			{% elseif alerte.estResolue %}
+				<p class="si-as-qui"><i class="fas fa-check me-1" aria-hidden="true"></i>Résolue le {{ alerte.resolueLe|date('d/m/Y à H:i') }}{{ alerte.resoluePar ? ' par ' ~ (alerte.resoluePar.employe ? alerte.resoluePar.employe.nomComplet : alerte.resoluePar.userIdentifier) : ' automatiquement' }}.</p>
+			{% endif %}
+
+			<div class="si-as-actions">
+				{% if alerte.etat == 'ouverte' or (alerte.etat == 'prise' and alerte.prisePar != app.user) %}
+					<form method="post" action="{{ path('app_alertes_systeme_prendre', {id: alerte.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('alerte-systeme-prendre-' ~ alerte.id) }}">
+						<button type="submit" class="btn btn-primary"><i class="fas fa-hand-paper me-1" aria-hidden="true"></i>{{ alerte.etat == 'ouverte' ? 'Je prends' : 'Je reprends' }}</button>
+					</form>
+				{% endif %}
+				{% if alerte.estResolue %}
+					<form method="post" action="{{ path('app_alertes_systeme_rouvrir', {id: alerte.id}) }}">
+						<input type="hidden" name="_token" value="{{ csrf_token('alerte-systeme-rouvrir-' ~ alerte.id) }}">
+						<button type="submit" class="btn btn-outline-primary"><i class="fas fa-undo me-1" aria-hidden="true"></i>Rouvrir</button>
+					</form>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="row">
+			<div class="col-lg-7 order-2 order-lg-1">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Détail technique</h4><span class="si-bloc-note">nettoyé : ni mot de passe, ni clé, ni numéro, ni adresse e-mail</span></div>
+					{% if alerte.detail %}
+						<pre class="si-as-detail" tabindex="0">{{ alerte.detail }}</pre>
+						<button type="button" class="btn btn-outline-secondary btn-sm mt-2 js-copier" data-cible=".si-as-detail"><i class="far fa-copy me-1" aria-hidden="true"></i>Copier le détail</button>
+					{% else %}
+						<p class="text-muted mb-0">Pas de détail technique.</p>
+					{% endif %}
+				</div>
+			</div>
+			<div class="col-lg-5 order-1 order-lg-2">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>{{ alerte.estResolue ? 'Résolution' : 'Résoudre' }}</h4></div>
+					{% if alerte.estResolue %}
+						<p class="mb-0">{{ alerte.resolution ?? 'Pas de note.' }}</p>
+					{% else %}
+						<form method="post" action="{{ path('app_alertes_systeme_resoudre', {id: alerte.id}) }}">
+							<input type="hidden" name="_token" value="{{ csrf_token('alerte-systeme-resoudre-' ~ alerte.id) }}">
+							<label for="resolution" class="si-libelle-champ">Ce qui a été fait</label>
+							<textarea id="resolution" name="resolution" rows="3" maxlength="2000" class="form-control" placeholder="Ex. : serveur redémarré, clé Orange Money renouvelée…"></textarea>
+							<button type="submit" class="btn btn-success mt-2"><i class="fas fa-check me-1" aria-hidden="true"></i>Marquer résolue</button>
+							<p class="form-text mb-0">Si la même panne revient après, une nouvelle alerte s'ouvre et repart aux destinataires.</p>
+						</form>
+					{% endif %}
+				</div>
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Envois</h4></div>
+					<dl class="si-as-infos">
+						<dt>Prévenus</dt>
+						<dd>{{ alerte.prevenueLe ? 'le ' ~ alerte.prevenueLe|date('d/m/Y à H:i') : (alerte.isAPrevenir ? 'en attente du délai entre deux e-mails' : '—') }}</dd>
+						<dt>E-mail</dt>
+						<dd>{{ alerte.emailEnvoyeLe ? 'parti le ' ~ alerte.emailEnvoyeLe|date('d/m/Y à H:i') ~ (alerte.estEnLigne ? ' (du site en ligne)' : '') : 'non parti' }}</dd>
+						<dt>Origine</dt>
+						<dd>{{ alerte.libelleOrigine }}</dd>
+					</dl>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		document.querySelectorAll('.js-copier').forEach(function (b) {
+			b.addEventListener('click', function () {
+				var texte = document.querySelector(b.dataset.cible);
+				if (texte && navigator.clipboard) {
+					navigator.clipboard.writeText(texte.textContent).then(function () { b.textContent = 'Copié'; });
+				}
+			});
+		});
+	</script>
+{% endblock %}

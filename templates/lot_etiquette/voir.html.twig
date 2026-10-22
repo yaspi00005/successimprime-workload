@@ -122,8 +122,8 @@
 										</td>
 
 										<td class="text-center align-middle">
-											<a href="{{ asset(etiquette.fichierQr) }}" target="_blank" title="Afficher le QR code">
-												<img src="{{ asset(etiquette.fichierQr) }}" alt="QR {{ etiquette.numero }}" width="70" height="70" style="object-fit: contain;">
+											<a href="{{ path('app_lot_etiquette_qr', {id: etiquette.id}) }}" target="_blank" title="Afficher le QR code">
+												<img src="{{ path('app_lot_etiquette_qr', {id: etiquette.id}) }}" alt="QR {{ etiquette.numero }}" width="70" height="70" style="object-fit: contain;">
 											</a>
 										</td>
 
@@ -178,7 +178,7 @@
 										</td>
 
 										<td class="align-middle">
-											{{ etiquette.associePar ?: '-' }}
+											{{ etiquette.associePar ? etiquette.associePar.userIdentifier : '-' }}
 										</td>
 									</tr>
 								{% else %}
@@ -204,7 +204,7 @@
 {% endblock %}
 
 {% block javascripts %}
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {

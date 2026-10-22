@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\NomCommercialTrait;
 use App\Repository\SupportsRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -9,8 +11,12 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: SupportsRepository::class)]
-class Supports
+class Supports implements AUnNomCommercial
 {
+    use PublicIdTrait;
+    use NomCommercialTrait;
+    use Trait\CodeProductionTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -42,7 +48,6 @@ class Supports
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -50,7 +55,6 @@ class Supports
         new ORM\JoinColumn(
             name: 'types_impression_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]
@@ -72,7 +76,6 @@ private Collection $typesImpressions;
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -80,7 +83,6 @@ private Collection $typesImpressions;
         new ORM\JoinColumn(
             name: 'format_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]
@@ -103,7 +105,6 @@ private Collection $formats;
         new ORM\JoinColumn(
             name: 'support_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ],
@@ -111,7 +112,6 @@ private Collection $formats;
         new ORM\JoinColumn(
             name: 'finition_id',
             referencedColumnName: 'id',
-            nullable: false,
             onDelete: 'CASCADE'
         ),
     ]
@@ -130,10 +130,16 @@ private Collection $finitions;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->typesImpressions = new ArrayCollection();
         $this->formats = new ArrayCollection();
         $this->finitions = new ArrayCollection();
         $this->commandesDetails = new ArrayCollection();
+    }
+
+    public function getNomTechnique(): string
+    {
+        return (string) $this->nom;
     }
 
     public function getId(): ?int

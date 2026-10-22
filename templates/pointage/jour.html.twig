@@ -1,0 +1,71 @@
+{% extends 'base.html.twig' %}
+
+{% set statuts = constant('App\\Service\\Pointage\\CalculPointage::STATUTS') %}
+
+{% block title %}Pointages · {{ jour|date_fr('EEE d MMMM') }}{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item"><a href="{{ path('app_pointage_jour', {date: jour|date_modify('-1 day')|date('Y-m-d')}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-caret-left me-1"></i>Veille</a></li>
+	{% if not aujourdhui %}
+		<li class="nav-item"><a href="{{ path('app_pointage_jour') }}" class="btn btn-light btn-sm si-btn-entete">Aujourd'hui</a></li>
+	{% endif %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_pointage_reglages') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-qrcode me-1"></i>Points et appareils</a></li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-pg">
+		<div class="si-pg-kpis">
+			<article class="card">
+				<h2>Présents</h2>
+				<strong>{{ tableau.presents }} / {{ tableau.total }}</strong>
+				<span class="si-p-neutre">{{ tableau.total - tableau.presents }} sans pointage</span>
+			</article>
+			<article class="card">
+				<h2>Retards</h2>
+				<strong>{{ tableau.retards|length }}</strong>
+				<span class="{{ tableau.retards is empty ? 'si-p-ok' : 'si-p-alerte' }}">{{ tableau.retards is empty ? 'tout le monde à l\'heure' : tableau.retards|map(r => r.nom|split(' ')|first ~ ' · ' ~ r.calcul.retard|duree_pointage)|join(', ') }}</span>
+			</article>
+			<article class="card">
+				<h2>Départs non pointés</h2>
+				<strong>{{ tableau.nonPointes|length }}</strong>
+				<span class="{{ tableau.nonPointes is empty ? 'si-p-ok' : 'si-p-alerte' }}">{{ tableau.nonPointes is empty ? 'aucun' : tableau.nonPointes|map(r => r.nom|split(' ')|first)|join(', ') ~ ' · à régulariser' }}</span>
+			</article>
+			<article class="card">
+				<h2>Heures sup. du jour</h2>
+				<strong>{{ tableau.sup > 0 ? tableau.sup|duree_pointage : '0' }}</strong>
+				<span class="si-p-ok">{{ tableau.supNoms|map(n => n|split(' ')|first)|join(', ') ?: '—' }}</span>
+			</article>
+		</div>
+
+		<section class="card si-pg-tableau">
+			<table class="table">
+				<thead>
+					<tr><th>Employé</th><th>Photo arrivée</th><th>Arrivée</th><th>Photo départ</th><th>Départ</th><th>Heures</th><th>Retard</th><th>Statut</th><th>Points</th></tr>
+				</thead>
+				<tbody>
+					{% for l in tableau.lignes %}
+						{% set p = l.pointage %}
+						<tr{% if p %} data-si-pointage="{{ p.id }}"{% endif %}>
+							<td data-libelle="Employé"><a href="{{ path('app_pointage_employe', {id: l.utilisateur.id, mois: jour|date('Y-m'), pointage: p ? p.id : null}) }}">{{ l.nom }}</a></td>
+							{% if p %}
+								<td data-libelle="Photo arrivée">{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoArrivee, sens: 'arrivee'} %}</td>
+								<td data-libelle="Arrivée"><b>{{ p.arriveeLe|date('H:i') }}</b>{% if l.calcul.avance|default(0) > 0 %} <small class="si-pg-avant" title="Arrivé avant l'heure de début : le temps compte à partir de {{ l.calcul.debutPrevu|heure_pointage }}">avant {{ l.calcul.debutPrevu|heure_pointage }}</small>{% endif %}</td>
+								<td data-libelle="Photo départ">{% include 'pointage/_photo.html.twig' with {pointage: p, photo: p.photoDepart, sens: 'depart'} %}</td>
+								<td data-libelle="Départ"><b>{{ p.departLe ? p.departLe|date(p.departLe|date('Y-m-d') != p.arriveeLe|date('Y-m-d') ? 'd/m H:i' : 'H:i') : '—' }}</b></td>
+								<td data-libelle="Heures">{% if not p.departLe %}{{ l.calcul.statut == 'depart_non_pointe' ? 'à régulariser' : 'en cours' }}{% elseif l.calcul.dues is not null %}{{ l.calcul.faites|duree_pointage }} / {{ l.calcul.dues > 0 ? l.calcul.dues|duree_pointage : 'repos' }}{% else %}{{ l.calcul.presence|duree_pointage }}{% endif %}</td>
+								<td data-libelle="Retard">{{ l.calcul.retard > 0 ? l.calcul.retard|duree_pointage : '—' }}</td>
+								<td data-libelle="Statut"><span class="si-pg-statut si-pg-{{ l.calcul.statut }}">{{ statuts[l.calcul.statut] }}{% if l.calcul.statut == 'heures_sup' %} {{ l.calcul.sup|duree_pointage }}{% endif %}</span>{% if p.corrige %} <span class="si-pg-corrige" title="{{ p.motifCorrection }}">corrigé</span>{% endif %}</td>
+								<td data-libelle="Points" title="{{ l.calcul.raison }}"><b class="{{ l.calcul.total < 0 ? 'si-p-alerte' : (l.calcul.total > 0 ? 'si-p-ok') }}">{{ l.calcul.total > 0 ? '+' }}{{ l.calcul.total }}</b>{% if l.calcul.bonusEnAttente %} <i class="fas fa-hourglass-half si-pg-attente" title="{{ l.calcul.bonusEnAttente }}"></i>{% endif %}</td>
+							{% else %}
+								<td colspan="8" class="si-pg-absent" data-libelle="Pointage">Pas de pointage</td>
+							{% endif %}
+						</tr>
+					{% else %}
+						<tr><td colspan="9" class="si-pg-absent">Aucun employé : reliez les comptes à une fiche employé (Réglages › Utilisateurs).</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<p class="si-pg-note">Cliquer une photo l'agrandit. Photos visibles par l'administrateur RH uniquement, supprimées après {{ reglage('pointage', 'photos_jours') }} jours ; les heures restent.</p>
+		</section>
+	</div>
+{% endblock %}

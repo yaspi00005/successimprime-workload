@@ -1,0 +1,44 @@
+{% extends 'immobilisations/_base.html.twig' %}
+{% import 'finances/_macros.html.twig' as m %}
+
+{% block title %}Immobilisations › Inventaire{% endblock %}
+{% block page_title %}Inventaire annuel{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_immobilisations_etiquettes') }}" class="btn btn-light btn-sm si-btn-entete" target="_blank" rel="noopener"><i class="fas fa-qrcode me-1"></i>Étiquettes QR</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	{% set a_controler = synthese.aControler|map(i => i.id) %}
+	<div class="si-fin si-imm">
+		<section class="card">
+			<p class="si-fin-gris mb-2">Passez lieu par lieu, cochez chaque bien vu sur place (le QR de l'étiquette ouvre sa fiche), puis enregistrez. Un bien non vu depuis plus de {{ synthese.inventaireMois }} mois est « à contrôler ».</p>
+			<form method="post">
+				<input type="hidden" name="_token" value="{{ csrf_token('inventaire') }}">
+				{% for lieu, biens in par_lieu %}
+					<div class="si-imm-lieu">
+						<h3>{{ lieu }} <small class="si-fin-gris">{{ biens|length }} bien{{ biens|length > 1 ? 's' }}</small></h3>
+						<table class="table si-fin-table">
+							<tbody>
+								{% for i in biens %}
+									<tr>
+										<td style="width: 40px;"><input class="form-check-input" type="checkbox" name="vus[]" value="{{ i.id }}" id="vu-{{ i.id }}" aria-label="{{ i.code }} vu"></td>
+										<td class="si-imm-code"><label for="vu-{{ i.id }}">{{ i.code }}</label></td>
+										<td>{{ i.designation }}{% if i.confieA %}<small>confié à {{ m.nom(i.confieA) }}</small>{% endif %}</td>
+										<td><span class="si-fin-statut si-fin-statut-{{ i.couleurEtat }}">{{ i.libelleEtat }}</span></td>
+										<td class="text-end">{% if i.id in a_controler %}<span class="si-fin-rouge small fw-bold">{{ i.controleLe ? 'vu le ' ~ i.controleLe|date('d/m/Y') : 'jamais contrôlé' }}</span>{% else %}<span class="si-fin-vert small">vu le {{ i.controleLe|date('d/m/Y') }}</span>{% endif %}</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				{% else %}
+					<p class="si-fin-vide">Aucun bien au registre.</p>
+				{% endfor %}
+				{% if par_lieu is not empty %}<button class="btn btn-danger">Enregistrer les biens vus</button>{% endif %}
+			</form>
+		</section>
+	</div>
+{% endblock %}

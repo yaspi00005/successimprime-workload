@@ -1,0 +1,26 @@
+{# Chaîne des documents d'une commande (ChaineDocuments) : en ligne compacte (FD02) ou en frise (FD05). #}
+{% set icones = {devis: 'fa-pen-square', commande: 'fa-shopping-cart', bat: 'fa-check-square', bl: 'fa-box', facture: 'fa-file-alt', acompte: 'fa-credit-card', proforma: 'fa-file', avoir: 'fa-undo', paiement: 'fa-check'} %}
+{% if frise|default(false) %}
+	<div class="fd-frise">
+		{% for e in chaine.etapes %}
+			<div class="fd-frise-etape {{ e.etat ? 'en-attente' }}">
+				<span class="fd-frise-rond {{ e.classe }}"><i class="fas {{ icones[e.type]|default('fa-circle') }}"></i></span>
+				<small class="fd-muet">{{ e.date ? e.date|date('d/m') : '' }}</small>
+				<b>{{ e.titre }}</b>
+				{% if e.numero %}{% if e.url %}<a href="{{ e.url }}" class="fd-lien {{ e.classe }}">{{ e.numero }}</a>{% else %}<span class="fd-lien {{ e.classe }}">{{ e.numero }}</span>{% endif %}{% endif %}
+				{% if e.montant is not null %}<b class="fd-frise-montant">{{ e.montant < 0 ? '− ' }}{{ (e.montant|abs)|number_format(0, ',', ' ') }} F</b>{% endif %}
+				{% if e.detail %}<small class="fd-muet">{{ e.detail }}</small>{% endif %}
+				{% if e.etat %}<span class="fd-badge attente mt-1">{{ e.etat }}</span>{% endif %}
+			</div>
+		{% endfor %}
+	</div>
+{% else %}
+	<div class="fd-chaine">
+		<span class="fd-titre-bloc mb-0 me-1">Lié à</span>
+		{% for e in chaine.etapes|filter(e => e.type not in ['paiement']) %}
+			{% if not loop.first %}<span class="fd-muet" aria-hidden="true">→</span>{% endif %}
+			{% set texte %}<i class="fas {{ icones[e.type]|default('fa-circle') }} me-1"></i>{{ e.courant ? 'cette ' ~ e.titre|lower : e.titre ~ ' ' ~ e.numero }}{% if e.type == 'bl' and e.detail %} · {{ e.detail }}{% endif %}{% endset %}
+			{% if e.url and not e.courant %}<a href="{{ e.url }}" class="fd-maillon">{{ texte }}</a>{% else %}<span class="fd-maillon {{ e.courant ? 'courant' }}">{{ texte }}</span>{% endif %}
+		{% endfor %}
+	</div>
+{% endif %}

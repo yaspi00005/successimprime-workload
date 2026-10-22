@@ -1,177 +1,97 @@
-{% extends 'base.html.twig' %}
+{% extends 'achats/_base.html.twig' %}
+{% import 'achats/_macros.html.twig' as m %}
 
-{% block title %}
-	Fournisseurs
+{% block title %}Fournisseurs{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile">
+		<a href="{{ path('app_fournisseur_export') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-download me-1"></i>Exporter</a>
+	</li>
+	<li class="nav-item">
+		<a href="{{ path('app_fournisseur_new') }}" class="btn btn-danger btn-sm si-btn-entete"><i class="fas fa-plus me-1"></i>Fournisseur</a>
+	</li>
 {% endblock %}
 
 {% block body %}
+	{% set voir_du = is_granted('ROLE_TRESORERIE_VOIR') %}
+	<div class="ac-page">
 
-	{% include "alert.html.twig" %}
-
-	<div class="side-app">
-
-		<div class="page-header">
-
-			<div>
-
-				<h1 class="page-title">
-					Fournisseurs
-				</h1>
-
-				<ol class="breadcrumb">
-					<li class="breadcrumb-item">
-						Achats
-					</li>
-					<li class="breadcrumb-item active">
-						Fournisseurs
-					</li>
-				</ol>
-
-			</div>
-
-			<div class="ml-auto">
-
-				<a href="{{ path('app_fournisseur_new') }}" class="btn btn-primary-light">
-					<i class="fa fa-plus mr-1"></i>
-					Nouveau fournisseur
+		<section class="ac-kpis" aria-label="Indicateurs des achats">
+			<a class="ac-kpi" href="{{ path('app_achat_index', {statut: 'toutes'}) }}">
+				<span>Achats en {{ (aujourdhui|mois_francais|split(' ')|first)|lower }}</span>
+				<b>{{ m.f(kpis.mois.montant) }}</b>
+				<small>{{ kpis.mois.nombre }} commande{{ kpis.mois.nombre > 1 ? 's' }}</small>
+			</a>
+			{% if voir_du %}
+				<a class="ac-kpi" href="{{ path('app_finances_fournisseurs') }}">
+					<span>Dû aux fournisseurs</span>
+					<b class="ac-bleu">{{ m.f(kpis.du) }}</b>
+					<small>{{ kpis.echeance ? 'prochaine échéance ' ~ kpis.echeance|date('d/m') : 'aucune facture à payer' }}</small>
 				</a>
+			{% endif %}
+			<a class="ac-kpi" href="{{ path('app_achat_index') }}">
+				<span>En route</span>
+				{% set n = kpis.en_route|length %}
+				<b class="{{ n > 0 ? 'ac-orange' }}">{{ n }} commande{{ n > 1 ? 's' }}</b>
+				{% if n > 0 %}
+					{% set premiere = kpis.en_route|first %}
+					<small>{{ premiere.achat.fournisseur.nomCourt }}{{ premiere.prevue ? ' · arrivée ' ~ premiere.prevue|date('d/m') }}</small>
+				{% else %}
+					<small>rien en attente</small>
+				{% endif %}
+			</a>
+			<a class="ac-kpi" href="{{ path('app_reappro_index') }}">
+				<span>À commander bientôt</span>
+				<b class="{{ kpis.bientot > 0 ? 'ac-rouge' : 'ac-vert' }}">{{ kpis.bientot }} article{{ kpis.bientot > 1 ? 's' }}</b>
+				<small>alertes de réapprovisionnement</small>
+			</a>
+		</section>
 
-			</div>
-
-		</div>
-
-
-		<div class="row row-cards">
-
-			<div class="col-lg-12">
-
-				<div class="card">
-
-					<div class="card-header">
-
-						<div>
-							<h3 class="card-title mb-1">
-								Liste des fournisseurs
-							</h3>
-							<small class="text-muted">
-								{{ fournisseurs|length }} fournisseur(s)
-							</small>
-						</div>
-
-						<div class="ml-auto" style="min-width:260px;">
-							<input type="text" id="fournisseur-search" class="form-control" placeholder="Rechercher un fournisseur..." autocomplete="off">
-						</div>
-
-					</div>
-
-					<div class="table-responsive">
-
-						<table class="table table-bordered table-hover mb-0" id="fournisseurs-table">
-
-							<thead>
-								<tr>
-									<th>Nom</th>
-									<th>Téléphone</th>
-									<th>E-mail</th>
-									<th class="text-center">Statut</th>
-									<th class="text-center">Actions</th>
+		<section class="ac-carte" aria-label="Fournisseurs">
+			{% if lignes is empty %}
+				<p class="mb-0">Aucun fournisseur. <a href="{{ path('app_fournisseur_new') }}">Ajouter le premier</a>.</p>
+			{% else %}
+				<div class="ac-defile">
+					<table class="ac-table ac-liste">
+						<thead>
+							<tr>
+								<th>Fournisseur</th>
+								<th>Fournit</th>
+								<th>Origine</th>
+								<th>Délai moyen</th>
+								<th>À l'heure</th>
+								<th class="num">Achats {{ aujourdhui|date('Y') }}</th>
+								{% if voir_du %}<th class="num">Dû</th>{% endif %}
+								<th>Prochaine commande</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set f = l.fournisseur %}
+								<tr class="{{ not f.actif ? 'ac-inactif' }}">
+									<td class="ac-pleine">
+										<a class="ac-nom ac-lien" href="{{ path('app_fournisseur_show', {id: f.id}) }}">{{ m.avatar(f) }}<span>{{ f.nomCourt }}{% if not f.actif %} <small class="ac-muet">(inactif)</small>{% endif %}</span></a>
+									</td>
+									<td class="ac-pleine" data-libelle="Fournit">{{ f.fournit ?? '—' }}</td>
+									<td data-libelle="Origine"><span class="ac-muet">{{ f.origine ?? '—' }}</span></td>
+									<td data-libelle="Délai moyen" title="{{ f.delaiPromisJours is not null ? 'promis ' ~ f.delaiPromisJours ~ ' j' }}"><b>{{ m.jours(l.stats.delaiReel) }}</b></td>
+									<td data-libelle="À l'heure">{{ m.ponctualite(l.stats.aLHeure) }}</td>
+									<td class="num" data-libelle="Achats {{ aujourdhui|date('Y') }}">{{ l.stats.achatsAnnee > 0 ? m.f(l.stats.achatsAnnee) : '—' }}</td>
+									{% if voir_du %}<td class="num" data-libelle="Dû">{% if l.du %}<b class="ac-bleu">{{ m.f(l.du.du) }}</b>{% else %}<span class="ac-muet">—</span>{% endif %}</td>{% endif %}
+									<td class="ac-pleine" data-libelle="Prochaine commande">
+										{% if l.prochaine %}
+											<a class="ac-prochaine {{ l.prochaine.urgence }}" href="{{ path('app_achat_new', {article: l.prochaine.article.id}) }}" title="{{ l.prochaine.joursRestants is not null ? l.prochaine.joursRestants ~ ' j de stock · délai ' ~ l.prochaine.delai ~ ' + ' ~ l.prochaine.marge ~ ' j' }}">{{ l.prochaine.article.designation|split(' · ')|first }} · {{ l.prochaine.urgence == 'sous_minimum' ? 'sous le minimum' : (l.prochaine.urgence == 'maintenant' ? 'maintenant' : (l.prochaine.urgence == 'bientot' ? 'avant le ' : 'le ') ~ l.prochaine.date|date('d/m')) }}</a>
+										{% else %}
+											<span class="ac-muet">—</span>
+										{% endif %}
+									</td>
 								</tr>
-							</thead>
-
-							<tbody>
-
-								{% for fournisseur in fournisseurs %}
-
-									<tr class="fournisseur-row" data-search="{{ fournisseur.nom|default('') }} {{ fournisseur.email|default('') }} {{ fournisseur.telephone|default('') }}">
-
-										<td class="align-middle">
-											<a href="{{ path('app_fournisseur_show', {id: fournisseur.id}) }}">
-												<strong>{{ fournisseur.nom }}</strong>
-											</a>
-										</td>
-
-										<td class="align-middle">
-											{{ fournisseur.telephone|default('—') }}
-										</td>
-
-										<td class="align-middle">
-											{{ fournisseur.email|default('—') }}
-										</td>
-
-										<td class="align-middle text-center">
-											{% if fournisseur.actif %}
-												<span class="badge badge-success">Actif</span>
-											{% else %}
-												<span class="badge badge-light">Inactif</span>
-											{% endif %}
-										</td>
-
-										<td class="align-middle text-center nowrap">
-											<div class="btn-group">
-												<a href="{{ path('app_fournisseur_show', {id: fournisseur.id}) }}" class="btn btn-sm btn-primary-light" title="Voir">
-													<i class="fa fa-eye"></i>
-												</a>
-												<a href="{{ path('app_fournisseur_edit', {id: fournisseur.id}) }}" class="btn btn-sm btn-warning-light" title="Modifier">
-													<i class="fa fa-pencil"></i>
-												</a>
-											</div>
-										</td>
-
-									</tr>
-
-								{% else %}
-
-									<tr>
-										<td colspan="5" class="text-center text-muted py-5">
-											Aucun fournisseur enregistré.
-										</td>
-									</tr>
-
-								{% endfor %}
-
-							</tbody>
-
-						</table>
-
-					</div>
-
+							{% endfor %}
+						</tbody>
+					</table>
 				</div>
-
-			</div>
-
-		</div>
-
+			{% endif %}
+			<p class="ac-note">« À l'heure » : part des livraisons arrivées à la date promise sur 12 mois. « Délai moyen » : de la commande à l'arrivée, mesuré. « Prochaine commande » vient de la consommation des 12 dernières semaines, du délai du fournisseur et d'une marge de {{ marge }} jours (Réglages, tuile « Achats et fournisseurs »).</p>
+		</section>
 	</div>
-
-{% endblock %}
-
-
-{% block javascripts %}
-
-	{{ parent() }}
-
-	<script>
-		document.addEventListener('DOMContentLoaded', function () {
-
-			const searchInput = document.getElementById('fournisseur-search');
-			const rows = document.querySelectorAll('#fournisseurs-table .fournisseur-row');
-
-			function normaliser(valeur) {
-				return (valeur || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
-			}
-
-			if (searchInput) {
-				searchInput.addEventListener('input', function () {
-					const recherche = normaliser(searchInput.value);
-
-					rows.forEach(function (row) {
-						const contenu = normaliser(row.dataset.search || row.textContent);
-						row.style.display = (recherche === '' || contenu.includes(recherche)) ? '' : 'none';
-					});
-				});
-			}
-
-		});
-	</script>
-
 {% endblock %}

@@ -1,0 +1,35 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Historique des prix{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_grille_tarifaire_index') }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i>Grille tarifaire</a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<section class="card si-grille-carte">
+		<div class="table-responsive">
+			<table class="table si-grille-table si-grille-historique">
+				<thead>
+					<tr><th>Date</th><th>Article</th><th>Champ</th><th class="text-end">Avant</th><th class="text-end">Après</th><th>Par</th></tr>
+				</thead>
+				<tbody>
+					{% for h in changements %}
+						<tr>
+							<td class="text-nowrap" data-libelle="Date">{{ h.changeLe|date('d/m/Y H:i') }}</td>
+							<td data-libelle="Article">{{ h.libelle }}</td>
+							<td data-libelle="Champ">{{ champs[h.champ]|default(h.champ) }}</td>
+							<td class="text-end" data-libelle="Avant">{{ h.ancien matches '/^\\d+$/' ? h.ancien|number_format(0, ',', ' ') : (h.ancien ?? '—') }}</td>
+							<td class="text-end fw-bold" data-libelle="Après">{{ h.nouveau matches '/^\\d+$/' ? h.nouveau|number_format(0, ',', ' ') : (h.nouveau ?? '—') }}</td>
+							<td data-libelle="Par">{{ h.par ? h.par.username : '—' }}</td>
+						</tr>
+					{% else %}
+						<tr><td colspan="6" class="si-grille-vide">Aucun changement de prix depuis la grille pour l’instant.</td></tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</section>
+{% endblock %}

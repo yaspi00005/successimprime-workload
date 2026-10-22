@@ -1,0 +1,50 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{% block title %}Adresses de livraison{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_compte') }}"><span class="fl">‹</span>Adresses de livraison</a>{% endblock %}
+
+{% block contenu %}
+	{% for a in adresses %}
+		<div class="ec-carte">
+			<div class="ec-ligne"><b>{{ a.libelle }}</b>{% if a.parDefaut %}<span class="ec-pastille">Par défaut</span>{% endif %}</div>
+			<div>{{ a.adresse }}</div>
+			{% if a.repere %}<div class="ec-petit">Repère : {{ a.repere }}</div>{% endif %}
+			{% if a.contact or a.telephone %}<div class="ec-petit">Contact : {{ [a.contact, a.telephone]|filter(v => v)|join(' · ') }}</div>{% endif %}
+			{% if gere %}
+				<div class="ec-ligne" style="margin-top:.6rem;justify-content:flex-start;gap:1rem">
+					<a class="ec-lien" href="{{ path('app_espace_adresses', {modifier: a.id}) }}#formulaire">Modifier</a>
+					<form method="post" action="{{ path('app_espace_adresse_supprimer', {id: a.id}) }}" {{ confirmer_suppression('l\'adresse « ' ~ a.libelle ~ ' »', {verbe: 'Retirer', client: true}) }}>
+						<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+						<button type="submit" class="ec-lien" style="background:none;border:0;padding:0;color:var(--rouge);cursor:pointer">Retirer</button>
+					</form>
+				</div>
+			{% endif %}
+		</div>
+	{% else %}
+		<div class="ec-carte ec-vide">Aucune adresse enregistrée. Ajoutez celles où vous vous faites livrer : vous les choisirez en commandant.</div>
+	{% endfor %}
+
+	{% if gere and (modifiee or adresses|length < max) %}
+		{% set a = modifiee %}
+		<form class="ec-carte" method="post" action="{{ path('app_espace_adresses') }}" id="formulaire" style="display:grid;gap:.5rem">
+			<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+			<input type="hidden" name="id" value="{{ a ? a.id : 0 }}">
+			<h2>{{ a ? 'Modifier « ' ~ a.libelle ~ ' »' : 'Ajouter une adresse' }}</h2>
+			<label class="ec-etiquette" for="libelle">Nom court</label>
+			<input class="ec-saisie" id="libelle" name="libelle" maxlength="60" required placeholder="Siège, Entrepôt, Boutique ACI…" value="{{ a ? a.libelle }}">
+			<label class="ec-etiquette" for="adresse">Adresse</label>
+			<input class="ec-saisie" id="adresse" name="adresse" maxlength="255" required placeholder="Quartier, rue, porte" value="{{ a ? a.adresse }}">
+			<label class="ec-etiquette" for="repere">Repère (facultatif)</label>
+			<input class="ec-saisie" id="repere" name="repere" maxlength="160" placeholder="En face de la pharmacie…" value="{{ a ? a.repere }}">
+			<div class="ec-deux">
+				<div><label class="ec-etiquette" for="contact">Personne à appeler</label><input class="ec-saisie" id="contact" name="contact" maxlength="80" value="{{ a ? a.contact }}"></div>
+				<div><label class="ec-etiquette" for="telephone">Téléphone</label><input class="ec-saisie" id="telephone" name="telephone" maxlength="20" inputmode="tel" value="{{ a ? a.telephone }}"></div>
+			</div>
+			<label class="ec-interrupteur"><span>Adresse par défaut</span><input type="checkbox" name="par_defaut" value="1"{{ a and a.parDefaut ? ' checked' }}></label>
+			<button type="submit" class="ec-bouton bleu">{{ a ? 'Enregistrer' : 'Ajouter l\'adresse' }}</button>
+			{% if a %}<a class="ec-lien" href="{{ path('app_espace_adresses') }}" style="text-align:center">Annuler</a>{% endif %}
+		</form>
+	{% elseif not gere %}
+		<p class="ec-petit">Seules les personnes qui gèrent le compte ajoutent ou modifient les adresses.</p>
+	{% endif %}
+{% endblock %}

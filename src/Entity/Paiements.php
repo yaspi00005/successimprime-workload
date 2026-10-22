@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
+use App\Entity\Trait\SocieteTrait;
 use App\Repository\PaiementsRepository;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
@@ -18,8 +20,11 @@ use Symfony\Component\Validator\Constraints as Assert;
     columns: ['compte_tresorerie_id', 'statut']
 )]
 #[ORM\HasLifecycleCallbacks]
-class Paiements
+class Paiements implements AppartientASociete
 {
+    use PublicIdTrait;
+    use SocieteTrait;
+
     public const MODE_ESPECES = 'especes';
     public const MODE_ORANGE_MONEY = 'orange_money';
     public const MODE_WAVE = 'wave';
@@ -37,6 +42,17 @@ class Paiements
      */
     public const MODE_SOLDE_CLIENT = 'solde_client';
 
+    /*
+     * Points de fidélité utilisés sur la commande (docs/fidelite.md) :
+     * 1 point = 1 F de remise. Comme le solde client, aucun compte de
+     * trésorerie n'est crédité et le mode n'est jamais proposé dans le
+     * formulaire : seul le bloc Fidélité de la commande le crée.
+     */
+    public const MODE_POINTS_FIDELITE = 'points_fidelite';
+
+    /** Modes qui ne font entrer aucun argent : hors des encaissements et de la caisse. */
+    public const MODES_SANS_ENCAISSEMENT = [self::MODE_SOLDE_CLIENT, self::MODE_POINTS_FIDELITE];
+
     public const MODES = [
         self::MODE_ESPECES,
         self::MODE_ORANGE_MONEY,
@@ -45,6 +61,7 @@ class Paiements
         self::MODE_CHEQUE,
         self::MODE_CARTE,
         self::MODE_SOLDE_CLIENT,
+        self::MODE_POINTS_FIDELITE,
     ];
 
     public const MODES_LABELS = [
@@ -54,7 +71,8 @@ class Paiements
         self::MODE_VIREMENT => 'Virement bancaire',
         self::MODE_CHEQUE => 'Chèque',
         self::MODE_CARTE => 'Carte bancaire',
-        self::MODE_SOLDE_CLIENT => 'Solde client (monnaie)',
+        self::MODE_SOLDE_CLIENT => 'Solde client',
+        self::MODE_POINTS_FIDELITE => 'Points fidélité',
     ];
 
     public const STATUT_EN_ATTENTE = 'en_attente';
@@ -106,6 +124,13 @@ class Paiements
         onDelete: 'RESTRICT'
     )]
     private ?CompteTresorerie $compteTresorerie = null;
+
+    /*
+     * Copie reçue par la synchronisation (non enregistré en base) : le
+     * compte de trésorerie ne quitte jamais le local, il est choisi à la
+     * validation (docs/synchronisation.md).
+     */
+    private bool $copieSynchronisee = false;
 
     #[ORM\Column(options: ['default' => 0])]
     #[Assert\Positive]
@@ -176,10 +201,11 @@ class Paiements
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $motifAnnulation = null;
 
+    // Vide pour un paiement saisi en ligne par le client (synchronisation).
     #[ORM\ManyToOne(inversedBy: 'paiements')]
     #[ORM\JoinColumn(
         name: 'encaisse_par_id',
-        nullable: false,
+        nullable: true,
         onDelete: 'RESTRICT'
     )]
     #[Assert\NotNull]
@@ -239,8 +265,18 @@ class Paiements
     #[ORM\Column(options: ['default' => 0])]
     private int $montantFondsSoutien = 0;
 
+    /*
+     * Numéro du reçu (« R-000123 ») tel que la caisse l'imprime : il naît
+     * de l'id du local à la validation. Le local ne le stocke pas (il le
+     * calcule, CaisseController::recu) ; la synchronisation l'envoie au
+     * site, qui le montre au client dans « Reçus » (CatalogueSynchro).
+     */
+    #[ORM\Column(length: 20, nullable: true)]
+    private ?string $numeroRecu = null;
+
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->date = new \DateTimeImmutable();
     }
 
@@ -561,6 +597,33 @@ class Paiements
         return $this->mode === self::MODE_CHEQUE;
     }
 
+    /**
+     * Payé par le client depuis l'espace client avec l'API Orange Money
+     * (commande, acompte de conception, crédit IA) : référence « OM
+     * <transaction Orange> », personne de l'imprimerie ne l'a encaissé.
+     * Il va toujours sur le compte « Orange Money en ligne », jamais sur
+     * un numéro Orange Money de l'imprimerie.
+     */
+    public function estOrangeMoneyEnLigne(): bool
+    {
+        return self::MODE_ORANGE_MONEY === $this->mode
+            && null === $this->encaissePar
+            && str_starts_with((string) $this->reference, 'OM ');
+    }
+
+    /**
+     * Avoir de l'imprimerie (solde du client) utilisé par le client depuis
+     * « Factures et paiements » : référence « AV <règlement> », personne de
+     * l'imprimerie ne l'a saisi. Il attend la validation (PaiementService::
+     * validerAvoir), qui retire le montant du solde du client.
+     */
+    public function estAvoirEnLigne(): bool
+    {
+        return self::MODE_SOLDE_CLIENT === $this->mode
+            && null === $this->encaissePar
+            && str_starts_with((string) $this->reference, 'AV ');
+    }
+
     /*
      * Vérifie que le type du compte correspond au mode choisi.
      */
@@ -571,10 +634,10 @@ class Paiements
          * concerné, l'argent étant déjà en caisse depuis un
          * paiement antérieur.
          */
-        if ($this->mode === self::MODE_SOLDE_CLIENT) {
+        if (\in_array($this->mode, self::MODES_SANS_ENCAISSEMENT, true)) {
             if ($this->compteTresorerie !== null) {
                 throw new \LogicException(
-                    'Un paiement par solde client ne doit pas être associé à un compte de trésorerie.'
+                    'Un paiement par solde client ou par points ne doit pas être associé à un compte de trésorerie.'
                 );
             }
 
@@ -589,23 +652,7 @@ class Paiements
 
         $typeCompte = $this->compteTresorerie->getType();
 
-        $typesAutorises = match ($this->mode) {
-            self::MODE_ESPECES => [
-                CompteTresorerie::TYPE_CAISSE,
-            ],
-            self::MODE_ORANGE_MONEY => [
-                CompteTresorerie::TYPE_ORANGE_MONEY,
-            ],
-            self::MODE_WAVE => [
-                CompteTresorerie::TYPE_WAVE,
-            ],
-            self::MODE_VIREMENT,
-            self::MODE_CHEQUE,
-            self::MODE_CARTE => [
-                CompteTresorerie::TYPE_BANQUE,
-            ],
-            default => [],
-        };
+        $typesAutorises = self::typesComptesPour($this->mode);
 
         if (!in_array($typeCompte, $typesAutorises, true)) {
             throw new \LogicException(
@@ -710,7 +757,7 @@ class Paiements
          */
         $labels = self::MODES_LABELS;
 
-        unset($labels[self::MODE_SOLDE_CLIENT]);
+        unset($labels[self::MODE_SOLDE_CLIENT], $labels[self::MODE_POINTS_FIDELITE]);
 
         return array_flip($labels);
     }
@@ -720,11 +767,42 @@ class Paiements
         return array_flip(self::STATUTS_LABELS);
     }
 
+    /** Types de compte de trésorerie qui peuvent recevoir ce mode de paiement. */
+    public static function typesComptesPour(?string $mode): array
+    {
+        return match ($mode) {
+            self::MODE_ESPECES => [
+                CompteTresorerie::TYPE_CAISSE,
+            ],
+            self::MODE_ORANGE_MONEY => [
+                CompteTresorerie::TYPE_ORANGE_MONEY,
+            ],
+            self::MODE_WAVE => [
+                CompteTresorerie::TYPE_WAVE,
+            ],
+            self::MODE_VIREMENT,
+            self::MODE_CHEQUE,
+            self::MODE_CARTE => [
+                CompteTresorerie::TYPE_BANQUE,
+            ],
+            default => [],
+        };
+    }
+
+    public function marquerCopieSynchronisee(): void
+    {
+        $this->copieSynchronisee = true;
+    }
+
     #[ORM\PrePersist]
     public function verifierAvantEnregistrement(): void
     {
         $this->date ??= new \DateTimeImmutable();
-        $this->verifierCompatibiliteCompte();
+        // Un paiement en attente (saisi en ligne par le client) reçoit son
+        // compte à la validation, qui le contrôle alors (Finances › À valider).
+        if (!$this->copieSynchronisee && !($this->compteTresorerie === null && $this->estEnAttente())) {
+            $this->verifierCompatibiliteCompte();
+        }
 
         if (
             $this->mode === self::MODE_CHEQUE
@@ -823,6 +901,39 @@ class Paiements
         $this->montantFondsSoutien = max(0, $montantFondsSoutien);
 
         return $this;
+    }
+
+    public function getNumeroRecu(): ?string
+    {
+        return $this->numeroRecu;
+    }
+
+    public function setNumeroRecu(?string $numeroRecu): static
+    {
+        $this->numeroRecu = null !== $numeroRecu && '' !== trim($numeroRecu) ? mb_substr(trim($numeroRecu), 0, 20) : null;
+
+        return $this;
+    }
+
+    /**
+     * Numéro du reçu de la caisse, envoyé au site une fois le paiement
+     * validé au local (filtre de CatalogueSynchro) : celui que le site a
+     * déjà, sinon « R-<id du local> ». Rien tant que l'imprimerie n'a pas
+     * validé.
+     */
+    public static function numeroRecuEnvoye(?string $numero, self $paiement): ?string
+    {
+        if (null !== $numero) {
+            return $numero;
+        }
+
+        return $paiement->estValide() && null !== $paiement->getId() ? self::numeroRecuDe($paiement->getId()) : null;
+    }
+
+    /** Le numéro du reçu imprimé par la caisse pour un paiement du local. */
+    public static function numeroRecuDe(int $id): string
+    {
+        return sprintf('R-%06d', $id);
     }
 
     /*

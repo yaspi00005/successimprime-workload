@@ -1,0 +1,244 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Fichiers et BAT (maquette DB04) : bandeau des BAT qui attendent le
+	client avec la date limite pour garder ses dates, une carte par BAT,
+	puis deux onglets : l'historique des BAT validés (qui, quand) et ses
+	fichiers envoyés (envoi, contrôle automatique, logos).
+#}
+{% block title %}Fichiers et BAT{% endblock %}
+{% block page_classe %} ec-page-large cd-page{% endblock %}
+{% block styles %}
+	<link href="{{ asset('css/espace-commandes.css') }}" rel="stylesheet">
+	<link href="{{ asset('css/espace-db.css') }}" rel="stylesheet">
+{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_accueil') }}"><span class="fl">‹</span>Fichiers et BAT</a>{% endblock %}
+
+{# Conservation (ConservationFichiers) : effacé du serveur quelques mois après l'impression, sauf « Garder ce fichier 1 an ». #}
+{% macro conservation(f) %}
+	{% set c = fichier_conservation(f) %}
+	<div class="ec-petit ec-conservation">
+		{% if c.efface %}Effacé du serveur le {{ c.efface|date('d/m/Y') }}
+		{% elseif c.protege %}Gardé avec « Mes produits »
+		{% elseif c.effacement %}Effacé le {{ c.effacement|date('d/m/Y') }}{{ c.garde ? ' (gardé ' ~ c.moisGarde ~ ' mois)' }}
+		{% else %}Gardé {{ c.garde ? c.moisGarde : c.mois }} mois après l'impression
+		{% endif %}
+		{% if c.peutGarder and not app.user.estLectureSeule() %}
+			<form method="post" action="{{ path('app_espace_fichier_garder', {id: f.id}) }}" class="ec-en-ligne">
+				<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+				<button type="submit" class="ec-lien">Garder ce fichier {{ c.moisGarde == 12 ? '1 an' : c.moisGarde ~ ' mois' }}</button>
+			</form>
+		{% endif %}
+	</div>
+{% endmacro %}
+
+{% macro icone(f) %}
+	{% if f.typeMime in ['image/jpeg', 'image/png'] %}<span class="ec-fichier-icone"><img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="" loading="lazy"></span>
+	{% else %}<span class="ec-fichier-icone">{{ f.nomOriginal|split('.')|last|upper|slice(0, 4) }}</span>{% endif %}
+{% endmacro %}
+
+{% block contenu %}
+	<div class="cd-tete">
+		<h1 class="ec-bureau">Fichiers et BAT</h1>
+		{% if not app.user.estLectureSeule() %}<a class="ec-bouton-blanc" href="{{ path('app_espace_fichiers', {vue: 'fichiers'}) }}#depot">📤 Envoyer un fichier</a>{% endif %}
+	</div>
+
+	{% if cartes is not empty %}
+		{% set premiere = cartes|first %}
+		<div class="db-bandeau">
+			<span class="db-bandeau-icone" aria-hidden="true">✅</span>
+			<p><b>{{ cartes|length }} BAT attend{{ cartes|length > 1 ? 'ent' }} votre validation</b>
+			<small>Rien n'est imprimé sans votre accord.{% if premiere.limite %} Validez avant {{ premiere.limite|date('Y-m-d') == 'now'|date('Y-m-d') ? 'aujourd\'hui ' ~ premiere.limite|date('H:i') : limite_bat(premiere.limite) }} pour garder vos dates.{% endif %}</small></p>
+			<a class="ec-bouton-blanc" href="{{ path('app_espace_bat', {id: premiere.controle.id}) }}">Voir le premier</a>
+		</div>
+		<div class="db-bat-cartes">
+			{% for c in cartes %}
+				<article class="ec-carte db-bat-carte">
+					<a class="db-bat-vignette" href="{{ path('app_espace_bat', {id: c.controle.id}) }}" tabindex="-1" aria-hidden="true">
+						{% if c.vignette %}<img src="{{ path('app_espace_bat_fichier', {id: c.vignette.id}) }}" alt="" loading="lazy">{% else %}<span>BAT</span>{% endif %}
+					</a>
+					<div>
+						<h2>{{ c.titre }} <span class="db-badge violet">À valider</span></h2>
+						<small class="db-bat-meta">{{ c.commande.numero }} · V{{ c.version }}{{ c.envoyeLe ? ' · envoyé ' ~ quand_bat(c.envoyeLe) }}</small>
+						<p class="db-bat-limite">⏱ {% if c.limite %}avant {{ limite_bat(c.limite) }} → prête {{ jour_court(c.pret) }}{% else %}si validé aujourd'hui → prête {{ jour_court(c.pret) }}{% endif %}</p>
+						{% if c.modifie %}<p class="db-bat-modifie">Modifié selon votre demande : {{ c.modifie|length > 60 ? c.modifie|slice(0, 59) ~ '…' : c.modifie }}</p>{% endif %}
+						<a class="ec-bouton violet db-petit-bouton" href="{{ path('app_espace_bat', {id: c.controle.id}) }}">Ouvrir le BAT</a>
+					</div>
+				</article>
+			{% endfor %}
+		</div>
+	{% endif %}
+
+	<nav class="cd-onglets db-onglets db-onglets-bat" aria-label="Fichiers et BAT">
+		<a class="cd-onglet{{ not vueFichiers ? ' actif' }}" href="{{ path('app_espace_fichiers') }}">Historique des BAT · {{ historique|length }}</a>
+		<a class="cd-onglet{{ vueFichiers ? ' actif' }}" href="{{ path('app_espace_fichiers', {vue: 'fichiers'}) }}">Mes fichiers envoyés · {{ mesFichiers|length }}</a>
+	</nav>
+
+	{% if not vueFichiers %}
+		{% set enCours = autres|filter(c => not c.batValide) %}
+		{% if enCours is not empty %}
+			<section class="ec-carte db-histo">
+				<h2>En préparation à l'atelier</h2>
+				<ul class="ec-liste">
+					{% for ctl in enCours %}
+						<li class="ec-ligne">
+							<a href="{{ path('app_espace_bat', {id: ctl.id}) }}" style="color:inherit"><b>{{ ctl.commandeDetail|espace_titre_ligne }}</b><div class="ec-petit">Commande {{ ctl.commandeDetail.commande.numero }}</div></a>
+							{% if ctl.statut == 'correction_requise' %}<span class="db-badge bleu">Modification demandée</span>{% else %}<span class="db-badge gris">En préparation</span>{% endif %}
+						</li>
+					{% endfor %}
+				</ul>
+			</section>
+		{% endif %}
+		<section class="ec-carte db-histo">
+			{% if historique is empty %}
+				<p class="ec-petit">Vos BAT validés apparaîtront ici, avec la date et la personne qui a validé.</p>
+			{% else %}
+				<table class="db-table">
+					<thead><tr><th>BAT</th><th>Commande</th><th>Versions</th><th>Validé</th><th class="ec-bureau">Par</th><th><span class="cd-masque">Fichier</span></th></tr></thead>
+					<tbody>
+						{% for h in historique %}
+							<tr>
+								<td><a href="{{ path('app_espace_bat', {id: h.controle.id}) }}"><b>{{ h.titre }}</b></a></td>
+								<td>{{ h.commande.numero }}</td>
+								<td>V{{ h.version }}</td>
+								<td>{% if h.valideLe %}<span class="db-badge vert">✓ {{ h.valideLe|date('d/m H:i') }}</span>{% endif %}</td>
+								<td class="ec-bureau db-par">{{ h.par ?: 'Vous' }}</td>
+								<td>{% if h.fichier %}<a class="ec-lien" href="{{ path('app_espace_bat_fichier', {id: h.fichier.id, telecharger: 1}) }}">{{ h.fichier.typeMime == 'application/pdf' ? 'PDF' : 'Fichier' }}</a>{% if h.fichier.commandeDetail %}{{ _self.conservation(h.fichier) }}{% endif %}{% endif %}</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% endif %}
+		</section>
+	{% else %}
+	<label class="ec-depot" id="depot">
+		<input type="file" id="envoi" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}" multiple>
+		<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 5 11h4.5v6h5v-6H19z"/></svg>
+		<b>Envoyer un fichier</b>
+		<span class="ec-petit">PDF, AI, PSD, JPG, PNG · jusqu'à 500 Mo</span>
+		<div class="ec-progres" hidden><span></span></div>
+		<div class="ec-petit" id="envoi-etat" role="status" aria-live="polite"></div>
+	</label>
+	<details class="ec-petit" style="margin:-.4rem 0 .85rem">
+		<summary>Taille d'impression prévue (pour contrôler la résolution)</summary>
+		<div class="ec-deux" style="margin:.5rem 0 0">
+			<div><label class="ec-etiquette" for="largeur">Largeur (cm)</label><input class="ec-saisie" id="largeur" inputmode="decimal" placeholder="85"></div>
+			<div><label class="ec-etiquette" for="hauteur">Hauteur (cm)</label><input class="ec-saisie" id="hauteur" inputmode="decimal" placeholder="200"></div>
+		</div>
+	</details>
+
+	<div class="ec-carte">
+		<h2>Contrôle automatique</h2>
+		<ul class="ec-liste" id="liste-fichiers">
+			{% for item in mesFichiers %}
+				{% set f = item.fichier %}
+				<li class="ec-fichier">
+					{{ _self.icone(f) }}
+					<div>
+						<b>{{ f.nomOriginal }}</b>
+						<div class="ec-petit">{{ item.controle.texte }}</div>
+						<div class="ec-petit">{{ f.creeLe|date('d/m/Y') }}{% if f.commandeDetail %} · commande {{ f.commandeDetail.commande.numero }}{% endif %}</div>
+						{% if f.commandeDetail %}{{ _self.conservation(f) }}{% endif %}
+					</div>
+					<span class="ec-pastille {{ item.controle.etat }}">{{ item.controle.libelle }}</span>
+				</li>
+			{% else %}
+				<li class="ec-petit" id="aucun-fichier">Vos fichiers envoyés apparaîtront ici, avec le résultat du contrôle.</li>
+			{% endfor %}
+		</ul>
+		{% if mesFichiers is not empty %}
+			<p class="ec-petit" style="margin:.6rem 0 0">Un fichier « À refaire » s'imprimerait mal : corrigez-le ou demandez l'aide de l'atelier. L'atelier revérifie chaque fichier avant impression.</p>
+		{% endif %}
+	</div>
+
+	<div class="ec-carte">
+		<h2>Mes logos</h2>
+		<div class="ec-logos" id="logos">
+			{% for f in logos %}
+				<a class="ec-logo" href="{{ path('app_espace_fichier', {id: f.id, telecharger: 1}) }}" title="{{ f.nomOriginal }}">
+					{% if f.typeMime in ['image/jpeg', 'image/png'] %}<img src="{{ path('app_espace_fichier', {id: f.id}) }}" alt="{{ f.nomOriginal }}" loading="lazy">{% else %}{{ f.nomOriginal|split('.')|last|upper }}{% endif %}
+				</a>
+			{% endfor %}
+			<label class="ec-logo ajouter" title="Ajouter un logo">+<input type="file" id="envoi-logo" accept="{{ extensions|map(e => '.' ~ e)|join(',') }}"></label>
+		</div>
+		<p class="ec-petit" style="margin:.6rem 0 0">Gardés ici pour vos prochaines commandes (20 Mo au plus).</p>
+	</div>
+
+	{% if mesFichiers is not empty %}
+		<details class="ec-carte">
+			<summary class="ec-petit">Retirer un fichier</summary>
+			<ul class="ec-liste" style="margin-top:.5rem">
+				{% for item in mesFichiers|filter(i => not i.fichier.commandeDetail) %}
+					<li class="ec-ligne"><span>{{ item.fichier.nomOriginal }}</span>
+						<form method="post" action="{{ path('app_espace_fichier_retirer', {id: item.fichier.id}) }}" {{ confirmer_suppression('le fichier « ' ~ item.fichier.nomOriginal ~ ' »', {verbe: 'Retirer', client: true}) }}>
+							<input type="hidden" name="_token" value="{{ csrf_token('espace') }}"><button class="ec-bouton-petit" style="background:var(--fond);color:var(--encre)">Retirer</button>
+						</form>
+					</li>
+				{% else %}
+					<li class="ec-petit">Les fichiers déjà dans une commande sont gardés par l'atelier.</li>
+				{% endfor %}
+			</ul>
+		</details>
+	{% endif %}
+
+	{% if publies|default([]) is not empty %}
+		<div class="ec-carte">
+			<h2>Fichiers de l'imprimerie</h2>
+			<ul class="ec-liste">
+				{% for p in publies %}
+					<li class="ec-fichier">
+						<span class="ec-fichier-icone">{{ p.nom|split('.')|last|upper|slice(0, 4) }}</span>
+						<div>
+							<b>{{ p.nom }}</b>
+							<div class="ec-petit">{{ p.categorieLibelle }} · {{ p.publieLe|date('d/m/Y') }}{% if p.commande %} · commande {{ p.commande.numero }}{% endif %}</div>
+						</div>
+						<a class="ec-bouton-petit" href="{{ path('app_espace_fichier_publie', {publicId: p.publicId}) }}">Télécharger</a>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	{% endif %}
+
+	{% endif %}
+{% endblock %}
+
+{% block scripts %}
+	<script src="{{ asset('js/espace-envoi.js') }}"></script>
+	<script>
+	(function () {
+		const options = { debut: {{ path('app_espace_fichier_envoi')|json_encode|raw }}, jeton: {{ csrf_token('espace')|json_encode|raw }} };
+		const etat = document.getElementById('envoi-etat');
+		const progres = document.querySelector('#depot .ec-progres');
+		const depot = document.getElementById('depot');
+		if (!depot) return;
+
+		async function envoyerTout(fichiers, logo) {
+			progres.hidden = false;
+			let erreurs = 0;
+			for (const f of fichiers) {
+				etat.textContent = 'Envoi de ' + f.name + '…';
+				try {
+					await EspaceEnvoi.envoyer(f, Object.assign({}, options, {
+						logo: logo,
+						largeur: document.getElementById('largeur').value,
+						hauteur: document.getElementById('hauteur').value,
+						progres: function (p) { progres.firstElementChild.style.width = p + '%'; },
+					}));
+				} catch (e) {
+					erreurs++;
+					etat.textContent = f.name + ' : ' + e.message;
+				}
+			}
+			if (!erreurs) {
+				etat.textContent = 'Envoyé. Contrôle terminé.';
+				location.reload();
+			}
+		}
+
+		document.getElementById('envoi').addEventListener('change', function () { envoyerTout(Array.from(this.files), false); });
+		document.getElementById('envoi-logo').addEventListener('change', function () { envoyerTout(Array.from(this.files), true); });
+		['dragenter', 'dragover'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.add('survol'); }); });
+		['dragleave', 'drop'].forEach(function (t) { depot.addEventListener(t, function () { depot.classList.remove('survol'); }); });
+	})();
+	</script>
+{% endblock %}

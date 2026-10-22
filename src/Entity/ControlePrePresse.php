@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\ControlePrePresseRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -12,6 +13,8 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Table(name: 'controle_pre_presse')]
 class ControlePrePresse
 {
+    use PublicIdTrait;
+
     public const STATUT_A_CONTROLER = 'a_controler';
     public const STATUT_EN_COURS = 'en_cours';
     public const STATUT_CORRECTION_REQUISE = 'correction_requise';
@@ -171,6 +174,7 @@ private bool $prePresseNecessaire = true;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->fichiers = new ArrayCollection();
         $this->creeLe = new \DateTimeImmutable();
     }
@@ -461,6 +465,18 @@ private bool $prePresseNecessaire = true;
     public function isBatValide(): bool
     {
         return $this->batValide;
+    }
+
+    /**
+     * Le fichier du client a été contrôlé : le contrôle est terminé (BAT
+     * envoyé, correction, validé, rejeté…), pas seulement commencé
+     * (« en cours » avant le BAT). controleLe : début du contrôle. Sert au
+     * suivi de la commande dans l'espace client (« Fichier contrôlé »).
+     */
+    public function isFichierControle(): bool
+    {
+        return null !== $this->controleLe
+            && (!\in_array($this->statut, [self::STATUT_A_CONTROLER, self::STATUT_EN_COURS], true) || $this->batValide);
     }
 
     public function setBatValide(bool $valeur): static

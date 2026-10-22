@@ -11,6 +11,11 @@ security:
                 class: App\Entity\User
                 property: username
 
+        comptes_clients:
+            entity:
+                class: App\Entity\CompteClient
+                property: telephone
+
 
     firewalls:
 
@@ -18,6 +23,51 @@ security:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
 
+
+        # Synchronisation : seul l'agent de l'ERP local appelle ces adresses,
+        # chaque requête est signée (docs/synchronisation.md). Pas de session.
+        synchro:
+            pattern: ^/api/synchro/
+            stateless: true
+            security: false
+
+        # API (docs/api.md) : un jeton par personne et par usage, sans
+        # session. Fermée sur le serveur en ligne (ApiHorsLigneSubscriber).
+        api:
+            pattern: ^/api/v1
+            stateless: true
+            provider: app_user_provider
+            custom_authenticator: App\Security\JetonApiAuthenticator
+            entry_point: App\Security\JetonApiAuthenticator
+            user_checker: App\Security\UserChecker
+
+        # Espace client (maquettes CX01 et CX04) : comptes séparés du
+        # personnel, connexion par numéro de téléphone.
+        espace:
+            pattern: ^/espace
+            lazy: true
+            provider: comptes_clients
+            custom_authenticator: App\Security\EspaceClientAuthenticator
+            entry_point: App\Security\EspaceClientAuthenticator
+            user_checker: App\Security\EspaceClientChecker
+            logout:
+                path: app_espace_deconnexion
+                target: app_espace_connexion
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 2592000
+                path: /espace
+                name: SI_ESPACE_SOUVENIR
+                # Comme le cookie de session : https seulement quand le site l'est,
+                # illisible par un script, pas envoyé par un autre site (docs/securite.md).
+                secure: auto
+                httponly: true
+                samesite: lax
+                # « Déconnecter les autres appareils » (versionSession) annule aussi ces cookies.
+                signature_properties: [password, versionSession]
+            login_throttling:
+                max_attempts: 5
+                interval: '15 minutes'
 
         main:
             lazy: true
@@ -37,6 +87,7 @@ security:
             # par force brute sur les mots de passe.
             login_throttling:
                 max_attempts: 5
+                interval: '15 minutes'
 
 
     # ================================================================
@@ -59,58 +110,44 @@ security:
             - ROLE_TRESORERIE_SAISIR
             - ROLE_TRESORERIE_TRANSFERER
             - ROLE_JOURNAL_CAISSE
+            - ROLE_SOLDE_CLIENT_REMBOURSER
 
             - ROLE_PREPRESSE
             - ROLE_PRODUCTION_VOIR
             - ROLE_PRODUCTION_GERER
+            - ROLE_ATELIER_CHEF
 
             - ROLE_LIVRAISON
+            - ROLE_ENTRETIEN
             - ROLE_STATS_GLOBAL
+            - ROLE_STATS_PERSO
+            - ROLE_STATS_VENTES
+            - ROLE_COUT_MARGE
             - ROLE_RH
             - ROLE_PARAMETRES
+            - ROLE_ACTIONS_GERER
             - ROLE_RESPONSABLE_GESTION
+            - ROLE_SITE_VITRINE
+            - ROLE_PROMOTIONS
+            - ROLE_COMPTABILITE
+            - ROLE_ASSISTANT
+            - ROLE_CREDITS_MESSAGES
+            - ROLE_CORBEILLE
+            - ROLE_ALERTES_SYSTEME
+            - ROLE_MESSAGERIE_INTERNE
+            - ROLE_MESSAGERIE_GROUPES
             
 
 
-        ROLE_CAISSE_COMMANDE:
-            - ROLE_USER
-
-            - ROLE_CLIENT
-            - ROLE_DEVIS
-            - ROLE_COMMANDE
-            - ROLE_FACTURE
-
+        # Le comptable voit les soldes dus et les paiements des clients,
+        # comme la caisse et la direction (demande de Yaya du 18/10/2026).
+        ROLE_COMPTABILITE:
             - ROLE_PAIEMENT_VOIR
-            - ROLE_PAIEMENT_ENCAISSER
 
-            - ROLE_TRESORERIE_VOIR
-            - ROLE_TRESORERIE_SAISIR
-            - ROLE_TRESORERIE_TRANSFERER
-
-            - ROLE_JOURNAL_CAISSE
-
-
-        ROLE_GRAPHISTE:
-            - ROLE_USER
-            - ROLE_CLIENT
-            - ROLE_DEVIS
-            - ROLE_COMMANDE
-            - ROLE_FACTURE
-            - ROLE_PAIEMENT_VOIR
-            - ROLE_PREPRESSE
-            - ROLE_PRODUCTION_VOIR
-            - ROLE_PRODUCTION_GERER
-
-
-        ROLE_PRODUCTION:
-            - ROLE_USER
-            - ROLE_PRODUCTION_VOIR
-            - ROLE_PRODUCTION_GERER
-
-
-        ROLE_LIVREUR:
-            - ROLE_USER
-            - ROLE_LIVRAISON
+        # Les autres roles (caisse, graphiste, production, livreur et
+        # ceux crees dans Reglages, Roles et droits) n'heritent de rien
+        # ici : leurs droits sont en base (role_utilisateur), plus ou
+        # moins ceux coches pour chaque personne. Voir User::getRoles().
 
     access_control:
 
@@ -134,19 +171,120 @@ security:
             roles: PUBLIC_ACCESS
         }
 
+        # Site vitrine (maquettes 01 à 12, docs/site-vitrine.md). « / » est
+        # l'accueil du site pour un visiteur en ligne ; sinon le tableau de
+        # bord, qui renvoie lui-même vers la connexion (DashboardController).
+        - {
+            path: '^/$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/(site|nos-produits|calculateur|studio-textile|atelier-3d|realisations|equipements|guide-fichiers|a-propos|nos-engagements|faq|suivre-ma-commande|suivre-ma-reclamation|comment-venir|contact|conseils|demander-un-devis)(/|$)',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/(sitemap\.xml|robots\.txt)$',
+            roles: PUBLIC_ACCESS
+        }
+
+        # « Nos actions sociales » et QR code de « Nous soutenir »
+        # (docs/site-vitrine.md) : introuvables tant qu'ils sont vides.
+        - {
+            path: '^/(nos-actions-sociales|nous-soutenir)(/|$)',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Assistant du site (docs/assistant-client.md) : questions des visiteurs
+        # sans compte, en JSON, sans session.
+        - {
+            path: '^/assistant/(message|note|historique)$',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Espace client : connexion, première connexion (code d'accès de l'imprimerie),
+        # création de compte et suivi sans compte
+        - {
+            path: ^/espace/(connexion|premiere-connexion|code|creer-compte|suivre)$,
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/espace,
+            roles: ROLE_ESPACE_CLIENT
+        }
+
+        # Enrôlement d'un appareil pour l'administration en ligne (QR de 5 min)
+        - {
+            path: '^/appareil/autoriser/[0-9a-f]{48}$',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Orange Money prévient le site après un paiement de l'espace client ;
+        # la notification n'est crue qu'avec le jeton reçu à l'ouverture.
+        - {
+            path: '^/om/notification/SI[0-9A-F]{18}$',
+            roles: PUBLIC_ACCESS
+        }
+
         - {
             path: ^/ecran-accueil,
             roles: PUBLIC_ACCESS
         }
 
+        # Sondages sans compte (docs/sondages.md) : lien reçu à la
+        # livraison, lien ou QR code d'un sondage libre.
         - {
-            path: ^/factures/\d+/pdf-public/,
+            path: '^/avis/[cs]/[0-9a-f]{24}$',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Employés (maquette E05) : activation par le lien WhatsApp,
+        # connexion par PIN sur le téléphone enregistré, tablette de
+        # l'entrée (branchée par la RH, reconnue par son cookie).
+        - {
+            path: '^/acces/(activer/[0-9a-f]{48}|pin)$',
             roles: PUBLIC_ACCESS
         }
 
         - {
-            path: ^/devis/\d+/pdf-public/,
+            path: '^/tablette(/(?:\d+|[0-9A-Za-z]{9}))?$',
             roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/f/[2-9A-HJ-NP-Z]{4}-[2-9A-HJ-NP-Z]{2}$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/factures/(?:\d+|[0-9A-Za-z]{9})/pdf-public/',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: '^/devis/(?:\d+|[0-9A-Za-z]{9})/pdf-public/',
+            roles: PUBLIC_ACCESS
+        }
+
+        # Lien du devis envoyé au client (WhatsApp, e-mail) : compte l'ouverture, puis l'espace client (docs/devis.md).
+        - {
+            path: '^/d/[a-f0-9]{32,64}(/pdf)?$',
+            roles: PUBLIC_ACCESS
+        }
+
+
+        # API : la documentation ne contient aucune donnée ; le reste
+        # demande un jeton, puis chaque ressource vérifie les droits fins.
+        - {
+            path: '^/api/v1(/docs(\.[a-z]+)?|/index(\.[a-z]+)?|/contexts/.*|/\.well-known/.*)?$',
+            roles: PUBLIC_ACCESS
+        }
+
+        - {
+            path: ^/api/v1,
+            roles: ROLE_USER
         }
 
 
@@ -184,8 +322,19 @@ security:
         # PARAMÈTRES
         # ============================================================
 
+        # Ventes › Produits et services et Prix spéciaux (docs/produits.md) :
+        # ouverts aux ventes ; chaque contrôleur affine (écriture : Admin ;
+        # prix spéciaux : aussi Promotions ; coûts : ROLE_COUT_MARGE).
         - {
-            path: ^/(categorie-produit|produits|produit-configuration|type-impression|support|format|finition|machines|lot-etiquette),
+            path: '^/produits(/?$|/(export|nouveau|(?:\d+|[0-9A-Za-z]{9})|prix-speciaux|options)(/|$))',
+            roles: [ROLE_ADMIN, ROLE_COMMANDE, ROLE_DEVIS, ROLE_PROMOTIONS]
+        }
+
+        # Types d'impression (/types/impression) et lots d'étiquettes
+        # (/lot/etiquette) : la page de suivi d'une étiquette (QR code)
+        # garde sa règle (tout compte connecté).
+        - {
+            path: '^/(categorie-produit|produits|produit-configuration|type-impression|types/impression|support|format|finition|machines|lot-etiquette|lot/etiquette(?!/suivi/))',
             roles: ROLE_ADMIN
         }
 
@@ -212,7 +361,7 @@ security:
         # ============================================================
 
         - {
-            path: ^/articles/\d+/commande/ajax,
+            path: '^/articles/(?:\d+|[0-9A-Za-z]{9})/commande/ajax',
             roles: ROLE_COMMANDE
         }
 
@@ -261,7 +410,7 @@ security:
 
         - {
             path: ^/mes-statistiques,
-            roles: ROLE_CAISSE_COMMANDE
+            roles: ROLE_STATS_PERSO
         }
 
 
@@ -318,19 +467,19 @@ security:
 
 
         - {
-            path: ^/paiements/\d+/edit$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})/edit$',
             roles: ROLE_PAIEMENT_ENCAISSER
         }
 
 
         - {
-            path: ^/paiements/\d+/delete$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})/delete$',
             roles: ROLE_PAIEMENT_ENCAISSER
         }
 
 
         - {
-            path: ^/paiements/\d+$,
+            path: '^/paiements/(?:\d+|[0-9A-Za-z]{9})$',
             methods: [POST, PUT, PATCH, DELETE],
             roles: ROLE_PAIEMENT_ENCAISSER
         }
@@ -361,16 +510,21 @@ security:
 
         # ============================================================
         # MOUVEMENTS DE TRÉSORERIE - ÉCRITURE
+        #
+        # Le formulaire de saisie (entrée, sortie, virement) s'ouvre
+        # aussi sans le droit de voir la trésorerie : la caisse y
+        # verse sa caisse à la banque, sans aucun solde affiché
+        # (MouvementTresorerieController::new).
         # ============================================================
 
         - {
-            path: ^/gestion/tresorerie/mouvements/new$,
-            roles: ROLE_TRESORERIE_SAISIR
+            path: ^/gestion/tresorerie/mouvements/nouveau$,
+            roles: [ROLE_TRESORERIE_SAISIR, ROLE_TRESORERIE_TRANSFERER]
         }
 
 
         - {
-            path: ^/gestion/tresorerie/mouvements/\d+/(edit|validate|cancel)$,
+            path: '^/gestion/tresorerie/mouvements/(?:\d+|[0-9A-Za-z]{9})/(edit|validate|cancel)$',
             roles: ROLE_TRESORERIE_SAISIR
         }
 
@@ -436,8 +590,16 @@ security:
         # INFOGRAPHISTE + ADMIN UNIQUEMENT
         # ============================================================
 
+        # Fichiers des clients : aussi pour l'opérateur, qui les ouvre
+        # depuis l'ordre de production de sa machine.
         - {
-            path: ^/controle-pre-presse,
+            # Numéro, ou son code chiffré de 9 caractères (docs/ids-chiffres.md).
+            path: '^/pre-presse/fichier/(\d+|[0-9A-Za-z]{9})/(visualiser|telecharger)$',
+            roles: [ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
+        }
+
+        - {
+            path: ^/pre-presse,
             roles: ROLE_PREPRESSE
         }
 
@@ -473,8 +635,38 @@ security:
 
 
         # ============================================================
+        # FICHIERS DES COMMANDES
+        #
+        # Fichiers des clients (voir, envoyer par morceaux, retirer) :
+        # pour qui travaille la commande (vente, fiche client, prépresse,
+        # production). Le dossier partagé vérifie en plus la prépresse.
+        # ============================================================
+
+        - {
+            path: ^/commande-fichiers,
+            roles: [ROLE_COMMANDE, ROLE_CLIENT, ROLE_PREPRESSE, ROLE_PRODUCTION_VOIR]
+        }
+
+
+        # ============================================================
         # LIVRAISON
         # ============================================================
+
+        # Planning et détail des livraisons (L01, L02) : aussi pour le
+        # bureau (ROLE_COMMANDE, entrée de son menu) ; TourneeController
+        # vérifie le reste (bureau, livreur du bon, encaissement).
+        - {
+            path: '^/livraisons/(planning|bl/(?:\d+|[0-9A-Za-z]{9}))',
+            roles: [ROLE_LIVRAISON, ROLE_COMMANDE]
+        }
+
+        # Suivi des livraisons (livrée ou pas, quand, par qui) : la
+        # Direction, la caisse (ROLE_COMMANDE) et la prépresse. Pas le
+        # livreur, qui n'a que « Mes livraisons ».
+        - {
+            path: '^/livraisons/suivi',
+            roles: [ROLE_COMMANDE, ROLE_PREPRESSE]
+        }
 
         - {
             path: ^/(livraisons|bons-livraison),

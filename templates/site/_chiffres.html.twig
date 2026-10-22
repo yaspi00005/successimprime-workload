@@ -1,0 +1,45 @@
+{#
+	Bande de chiffres (docs/site-public.md) : commandes livrées, clients
+	servis, projets réalisés. Des volumes seulement, jamais un montant ni
+	un nom ; rien quand aucun chiffre n'atteint le seuil réglé (Réglages ›
+	Site vitrine › Chiffres). La valeur finale est dans la page ; le compte
+	ne s'anime qu'avec JavaScript, et pas pour qui réduit les animations.
+	Variable facultative : chiffres (sinon site_chiffres()).
+#}
+{% set chiffres = chiffres ?? site_chiffres() %}
+{% if chiffres is not empty %}
+	<section class="sc-chiffres" aria-label="Succès Imprim en chiffres">
+		<div class="si-cadre">
+			<ul class="sc-chiffres-liste sc-chiffres-{{ chiffres|length }}">
+				{% for c in chiffres %}
+					<li class="sc-chiffre-{{ c.cle }}">
+						<strong data-cible="{{ c.valeur }}">{{ c.valeur|number_format(0, ',', ' ') }}</strong>
+						<span>{{ c.libelle }}</span>
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</section>
+	<script>
+		(function () {
+			var nombres = document.querySelectorAll('.sc-chiffres [data-cible]:not([data-pret])');
+			if (!('IntersectionObserver' in window) || window.matchMedia('(prefers-reduced-motion: reduce)').matches) { return; }
+			var ecrire = function (n) { return Math.round(n).toLocaleString('fr-FR'); };
+			var observateur = new IntersectionObserver(function (entrees) {
+				entrees.forEach(function (entree) {
+					if (!entree.isIntersecting) { return; }
+					observateur.unobserve(entree.target);
+					var cible = parseInt(entree.target.dataset.cible, 10), debut = null;
+					var pas = function (t) {
+						debut = debut || t;
+						var avance = Math.min(1, (t - debut) / 1400);
+						entree.target.textContent = ecrire(cible * (1 - Math.pow(1 - avance, 3)));
+						if (avance < 1) { requestAnimationFrame(pas); }
+					};
+					requestAnimationFrame(pas);
+				});
+			}, {threshold: 0.4});
+			nombres.forEach(function (n) { n.dataset.pret = '1'; n.textContent = '0'; observateur.observe(n); });
+		})();
+	</script>
+{% endif %}

@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Entity\CommandeDetailFinition;
 use App\Entity\Commandes;
 use App\Entity\CommandesDetails;
+use App\Entity\DemandeExceptionPromotion;
 use App\Entity\Devis;
 use Doctrine\ORM\EntityManagerInterface;
 
@@ -63,6 +64,13 @@ final class DevisCommandeConverter
                     ->setSurface($devisDetail->getSurface())
                     ->setNombreFaces(
                         $devisDetail->getNombreFaces()
+                    )
+                    // Le mode de calcul suit (une ligne au m² restait « unité » et se recalculait
+                    // prix × quantité au premier enregistrement de la commande), avec l'espacement
+                    // des pièces au m² du devis accepté.
+                    ->setModeCalcul($devisDetail->getModeCalcul())
+                    ->setEspacementPiecesM2(
+                        $devisDetail->getEspacementPiecesM2()
                     );
 
                 /*
@@ -89,6 +97,32 @@ final class DevisCommandeConverter
 );
 
                 /*
+                 * Promotion de la ligne (docs/promotions.md) : elle suit
+                 * telle quelle, comme les montants. L'exception B2B
+                 * acceptée est recopiée sur la ligne de la commande ;
+                 * une demande encore en attente y passe.
+                 */
+                $commandeDetail->reprendrePromotion(
+                    $devisDetail->getPromotion(),
+                    $devisDetail->getLibellePromotion(),
+                    $devisDetail->getRemisePromotion(),
+                    $devisDetail->getMontantPromotion(),
+                    $devisDetail->isPromotionRetiree()
+                );
+                // Part du code promo du devis : elle suit aussi, déjà dans les montants.
+                $commandeDetail->setRemiseCodePromo($devisDetail->getRemiseCodePromo());
+
+                if (null !== $devisDetail->getId()) {
+                    foreach ($this->entityManager->getRepository(DemandeExceptionPromotion::class)->findBy(['ligneDevis' => $devisDetail]) as $demande) {
+                        if ($demande->estAcceptee()) {
+                            $this->entityManager->persist($demande->reprisePour($commandeDetail));
+                        } elseif ($demande->estEnAttente()) {
+                            $demande->transfererVers($commandeDetail);
+                        }
+                    }
+                }
+
+                /*
                  * addCommandesDetail() doit également appeler :
                  * $commandeDetail->setCommandes($this)
                  */
@@ -98,6 +132,11 @@ final class DevisCommandeConverter
                     $devisDetail,
                     $commandeDetail
                 );
+
+                // Total d'origine conservé (bascule) : la commande garde aussi celui du devis.
+                if ($devisDetail->isTotalFige()) {
+                    $commandeDetail->figerTotal();
+                }
             }
 
             /*
@@ -108,6 +147,14 @@ final class DevisCommandeConverter
                 ->setStatut(Devis::STATUT_CONVERTI);
 
             $this->entityManager->persist($commande);
+            $this->entityManager->flush();
+
+            /*
+             * Numéro de commande, comme une commande saisie à la caisse
+             * (CMD-000123-10-2026) : il faut l'identifiant, donc après
+             * le premier enregistrement.
+             */
+            $commande->setNumero(\sprintf('CMD-%06d-%s', $commande->getId(), (new \DateTimeImmutable())->format('m-Y')));
             $this->entityManager->flush();
 
             $connection->commit();
@@ -167,7 +214,32 @@ final class DevisCommandeConverter
             ->setTotalTtc($devis->getTotalTtc())
             ->setMontantApayer($devis->getMontantApayer())
             ->setObservation($devis->getObservation())
+            // La personne à qui le devis s'adressait commande (« Commandé par »).
+            ->setDemandeePar($devis->getInterlocuteur())
             ->setEtat(true);
+
+        /*
+         * Frais de livraison (déjà dans les totaux copiés) et objet du
+         * devis. Des frais de livraison font une commande à livrer.
+         */
+        $commande
+            ->setFraisLivraison($devis->getFraisLivraison())
+            ->setObjet($devis->getObjet())
+            // Vente hors imprimerie (docs/hors-imprimerie.md) : la commande suit le devis.
+            ->setHorsImprimerie($devis->isHorsImprimerie());
+
+        if ($devis->getFraisLivraison() > 0) {
+            $commande->setModeLivraison(Commandes::LIVRAISON_DOMICILE);
+        }
+
+        /*
+         * Code promo (docs/promotions.md) : la commande reprend le code du
+         * devis et son utilisation (le devis transformé ne compte plus).
+         */
+        $commande
+            ->setCodePromo($devis->getCodePromo())
+            ->setCodeSaisi($devis->getCodeSaisi())
+            ->setRemiseCodePromo($devis->getRemiseCodePromo());
 
         /*
          * Utilisez directement la constante si elle existe

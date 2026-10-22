@@ -1,0 +1,217 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Génération par IA (maquettes DC04 et DC05) : la demande et la consigne
+	à gauche, l'image choisie au centre (zoom, « Voir sur le support »),
+	les images générées et la commande d'impression à droite. Sur
+	téléphone : l'image, sa carte, Régénérer et Commander.
+#}
+
+{% block title %}{{ demande.supportNom }} · génération par IA{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/conception.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour" href="{{ path('app_espace_conception_informations', {id: demande.publicId}) }}"><span class="fl">‹</span><span class="dc-mobile-seul">{{ images is empty ? 'Génération par IA' : 'Proposition IA' }}</span><span class="dc-bureau">Retour aux informations</span></a>{% endblock %}
+
+{% set peutGenerer = tarif.iaDisponible and conceptionPeutPayer and demande.statut != 'a_payer' %}
+{% set assez = tarif.credit >= tarif.prixImage %}
+{% set position = 0 %}
+{% for i in images %}{% if choisie and i.id == choisie.id %}{% set position = loop.index %}{% endif %}{% endfor %}
+{% set ratio = (demande.largeurCm and demande.hauteurCm) ? (demande.largeurCm / demande.hauteurCm) : 0.7 %}
+
+{% block contenu %}
+	<div class="dc-titre">
+		<h1>{{ demande.supportNom }} · génération par IA</h1>
+		<div class="dc-credit-haut">
+			{# Solde du crédit : pour qui paie, comme le solde des factures. #}
+			{% if conceptionPeutPayer %}
+				<span class="dc-pastille-lien">Crédit IA : <b>{{ tarif.credit|francs_conception }}</b></span>
+				<a class="dc-pastille-lien" href="{{ path('app_espace_conception_credit', {demande: demande.publicId}) }}">+ Recharger</a>
+			{% endif %}
+		</div>
+	</div>
+
+	<div class="dc-ia">
+		{# Gauche : la demande, la consigne, bon à savoir #}
+		<div class="dc-gauche">
+			<div class="ec-carte">
+				<div class="ec-ligne" style="align-items:baseline"><h2>Votre demande</h2><a class="ec-lien" href="{{ path('app_espace_conception_informations', {id: demande.publicId}) }}">Modifier</a></div>
+				<p class="dc-resume">
+					{{ demande.titreSupport }}{% if demande.titre %} : « {{ demande.titre }}{% if demande.sousTitre %} {{ demande.sousTitre }}{% endif %} »{% endif %}{% if demande.dateHeure %}, {{ demande.dateHeure }}{% endif %}.
+					{% if demande.consignes %}{{ demande.consignes|length > 220 ? demande.consignes|slice(0, 219) ~ '…' : demande.consignes }}{% endif %}
+				</p>
+				<div class="dc-puces">
+					{% for s in demande.styles %}<span>{{ styles[s] ?? s }}</span>{% endfor %}
+					{% for c in demande.couleurs %}<span>{{ palette[c] ?? c }}</span>{% endfor %}
+				</div>
+			</div>
+
+			<div class="ec-carte" id="consigne-carte">
+				<h2><label for="consigne">Modifier la consigne</label></h2>
+				<textarea class="ec-champ dc-consigne" id="consigne" maxlength="{{ consigneMax }}" placeholder="Ajouter un saxophone, plus de lumière dorée"{{ peutGenerer ? '' : ' disabled' }}></textarea>
+				<div class="dc-compteur"><span id="compteur">0</span> / {{ consigneMax }}</div>
+				{% if not tarif.iaDisponible %}
+					<button class="ec-bouton rose" disabled>Génération bientôt disponible</button>
+				{% elseif not conceptionPeutPayer %}
+					<button class="ec-bouton rose" disabled>Générer une image{{ coque.montants ? ' · ' ~ tarif.prixImage|francs_conception }}</button>
+					<p class="ec-petit" style="margin:.5rem 0 0">Chaque image est payée : {{ payeurs is not empty ? payeurs|join(' ou ') : 'une personne qui paie pour l\'entreprise' }} peut la générer.</p>
+				{% elseif not assez %}
+					<a class="ec-bouton rose" href="{{ path('app_espace_conception_credit', {demande: demande.publicId}) }}">Recharger le crédit IA</a>
+					<p class="ec-petit" style="margin:.5rem 0 0">{{ tarif.credit < 0 ? 'Votre crédit est négatif (paiement rejeté par la caisse) : rechargez-le pour générer.' : 'Une image coûte ' ~ (tarif.prixImage|francs_conception) ~ ', débitée de votre crédit IA.' }}</p>
+				{% else %}
+					<button class="ec-bouton rose" type="button" data-generer>✦ Générer une image · {{ tarif.prixImage|francs_conception }}</button>
+					<p class="ec-petit" style="margin:.5rem 0 0">Débité de votre crédit IA, rechargeable par Orange Money. Remboursé si la génération échoue.</p>
+				{% endif %}
+				<p class="dc-erreur" id="erreur-ia" role="alert"></p>
+			</div>
+
+			<div class="ec-carte">
+				<h2>Bon à savoir</h2>
+				<p class="ec-petit" style="margin:0">L'IA peut mal écrire les textes : ils sont toujours replacés proprement par le graphiste avant l'impression. Pas de logos de marques ni de personnes connues.</p>
+			</div>
+		</div>
+
+		{# Centre : l'image choisie #}
+		<div class="dc-centre">
+			<div class="dc-scene">
+				<div class="dc-scene-tete">
+					{% if choisie %}Image {{ position }} sur {{ images|length }} · générée à {{ (choisie.termineeLe ?? choisie.creeLe)|date('H:i') }}{% else %}Aucune image pour l'instant{% endif %}
+				</div>
+				<div class="dc-scene-image" id="scene">
+					{% if choisie %}
+						<img src="{{ path('app_espace_conception_image', {id: choisie.id, taille: 'g'}) }}" alt="Image {{ position }} générée par IA" id="image">
+						<div class="dc-sur-support{{ (demande.support.code ?? '') == 'kakemono' ? '' : ' mural' }}" id="sur-support" hidden style="--ratio: {{ ratio|round(3) }}">
+							<div class="cadre" style="background-image:url('{{ path('app_espace_conception_image', {id: choisie.id, taille: 'g'}) }}')"></div>
+							<div class="pied"></div>
+							<small>{{ demande.titreSupport }} · aux proportions du support</small>
+						</div>
+					{% else %}
+						<p class="dc-scene-vide">Écrivez une consigne si vous voulez, puis générez : votre première proposition apparaît ici en une minute environ.</p>
+					{% endif %}
+				</div>
+				{% if choisie %}
+					<div class="dc-scene-outils">
+						<button type="button" data-zoom="-1" aria-label="Zoom arrière">−</button>
+						<button type="button" data-zoom="1" aria-label="Zoom avant">Zoom +</button>
+						<button type="button" id="voir-support" aria-pressed="false">Voir sur le support</button>
+					</div>
+				{% endif %}
+				<div class="dc-attente" id="attente" hidden><div><div class="dc-roue"></div><b>Génération en cours…</b><div class="ec-petit" style="color:#C8CFDB">jusqu'à une minute, ne fermez pas la page</div></div></div>
+			</div>
+
+			{% if choisie %}
+				{# Téléphone (maquette DC05) : carte de l'image, Régénérer et Commander. #}
+				<div class="ec-carte dc-proposition" style="margin-top:.85rem">
+					<div class="ec-ligne"><b>Image {{ position }} · {{ (choisie.termineeLe ?? choisie.creeLe)|date('H:i') }}</b>{% if coque.montants %}<b>{{ choisie.prix|francs_conception }} payé</b>{% endif %}</div>
+					<div class="ec-petit">Textes replacés par le graphiste avant impression</div>
+				</div>
+				<div class="dc-mobile-actions">
+					{% if peutGenerer and assez %}<button class="ec-bouton clair" type="button" data-generer>Régénérer · {{ tarif.prixImage|francs_conception }}</button>
+					{% elseif peutGenerer %}<a class="ec-bouton clair" href="{{ path('app_espace_conception_credit', {demande: demande.publicId}) }}">Recharger</a>
+					{% else %}<span></span>{% endif %}
+					{% if conceptionPeutPreparer %}<button class="ec-bouton" type="submit" form="dc-commander">Commander</button>{% endif %}
+				</div>
+			{% endif %}
+		</div>
+
+		{# Droite : les images et la commande d'impression #}
+		<div class="dc-droite">
+			<div class="ec-carte">
+				<h2>Mes images</h2>
+				{% if images is empty %}
+					<p class="ec-petit" style="margin:0">Les images générées pour cette demande s'afficheront ici.</p>
+				{% else %}
+					<div class="dc-galerie">
+						{% for i in images %}
+							<a href="{{ path('app_espace_conception_ia', {id: demande.publicId, image: i.id}) }}" class="{{ choisie and i.id == choisie.id ? 'actif' }}" title="Image {{ loop.index }}"{{ choisie and i.id == choisie.id ? ' aria-current="true"' }}><img src="{{ path('app_espace_conception_image', {id: i.id, taille: 'v'}) }}" alt="Image {{ loop.index }}" loading="lazy"></a>
+						{% endfor %}
+					</div>
+					<span class="ec-petit">{{ images|length }} image{{ images|length > 1 ? 's' }} générée{{ images|length > 1 ? 's' }}{{ coque.montants ? ' · ' ~ (images|reduce((total, i) => total + i.prix, 0))|francs_conception }}</span>
+				{% endif %}
+			</div>
+
+			{% if choisie and conceptionPeutPreparer %}
+				<form method="post" action="{{ path('app_espace_conception_commander', {id: demande.publicId}) }}" id="dc-commander">
+					<input type="hidden" name="_token" value="{{ csrf_token('espace') }}">
+					<input type="hidden" name="image" value="{{ choisie.id }}">
+					<button class="ec-bouton" type="submit">Choisir et commander l'impression</button>
+					{% if tarif.finalisation > 0 %}
+						<label class="dc-finaliser"><input type="checkbox" name="finalisation" value="1" id="finalisation"><span>Faire finaliser par un graphiste{{ coque.montants ? ' · + ' ~ tarif.finalisation|francs_conception }}</span></label>
+					{% endif %}
+					<div class="ec-carte dc-recap">
+						<div class="dc-lignes">
+							{# Un demandeur : sa commande attend son valideur, qui en voit le prix (CompteClient::montantsVisibles). #}
+							{% if estimation and coque.montants %}<div><span>{{ estimation.libelle }}</span><b>{{ estimation.total|francs_conception }}</b></div>
+							{% else %}<div><span>{{ estimation ? estimation.libelle : 'Impression ' ~ demande.supportNom|lower }}</span><b>prix confirmé par {{ coque.montants ? 'l\'atelier' : 'votre valideur' }}</b></div>{% endif %}
+							{% if tarif.finalisation > 0 %}<div id="ligne-finalisation" hidden><span>Finalisation graphiste</span><b>{{ coque.montants ? tarif.finalisation|francs_conception : 'prix confirmé par votre valideur' }}</b></div>{% endif %}
+							{% if demande.largeurCm and demande.hauteurCm %}<div><span>Résolution pour {{ demande.largeurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} × {{ demande.hauteurCm|number_format(1, ',', ' ')|replace({',0': ''}) }} cm</span><b class="vert">agrandie ✓</b></div>{% endif %}
+						</div>
+						<p class="ec-petit" style="margin:.6rem 0 0">Prix indicatif : l'atelier le confirme, remplace les textes par des polices nettes et agrandit l'image avant l'impression.</p>
+					</div>
+				</form>
+			{% elseif choisie %}
+				<div class="ec-note">Votre accès est en lecture seule.</div>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+
+{% block scripts %}
+	<script>
+	(function () {
+		const jeton = {{ csrf_token('espace')|json_encode|raw }};
+		const consigne = document.getElementById('consigne');
+		const compteur = document.getElementById('compteur');
+		const erreur = document.getElementById('erreur-ia');
+		const attente = document.getElementById('attente');
+		if (consigne) consigne.addEventListener('input', function () { compteur.textContent = consigne.value.length; });
+
+		document.querySelectorAll('[data-generer]').forEach(function (bouton) {
+			bouton.addEventListener('click', async function () {
+				const boutons = document.querySelectorAll('[data-generer]');
+				boutons.forEach(function (b) { b.disabled = true; });
+				erreur.textContent = '';
+				attente.hidden = false;
+				try {
+					const r = await fetch({{ path('app_espace_conception_generer', {id: demande.publicId})|json_encode|raw }}, {
+						method: 'POST',
+						headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': jeton, 'Accept': 'application/json' },
+						body: JSON.stringify({ consigne: consigne ? consigne.value : '' }),
+						credentials: 'same-origin',
+					});
+					let d = {};
+					try { d = await r.json(); } catch (e) { /* page d'erreur */ }
+					if (r.ok && d.url) { window.location.href = d.url; return; }
+					erreur.textContent = d.erreur || 'La génération n\'a pas abouti. Réessayez.';
+				} catch (e) {
+					erreur.textContent = 'Connexion interrompue : rechargez la page pour voir si l\'image est arrivée.';
+				}
+				attente.hidden = true;
+				boutons.forEach(function (b) { b.disabled = false; });
+				if (window.innerWidth < 900) document.getElementById('consigne-carte').scrollIntoView({ behavior: 'smooth' });
+			});
+		});
+
+		const image = document.getElementById('image');
+		const surSupport = document.getElementById('sur-support');
+		let zoom = 1;
+		document.querySelectorAll('[data-zoom]').forEach(function (b) {
+			b.addEventListener('click', function () {
+				zoom = Math.min(3, Math.max(1, zoom + (+b.dataset.zoom) * 0.5));
+				if (image) image.style.transform = 'scale(' + zoom + ')';
+			});
+		});
+		const voir = document.getElementById('voir-support');
+		if (voir) voir.addEventListener('click', function () {
+			const actif = voir.getAttribute('aria-pressed') !== 'true';
+			voir.setAttribute('aria-pressed', actif ? 'true' : 'false');
+			surSupport.hidden = !actif;
+			image.hidden = actif;
+		});
+
+		const finalisation = document.getElementById('finalisation');
+		if (finalisation) finalisation.addEventListener('change', function () { document.getElementById('ligne-finalisation').hidden = !finalisation.checked; });
+		const commander = document.getElementById('dc-commander');
+		if (commander) commander.addEventListener('submit', function () { document.querySelectorAll('[form=dc-commander], #dc-commander button').forEach(function (b) { b.disabled = true; }); });
+	})();
+	</script>
+{% endblock %}

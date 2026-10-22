@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Entity\Trait\PublicIdTrait;
 use App\Repository\ProduitConfigurationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -22,6 +23,8 @@ use Symfony\Component\Validator\Constraints as Assert;
 )]
 class ProduitConfiguration
 {
+    use PublicIdTrait;
+
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -154,6 +157,24 @@ private ?Format $format = null;
     private ?int $prixB2B = null;
 
     /**
+     * Paliers de prix par quantité (docs/produits.md, PaliersPrix) :
+     * « à partir de N pièces », prix unitaire ou remise en %.
+     *
+     * @var list<array{de: int, prix: ?int, remise: ?float}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $paliersQuantite = null;
+
+    /**
+     * Remises par surface pour un produit au m² : « à partir de N m² de
+     * la ligne », remise en %.
+     *
+     * @var list<array{m2: float, remise: float}>|null
+     */
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $remisesSurface = null;
+
+    /**
      * @var Collection<int, ProduitConfigurationFinition>
      */
     #[ORM\OneToMany(
@@ -167,6 +188,7 @@ private ?Format $format = null;
 
     public function __construct()
     {
+        $this->initialiserPublicId();
         $this->configurationFinitions = new ArrayCollection();
     }
 
@@ -634,5 +656,40 @@ private ?Format $format = null;
         $remise = $this->getRemiseB2BProduit();
 
         return (int) round(($this->prixBase ?? 0) * (1 - $remise / 100));
+    }
+
+    /** @return list<array{de: int, prix: ?int, remise: ?float}> du plus petit palier au plus grand */
+    public function getPaliersQuantite(): array
+    {
+        return \App\Service\Catalogue\PaliersPrix::normaliserQuantite($this->paliersQuantite ?? []);
+    }
+
+    /** @param list<array<string, mixed>> $paliers */
+    public function setPaliersQuantite(array $paliers): static
+    {
+        $propres = \App\Service\Catalogue\PaliersPrix::normaliserQuantite($paliers);
+        $this->paliersQuantite = [] === $propres ? null : $propres;
+
+        return $this;
+    }
+
+    /** @return list<array{m2: float, remise: float}> de la plus petite surface à la plus grande */
+    public function getRemisesSurface(): array
+    {
+        return \App\Service\Catalogue\PaliersPrix::normaliserSurface($this->remisesSurface ?? []);
+    }
+
+    /** @param list<array<string, mixed>> $remises */
+    public function setRemisesSurface(array $remises): static
+    {
+        $propres = \App\Service\Catalogue\PaliersPrix::normaliserSurface($remises);
+        $this->remisesSurface = [] === $propres ? null : $propres;
+
+        return $this;
+    }
+
+    public function aDesPaliers(): bool
+    {
+        return [] !== $this->getPaliersQuantite() || [] !== $this->getRemisesSurface();
     }
 }

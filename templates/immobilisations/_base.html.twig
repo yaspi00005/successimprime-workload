@@ -1,0 +1,22 @@
+{#
+	Gabarit des écrans Immobilisations (maquettes M01 à M04) : feuilles de
+	style Finances et Immobilisations, sous-navigation pour qui voit les
+	valeurs (admin, comptabilité).
+#}
+{% extends 'finances/_base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/immobilisations.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block breadcrumb %}
+	{% if is_granted('ROLE_COMPTABILITE') %}
+		{% set route = app.request.attributes.get('_route') %}
+		<ul class="si-imm-nav mb-3" aria-label="Immobilisations">
+			<li><a href="{{ path('app_immobilisations_patrimoine') }}" class="{{ route == 'app_immobilisations_patrimoine' or route == 'app_immobilisations_inventaire' ? 'active' }}">Patrimoine</a></li>
+			<li><a href="{{ path('app_immobilisations_registre') }}" class="{{ route in ['app_immobilisations_registre', 'app_immobilisations_bien', 'app_immobilisations_modifier', 'app_immobilisations_nouveau'] ? 'active' }}">Registre</a></li>
+			<li><a href="{{ path('app_immobilisations_machines') }}" class="{{ route starts with 'app_immobilisations_machine' or route starts with 'app_immobilisations_releve' ? 'active' }}">Machines et amortissement</a></li>
+		</ul>
+	{% endif %}
+{% endblock %}

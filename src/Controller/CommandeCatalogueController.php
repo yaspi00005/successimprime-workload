@@ -2,10 +2,18 @@
 
 namespace App\Controller;
 
+use App\Service\Http\Entree;
+use App\Entity\Clients;
 use App\Entity\ProduitConfiguration;
 use App\Entity\ProduitConfigurationFinition;
 use App\Entity\Produits;
 use App\Repository\ProduitConfigurationRepository;
+use App\Routing\CodeId;
+use App\Service\Catalogue\NomCommercial;
+use App\Service\Catalogue\PrixSpeciaux;
+use App\Service\Catalogue\TarifClient;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -30,7 +38,8 @@ final class CommandeCatalogueController extends AbstractController
     )]
     public function configurationsProduit(
         Produits $produit,
-        ProduitConfigurationRepository $repository
+        ProduitConfigurationRepository $repository,
+        CodeId $codes
     ): JsonResponse {
         if (
             !$produit->isActif()
@@ -75,8 +84,12 @@ final class CommandeCatalogueController extends AbstractController
                 'id' =>
                     $configuration->getId(),
 
+                // Pour l'URL de la configuration, sans numéro lisible (docs/ids-chiffres.md).
+                'code' => $codes->coder((int) $configuration->getId()),
+
+                // Avec les noms commerciaux : la liste « Configuration » de la saisie les cherche aussi (docs/noms-commerciaux.md).
                 'libelle' =>
-                    (string) $configuration,
+                    NomCommercial::texteConfigurationInterne($configuration),
 
                 /*
                  * Prix PUBLIC.
@@ -214,8 +227,15 @@ final class CommandeCatalogueController extends AbstractController
         methods: ['GET']
     )]
     public function optionsManuelles(
-        Produits $produit
+        Produits $produit,
+        Request $request,
+        EntityManagerInterface $em,
+        TarifClient $tarifClient
     ): JsonResponse {
+        // Paliers et prix négocié des configurations, pour le client choisi (docs/produits.md).
+        $clientId = Entree::entier($request->query, 'client');
+        $clientPaliers = $clientId > 0 ? $em->find(Clients::class, $clientId) : null;
+
         if (
             !$produit->isActif()
             || !$produit->isPublie()
@@ -478,6 +498,9 @@ final class CommandeCatalogueController extends AbstractController
 
             'finitions' =>
                 $finitions,
+
+            // Les mêmes calculs que le serveur à l'enregistrement (TarifClient) : paliers de volume et prix négocié.
+            'paliers' => $tarifClient->pourLeComptoir($produit->getConfigurations(), $clientPaliers, new \DateTimeImmutable('today')),
         ]);
     }
 
@@ -497,8 +520,16 @@ final class CommandeCatalogueController extends AbstractController
         methods: ['GET']
     )]
     public function configuration(
-        ProduitConfiguration $configuration
+        ProduitConfiguration $configuration,
+        Request $request,
+        EntityManagerInterface $em,
+        PrixSpeciaux $prixSpeciaux
     ): JsonResponse {
+        // Prix négocié du client choisi (docs/produits.md) : le formulaire le pose en remise.
+        $clientId = Entree::entier($request->query, 'client');
+        $client = $clientId > 0 ? $em->find(Clients::class, $clientId) : null;
+        $prixSpecial = $prixSpeciaux->pour($client, $configuration, new \DateTimeImmutable('today'));
+
         if (!$configuration->isActive()) {
             return $this->json(
                 [
@@ -599,6 +630,9 @@ final class CommandeCatalogueController extends AbstractController
                 'prixB2BCalcule' =>
                     $configuration
                         ->getPrixB2BCalcule(),
+
+                // Prix négocié avec le client choisi, par unité ; null sans prix négocié.
+                'prixSpecial' => $prixSpecial?->getPrix(),
 
                 /*
                  * =================================================

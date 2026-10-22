@@ -1,0 +1,110 @@
+{#
+	Pages publiques de l'espace client (maquettes CX01 et CX04) :
+	panneau bleu à gauche, formulaire à droite ; sur téléphone, le
+	panneau se réduit à un bandeau.
+#}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="theme-color" content="#0F4590">
+	<meta name="robots" content="noindex">
+	<title>{% block title %}Mon espace · Succès Imprim{% endblock %}</title>
+	<link rel="shortcut icon" type="image/png" href="{{ asset('theme/images/favicon.png') }}">
+	<link rel="manifest" href="/espace.webmanifest">
+	<link rel="apple-touch-icon" sizes="180x180" href="{{ asset('images/icone-180.png') }}">
+	<meta name="apple-mobile-web-app-title" content="Succès Imprim">
+	<link href="{{ asset('css/espace.css') }}" rel="stylesheet">
+</head>
+<body class="si-espace">
+	<aside class="si-espace-panneau">
+		<div class="si-espace-bandes" aria-hidden="true"><span></span><span></span><span></span></div>
+		<img src="{{ asset('images/site/logo-succes-imprim-256.webp') }}" alt="Succès Imprim" class="si-espace-logo" width="128" height="71">
+		<div class="si-espace-accroche">
+			<h2>Vos impressions, suivies de près.</h2>
+			<p>Dans votre espace : commandes en cours, BAT à valider, factures et paiements Orange Money.</p>
+			<ul>
+				<li><strong>Validez vos BAT en un clic</strong><small>depuis votre téléphone</small></li>
+				<li><strong>Suivez la production</strong><small>de la PAO à la livraison</small></li>
+				<li><strong>Retrouvez vos factures</strong><small>et payez en ligne</small></li>
+			</ul>
+		</div>
+		{% set entreprise = site_entreprise() %}
+		<p class="si-espace-societe">{{ entreprise ? entreprise.nomAffiche : 'Succès Imprim' }}{% if entreprise and entreprise.nomCommercial and entreprise.raisonSociale %} · nom commercial de {{ entreprise.raisonSociale }}{% endif %} · Bamako</p>
+	</aside>
+
+	<main class="si-espace-contenu">
+		<p class="si-espace-lien-haut">{% block lien_haut %}Pas encore client ? <a href="{{ path('app_espace_creer_compte') }}">Créer un compte</a>{% endblock %}</p>
+
+		<div class="si-espace-formulaire">
+			{% for message in app.flashes('succes') %}
+				<div class="si-espace-succes" role="status">{{ message }}</div>
+			{% endfor %}
+			{% for message in app.flashes('error') %}
+				<div class="si-espace-erreur" role="alert">{{ message }}</div>
+			{% endfor %}
+
+			{% block contenu %}{% endblock %}
+
+			<p class="si-espace-securite">🔒 Connexion sécurisée · vos données restent chez Succès Imprim</p>
+		</div>
+	</main>
+
+	<script>
+		// Pas de barre « Installer » du navigateur avant la connexion : l'espace le propose ensuite (espace-installer.js).
+		window.addEventListener('beforeinstallprompt', function (e) { e.preventDefault(); });
+		(function () {
+			// Six cases du code : saisie, collage et remplissage automatique du SMS.
+			var cases = Array.prototype.slice.call(document.querySelectorAll('.si-code input'));
+			cases.forEach(function (champ, i) {
+				champ.removeAttribute('maxlength');
+				champ.addEventListener('input', function () {
+					var chiffres = champ.value.replace(/\D/g, '');
+					if (chiffres.length > 1) {
+						chiffres.split('').slice(0, cases.length - i).forEach(function (c, j) { cases[i + j].value = c; });
+						cases[Math.min(i + chiffres.length, cases.length - 1)].focus();
+					} else {
+						champ.value = chiffres;
+						if (chiffres && cases[i + 1]) { cases[i + 1].focus(); }
+					}
+				});
+				champ.addEventListener('keydown', function (e) {
+					if (e.key === 'Backspace' && !champ.value && cases[i - 1]) { cases[i - 1].focus(); }
+				});
+			});
+
+			var compteur = document.querySelector('.js-renvoi');
+			if (compteur) {
+				var bouton = document.querySelector('.js-bouton-renvoi');
+				var reste = parseInt(compteur.dataset.secondes, 10) || 0;
+				var maj = function () {
+					if (reste <= 0) { compteur.textContent = ''; bouton.hidden = false; return false; }
+					compteur.textContent = 'Renvoyer le code dans ' + Math.floor(reste / 60) + ':' + String(reste % 60).padStart(2, '0');
+					reste -= 1;
+					return true;
+				};
+				if (maj()) {
+					var minuterie = setInterval(function () { if (!maj()) { clearInterval(minuterie); } }, 1000);
+				}
+			}
+
+			document.querySelectorAll('.js-afficher').forEach(function (b) {
+				b.addEventListener('click', function () {
+					var champ = document.getElementById(b.dataset.cible);
+					var visible = champ.type === 'text';
+					champ.type = visible ? 'password' : 'text';
+					b.textContent = visible ? 'Afficher' : 'Masquer';
+				});
+			});
+
+			document.querySelectorAll('form').forEach(function (form) {
+				form.addEventListener('submit', function () {
+					var b = form.querySelector('button[type="submit"]:not([form])');
+					if (b) { setTimeout(function () { b.disabled = true; }, 0); }
+				});
+			});
+		})();
+	</script>
+</body>
+</html>

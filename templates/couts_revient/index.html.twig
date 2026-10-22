@@ -1,0 +1,89 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Coûts de revient{% endblock %}
+
+{% block body %}
+	<form method="post" class="si-couts">
+		<input type="hidden" name="_token" value="{{ csrf_token('couts-revient') }}">
+
+		<p class="text-muted mb-3">
+			Le coût de revient de chaque ligne de commande se calcule tout seul avec ces valeurs : matières au prix d'achat (avec la chute sur la laize), encre, temps machine et finitions.
+			Une valeur vide est signalée « coût incomplet » sur les commandes. Un changement ne touche que les lignes saisies ou modifiées ensuite.
+		</p>
+
+		<div class="card si-bloc">
+			<div class="si-bloc-tete"><h4>Machines</h4></div>
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr><th>Machine</th><th>Laize</th><th>Vitesse (m²/h)</th><th>Coût horaire (F)</th><th>Encre (F/m²)</th></tr>
+					</thead>
+					<tbody>
+						{% for machine in machines %}
+							<tr>
+								<td><strong>{{ machine.nom }}</strong></td>
+								<td>{{ machine.laizeMetres ? (machine.laizeMetres|number_format(2, ',', ' ') ~ ' m') : '—' }}</td>
+								<td><input type="text" inputmode="decimal" class="form-control form-control-sm" name="machines[{{ machine.id }}][vitesse]" value="{{ machine.vitesseM2Heure is not null ? machine.vitesseM2Heure|number_format(2, ',', '') }}" aria-label="Vitesse de {{ machine.nom }}"></td>
+								<td>
+									<input type="text" inputmode="numeric" class="form-control form-control-sm" name="machines[{{ machine.id }}][horaire]" value="{{ machine.coutHoraire }}" placeholder="{{ coutsHoraires[loop.index0] }}" title="{{ coutsHoraires[loop.index0] is not null ? 'Vide : ' ~ coutsHoraires[loop.index0] ~ ' F, tiré de l\'amortissement' }}" aria-label="Coût horaire de {{ machine.nom }}">
+								</td>
+								<td><input type="text" inputmode="numeric" class="form-control form-control-sm" name="machines[{{ machine.id }}][encre]" value="{{ machine.coutEncreM2 }}" aria-label="Coût de l'encre de {{ machine.nom }}"></td>
+							</tr>
+						{% else %}
+							<tr><td colspan="5" class="text-muted">Aucune machine.</td></tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			<small class="text-muted mt-2">Sans coût horaire saisi, on prend l'amortissement de la machine réparti sur 200 heures par mois.</small>
+		</div>
+
+		<div class="row">
+			<div class="col-xl-7">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Matières</h4></div>
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead><tr><th>Article</th><th>Unité</th><th>Prix d'achat (F)</th></tr></thead>
+							<tbody>
+								{% for article in matieres %}
+									<tr>
+										<td>{{ article.designation }}</td>
+										<td>{{ article.unite }}</td>
+										<td><input type="text" inputmode="numeric" class="form-control form-control-sm" name="matieres[{{ article.id }}]" value="{{ article.prixAchat }}" aria-label="Prix d'achat de {{ article.designation }}"></td>
+									</tr>
+								{% else %}
+									<tr><td colspan="3" class="text-muted">Aucun article de stock n'est lié à un produit. Liez-les dans la grille tarifaire.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+			<div class="col-xl-5">
+				<div class="card si-bloc">
+					<div class="si-bloc-tete"><h4>Finitions</h4></div>
+					<div class="table-responsive">
+						<table class="table si-table align-middle mb-0">
+							<thead><tr><th>Finition</th><th>Coût par unité (F)</th></tr></thead>
+							<tbody>
+								{% for finition in finitions %}
+									<tr>
+										<td>{{ finition.nom }}</td>
+										<td><input type="text" inputmode="numeric" class="form-control form-control-sm" name="finitions[{{ finition.id }}]" value="{{ finition.coutUnitaire }}" aria-label="Coût de {{ finition.nom }}"></td>
+									</tr>
+								{% else %}
+									<tr><td colspan="2" class="text-muted">Aucune finition.</td></tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="si-barre-enregistrer">
+			<button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i>Enregistrer les coûts</button>
+		</div>
+	</form>
+{% endblock %}

@@ -1,0 +1,207 @@
+{% extends 'espace/app/_app.html.twig' %}
+
+{#
+	Détail d'une facture (maquette FP02), pour qui paie seulement
+	(EspaceFacturesController::detail) : en-tête de l'entreprise émettrice,
+	lignes, totaux comme sur le PDF, paiements reçus, reste à payer, QR de
+	vérification ; à droite, la progression du paiement, les rappels
+	envoyés et le prochain. Partager donne le lien de cette page : il faut
+	se connecter pour l'ouvrir, et le texte ne dit aucun montant.
+#}
+{% block title %}Facture {{ facture.numero }}{% endblock %}
+{% block page_classe %} ec-page-large{% endblock %}
+{% block styles %}<link href="{{ asset('css/espace-factures.css') }}" rel="stylesheet">{% endblock %}
+{% block entete %}<a class="ec-retour ec-telephone" href="{{ path('app_espace_factures') }}"><span class="fl">‹</span>Facture {{ facture.numero }}</a>{% endblock %}
+
+{% block contenu %}
+	{% set couleurs = entreprise.couleurs %}
+	{% set proforma = facture.estProforma %}
+	{% set echue = not proforma and reste > 0 and facture.dateEcheance and facture.dateEcheance|date('Y-m-d') < maintenant|date('Y-m-d') %}
+	{% set valides = paiements|filter(p => p.estValide) %}
+	{% set remiseCode = commande.remiseCodePromo|default(0) %}
+	{% set majoration = facture.surfacturation and facture.montantSurfacturation > 0 %}
+	{% set detailHt = facture.remise > 0 or facture.montantTva > 0 or remiseCode > 0 or majoration %}
+
+	<div class="ef-titre">
+		<div class="ef-titre-gauche ec-bureau">
+			<a class="ef-rond" href="{{ path('app_espace_factures') }}" aria-label="Retour aux factures">‹</a>
+			<h1>{{ proforma ? 'Proforma' : 'Facture' }} {{ facture.numero }}</h1>
+		</div>
+		<div class="ef-detail-actions">
+			<a class="ec-bouton-blanc" href="{{ path('app_espace_facture_pdf', {id: facture.id}) }}" target="_blank" rel="noopener">
+				<svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v11m0 0-4-4m4 4 4-4M5 20h14"/></svg>PDF
+			</a>
+			<button type="button" class="ec-bouton-blanc" hidden data-ef-partager
+				data-url="{{ url('app_espace_facture_detail', {id: facture.publicId}) }}"
+				data-titre="{{ proforma ? 'Proforma' : 'Facture' }} {{ facture.numero }}"
+				data-texte="{{ proforma ? 'Proforma' : 'Facture' }} {{ facture.numero }} de Succès Imprim : à ouvrir dans l'espace client (connexion nécessaire).">Partager</button>
+			{% if element %}<a class="ef-bouton-om" href="{{ path('app_espace_payer_selection', {e: [element.cle]}) }}" data-ef-payer>Payer {{ element.estPartiel or element.dejaPaye > 0 ? 'le reste' }} · {{ element.montant|francs }}</a>{% endif %}
+		</div>
+	</div>
+	<p class="ef-partage-note ec-petit" data-ef-partage-note role="status" hidden></p>
+
+	<div class="ef-grille">
+		<div class="ef-colonne">
+			<article class="ef-doc" aria-label="{{ proforma ? 'Proforma' : 'Facture' }} {{ facture.numero }}">
+				<div class="ef-bandes" aria-hidden="true">{% for couleur in couleurs %}<span style="background:{{ couleur }}"></span>{% endfor %}</div>
+				<div class="ef-doc-corps">
+					<div class="ef-doc-tete">
+						<div>
+							{% if logo %}<img src="{{ logo }}" alt="{{ entreprise.nomAffiche }}">{% else %}<b>{{ entreprise.nomAffiche }}</b>{% endif %}
+							<div class="coord">
+								{{ [entreprise.raisonSociale, entreprise.adresse]|filter(v => v)|join(' · ') }}
+								{% set legal = [entreprise.rccm ? 'RCCM ' ~ entreprise.rccm, entreprise.nif ? 'NIF ' ~ entreprise.nif]|filter(v => v) %}
+								{% if legal is not empty %}<br>{{ legal|join(' · ') }}{% endif %}
+							</div>
+						</div>
+						<div class="ef-doc-titre">
+							<b style="color:{{ couleurs[1] ?? couleurs[0] ?? '' }}">{{ proforma ? 'PROFORMA' : 'FACTURE' }}</b>
+							<span>{{ facture.numero }}{{ facture.dateFacture ? ' · ' ~ facture.dateFacture|date('d/m/Y') }}</span>
+							{% if not proforma %}
+								<span class="{{ echue ? 'echue' }}">Échéance {{ facture.dateEcheance ? facture.dateEcheance|date('d/m/Y') : 'à réception' }}{{ echue ? ' · échue' }}</span>
+							{% endif %}
+						</div>
+					</div>
+
+					<div class="ef-doc-blocs">
+						<div class="ef-doc-bloc">
+							<small>{{ facture.facturerAUnTiers ? 'Facturé à' : 'Client' }}</small>
+							{% if facture.facturerAUnTiers %}
+								<b>{{ facture.nomFacturation|default('Payeur') }}</b>
+								{% set coord = [facture.adresseFacturation, facture.telephoneFacturation]|filter(v => v) %}
+								{% if coord is not empty %}<br>{{ coord|join(' · ') }}{% endif %}
+							{% else %}
+								<b>{{ moi.raisonSociale|default(moi.nomComplet) }}</b>{% if moi.raisonSociale and moi.nomComplet and moi.nomComplet != moi.raisonSociale %} · {{ moi.nomComplet }}{% endif %}
+								{% if moi.telephone %}<br>{{ moi.telephone }}{% endif %}
+							{% endif %}
+						</div>
+						<div class="ef-doc-bloc">
+							<small>Commande</small>
+							<a href="{{ path('app_espace_commande', {id: commande.publicId}) }}" style="color:inherit;font-weight:800">{{ commande.numero }}</a>
+							{%- if livraison and livraison.livreLe %} · livrée le {{ livraison.livreLe|date('d/m') }}
+							{%- elseif commande.statutTravaux == 'livree' %} · livrée
+							{%- elseif commande.dateCommande %} · du {{ commande.dateCommande|date('d/m/Y') }}{% endif %}
+							{% if livraison %}<br>Bon de livraison {{ livraison.numero }}{% endif %}
+							{% if commande.bonCommande %}<br>Votre bon de commande : {{ commande.bonCommande }}{% endif %}
+							{% if commande.demandeePar|default(null) %}<br>Commandé par : {{ commande.demandeePar }}{% endif %}
+						</div>
+					</div>
+					{# Objet et frais de livraison copiés sur la facture, comme sur son PDF (frais déjà dans le total). #}
+					{% if facture.objet|default(null) %}<p class="ef-doc-objet"><b>Objet :</b> {{ facture.objet }}</p>{% endif %}
+					{% set fraisLivraison = facture.fraisLivraison|default(0) %}
+
+					<div class="ef-doc-defile">
+						<table class="ef-doc-lignes">
+							<thead><tr><th>Désignation</th><th class="num">Qté</th><th class="num">Prix unitaire</th><th class="num">Total</th></tr></thead>
+							<tbody>
+								{% for l in commande.commandesDetails %}
+									<tr>
+										<td>{{ l.designation ? l|ligne_client : l|espace_titre_ligne }}</td>
+										<td class="num">{{ l.quantite|default(1) }}</td>
+										<td class="num">{{ l.prixUnitaire|default(0) > 0 ? l.prixUnitaire|number_format(0, ',', ' ') : '—' }}</td>
+										<td class="num">{{ (l.totalTtc|default(l.totalHt|default(0)))|number_format(0, ',', ' ') }}</td>
+									</tr>
+								{% else %}
+									<tr><td colspan="4" class="ef-table-vide">Les lignes sont sur le PDF.</td></tr>
+								{% endfor %}
+								{% if fraisLivraison > 0 %}
+									<tr><td>Livraison</td><td class="num">1</td><td class="num">{{ fraisLivraison|number_format(0, ',', ' ') }}</td><td class="num">{{ fraisLivraison|number_format(0, ',', ' ') }}</td></tr>
+								{% endif %}
+							</tbody>
+						</table>
+					</div>
+
+					<dl class="ef-totaux">
+						{% if remiseCode > 0 %}
+							<div><dt>Total HT avant code promo</dt><dd>{{ (facture.totalHt + remiseCode)|francs }}</dd></div>
+							<div><dt>Code promo {{ commande.libelleCodePromo }}</dt><dd>− {{ remiseCode|francs }}</dd></div>
+						{% endif %}
+						{% if detailHt %}<div><dt>Total HT</dt><dd>{{ facture.totalHt|francs }}</dd></div>{% endif %}
+						{% if facture.remise > 0 %}<div><dt>Remise</dt><dd>− {{ facture.remise|francs }}</dd></div>{% endif %}
+						{% if facture.montantTva > 0 %}<div><dt>TVA{{ facture.tva > 0 ? ' ' ~ facture.tva ~ ' %' }}</dt><dd>{{ facture.montantTva|francs }}</dd></div>{% endif %}
+						{% if majoration %}<div><dt>Majoration{{ facture.tauxSurfacturation ? ' (' ~ facture.tauxSurfacturation ~ ' %)' }}</dt><dd>+ {{ facture.montantSurfacturation|francs }}</dd></div>{% endif %}
+						<div class="fort"><dt>Total{{ facture.montantTva > 0 ? ' TTC' }}</dt><dd>{{ facture.totalTtc|francs }}</dd></div>
+						{% if not proforma %}
+							{% if valides|length > 3 %}
+								<div><dt>Déjà payé ({{ valides|length }} paiements)</dt><dd>− {{ paye|francs }}</dd></div>
+							{% else %}
+								{% for p in valides %}
+									<div><dt>{{ facture.dateFacture and p.date and p.date|date('Y-m-d') < facture.dateFacture|date('Y-m-d') ? 'Acompte payé' : 'Payé' }} le {{ p.date ? p.date|date('d/m') }}</dt><dd>− {{ p.montant|francs }}</dd></div>
+								{% endfor %}
+							{% endif %}
+							<div class="reste{{ reste <= 0 ? ' solde' }}"><dt>{{ reste > 0 ? 'Reste à payer' : 'Soldée' }}</dt><dd>{{ reste > 0 ? reste|francs : '✓' }}</dd></div>
+							{% if enValidation > 0 and reste > 0 %}<div class="attente"><dt>dont payé, en validation par l'imprimerie</dt><dd>{{ enValidation|francs }}</dd></div>{% endif %}
+						{% endif %}
+					</dl>
+
+					{% if qr %}
+						<div class="ef-qr">
+							<img src="{{ qr }}" alt="QR de vérification de la facture">
+							<span>Scannez pour vérifier cette facture et suivre son paiement en ligne.{% if codeSuivi %}<br>Code de vérification : <b>{{ codeSuivi }}</b>{% endif %}</span>
+						</div>
+					{% endif %}
+				</div>
+			</article>
+		</div>
+
+		<aside class="ef-colonne">
+			{% if not proforma %}
+				<section class="ec-carte">
+					<h2>Paiements reçus</h2>
+					{% if paiements is empty %}
+						<p class="ef-texte-doux">Aucun paiement pour l'instant.</p>
+					{% else %}
+						<ul class="ef-paiements">
+							{% for p in paiements %}
+								{% set etat = p|paiement_etat %}
+								<li>
+									<div>
+										<b>{{ p|paiement_moyen }}</b>
+										<small>
+											{{- p.date ? p.date|date('d/m') -}}
+											{%- if p.estValide %}{% set numero = p|numero_recu %} · <a href="{{ path('app_espace_facture_recu', {id: p.publicId}) }}" target="_blank" rel="noopener">Reçu{{ numero ? ' ' ~ numero }} ↓</a>
+											{%- else %} · {{ etat.libelle }}{% endif -%}
+										</small>
+									</div>
+									<span class="{{ p.estValide ? 'valide' : (p.estEnAttente ? 'attente' : 'refuse') }}">{{ p.montant|francs }}</span>
+								</li>
+							{% endfor %}
+						</ul>
+					{% endif %}
+					<div class="ef-progression" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="{{ part }}" aria-label="Part payée"><span style="width:{{ part }}%"></span></div>
+					<span class="ec-petit">{{ part }}&nbsp;% payé{{ enValidation > 0 ? ' · ' ~ enValidation|francs ~ ' en validation' }}</span>
+				</section>
+
+				<section class="ec-carte">
+					<h2>Rappels</h2>
+					<ul class="ef-rappels">
+						{% for r in rappels.envoyes %}
+							<li>{{ r.date|date('d/m') }} · {{ r.libelle }}</li>
+						{% else %}
+							<li>Aucun rappel envoyé.</li>
+						{% endfor %}
+						{% if reste <= 0 %}
+							<li class="prochain">Facture réglée : plus de rappel.</li>
+						{% elseif rappels.prochain %}
+							<li class="prochain">Prochain rappel le {{ rappels.prochain|date('d/m') }}</li>
+						{% endif %}
+					</ul>
+				</section>
+
+				{% if element and element.montant > constant('App\\Service\\Paiement\\RepartitionPaiement::MINIMUM_PARTIEL') %}
+					<section class="ec-carte">
+						<h2>Payer en plusieurs fois ?</h2>
+						<p class="ef-texte-doux">Vous pouvez payer une partie maintenant. Le reste reste visible ici.</p>
+						<a class="ec-bouton-blanc" href="{{ path('app_espace_payer_selection', {e: [element.cle], mode: 'partiel'}) }}" data-ef-payer>Payer un montant</a>
+					</section>
+				{% endif %}
+			{% endif %}
+
+			{% include 'espace/factures/_question.html.twig' with {facture: facture} %}
+		</aside>
+	</div>
+
+	<dialog class="ef-dialogue" id="ef-paiement" aria-label="Payer par Orange Money"></dialog>
+{% endblock %}
+
+{% block scripts %}<script src="{{ asset('js/espace-factures.js') }}" defer></script>{% endblock %}

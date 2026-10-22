@@ -90,7 +90,7 @@
 						<div>
 
 							<h3 class="card-title mb-1">
-								{{ detail.designation }}
+								{{ detail|ligne_interne('') }}
 							</h3>
 
 							<small class="text-muted">
@@ -229,9 +229,7 @@
 
 							{% if commande %}
 
-								<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" onsubmit="return confirm(
-																																								                            'Créer un bon de livraison pour cette commande ?'
-																																								                        );">
+								<form method="post" action="{{ path( 'app_bons_livraison_creer_commande', { id: commande.id } ) }}" data-confirmer="Créer un bon de livraison pour cette commande ?">
 
 									<input type="hidden" name="_token" value="{{ csrf_token( 'bon_livraison_creer_commande_' ~ commande.id ) }}">
 
@@ -581,7 +579,7 @@
 						</small>
 
 						<strong>
-							{{ detail.designation }}
+							{{ detail|ligne_interne('') }}
 						</strong>
 
 					</div>
@@ -594,7 +592,7 @@
 						</small>
 
 						{% if produit %}
-							{{ produit.nom }}
+							{{ produit|nom_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -620,7 +618,7 @@
 						</small>
 
 						{% if detail.typeImpression %}
-							{{ detail.typeImpression.nom }}
+							{{ detail.typeImpression|nom_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -635,7 +633,7 @@
 						</small>
 
 						{% if detail.support %}
-							{{ detail.support.nom }}
+							{{ detail.support|nom_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -650,7 +648,7 @@
 						</small>
 
 						{% if detail.format %}
-							{{ detail.format.nom }}
+							{{ detail.format|texte_interne }}
 						{% else %}
 							—
 						{% endif %}
@@ -787,7 +785,7 @@
 											{% if finition.configurationFinition %}
 
 												{% if finition.configurationFinition.finition %}
-													{{ finition.configurationFinition.finition.nom }}
+													{{ finition.configurationFinition.finition|texte_interne }}
 												{% else %}
 													Finition
 												{% endif %}
@@ -1123,7 +1121,7 @@
 		{% endif %}
 
 	</div>
-	<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+	<script src="{{ asset('vendor/sweetalert2/sweetalert2.all.min.js') }}"></script>
 
 	<script>
 		document.addEventListener('DOMContentLoaded', function () {

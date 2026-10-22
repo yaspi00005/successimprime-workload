@@ -1,0 +1,24 @@
+{#
+	PD04 : les pièces du rouleau dans l'ordre d'impression (imprimée et son
+	séchage, en cours, à venir). Relu toutes les 20 s.
+#}
+<ol class="si-fe-pieces">
+	{% for x in pieces %}
+		<li class="{{ x.statut }}">
+			<span class="rond" aria-hidden="true">{% if x.statut == 'imprimee' %}<i class="fas fa-check"></i>{% elseif x.statut == 'en_cours' and tirage.statut != 'en_pause' %}<i class="fas fa-play"></i>{% elseif x.statut == 'en_cours' %}<i class="fas fa-pause"></i>{% else %}{{ x.rang }}{% endif %}</span>
+			<span class="texte">
+				<b>{{ x.nom }}</b>
+				<small>
+					{%- if x.statut == 'imprimee' -%}
+						imprimée{% if x.piece.imprimeeLe %} à {{ x.piece.imprimeeLe|date('H:i') }}{% endif %} · {{ x.sec ? 'sèche' : 'séchage jusqu\'à ' ~ x.secheA|date('H:i') }}
+					{%- elseif x.statut == 'en_cours' -%}
+						{{ tirage.statut == 'en_pause' ? 'en pause' : 'en cours' }}
+					{%- else -%}
+						à venir
+					{%- endif -%}
+				</small>
+			</span>
+			<span class="pastille" style="background: {{ x.couleur }}" aria-hidden="true"></span>
+		</li>
+	{% endfor %}
+</ol>

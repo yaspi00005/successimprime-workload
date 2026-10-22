@@ -1,0 +1,91 @@
+{% extends 'controle_pre_presse/_base.html.twig' %}
+
+{#
+	Prépresse en tableau (maquette PQ03, docs/prepresse.md) : Sans fichier →
+	À contrôler → BAT chez le client → Prêt pour la production. Pas de
+	glisser-déposer : une carte ouvre la commande ou son contrôle, et c'est
+	le contrôle qui fait avancer la commande d'une colonne.
+#}
+
+{% block title %}Prépresse · tableau{% endblock %}
+
+{% set points = {sans_fichier: 'var(--pq-rouge)', a_controler: 'var(--pq-jaune)', bat: 'var(--pq-bleu)', pret: 'var(--pq-vert)'} %}
+{% set tuiles = ['#0F4590', '#7C3AED', '#1F9D55', '#DE1028', '#E95B35', '#0E7490'] %}
+{% set aujourdhui = maintenant|date('Y-m-d') %}
+
+{% block body %}
+	<div class="pq-page" data-sans-filtres>
+		{% include 'controle_pre_presse/_entete.html.twig' with {titre: 'Prépresse · tableau', vue: 'tableau'} %}
+
+		<div class="pq-tableau">
+			{% for etat, colonne in colonnes %}
+				<section class="pq-colonne" aria-label="{{ colonne.libelle }}">
+					<h2><span class="pq-point" style="background: {{ points[etat] }}"></span>{{ colonne.libelle }}<span class="pq-compte">{{ colonne.total }}</span></h2>
+					<div class="pq-cartes">
+						{% for c in colonne.cartes|slice(0, parColonne) %}
+							{% if etat == 'sans_fichier' %}
+								{% set lien = path('app_controle_pre_presse_index', {onglet: 'sans_fichier', commande: c.id}) %}
+							{% elseif etat == 'a_controler' %}
+								{% set lien = c.aControlerLigne ? path('app_controle_pre_presse_controler', {id: c.aControlerLigne}) : path('app_controle_pre_presse_index', {commande: c.id}) %}
+							{% elseif etat == 'bat' %}
+								{% set lien = c.batLigne ? path('app_controle_pre_presse_controler', {id: c.batLigne}) : path('app_controle_pre_presse_index', {commande: c.id}) %}
+							{% else %}
+								{% set lien = path('app_commandes_show', {id: c.id}) %}
+							{% endif %}
+							{% set support = (c.formats|first).support|default('') %}
+							<a class="pq-carte-cmd" href="{{ lien }}">
+								<div class="pq-carte-haut">
+									{% if c.vignette and etat != 'sans_fichier' %}
+										<img class="pq-vignette" src="{{ path('app_controle_pre_presse_visualiser_fichier', {id: c.vignette}) }}" alt="" loading="lazy">
+									{% elseif etat == 'sans_fichier' %}
+										<span class="pq-vignette" aria-hidden="true"></span>
+									{% else %}
+										<span class="pq-vignette" style="background: {{ tuiles[c.id % tuiles|length] }}" aria-hidden="true">{{ support|slice(0, 6)|upper }}</span>
+									{% endif %}
+									<div style="min-width: 0">
+										<div class="pq-num">{{ c.numero }}</div>
+										{% if c.clientJoignable %}
+											<div class="pq-client fw-bold">{{ c.client }}</div>
+										{% else %}
+											<div class="pq-sans-client"><i class="fas fa-exclamation-triangle me-1"></i>{{ c.client ? c.client ~ ' · sans numéro' : 'sans client' }}</div>
+										{% endif %}
+										<div class="pq-travail" title="{{ c.titre }}">{{ etat == 'a_controler' and c.manquants > 0 ? c.recus ~ ' format' ~ (c.recus > 1 ? 's') ~ ' reçu' ~ (c.recus > 1 ? 's') ~ ' sur ' ~ c.total : c.titre }}</div>
+									</div>
+								</div>
+								<div class="pq-carte-bas">
+									{% if etat == 'sans_fichier' %}
+										<span>{{ c.total > 1 ? c.total ~ ' formats · ' ~ c.recus ~ '/' ~ c.total ~ ' reçus' : c.detail }}</span>
+										<span class="pq-badge {{ c.ageCouleur }}"><i class="far fa-clock"></i>{{ c.age }} sans fichier</span>
+									{% elseif etat == 'a_controler' %}
+										{% if c.manquants > 0 %}
+											<span>partiel</span><span class="partiel">partiel</span>
+										{% elseif c.dateLivraison and c.dateLivraison|date('Y-m-d') == aujourdhui %}
+											<span>livrer aujourd'hui {{ c.dateLivraison|date('H:i') }}</span>
+											<span class="pq-badge rouge-clair"><i class="far fa-clock"></i>{{ c.age }}</span>
+										{% elseif c.compte.retour > 0 %}
+											<span>retour machiniste</span><span class="pq-badge violet">{{ c.age }}</span>
+										{% else %}
+											<span>{{ c.dateLivraison ? 'livrer le ' ~ c.dateLivraison|date('d/m') : c.detail }}</span>
+											<span class="fw-bold">{{ c.age }}</span>
+										{% endif %}
+									{% elseif etat == 'bat' %}
+										<span>V{{ c.version|default(1) }} · {{ c.batEnvoyeLe ? 'envoyé ' ~ (c.batEnvoyeLe|date('Y-m-d') == aujourdhui ? c.batEnvoyeLe|date('H:i') : c.batEnvoyeLe|date('d/m')) : 'envoyé' }}</span>
+										<span class="bleu">{{ c.age }} chez le client</span>
+									{% else %}
+										<span>BAT validé {{ c.valideLe ? (c.valideLe|date('Y-m-d') == aujourdhui ? c.valideLe|date('H:i') : c.valideLe|date('d/m')) }}</span>
+										{% if c.machine %}<b>→ {{ c.machine }}</b>{% endif %}
+									{% endif %}
+								</div>
+							</a>
+						{% else %}
+							<p class="pq-muet">Aucune commande.</p>
+						{% endfor %}
+						{% if colonne.total > parColonne %}
+							<a class="pq-plus" href="{{ path('app_controle_pre_presse_index', {onglet: etat == 'pret' ? 'tout' : etat}) }}">+ {{ colonne.total - parColonne }} autre{{ colonne.total - parColonne > 1 ? 's' }}</a>
+						{% endif %}
+					</div>
+				</section>
+			{% endfor %}
+		</div>
+	</div>
+{% endblock %}

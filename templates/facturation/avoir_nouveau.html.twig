@@ -1,0 +1,183 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Avoir sur une facture validée (maquette FD04) : pourquoi, lignes et
+	quantités à créditer, que faire de l'avoir, effet sur le compte du
+	client. AvoirsFactures fait le calcul ; le script ne fait que l'afficher
+	au fil de la saisie, avec la même règle.
+#}
+
+{% block title %}Avoir sur la facture {{ facture.numero }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/facturation.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block body %}
+	{% set f = 'F' %}
+	<form method="post" class="fd-page" id="fd-avoir" data-confirmer="Valider l'avoir ? Il reçoit son numéro et ne se modifie plus." data-remise="{{ facture.remise }}" data-total-ht="{{ facture.totalHt }}" data-solde="{{ voirPaiements ? soldeAvant : 0 }}" data-reste="{{ voirPaiements and facture.commande ? facture.commande.resteAPayer : 0 }}">
+		<input type="hidden" name="_token" value="{{ csrf_token('avoir-facture-' ~ facture.id) }}">
+		<div class="fd-entete">
+			<div>
+				<div class="fd-fil"><a href="{{ path('app_factures_index') }}">Facturation</a> › <a href="{{ path('app_factures_show', {id: facture.id}) }}">{{ facture.numero }}</a> › Nouvel avoir</div>
+				<h1>Avoir sur la facture {{ facture.numero }}</h1>
+			</div>
+			<div class="fd-actions">
+				<a href="{{ path('app_factures_show', {id: facture.id}) }}" class="btn fd-btn-blanc">Annuler</a>
+				{% if peutValider %}
+					<button type="submit" class="btn btn-danger">Valider l'avoir</button>
+				{% endif %}
+			</div>
+		</div>
+
+		<div class="fd-grille">
+			<div>
+				<div class="fd-carte">
+					<h2>Pourquoi</h2>
+					<div class="fd-pastilles mb-3">
+						{% for cle, libelle in constant('App\\Entity\\Avoir::MOTIFS') %}
+							<label class="fd-pastille"><input type="radio" name="motif" value="{{ cle }}" {{ motif == cle ? 'checked' }} {% if cle == 'annulation_totale' %}data-tout{% endif %}>{{ libelle }}</label>
+						{% endfor %}
+					</div>
+					<div class="row g-2">
+						<div class="col-md-6">
+							<select name="reclamation" class="form-select form-select-sm" aria-label="Réclamation liée">
+								<option value="">Sans réclamation liée</option>
+								{% for rc in reclamations %}
+									<option value="{{ rc.id }}" {{ reclamation and reclamation.id == rc.id ? 'selected' }}>Réclamation {{ rc.numero ?: rc.id }} · « {{ rc.objet }} »</option>
+								{% endfor %}
+							</select>
+						</div>
+						<div class="col-md-6">
+							<input type="text" name="observation" value="{{ observation }}" maxlength="1000" class="form-control form-control-sm" placeholder="Note (photo jointe par le client, détail…)">
+						</div>
+					</div>
+				</div>
+
+				<div class="fd-carte">
+					<h2>Lignes à créditer</h2>
+					<table class="fd-table">
+						<thead><tr><th></th><th>Désignation</th><th class="num">Facturé</th><th class="num">À créditer</th><th class="num">Montant</th></tr></thead>
+						<tbody>
+							{% for l in lignes %}
+								{% set q = quantites[l.cle]|default(0) %}
+								<tr data-ligne data-facture="{{ l.facture }}" data-credite="{{ l.credite }}" data-total="{{ l.total }}">
+									<td><input type="checkbox" class="form-check-input" data-coche {{ q > 0 ? 'checked' }} {{ l.reste <= 0 ? 'disabled' }} aria-label="Créditer {{ l.designation }}"></td>
+									<td><b>{{ l.designation }}</b>{% if l.credite > 0 %}<div class="fd-muet">déjà crédité : {{ l.credite|number_format(0, ',', ' ') }}</div>{% endif %}</td>
+									<td class="num">{{ l.facture|number_format(l.facture == l.facture|round ? 0 : 2, ',', ' ') }}</td>
+									<td class="num"><input type="text" inputmode="decimal" class="fd-qte" name="quantites[{{ l.cle }}]" value="{{ q ?: 0 }}" data-sans-format data-max="{{ l.reste }}" {{ l.reste <= 0 ? 'disabled' }} aria-label="Quantité à créditer"></td>
+									<td class="num" data-montant>—</td>
+								</tr>
+							{% endfor %}
+							<tr class="fd-remise" {% if facture.remise <= 0 %}hidden{% endif %}><td></td><td colspan="3">Remise de la facture, part de ces lignes</td><td class="num" data-remise-montant>—</td></tr>
+							<tr class="fd-total"><td></td><td colspan="3">Total de l'avoir</td><td class="num fd-violet" data-total-avoir>{{ calcul.total|number_format(0, ',', ' ') }} F</td></tr>
+						</tbody>
+					</table>
+				</div>
+
+				<div class="fd-carte">
+					<h2>Que faire de l'avoir ?</h2>
+					<div class="fd-choix">
+						<label><input type="radio" name="suite" value="deduire" {{ suite == 'deduire' ? 'checked' }}><b>Déduire de cette facture</b><small>reste à payer <span data-reste-apres>—</span></small></label>
+						<label><input type="radio" name="suite" value="credit" {{ suite == 'credit' ? 'checked' }}><b>Garder pour une prochaine commande</b><small>crédit sur le compte du client</small></label>
+						<label {% if not peutRembourser %}title="Droit « Rendre l'argent d'un compte client » nécessaire"{% endif %}><input type="radio" name="suite" value="rembourser" {{ suite == 'rembourser' ? 'checked' }} {{ not peutRembourser ? 'disabled' }}><b>Rembourser</b><small>Orange Money ou espèces</small></label>
+					</div>
+					<div class="mt-2" data-compte {% if suite != 'rembourser' %}hidden{% endif %}>
+						<select name="compte" class="form-select form-select-sm" style="max-width: 320px" aria-label="Rendu depuis">
+							<option value="">Rendu depuis…</option>
+							{% for c in comptes %}<option value="{{ c.id }}" {{ compteChoisi == c.id ~ '' ? 'selected' }}>{{ c.nom }}</option>{% endfor %}
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<div>
+				<div class="fd-carte">
+					<h2>Effet sur le compte client</h2>
+					{% if voirPaiements %}
+					<div class="fd-ligne-solde"><span>Solde dû avant</span><b>{{ soldeAvant|number_format(0, ',', ' ') }} F</b></div>
+					<div class="fd-ligne-solde"><span>Avoir</span><b class="fd-violet" data-effet-avoir>− 0 F</b></div>
+					<div class="fd-ligne-solde"><span data-effet-libelle>Solde dû après</span><b data-solde-apres>{{ soldeAvant|number_format(0, ',', ' ') }} F</b></div>
+					{% else %}
+					<div class="fd-ligne-solde"><span>Avoir</span><b class="fd-violet" data-effet-avoir>− 0 F</b></div>
+					{% endif %}
+					<p class="fd-muet mt-2 mb-0">L'avoir apparaît dans le relevé du client, relié à la facture{{ reclamation ? ' et à la réclamation' }}.{% if creditClient > 0 %} Crédit déjà sur son compte : {{ creditClient|number_format(0, ',', ' ') }} F.{% endif %}</p>
+				</div>
+				<div class="fd-carte fd-regle">
+					<b>Règle :</b> une facture validée n'est jamais modifiée ni supprimée. Toute correction passe par un avoir numéroté, validé par la trésorière ou la direction.
+				</div>
+				{% if not peutValider %}
+					<div class="fd-carte fd-alerte">Vous pouvez préparer l'avoir ; la trésorière ou la direction le valide.</div>
+				{% endif %}
+				{% if dejaAvoirs is not empty %}
+					<div class="fd-carte">
+						<h2>Avoirs déjà faits</h2>
+						{% for a in dejaAvoirs %}
+							<div class="fd-ligne-solde"><a href="{{ path('app_factures_avoir_show', {id: a.id}) }}">{{ a.numero }}</a><b class="fd-violet">− {{ a.total|number_format(0, ',', ' ') }} F</b></div>
+						{% endfor %}
+					</div>
+				{% endif %}
+			</div>
+		</div>
+	</form>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+	(function () {
+		// Même calcul qu'AvoirsFactures::calculer : la ligne entière redonne son total, la remise de la facture au prorata.
+		var form = document.getElementById('fd-avoir');
+		if (!form) return;
+		var remise = +form.dataset.remise || 0, totalHt = +form.dataset.totalHt || 0, solde = +form.dataset.solde || 0, reste = +form.dataset.reste || 0;
+		var fr = function (n) { return Math.round(n).toLocaleString('fr-FR').replace(/ | /g, ' ') + ' F'; };
+		var montant = function (q, facture, total) { return q <= 0 || facture <= 0 ? 0 : (q >= facture ? total : Math.round(total * q / facture)); };
+		var nombre = function (v) { return parseFloat(String(v).replace(',', '.').replace(/\s/g, '')) || 0; };
+		function maj() {
+			var brut = 0;
+			form.querySelectorAll('[data-ligne]').forEach(function (tr) {
+				var champ = tr.querySelector('.fd-qte'), coche = tr.querySelector('[data-coche]');
+				var q = Math.min(nombre(champ.value), +champ.dataset.max);
+				if (coche && !coche.checked) q = 0;
+				var deja = +tr.dataset.credite, fa = +tr.dataset.facture, tot = +tr.dataset.total;
+				var m = montant(q + deja, fa, tot) - montant(deja, fa, tot);
+				tr.querySelector('[data-montant]').textContent = m > 0 ? fr(m) : '—';
+				brut += m;
+			});
+			var partRemise = brut > 0 && remise > 0 && totalHt > 0 ? Math.round(brut * Math.min(remise, totalHt) / totalHt) : 0;
+			var total = Math.max(0, brut - partRemise);
+			form.querySelector('[data-remise-montant]').textContent = partRemise > 0 ? '− ' + fr(partRemise) : '—';
+			form.querySelector('[data-total-avoir]').textContent = fr(total);
+			var suite = (form.querySelector('input[name=suite]:checked') || {}).value;
+			form.querySelector('[data-reste-apres]').textContent = fr(Math.max(0, reste - total));
+			form.querySelector('[data-effet-avoir]').textContent = '− ' + fr(total);
+			var apres = suite === 'rembourser' ? solde : Math.max(0, solde - total);
+			form.querySelector('[data-effet-libelle]').textContent = suite === 'credit' ? 'Dû après (avoir en crédit)' : (suite === 'rembourser' ? 'Dû après (avoir rendu)' : 'Solde dû après');
+			form.querySelector('[data-solde-apres]').textContent = fr(suite === 'credit' ? solde : apres);
+			form.querySelector('[data-compte]').hidden = suite !== 'rembourser';
+		}
+		form.addEventListener('input', maj);
+		form.addEventListener('change', function (e) {
+			var t = e.target;
+			if (t.matches('[data-coche]')) {
+				var champ = t.closest('tr').querySelector('.fd-qte');
+				if (t.checked && nombre(champ.value) <= 0) champ.value = champ.dataset.max;
+				if (!t.checked) champ.value = 0;
+			}
+			if (t.matches('.fd-qte')) {
+				var c = t.closest('tr').querySelector('[data-coche]');
+				if (c) c.checked = nombre(t.value) > 0;
+			}
+			if (t.matches('input[name=motif][data-tout]') && t.checked) {
+				form.querySelectorAll('[data-ligne]').forEach(function (tr) {
+					var champ = tr.querySelector('.fd-qte'), coche = tr.querySelector('[data-coche]');
+					if (!champ.disabled) { champ.value = champ.dataset.max; if (coche) coche.checked = true; }
+				});
+			}
+			maj();
+		});
+		maj();
+	}());
+	</script>
+{% endblock %}

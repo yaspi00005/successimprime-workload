@@ -1,0 +1,146 @@
+{% extends 'base.html.twig' %}
+
+{#
+	Aperçu d'un import (docs/import-donnees.md) : ce que chaque ligne
+	deviendrait. Rien n'est encore enregistré ; la confirmation relit le
+	fichier et refait l'analyse avant d'écrire.
+#}
+
+{% set compte = apercu.compte %}
+{% set envoi = apercu.envoi %}
+{% set a_ecrire = compte.crees + compte.modifies %}
+
+{% block title %}Aperçu · {{ type.libelle }}{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/import.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item">
+		<a href="{{ path('app_import_envoyer', {type: type.cle}) }}" class="btn btn-light btn-sm si-btn-entete"><i class="fas fa-arrow-left me-1"></i><span class="si-masque-mobile">Autre fichier</span></a>
+	</li>
+{% endblock %}
+
+{% block body %}
+	<div class="si-im-fichier">
+		<span><i class="fas fa-file-excel me-1"></i><strong>{{ envoi.nom }}</strong> · {{ envoi.taille|taille_octets }}</span>
+		{% if apercu.lecture.encodage %}<span>{{ apercu.lecture.encodage }} · séparateur « {{ apercu.lecture.separateur == "\t" ? 'tabulation' : apercu.lecture.separateur }} »</span>{% endif %}
+		{% if date_ouverture %}<span>Jour d'ouverture : <strong>{{ date_ouverture|date('d/m/Y') }}</strong></span>{% endif %}
+		{% if envoi.completer %}<span>Compléter les fiches existantes</span>{% endif %}
+		<span class="si-im-empreinte" title="Empreinte SHA-256">{{ envoi.empreinte }}</span>
+	</div>
+
+	{% if apercu.deja is not empty %}
+		{% set d = apercu.deja|first %}
+		<div class="alert alert-warning" role="alert">
+			<i class="fas fa-copy me-2"></i><strong>Ce fichier a déjà été importé</strong> le {{ d.le|date('d/m/Y à H:i') }} par {{ d.parNom }} (<a href="{{ path('app_import_voir', {id: d.id}) }}">import n° {{ d.id }}</a>{% if apercu.deja|length > 1 %} et {{ apercu.deja|length - 1 }} autre{{ apercu.deja|length > 2 ? 's' }}{% endif %}).
+			Les fiches déjà là sont reconnues et écartées : le relire ne crée pas de doublons.
+		</div>
+	{% endif %}
+
+	{% if apercu.bloquant %}
+		<div class="alert alert-danger" role="alert"><i class="fas fa-ban me-2"></i>{{ apercu.bloquant }}</div>
+	{% endif %}
+	{% for a in apercu.avertissements %}
+		<div class="alert alert-info py-2 small" role="status"><i class="fas fa-info-circle me-2"></i>{{ a }}</div>
+	{% endfor %}
+
+	<nav class="si-im-totaux" aria-label="Filtrer les lignes">
+		<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton}) }}" class="si-im-total {{ filtre is null and not avertis ? 'active' }}"><span>Lignes</span><strong>{{ compte.lignes|number_format(0, ',', ' ') }}</strong></a>
+		<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: 'creer'}) }}" class="si-im-total si-im-vert {{ filtre == 'creer' ? 'active' }}"><span>À créer</span><strong>{{ compte.crees|number_format(0, ',', ' ') }}</strong></a>
+		<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: 'maj'}) }}" class="si-im-total si-im-bleu {{ filtre == 'maj' ? 'active' }}"><span>À mettre à jour</span><strong>{{ compte.modifies|number_format(0, ',', ' ') }}</strong></a>
+		<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: 'ignore'}) }}" class="si-im-total si-im-gris {{ filtre == 'ignore' ? 'active' }}"><span>Écartées</span><strong>{{ compte.ignores|number_format(0, ',', ' ') }}</strong></a>
+		<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: 'erreur'}) }}" class="si-im-total si-im-rouge {{ filtre == 'erreur' ? 'active' }}"><span>En erreur</span><strong>{{ compte.erreurs|number_format(0, ',', ' ') }}</strong></a>
+	</nav>
+	{% if nb_avertis > 0 %}
+		<p class="small mb-2"><a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: filtre, avertis: avertis ? null : 1}) }}">{{ avertis ? 'Voir toutes les lignes' : nb_avertis ~ ' ligne' ~ (nb_avertis > 1 ? 's') ~ ' avec un avertissement' }}</a></p>
+	{% endif %}
+
+	<div class="card si-bloc">
+		{% if lignes is empty %}
+			<p class="text-muted text-center py-4 mb-0">Aucune ligne {{ filtre ? 'dans ce filtre' : '' }}.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table si-im-lignes si-im-cartes">
+					<thead>
+						<tr>
+							<th class="si-im-num">Ligne</th>
+							<th>Ce qui se passera</th>
+							<th>Fiche</th>
+							<th>Détail</th>
+						</tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							<tr>
+								<td class="si-im-num">n° {{ l.numero }}</td>
+								<td class="si-im-statut"><span class="si-pastille si-pastille-{{ l.statutCouleur }}">{{ l.statutLibelle }}</span></td>
+								<td><strong>{{ l.libelle ?: '—' }}</strong></td>
+								<td>
+									{% if l.raison %}<span class="si-im-raison {{ l.estErreur ? 'text-danger' }}">{{ l.raison }}</span>{% endif %}
+									{% if l.detail %}<span class="d-block si-im-detail">{{ l.detail }}</span>{% endif %}
+									{% for a in l.avertissements %}<span class="si-im-avert">{{ a }}</span>{% endfor %}
+								</td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+			{% if pages > 1 %}
+				<nav class="si-im-pages" aria-label="Pages">
+					{% for p in 1..pages %}
+						<a href="{{ path('app_import_apercu', {type: type.cle, jeton: jeton, statut: filtre, avertis: avertis ? 1 : null, page: p}) }}" class="btn btn-sm {{ p == page ? 'btn-primary' : 'btn-light' }}">{{ p }}</a>
+					{% endfor %}
+					<small class="text-muted align-self-center">{{ filtrees }} lignes, {{ par_page }} par page</small>
+				</nav>
+			{% endif %}
+		{% endif %}
+	</div>
+
+	<div class="si-im-confirmer">
+		{% if apercu.bloquant %}
+			<p class="text-danger"><i class="fas fa-ban me-1"></i>Import impossible en l'état : corrigez le fichier et renvoyez-le.</p>
+		{% else %}
+			<p>
+				<strong>{{ a_ecrire }} ligne{{ a_ecrire > 1 ? 's' }} à enregistrer</strong>
+				({{ compte.crees }} à créer{% if compte.modifies %}, {{ compte.modifies }} à mettre à jour{% endif %}){% if compte.ignores + compte.erreurs > 0 %} ; {{ compte.ignores + compte.erreurs }} laissée{{ compte.ignores + compte.erreurs > 1 ? 's' }} de côté{% endif %}.
+				<small class="d-block text-muted">Tout est enregistré d'un coup, ou rien. Aucun message n'est envoyé.</small>
+			</p>
+		{% endif %}
+		<div class="si-im-boutons">
+			<form method="post" action="{{ path('app_import_abandonner', {type: type.cle, jeton: jeton}) }}">
+				<input type="hidden" name="_token" value="{{ csrf_token('import-abandonner-' ~ jeton) }}">
+				<button class="btn btn-outline-secondary">Abandonner</button>
+			</form>
+			{% if not apercu.bloquant %}
+				<form method="post" action="{{ path('app_import_confirmer', {type: type.cle, jeton: jeton}) }}" id="im-confirmer">
+					<input type="hidden" name="_token" value="{{ csrf_token('import-confirmer-' ~ jeton) }}">
+					{% if apercu.deja is not empty %}
+						<div class="form-check mb-2">
+							<input class="form-check-input" type="checkbox" name="malgre" value="1" id="im-malgre" required>
+							<label class="form-check-label small" for="im-malgre">Je sais que ce fichier a déjà été importé</label>
+						</div>
+					{% endif %}
+					<button class="btn btn-danger"><i class="fas fa-check me-1"></i>Importer {{ a_ecrire }} ligne{{ a_ecrire > 1 ? 's' }}</button>
+				</form>
+			{% endif %}
+		</div>
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		(function () {
+			var f = document.getElementById('im-confirmer');
+			if (!f) return;
+			f.addEventListener('submit', function () {
+				var b = f.querySelector('button');
+				b.disabled = true;
+				b.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement…';
+			});
+		})();
+	</script>
+{% endblock %}

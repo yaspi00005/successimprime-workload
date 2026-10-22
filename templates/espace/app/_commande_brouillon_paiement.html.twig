@@ -1,0 +1,17 @@
+{#
+	Commande en ligne encore « à confirmer » (docs/espace-client.md,
+	« Nouvelle commande ») : le payeur peut déjà régler l'acompte ou le
+	tout par Orange Money. Inclus par la page de la commande
+	(espace/app/commande.html.twig) avec c, carte, peutPayer et coque.
+	Rien pour un demandeur, une demande qui attend le valideur de
+	l'entreprise, ni une commande déjà en partie payée en ligne.
+#}
+{% if peutPayer|default(false) and coque.montants|default(false) and carte.aConfirmer|default(false) and c.canal == 'en_ligne' and not c.deleted and not c.attendValidationEntreprise and not c.estRefuseeParEntreprise and c.paiements is empty %}
+	<div class="ec-carte ec-rangee">
+		<div>
+			<b>Payer maintenant ?</b>
+			<div class="ec-petit">Acompte ou totalité par Orange Money : votre paiement est vérifié par la caisse, la production démarre après la confirmation de l'atelier et votre BAT.</div>
+		</div>
+		<a class="ec-bouton-petit" style="background:var(--orange)" href="{{ path('app_espace_nouvelle_commande_paiement', {id: c.publicId}) }}">Payer</a>
+	</div>
+{% endif %}

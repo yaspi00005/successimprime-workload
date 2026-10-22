@@ -1,0 +1,73 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Barème des points{% endblock %}
+
+{% block header_actions %}
+	<li class="nav-item si-masque-mobile"><a href="{{ path('app_reglages_parametres_journal') }}" class="btn btn-light btn-sm si-btn-entete">Historique des changements</a></li>
+	<li class="nav-item"><button type="submit" form="si-bareme" class="btn btn-success btn-sm"><i class="fas fa-check"></i><span class="si-masque-mobile ms-1">Enregistrer</span></button></li>
+{% endblock %}
+
+{% macro case(cle, valeurs, erreurs, pas = 1, min = -100) %}
+	{% set v = valeurs[cle] %}
+	<input name="{{ cle }}" type="number" step="{{ pas }}" min="{{ min }}" max="{{ pas < 1 ? 5 : 100 }}" value="{{ v }}" class="form-control si-bm-case{{ v is not same as('') and v + 0 > 0 ? ' plus' : (v + 0 < 0 ? ' moins' : '') }}{{ erreurs[cle] is defined ? ' is-invalid' }}" id="si-bm-{{ cle }}" title="{{ erreurs[cle] ?? '' }}">
+{% endmacro %}
+
+{% block body %}
+	{% set p = panneau %}
+	<div class="si-bm">
+		{% if p.proposition is not empty %}
+			<div class="si-pp-proposition">
+				<strong><i class="fas fa-hourglass-half me-1"></i>Changement proposé depuis l'admin en ligne</strong>
+				<span>{{ p.propose_par ? p.propose_par.username : 'Utilisateur supprimé' }}{{ p.propose_le ? ' · ' ~ p.propose_le|date('d/m à H:i') }}</span>
+				<ul>{% for c in p.proposition %}<li>{{ c.libelle }} : <s>{{ c.avant }}</s> → <b>{{ c.apres }}</b></li>{% endfor %}</ul>
+				{% if p.peut_valider %}
+					<div class="si-pp-proposition-actions">
+						<form method="post" action="{{ path('app_reglages_parametres_refuser', {tuile: 'bareme'}) }}"><input type="hidden" name="_token" value="{{ csrf_token('parametres') }}"><button class="btn btn-light btn-sm">Refuser</button></form>
+						<form method="post" action="{{ path('app_reglages_parametres_valider', {tuile: 'bareme'}) }}"><input type="hidden" name="_token" value="{{ csrf_token('parametres') }}"><button class="btn btn-success btn-sm">Valider et appliquer</button></form>
+					</div>
+				{% else %}
+					<span class="si-pp-attente">Il sera appliqué après validation sur l'ERP local.</span>
+				{% endif %}
+			</div>
+		{% endif %}
+
+		<form method="post" id="si-bareme">
+			<input type="hidden" name="_token" value="{{ csrf_token(jeton) }}">
+			<div class="si-bm-grille">
+				{% for cle, m in metiers %}
+					<section class="card si-bm-metier si-bm-{{ cle }}">
+						<h2>{{ m.libelle }}</h2>
+						<ul>
+							{% for regle, r in m.regles %}
+								<li><label for="si-bm-{{ regle }}">{{ r[0] }}</label>{{ _self.case(regle, valeurs, erreurs) }}</li>
+							{% endfor %}
+						</ul>
+						{% if cle == 'graphiste' %}
+							<div class="si-bm-coefs">
+								<span>Coefficient</span>
+								{% for d, libelle in difficultes %}
+									<label>{{ libelle|lower }} ×{{ _self.case('coef_' ~ d, valeurs, erreurs, 0.1, 1) }}</label>
+								{% endfor %}
+							</div>
+						{% elseif cle == 'entretien' %}
+							<div class="si-bm-coefs"><label>Tâches contrôlées au hasard par jour {{ _self.case('controles_entretien', valeurs, erreurs, 1, 0) }}</label></div>
+						{% endif %}
+						<p class="si-bm-note">{{ m.note }}</p>
+					</section>
+				{% endfor %}
+			</div>
+
+			<section class="card si-bm-prime">
+				<h2>Des points à la prime</h2>
+				<ol class="si-bm-chemin">
+					<li><b>Points du mois</b><small>ex. {{ exemple.points }} pts</small></li>
+					<li><b>Divisés par les points possibles</b><small>{{ exemple.possibles }} possibles = {{ exemple.note }} %</small></li>
+					<li><b>Critère « Productivité et qualité »</b><small>poids <label class="si-bm-poids">{{ _self.case('poids_productivite', valeurs, erreurs, 1, 0) }} %</label> du score</small></li>
+					<li><b>Score sur 100</b><small>+ ponctualité, appréciation… ex. {{ exemple.score|number_format(1, ',', ' ') }}</small></li>
+					<li><b>Palier de prime</b><small>{% for min, part in paliers %}{{ min }}+ → {{ part }} %{{ not loop.last ? ' · ' }}{% endfor %} · ex. <b>{{ exemple.palier }} %</b></small></li>
+				</ol>
+				<p class="si-pg-note">Chaque point gagné ou perdu est relié à son travail (commande, livraison, tâche) et à son heure : l'employé voit le détail dans son application et peut contester un retrait. Les points d'un métier ne se comparent qu'en pourcentage de ses propres points possibles.</p>
+			</section>
+		</form>
+	</div>
+{% endblock %}

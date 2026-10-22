@@ -2,74 +2,71 @@
 
 namespace App\Controller;
 
-use App\Repository\ClientsRepository;
-use App\Repository\CommandesRepository;
+use App\Service\EcranTv;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Écran d'accueil public (télé de la salle d'attente / accueil).
+ * Écran TV de l'imprimerie (démo de Yaya et maquette 42).
  *
- * Aucune authentification requise : voir security.yaml, section PUBLIC.
+ * La Smart TV ouvre un lien secret, sans compte utilisateur : voir
+ * security.yaml, section PUBLIC. Le lien se change dans Réglages >
+ * Écran TV. Seuls des volumes, des produits et des numéros de commande
+ * sont affichés, jamais de montant ni de nom de client.
  */
 final class TvDashboardController extends AbstractController
 {
-    #[Route('/ecran-accueil', name: 'app_tv_dashboard')]
-    public function index(
-        CommandesRepository $commandesRepository,
-        ClientsRepository $clientsRepository
-    ): Response {
-        $maintenant = new \DateTimeImmutable('now');
-
-        $debutSemaine = $maintenant->modify('monday this week')->setTime(0, 0);
-        $debutMois = $maintenant->modify('first day of this month')->setTime(0, 0);
-        $debutAnnee = $maintenant->modify('first day of january this year')->setTime(0, 0);
-
-        return $this->render('tv_dashboard/index.html.twig', [
-            'totalClients' => $clientsRepository->compterClients(),
-            'commandesSemaine' => $commandesRepository->compterCommandes($debutSemaine, $maintenant),
-            'commandesMois' => $commandesRepository->compterCommandes($debutMois, $maintenant),
-            'commandesAnnee' => $commandesRepository->compterCommandes($debutAnnee, $maintenant),
-            'medias' => $this->listerMedias(),
-        ]);
+    public function __construct(private readonly EcranTv $ecranTv)
+    {
     }
 
     /**
-     * Liste les images/vidéos déposées dans public/uploads/tv/
-     * pour le diaporama de fond. Aucune base de données : il suffit
-     * d'ajouter/retirer des fichiers dans ce dossier.
-     *
-     * @return array<int, array{fichier: string, type: 'image'|'video'}>
+     * L'ancienne adresse sans jeton : l'admin est conduit à l'aperçu,
+     * les autres ne voient rien.
      */
-    private function listerMedias(): array
+    #[Route('/ecran-accueil', name: 'app_tv_dashboard', methods: ['GET'])]
+    public function sansJeton(): Response
     {
-        $dossier = $this->getParameter('kernel.project_dir') . '/public/uploads/tv';
-
-        if (!is_dir($dossier)) {
-            return [];
+        if ($this->isGranted('ROLE_ADMIN')) {
+            return $this->redirectToRoute('app_ecran_tv_apercu');
         }
 
-        $extensionsImage = ['jpg', 'jpeg', 'png', 'webp'];
-        $extensionsVideo = ['mp4', 'webm'];
-        $medias = [];
+        throw $this->createNotFoundException();
+    }
 
-        foreach (scandir($dossier) ?: [] as $fichier) {
-            if ($fichier === '.' || $fichier === '..' || $fichier === '.gitkeep') {
-                continue;
-            }
+    #[Route('/ecran-accueil/{jeton}', name: 'app_tv_ecran', requirements: ['jeton' => '[A-Za-z0-9_-]{24,64}'], methods: ['GET'])]
+    public function ecran(string $jeton): Response
+    {
+        $this->verifierJeton($jeton);
+        $this->ecranTv->noterPassage();
 
-            $extension = strtolower(pathinfo($fichier, PATHINFO_EXTENSION));
+        $reponse = $this->render('tv_dashboard/index.html.twig', $this->ecranTv->vue(new \DateTimeImmutable(), false) + [
+            'urlDonnees' => $this->generateUrl('app_tv_ecran_donnees', ['jeton' => $jeton]),
+        ]);
+        $reponse->headers->set('Cache-Control', 'no-store');
+        $reponse->headers->set('X-Robots-Tag', 'noindex');
 
-            if (\in_array($extension, $extensionsImage, true)) {
-                $medias[] = ['fichier' => $fichier, 'type' => 'image'];
-            } elseif (\in_array($extension, $extensionsVideo, true)) {
-                $medias[] = ['fichier' => $fichier, 'type' => 'video'];
-            }
+        return $reponse;
+    }
+
+    #[Route('/ecran-accueil/{jeton}/donnees', name: 'app_tv_ecran_donnees', requirements: ['jeton' => '[A-Za-z0-9_-]{24,64}'], methods: ['GET'])]
+    public function donnees(string $jeton): JsonResponse
+    {
+        $this->verifierJeton($jeton);
+        $this->ecranTv->noterPassage();
+
+        $reponse = $this->json($this->ecranTv->rafraichissement(new \DateTimeImmutable(), false));
+        $reponse->headers->set('Cache-Control', 'no-store');
+
+        return $reponse;
+    }
+
+    private function verifierJeton(string $jeton): void
+    {
+        if (!$this->ecranTv->jetonValide($jeton)) {
+            throw $this->createNotFoundException();
         }
-
-        usort($medias, static fn (array $a, array $b) => $a['fichier'] <=> $b['fichier']);
-
-        return $medias;
     }
 }

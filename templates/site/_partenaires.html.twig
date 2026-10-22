@@ -1,0 +1,28 @@
+{#
+	Bande « Ils nous font confiance » (docs/site-public.md) : partenaires
+	visibles ET dont l'accord est obtenu (PartenaireRepository::visibles).
+	Rien quand il n'y en a pas. Variable facultative : partenaires.
+#}
+{% set partenaires = partenaires ?? site_partenaires() %}
+{% if partenaires is not empty %}
+	<section class="sc-partenaires" aria-labelledby="sc-partenaires-titre">
+		<div class="si-cadre">
+			<h2 id="sc-partenaires-titre">Ils nous font confiance</h2>
+			<ul>
+				{% for p in partenaires %}
+					{% set logo = site_image(p.logo, 'petite') %}
+					{% set lien = p.lien and p.lien starts with 'http' ? site_lien_sur(p.lien) : null %}
+					<li>
+						{% if lien %}<a href="{{ lien }}" target="_blank" rel="noopener nofollow">{% endif %}
+						{% if logo %}
+							<img src="{{ asset(logo.chemin) }}" width="{{ logo.largeur }}" height="{{ logo.hauteur }}" alt="{{ p.nom }}" loading="lazy">
+						{% else %}
+							<span class="sc-partenaire-nom">{{ p.nom }}</span>
+						{% endif %}
+						{% if lien %}</a>{% endif %}
+					</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</section>
+{% endif %}

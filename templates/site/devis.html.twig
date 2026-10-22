@@ -1,0 +1,121 @@
+{#
+	Demander un devis sans compte (maquette 11), en panier (docs/site-vitrine.md) :
+	jusqu'à 10 produits du catalogue publié ou « Autre projet », chacun avec
+	sa taille, sa quantité, ses finitions et son fichier, puis les coordonnées.
+	Prérempli par le calculateur (?produit=&largeur=&hauteur=&quantite=&finitions=,
+	et &ajouter=1 pour « Ajouter au devis » : le panier en cours est repris),
+	le produit et les finitions par leur jeton : la page ne reçoit que des
+	jetons (groupes, fiches, saisie).
+	La page envoyée ne contient aucun montant : le script demande le prix
+	indicatif de chaque ligne (app_site_devis_estimation, tarif public) et
+	l'affiche « à confirmer par l'imprimerie ». Sans script, une ligne se
+	remplit et s'envoie comme avant ; « Ajouter un produit » renvoie la page.
+#}
+{% extends 'site/_site.html.twig' %}
+
+{% set menu_actif = '' %}
+{% set wa = site_whatsapp('Bonjour Succès Imprim, je voudrais un devis pour ') %}
+{% set tailleMo = (tailleMax / 1048576)|round(0, 'floor') %}
+{% set totalMo = (tailleMaxTotale / 1048576)|round(0, 'floor') %}
+
+{% block title %}Demander un devis d'impression à Bamako · Succès Imprim{% endblock %}
+{% block description %}Bâche, banderole, roll-up, t-shirts, cartes de visite : mettez plusieurs produits dans un seul devis, joignez vos fichiers et recevez une réponse, sans créer de compte.{% endblock %}
+
+{% block entete %}
+	{{ site_styles('css/site-formulaires.css', 'css/pieces-m2.css', 'css/site-panier.css') }}
+{% endblock %}
+
+{% block contenu %}
+	{{ include('site/_bandeau.html.twig', {titre: 'Demander un devis', accroche: 'Sans compte et sans engagement : mettez tous vos produits dans une seule demande, nous vous répondons avec un devis précis.'}) }}
+
+	<section class="si-section si-devis">
+		<div class="si-cadre si-devis-grille">
+			<form method="post" action="{{ path('app_site_devis') }}" enctype="multipart/form-data" class="si-carte si-formulaire" id="formulaire-devis" novalidate
+				data-estimation="{{ path('app_site_devis_estimation') }}" data-reprise="{{ app.request.method == 'GET' ? '1' : '0' }}" data-lignes-max="{{ lignesMax }}" data-fichiers-max="{{ fichiersMax }}" data-max="{{ tailleMax }}" data-max-mo="{{ tailleMo }}" data-total-max="{{ tailleMaxTotale }}" data-total-mo="{{ totalMo }}">
+				{{ include('site/_demande_protections.html.twig', {nature: 'devis'}) }}
+				{% if info %}
+					<p class="si-repris" role="status">{{ info }}</p>
+				{% endif %}
+				{% if calculateur %}
+					<p class="si-repris" data-repris>
+						<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm0 2v4h10V4Zm1 7v2h2v-2Zm4 0v2h2v-2Zm4 0v6h2v-6ZM8 15v2h2v-2Zm4 0v2h2v-2Z"/></svg>
+						<span data-repris-texte>Repris du calculateur : vérifiez, ajoutez d'autres produits si besoin, puis vos coordonnées.</span>
+					</p>
+				{% endif %}
+
+				<fieldset class="si-bloc">
+					<legend><span class="si-bloc-num" aria-hidden="true">1</span> Vos produits</legend>
+					{% if erreurs.lignes is defined %}<p class="si-erreur" role="alert">{{ erreurs.lignes }}</p>{% endif %}
+					<p class="si-panier-vide" id="panier-vide" hidden>Votre devis est vide : ajoutez un produit ou décrivez votre projet.</p>
+					<ol class="si-panier" id="panier-lignes">
+						{% for cle, l in saisie.lignes %}
+							{{ include('site/_devis_ligne.html.twig', {cle: cle, l: l, numero: loop.index, retirable: saisie.lignes|length > 1}) }}
+						{% endfor %}
+					</ol>
+					<div class="si-panier-ajout">
+						<button type="submit" name="_ajouter" value="1" formnovalidate class="si-bouton si-bouton-contour" id="ajouter-ligne"{% if saisie.lignes|length >= lignesMax %} disabled{% endif %}>
+							<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>
+							Ajouter un produit
+						</button>
+						<p class="si-aide" id="aide-panier">Jusqu'à {{ lignesMax }} produits, chacun avec son fichier ({{ tailleMo }} Mo par fichier, {{ totalMo }} Mo en tout).{% if wa %} Plus lourd ? <a href="{{ wa }}" target="_blank" rel="noopener">Envoyez-le par WhatsApp</a> ou collez un lien dans le message.{% else %} Plus lourd ? Collez un lien de partage dans le message.{% endif %}</p>
+					</div>
+
+					<div class="si-panier-total" id="panier-total" aria-live="polite" hidden>
+						<div class="si-panier-total-ligne">
+							<span>Total indicatif <small data-total-detail></small></span>
+							<strong data-total></strong>
+						</div>
+						<p class="si-aide">Prix au tarif public, à confirmer par l'imprimerie après vérification de la taille, des finitions et des fichiers. Ce n'est pas un prix ferme.</p>
+					</div>
+				</fieldset>
+
+				<fieldset class="si-bloc">
+					<legend><span class="si-bloc-num" aria-hidden="true">2</span> Vos coordonnées</legend>
+					<div class="si-champs-2">
+						{{ include('site/_champ.html.twig', {nom: 'nom', libelle: 'Nom', valeur: saisie.nom, attributs: 'autocomplete="name" maxlength="120" required', exemple: 'Moussa Traoré'}) }}
+						{{ include('site/_champ_telephone.html.twig', {valeur: saisie.telephone}) }}
+					</div>
+					{{ include('site/_champ.html.twig', {nom: 'email', libelle: 'E-mail', facultatif: true, type: 'email', valeur: saisie.email, attributs: 'autocomplete="email" maxlength="180"', exemple: 'vous@exemple.com'}) }}
+					<div class="si-champ{{ erreurs.message is defined ? ' si-champ-erreur' }}">
+						<label for="champ-message">Message <span class="si-facultatif" id="message-facultatif">(facultatif si un produit est choisi)</span></label>
+						<textarea id="champ-message" name="message" rows="4" maxlength="{{ constant('App\\Entity\\DemandeDevis::MESSAGE_MAX') }}" placeholder="Texte à imprimer, couleurs, date souhaitée, lieu de pose…"{% if erreurs.message is defined %} aria-invalid="true" aria-describedby="erreur-message"{% endif %}>{{ saisie.message }}</textarea>
+						{% if erreurs.message is defined %}<p class="si-erreur" id="erreur-message">{{ erreurs.message }}</p>{% endif %}
+					</div>
+				</fieldset>
+
+				<div class="si-formulaire-actions">
+					<button type="submit" class="si-bouton si-bouton-rouge si-bouton-grand" id="envoyer-devis">Envoyer ma demande</button>
+				</div>
+				<p class="si-note">Rien à payer maintenant. Le prix ferme vous est donné avec le devis, après vérification de la taille, des finitions et des fichiers. Votre nom et votre numéro servent seulement à vous répondre.</p>
+
+				<template id="modele-ligne">
+					{{ include('site/_devis_ligne.html.twig', {cle: '__i__', l: {produit: '', largeur: '', hauteur: '', quantite: '', unite_quantite: 'piece', quantite_m2: '', finitions: [], description: ''}, numero: '__n__', retirable: true, modele: true}) }}
+				</template>
+			</form>
+
+			<aside class="si-devis-cote" aria-label="Comment se passe une demande de devis">
+				<div class="si-carte">
+					<h2>Comment ça se passe</h2>
+					<ol class="si-parcours">
+						<li><strong>Vous envoyez votre demande</strong><span>Un ou plusieurs produits, avec leurs fichiers si vous les avez.</span></li>
+						<li><strong>Nous préparons le devis</strong><span>Un seul devis pour tout, taille, finitions et fichiers vérifiés par l'atelier.</span></li>
+						<li><strong>Nous vous répondons</strong><span>Par téléphone ou WhatsApp, pendant nos horaires ({{ horaires.texte }}).</span></li>
+						<li><strong>BAT avant impression</strong><span>Vous validez l'aperçu, puis nous imprimons.</span></li>
+					</ol>
+				</div>
+				{% if wa %}
+					<div class="si-carte si-devis-wa">
+						<p><strong>Plus rapide sur WhatsApp ?</strong> Envoyez votre fichier et votre question directement à l'atelier.</p>
+						<a href="{{ wa }}" class="si-bouton si-bouton-wa" target="_blank" rel="noopener">{{ include('site/_icone_whatsapp.svg.twig') }} Écrire sur WhatsApp</a>
+					</div>
+				{% endif %}
+			</aside>
+		</div>
+	</section>
+{% endblock %}
+
+{% block scripts %}
+	<script type="application/json" id="fiches-produits">{{ fiches|json_encode(constant('JSON_HEX_TAG') b-or constant('JSON_HEX_AMP') b-or constant('JSON_UNESCAPED_UNICODE'))|raw }}</script>
+	<script src="{{ asset('js/pieces-m2.js') }}" defer></script>
+	<script src="{{ asset('js/panier-devis.js') }}" defer></script>
+{% endblock %}

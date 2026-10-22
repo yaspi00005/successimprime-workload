@@ -1,0 +1,31 @@
+{#
+	Bande fidélité (maquette EC01) : pour qui paie, hors grille revendeur
+	(B2B). Pas de paliers (docs/fidelite.md) : ce qui reste avant le seuil,
+	sinon les points à utiliser.
+#}
+{% if droits.fidelite %}
+	{% set fi = fidelite_espace(client) %}
+	{% if not fi.exclu %}
+		{% set m2 = fi.m2 %}
+		{% set autre = fi.autre %}
+		{% set resteM2 = m2.seuil - m2.cumule %}
+		<a class="ec-carte ec-fi-bande" href="{{ path('app_espace_fidelite') }}">
+			<span class="ec-fi-icone ambre" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 11h16v9H4zM3 7h18v4H3zM12 7v13M12 7c-1.5-3-5-3.5-5-1.2C7 7 9 7 12 7zm0 0c1.5-3 5-3.5 5-1.2C17 7 15 7 12 7z"/></svg></span>
+			<span>
+				{% if fi.majLe is null %}
+					<b>Fidélité : vos achats payés rapportent des points</b>
+					<span class="ec-petit">Payez le jour même : vos points comptent double.</span>
+				{% elseif not m2.eligible and m2.seuil > 0 %}
+					<b>Encore {{ resteM2|number_format(resteM2 == resteM2|round ? 0 : 1, ',', ' ') }} m² avant que vos impressions grand format rapportent des points</b>
+					<span class="ec-petit">{{ fi.disponible|number_format(0, ',', ' ') }} points à utiliser · payez le jour même : points ×{{ fi.multiplicateurJour }}</span>
+				{% elseif not autre.eligible and autre.seuil > 0 %}
+					<b>Encore {{ (autre.seuil - autre.cumule)|number_format(0, ',', ' ') }} F d'articles payés avant qu'ils rapportent des points</b>
+					<span class="ec-petit">{{ fi.disponible|number_format(0, ',', ' ') }} points à utiliser · payez le jour même : points ×{{ fi.multiplicateurJour }}</span>
+				{% else %}
+					<b>{{ fi.disponible|number_format(0, ',', ' ') }} points à utiliser, soit {{ fi.disponibleF|number_format(0, ',', ' ') }} F</b>
+					<span class="ec-petit">Payez le jour même : vos points comptent ×{{ fi.multiplicateurJour }}</span>
+				{% endif %}
+			</span>
+		</a>
+	{% endif %}
+{% endif %}

@@ -1,0 +1,20 @@
+{# Fiche du guide « sauvegardes-synchro » (CatalogueGuide). Texte tel que l'écran le dit. #}
+{% block etapes %}
+<ol>
+	<li>Réglages, famille « Sécurité et système », tuile « Sauvegardes ».</li>
+	<li>Regardez « Dernière sauvegarde réussie ». Elle doit dater de moins d'un jour.</li>
+	<li>Avant une grosse opération, touchez « Sauvegarder la base maintenant ».</li>
+	<li>« Changer les horaires » règle l'heure des sauvegardes.</li>
+	<li>Puis ouvrez la tuile « Synchronisation » : « Dernière synchro réussie », « En attente d'envoi », « Erreurs (24 h) ».</li>
+	<li>« Journal complet » montre chaque échange avec le site.</li>
+</ol>
+{% endblock %}
+
+{% block savoir %}
+<ul>
+	<li>Chaque jour à 02:00 : la base et les fichiers. Toutes les 6 heures : la base seule.</li>
+	<li>« Copie hors de l'imprimerie » : tant qu'elle n'est pas réglée, un incendie ou un vol emporterait aussi les sauvegardes.</li>
+	<li>Les sauvegardes contiennent tout, salaires compris. Elles ne se téléchargent pas depuis le site.</li>
+	<li>Les coûts, marges, comptes et données du personnel ne partent jamais au site en ligne.</li>
+</ul>
+{% endblock %}

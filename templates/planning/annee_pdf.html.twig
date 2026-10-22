@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="fr">
+<head>
+	<meta charset="utf-8">
+	<style>
+		@page { margin: 14mm 12mm; }
+		body { font-family: 'DejaVu Sans', sans-serif; font-size: 9px; color: #0F172A; }
+		h1 { font-size: 16px; margin: 0 0 2px; }
+		.sous { color: #64748B; margin: 0 0 10px; }
+		table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+		th, td { border-bottom: 1px solid #E2E8F0; padding: 4px 2px; text-align: center; }
+		th.nom, td.nom { text-align: left; width: 26%; }
+		th.budget, td.budget { text-align: right; width: 11%; }
+		thead th { color: #64748B; font-weight: bold; }
+		.reperes td { color: #92400E; font-size: 7px; }
+		.bloc { display: inline-block; width: 80%; height: 9px; border-radius: 3px; }
+		.bande { height: 9px; border-radius: 3px; opacity: .45; }
+		.pastille { display: inline-block; width: 7px; height: 7px; border-radius: 4px; margin-right: 4px; }
+		.total { margin-top: 12px; font-size: 11px; }
+	</style>
+</head>
+<body>
+	<h1>Planning annuel {{ annee }}</h1>
+	<p class="sous">Succès Imprim · édité le {{ genereLe|date('d/m/Y à H:i') }}</p>
+	<table>
+		<thead>
+			<tr><th class="nom">Échéance</th>{% for m in mois %}<th>{{ m }}</th>{% endfor %}<th class="budget">Budget</th></tr>
+			<tr class="reperes"><td class="nom">Repères</td>{% for n, m in mois %}<td>{{ reperes[n]|join(', ') }}</td>{% endfor %}<td></td></tr>
+		</thead>
+		<tbody>
+			{% for l in lignes %}
+				{% set c = categories[l.categorie][1] ?? '#64748B' %}
+				<tr>
+					<td class="nom"><span class="pastille" style="background: {{ c }}"></span>{{ l.titre }}</td>
+					{% if l.barre %}
+						<td colspan="12"><div class="bande" style="background: {{ c }}"></div></td>
+					{% else %}
+						{% for n, m in mois %}<td>{% if l.mois[n] %}<span class="bloc" style="background: {{ c }}"></span>{% endif %}</td>{% endfor %}
+					{% endif %}
+					<td class="budget">{{ voitMontants or l.montant == 0 ? l.budget : (l.nombre > 1 ? l.nombre ~ ' fois' : '—') }}</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+	{% if voitMontants %}
+		<p class="total">Budget annuel : <b>{{ budget|number_format(0, ',', ' ') }} F</b>, dont achats (stock et fournisseurs) : <b>{{ achats|number_format(0, ',', ' ') }} F</b>.</p>
+	{% endif %}
+</body>
+</html>

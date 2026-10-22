@@ -1,0 +1,33 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Relevés de compteurs{% endblock %}
+
+{% block body %}
+	{% set nom_mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'][mois|date('n') - 1] %}
+	<section class="card si-pp-carte">
+		<h2>Compteurs de {{ nom_mois }} {{ mois|date('Y') }}</h2>
+		<p class="text-muted small">Chaque début de mois, recopiez les compteurs des machines ci-dessous et joignez la photo de l'écran des compteurs.</p>
+		{% if lignes is empty %}
+			<p class="text-muted mb-0">Aucune machine ne demande de relevé de compteurs.</p>
+		{% else %}
+			<div class="table-responsive">
+				<table class="table si-table align-middle mb-0">
+					<thead>
+						<tr><th>Machine</th><th>Compteurs</th><th>Dernier relevé</th><th>{{ nom_mois|capitalize }}</th><th></th></tr>
+					</thead>
+					<tbody>
+						{% for l in lignes %}
+							<tr>
+								<td><strong>{{ l.machine.nom }}</strong></td>
+								<td>{{ constant('App\\Entity\\Machines::RELEVES')[l.machine.releveCompteurs] ?? '—' }}</td>
+								<td>{{ l.dernier ? l.dernier.mois|date('m/Y') : '—' }}</td>
+								<td><span class="si-pastille si-pastille-{{ l.fait ? 'vert' : 'orange' }}">{{ l.fait ? 'Fait' : 'À saisir' }}</span></td>
+								<td class="text-end"><a href="{{ path('app_immobilisations_releve', {id: l.machine.id}) }}" class="btn btn-sm {{ l.fait ? 'btn-light' : 'btn-primary' }}">{{ l.fait ? 'Corriger' : 'Saisir' }}</a></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			</div>
+		{% endif %}
+	</section>
+{% endblock %}

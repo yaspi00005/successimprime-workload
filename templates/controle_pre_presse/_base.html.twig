@@ -1,0 +1,10 @@
+{#
+	Gabarit des écrans de la prépresse (maquettes PQ01 à PQ04,
+	docs/prepresse.md) : ajoute la feuille de style des écrans neufs.
+#}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<link href="{{ asset('css/prepresse.css') }}" rel="stylesheet">
+{% endblock %}
